@@ -8,9 +8,11 @@ import { loadOffers } from "../lib/data";
 interface Props {
   title?: string;
   description?: string;
+  /** Datos estructurados (schema.org) de la página. */
+  jsonLd?: Record<string, unknown>[];
 }
 
-const { title, description = SITE.description } = Astro.props;
+const { title, description = SITE.description, jsonLd = [] } = Astro.props;
 const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name}: hardware de Amazon con el costo final para Argentina`;
 const canonical = new URL(Astro.url.pathname, SITE.url).toString();
 const path = Astro.url.pathname;
@@ -48,6 +50,7 @@ const nav = [
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={`${SITE.url}/og.png`} />
     <meta name="twitter:card" content="summary_large_image" />
+    {jsonLd.map((d) => <script type="application/ld+json" set:html={JSON.stringify({ "@context": "https://schema.org", ...d })} />)}
     <slot name="head" />
   </head>
   <body>

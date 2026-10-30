@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /buscar/
 
-Sitemap: https://ofertas.knunet.com/sitemap.xml
+Sitemap: https://ofertas.knunet.com/sitemap-index.xml

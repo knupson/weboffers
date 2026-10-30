@@ -34,7 +34,28 @@ const specs: Array<[string, string]> = [
 ];
 ---
 
-<Base title={p.name} description={`${p.summary} Cuánto te sale traerlo a Argentina.`}>
+<Base
+  title={`${p.name}: cuánto sale traerlo a Argentina`}
+  description={`${p.summary} Calculá el costo final en pesos con la franquicia de USD 400, IVA y dólar del día.`}
+  jsonLd={[
+    {
+      "@type": "Product",
+      name: p.name,
+      brand: { "@type": "Brand", name: p.brand },
+      description: p.summary,
+      category: p.category,
+      sku: p.asin,
+      ...(p.image ? { image: `${SITE.url}${p.image}` } : {}),
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Productos", item: `${SITE.url}/productos/` },
+        { "@type": "ListItem", position: 2, name: p.name, item: `${SITE.url}/productos/${p.slug}/` },
+      ],
+    },
+  ]}
+>
   <div class="wrap">
     <nav class="crumbs" aria-label="Ubicación">
       <a href="/productos/">Productos</a><span aria-hidden="true">/</span><span>{p.category}</span>
