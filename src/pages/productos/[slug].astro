@@ -105,7 +105,7 @@ const specs: Array<[string, string]> = [
           <p class="fine">{SITE.disclosure}</p>
         </div>
         <div id="calculadora" style="scroll-margin-top: 96px">
-        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? (p.listPrice ? officialPrice(p.listPrice) : null)} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" />
+        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? (p.listPrice ? officialPrice(p.listPrice) : null)} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={{ url: buy, store: p.store, slug: p.slug }} />
         </div>
       </div>
     </div>

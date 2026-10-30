@@ -19,6 +19,8 @@ interface Props {
   currency?: "USD" | "EUR";
   /** Muestra el selector Amazon.com / Amazon.es. */
   switchable?: boolean;
+  /** Link de afiliado del producto: aparece como botón de compra cuando ya hay resultado. */
+  buy?: { url: string; store: string; slug: string };
 }
 
 type LiveRates = BuildRates & { live: boolean };
@@ -30,7 +32,7 @@ const num = (v: string) => {
 
 const ars0 = (n: number) => Math.round(n).toLocaleString("es-AR");
 
-export default function Calculator({ buildRates, initialFob = null, title = "Calculá el costo final", currency: initialCurrency = "USD", switchable = false }: Props) {
+export default function Calculator({ buildRates, initialFob = null, title = "Calculá el costo final", currency: initialCurrency = "USD", switchable = false, buy }: Props) {
   const [currency, setCurrency] = useState(initialCurrency);
   const [eurUsd, setEurUsd] = useState<number | null>(null);
   const [fob, setFob] = useState(initialFob ? String(initialFob) : "");
@@ -185,6 +187,15 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
                     : `Usás ${formatUsd(result.fobUsd)} de los USD 400 de franquicia.`}
                 </p>
               </div>
+
+              {buy && (
+                <div class="comprar">
+                  <a class="btn lg" href={buy.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={buy.store} data-umami-event-producto={buy.slug} data-umami-event-origen="calculadora">
+                    Comprarlo en Amazon ↗
+                  </a>
+                  <p class="fine">Si comprás desde este botón, Amazon nos paga una comisión y a vos te sale lo mismo. Así sostenemos el sitio.</p>
+                </div>
+              )}
 
               {saving != null && (
                 <p class={saving > 0 ? "note ok" : "note"}>
