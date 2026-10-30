@@ -65,7 +65,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 620495,
+      "url": "https://meli.la/1Dv93Lq",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0B7CKVCCV",
@@ -81,7 +87,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 501258,
+      "url": "https://meli.la/22fU2h7",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B08GTYFC37",
@@ -104,7 +116,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 498000,
+      "url": "https://meli.la/2queWnR",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0DQFF7FBS",
@@ -358,7 +376,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 440757,
+      "url": "https://meli.la/2wSCMzF",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0D1XD1ZV3",
@@ -671,7 +695,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 709787,
+      "url": "https://meli.la/31nk7wA",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0DN6ZQ3PD",
@@ -687,7 +717,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 650933,
+      "url": "https://meli.la/1tRWGEb",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B09VCHQHZ6",
@@ -703,7 +739,13 @@
       "checked": "2026-10-30"
     },
     "image": "/products/amd-ryzen-7-5700x.webp",
-    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-7-5800x.html"
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-7-5800x.html",
+    "ml": {
+      "price": 384999,
+      "url": "https://meli.la/2DcqrfX",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0BTZB7F88",
@@ -719,7 +761,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 778183,
+      "url": "https://meli.la/1Gkq5oQ",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0CGJ41C9W",
@@ -735,7 +783,13 @@
       "checked": "2026-10-30"
     },
     "image": "/products/intel-core-i7-14700k.webp",
-    "imageSource": "https://brightstarcomp.com/products/intel-core-i7-14700k-lga1700-processor"
+    "imageSource": "https://brightstarcomp.com/products/intel-core-i7-14700k-lga1700-processor",
+    "ml": {
+      "price": 744367,
+      "url": "https://meli.la/17yonF7",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0CVCG2VPK",
@@ -751,7 +805,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 542238,
+      "url": "https://meli.la/1WJq2ge",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0FC5SJNQX",
@@ -774,7 +834,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 202901,
+      "url": "https://meli.la/318HyMD",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0BFJ4CRKD",
@@ -796,7 +862,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 297618,
+      "url": "https://meli.la/2LJPt9T",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0DVBP5L6Y",
@@ -812,7 +884,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 301981,
+      "url": "https://meli.la/25D4Uff",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0C9L8ZR6Q",
@@ -834,7 +912,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 321146,
+      "url": "https://meli.la/1KPsPhH",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0CYWFH5Y9",
@@ -894,7 +978,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 470000,
+      "url": "https://meli.la/25VoHpT",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0B9H572LC",
@@ -916,7 +1006,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 578379,
+      "url": "https://meli.la/1iZzBcD",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B08MFVH7SV",
@@ -999,7 +1095,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 383379,
+      "url": "https://meli.la/2LJjTpc",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0CZXWGK79",
@@ -1021,7 +1123,13 @@
       "checked": "2026-10-30"
     },
     "image": "/products/kobo-libra-colour.webp",
-    "imageSource": "https://ereader.kobo.com/en-ww/products/kobo-libra-colour"
+    "imageSource": "https://ereader.kobo.com/en-ww/products/kobo-libra-colour",
+    "ml": {
+      "price": 549899,
+      "url": "https://meli.la/1nrZFPX",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0G6FCDZMK",
@@ -1065,7 +1173,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 328853,
+      "url": "https://meli.la/1jCxB8q",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B08166SLDF",
@@ -1096,7 +1210,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 726882,
+      "url": "https://meli.la/1srKs7v",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0D6NMCZG1",
@@ -1111,7 +1231,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 561878,
+      "url": "https://meli.la/2Veucfd",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0GMKXVVJQ",
@@ -1141,7 +1267,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 666194,
+      "url": "https://meli.la/1pbtHLe",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0FXGWKHND",
@@ -1193,7 +1325,13 @@
       "currency": "USD",
       "source": "https://eshop.asus.com/us/90ig0990-ma1b0t-rt-be82u.html",
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 436801,
+      "url": "https://meli.la/33yPhqC",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0BRNBVTJK",
@@ -1232,7 +1370,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 776027,
+      "url": "https://meli.la/2EJfQR6",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0CCZ1HQ39",
@@ -1254,7 +1398,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 481193,
+      "url": "https://meli.la/1StZ2rR",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0G1PJLWLZ",
@@ -1276,7 +1426,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 341449,
+      "url": "https://meli.la/2qr91uA",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0FGYDF3DD",
@@ -1298,7 +1454,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 180536,
+      "url": "https://meli.la/15seMce",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0D2YBQQ1P",
@@ -1320,7 +1482,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 267435,
+      "url": "https://meli.la/1maAbbp",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0F6NZWPTC",
@@ -1342,7 +1510,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 294715,
+      "url": "https://meli.la/1rrjqse",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0HD9VYLY7",
@@ -1358,7 +1532,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 465340,
+      "url": "https://meli.la/2xVegK2",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0CTJ7PVN1",
@@ -1402,7 +1582,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 322860,
+      "url": "https://meli.la/11MT4uA",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0FJK231C6",
@@ -1424,7 +1610,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 195279,
+      "url": "https://meli.la/25sao1r",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0H1F79N52",
@@ -1446,7 +1638,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 696411,
+      "url": "https://meli.la/2NDMEeN",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0H1FBRQD9",
@@ -1468,7 +1666,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 529900,
+      "url": "https://meli.la/1MDtNQd",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0CDC6Y617",
@@ -1490,7 +1694,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 755860,
+      "url": "https://meli.la/2MdLWN9",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0G4F6ZCSV",
@@ -1513,7 +1723,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 279970,
+      "url": "https://meli.la/1aY8t9m",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0F7QD4HSD",
@@ -1535,7 +1751,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 485776,
+      "url": "https://meli.la/1H191z7",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0GHPHNF5D",
@@ -1580,7 +1802,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 360720,
+      "url": "https://meli.la/1gvsGFd",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B00P5DSM6Q",
@@ -1602,7 +1830,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 408061,
+      "url": "https://meli.la/2Zdrawq",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0F29F712R",
@@ -1618,7 +1852,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 150167,
+      "url": "https://meli.la/2KXsQ9m",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0GRWN18WL",
@@ -1641,7 +1881,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 328055,
+      "url": "https://meli.la/2Bv8pDM",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0CZMG5L6X",
@@ -1795,7 +2041,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 349999,
+      "url": "https://meli.la/2kSqZQU",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0H4SBT4SH",
@@ -1818,7 +2070,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 409810,
+      "url": "https://meli.la/22i38RG",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0CPFWXMBL",
@@ -1841,7 +2099,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 598665,
+      "url": "https://meli.la/2mm9Qbf",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0G3T1QKWL",
@@ -1864,6 +2128,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 576087,
+      "url": "https://meli.la/2p5xqPi",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   }
 ]

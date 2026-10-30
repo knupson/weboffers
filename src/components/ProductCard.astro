@@ -36,7 +36,13 @@ const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUs
     <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
     <p class="sum">{p.summary}</p>
   </div>
-  <div class="foot">
+  <div class={p.verdict === "ml" ? "foot gana-ml" : "foot"}>
+    {p.verdict && (
+      <p class={`veredicto ${p.verdict}`}>
+        {p.verdict === "amazon" ? "Conviene traerlo de Amazon" : p.verdict === "ml" ? "Conviene comprarlo en Mercado Libre" : "Da parecido: elegí por entrega"}
+        <small>Comparado el {p.ml?.checked.split("-").reverse().slice(0, 2).join("/")}</small>
+      </p>
+    )}
     {p.price && (
       <span class="price num">
         {formatUsd(p.price.priceUsd as number)}
@@ -45,18 +51,18 @@ const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUs
     )}
     {lp && (
       <div class="oficial">
-        <span class="lab">Precio oficial de {p.brand}</span>
+        <span class="lab">{lp.retailer ? `Referencia en ${lp.retailer} (EE.UU.)` : `Precio oficial de ${p.brand}`}</span>
         <span class="ref num">
           {formatPrice(officialPrice(lp), lp.currency)}
           {lp.sale != null && <s>{formatPrice(lp.amount, lp.currency)}</s>}
         </span>
-        {free ? (
+        {free && !p.verdict ? (
           <>
-            <span class="casa">A precio oficial, puesto en casa <b class="num" data-est={officialPrice(lp)} data-est-cur={lp.currency}>{est != null ? `≈ ${formatArs(est)}` : "…"}</b></span>
+            <span class="casa">{lp.retailer ? "A ese precio" : "A precio oficial"}, puesto en casa <b class="num" data-est={officialPrice(lp)} data-est-cur={lp.currency}>{est != null ? `≈ ${formatArs(est)}` : "…"}</b></span>
             <small>Amazon cobra el precio + ≈25% (IVA y cargos), con envío gratis. Si en Amazon está más barato, te sale menos.</small>
           </>
         ) : (
-          <small>Sin envío ni impuestos. Mirá el precio de hoy en Amazon.</small>
+          <small>{p.verdict ? "Precio de lista. Pegá abajo el de hoy en Amazon para ver cuánto te sale puesto en casa." : "Sin envío ni impuestos. Mirá el precio de hoy en Amazon."}</small>
         )}
       </div>
     )}
@@ -82,6 +88,16 @@ const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUs
         </a>
         <p class="hoy-tip">¿Amazon te muestra pesos? <a href="https://www.amazon.com/customer-preferences/edit" target="_blank" rel="noopener noreferrer">Cambiá la moneda a USD</a>.</p>
       </>
+    )}
+    {p.ml && (
+      <div class="opcion-ml">
+        <span class="lab">En Mercado Libre</span>
+        <span class="ml-precio num">desde {formatArs(p.ml.price)}</span>
+        <a class="btn ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
+          Ver en Mercado Libre <Icon name="arrow-up-right" size={16} />
+        </a>
+        <small>Entrega en días, sin aduana. Si comprás desde acá, Mercado Libre nos paga una comisión.</small>
+      </div>
     )}
     <a class="costo" href={`/productos/${p.slug}/`}>Ver la cuenta completa</a>
   </div>

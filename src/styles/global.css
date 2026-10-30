@@ -419,3 +419,19 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .card .btn.comprar[hidden] { display: none; }
 .calc .comprar { display: grid; gap: 8px; }
 .calc .comprar .btn { background: #187a42; box-shadow: inset 0 0 0 3px #187a42, inset 0 0 0 4.5px var(--crema); }
+
+/* Comparación Amazon / Mercado Libre */
+.card .veredicto { position: relative; z-index: 1; margin: 0; padding: 8px 10px; border-radius: 10px; font: 700 14px/1.25 var(--sans); display: grid; gap: 2px; }
+.card .veredicto small { font: 500 11px var(--sans); opacity: .8; }
+.card .veredicto.amazon { background: #187a42; color: #fff; }
+.card .veredicto.ml { background: var(--amarillo); color: var(--esmalte); }
+.card .veredicto.parejo { background: var(--placa-2); color: var(--crema); box-shadow: inset 0 0 0 1px var(--linea); }
+.card .opcion-ml { position: relative; z-index: 1; display: grid; gap: 4px; padding-top: 12px; border-top: 1px dashed var(--linea); }
+.card .opcion-ml .lab { font-size: 12px; font-weight: 600; color: var(--apagado); }
+.card .opcion-ml .ml-precio { font: 600 15px var(--sans); color: var(--crema); }
+.card .opcion-ml small { font-size: 12px; color: var(--apagado); }
+.btn.ml { padding: 0 12px; font-size: 14px; background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }
+.card .foot.gana-ml .opcion-ml { order: 1; border-top: 0; padding-top: 0; }
+.card .foot.gana-ml .veredicto { order: 0; }
+.card .foot.gana-ml > :not(.veredicto):not(.opcion-ml) { order: 2; }
+.card .foot .btn { max-width: 100%; }

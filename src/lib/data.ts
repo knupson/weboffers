@@ -21,6 +21,10 @@ export interface CatalogEntry {
   listPrice?: ListPrice;
   /** Verificado en Amazon con dirección en Argentina: se puede comprar y enviar. */
   shipsToAr?: { freeShipping: boolean; checked: string };
+  /** Publicación más barata en Mercado Libre del mismo modelo, con link de afiliado. */
+  ml?: { price: number; url: string; checked: string };
+  /** Dónde conviene comprarlo, comparando el total real de Amazon (no publicado) con Mercado Libre. */
+  verdict?: "amazon" | "ml" | "parejo";
 }
 
 export interface ListPrice {
@@ -31,6 +35,8 @@ export interface ListPrice {
   source: string;
   /** Fecha de consulta, AAAA-MM-DD. */
   checked: string;
+  /** Si no es de la marca: tienda de EE.UU. de referencia (nunca Amazon). */
+  retailer?: string;
 }
 
 export interface OfferItem {

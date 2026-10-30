@@ -92,9 +92,9 @@ const specs: Array<[string, string]> = [
             </div>
           ) : p.listPrice ? (
             <div>
-              <p class="fine">Precio oficial de {p.brand}</p>
+              <p class="fine">{p.listPrice.retailer ? `Referencia en ${p.listPrice.retailer} (EE.UU.)` : `Precio oficial de ${p.brand}`}</p>
               <span class="price num">{formatPrice(officialPrice(p.listPrice), p.listPrice.currency)}</span>
-              <p class="fine">Consultado el {p.listPrice.checked.split("-").reverse().join("/")} en <a class="link" href={p.listPrice.source} target="_blank" rel="noopener noreferrer">la tienda oficial</a>. En {STORE_LABEL[p.store]} suele estar más barato: mirá el precio de hoy y ajustalo abajo.</p>
+              <p class="fine">Consultado el {p.listPrice.checked.split("-").reverse().join("/")} en <a class="link" href={p.listPrice.source} target="_blank" rel="noopener noreferrer">{p.listPrice.retailer ?? "la tienda oficial"}</a>. En {STORE_LABEL[p.store]} suele estar más barato: mirá el precio de hoy y ajustalo abajo.</p>
             </div>
           ) : (
             <p>Mirá el precio en {STORE_LABEL[p.store]} y cargalo abajo para ver el costo final en pesos.</p>
