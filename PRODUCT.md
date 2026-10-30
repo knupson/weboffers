@@ -27,10 +27,10 @@ Hace la cuenta argentina que Amazon no hace: franquicia de USD 400 por envío, I
 ## Capabilities and Constraints
 
 - Astro estático + islas Preact, Cloudflare Workers Static Assets, dominio `ofertas.knunet.com`.
-- Prohibido mostrar precios, ratings o fotos de producto que no vengan de la API de Amazon con menos de 24 h. Hoy no hay API: las tarjetas salen sin precio ni foto de producto.
+- Prohibido mostrar precios, ratings o fotos de Amazon que no vengan de su API con menos de 24 h. Sin API: fotos oficiales del fabricante (decisión del user 2026-10-30) y la API las reemplaza cuando exista.
 - Imágenes de producto generadas con IA: prohibidas (engañan sobre el producto real). Imaginería propia (portada, categorías, OG) sí.
 - Calculadora: IVA 21% por defecto; 10,5% sólo elegido por el usuario y marcado como no verificado. Límites: USD 3.000 FOB, 5 envíos por año, 50 kg.
-- Catálogo actual: 10 productos de hardware en `data/catalog.json`. Con público general, el catálogo debe crecer hacia hogar y cocina (Amazon.es para 220 V).
+- Catálogo: 41 productos con ASIN verificados (tecnología en Amazon.com, cocina, hogar y cuidado personal de 220 V en Amazon.es).
 
 ## Brand Commitments
 

@@ -14,6 +14,9 @@ export interface CatalogEntry {
   voltage?: string;
   summary: string;
   verified: boolean;
+  /** Foto oficial del fabricante, guardada en public/products. Nunca una imagen de Amazon. */
+  image?: string;
+  imageSource?: string;
 }
 
 export interface OfferItem {

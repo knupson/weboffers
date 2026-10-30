@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { calculate } from "../lib/calc";
-import { fetchRates } from "../lib/dolar";
+import { fetchEurUsd, fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd, formatStamp } from "../lib/format";
 
 interface BuildRates {
@@ -14,6 +14,10 @@ interface Props {
   buildRates: BuildRates | null;
   initialFob?: number | null;
   title?: string;
+  /** Moneda en la que cobra la tienda. Amazon.es cobra en euros. */
+  currency?: "USD" | "EUR";
+  /** Muestra el selector Amazon.com / Amazon.es. */
+  switchable?: boolean;
 }
 
 type LiveRates = BuildRates & { live: boolean };
@@ -25,7 +29,9 @@ const num = (v: string) => {
 
 const ars0 = (n: number) => Math.round(n).toLocaleString("es-AR");
 
-export default function Calculator({ buildRates, initialFob = null, title = "Calculá el costo final" }: Props) {
+export default function Calculator({ buildRates, initialFob = null, title = "Calculá el costo final", currency: initialCurrency = "USD", switchable = false }: Props) {
+  const [currency, setCurrency] = useState(initialCurrency);
+  const [eurUsd, setEurUsd] = useState<number | null>(null);
   const [fob, setFob] = useState(initialFob ? String(initialFob) : "");
   const [ship, setShip] = useState("");
   const [iva, setIva] = useState("21");
@@ -40,16 +46,22 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
     fetchRates().then((r) => (r ? setRates({ ...r, live: true }) : setRatesFailed(true)));
   }, []);
 
+  useEffect(() => {
+    if (currency === "EUR" && eurUsd == null) fetchEurUsd().then(setEurUsd);
+  }, [currency]);
+
+  const toUsd = currency === "EUR" ? eurUsd ?? 0 : 1;
+
   const result = useMemo(
     () =>
       calculate(
-        { fobUsd: num(fob), shippingUsd: num(ship), ivaRate: num(iva) / 100, dutyRate: num(duty) / 100 },
+        { fobUsd: num(fob) * toUsd, shippingUsd: num(ship) * toUsd, ivaRate: num(iva) / 100, dutyRate: num(duty) / 100 },
         rates
       ),
-    [fob, ship, iva, duty, rates]
+    [fob, ship, iva, duty, rates, toUsd]
   );
 
-  const empty = num(fob) === 0;
+  const empty = num(fob) === 0 || toUsd === 0;
   const hasExcess = result.excessUsd > 0;
   const used = Math.min(1, result.fobUsd / 400);
   const localArs = num(local);
@@ -61,18 +73,40 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
       <div class="calc-inner">
         <form class="calc-in" onSubmit={(e) => e.preventDefault()}>
           <p class="title">{title}</p>
+          {switchable && (
+            <div class="field">
+              <span class="lab" id="c-tienda">Tienda</span>
+              <div class="seg" role="radiogroup" aria-labelledby="c-tienda">
+                {[
+                  ["USD", "Amazon.com (USD)"],
+                  ["EUR", "Amazon.es (EUR)"],
+                ].map(([v, label]) => (
+                  <label key={v}>
+                    <input type="radio" name="tienda" value={v} checked={currency === v} onChange={() => setCurrency(v as "USD" | "EUR")} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div class="field">
             <label for="c-fob">Precio del producto</label>
             <div class="money">
-              <span>USD</span>
+              <span>{currency}</span>
               <input id="c-fob" class="in" inputMode="decimal" value={fob} onInput={(e) => setFob(e.currentTarget.value)} />
             </div>
-            <small>El precio que ves en Amazon, sin envío ni impuestos.</small>
+            <small>
+              {currency === "EUR"
+                ? eurUsd
+                  ? `El precio en euros de Amazon.es. Lo pasamos a dólares a 1 EUR = USD ${eurUsd.toFixed(3).replace(".", ",")} (oficial).`
+                  : "El precio en euros de Amazon.es. Trayendo la cotización del euro..."
+                : "El precio que ves en Amazon, sin envío ni impuestos."}
+            </small>
           </div>
           <div class="field">
             <label for="c-ship">Envío a Argentina</label>
             <div class="money">
-              <span>USD</span>
+              <span>{currency}</span>
               <input id="c-ship" class="in" inputMode="decimal" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
             </div>
             <small>Amazon lo muestra en el carrito, antes de pagar.</small>

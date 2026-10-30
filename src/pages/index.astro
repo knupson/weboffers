@@ -14,8 +14,10 @@ const stamp = offers.rates ? `de las ${new Date(offers.rates.fetchedAt).toLocale
 const withProducts = [...new Set(shown.map((p) => p.category))];
 const cats = [
   ...withProducts.map((c) => ({ name: c, href: `/productos/?categoria=${encodeURIComponent(c)}`, sub: ((n) => `${n} ${n === 1 ? "elegido" : "elegidos"}`)(shown.filter((p) => p.category === c).length), external: false })),
-  { name: "Cocina", href: amazonSearchUrl("cafetera espresso", "ES"), sub: "220 V en Amazon.es", external: true },
-  { name: "Hogar", href: amazonSearchUrl("robot aspirador", "ES"), sub: "220 V en Amazon.es", external: true },
+  ...[
+    { name: "Cocina", href: amazonSearchUrl("cafetera espresso", "ES"), sub: "220 V en Amazon.es", external: true },
+    { name: "Hogar", href: amazonSearchUrl("robot aspirador", "ES"), sub: "220 V en Amazon.es", external: true },
+  ].filter((c) => !withProducts.includes(c.name)),
 ];
 ---
 

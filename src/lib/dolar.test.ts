@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchRates } from './dolar';
+import { fetchEurUsd, fetchRates } from './dolar';
 
 const payload = [
   { casa: 'oficial', nombre: 'Oficial', compra: 900, venta: 1000, fechaActualizacion: '2026-10-29' },
@@ -55,5 +55,19 @@ describe('fetchRates', () => {
       } as Response);
       expect(await fetchRates(fetchImpl)).toBeNull();
     }
+  });
+});
+
+describe('fetchEurUsd', () => {
+  it('crosses official EUR and USD sell quotes', async () => {
+    const fetchImpl = vi.fn<typeof fetch>((url) =>
+      Promise.resolve(new Response(JSON.stringify(String(url).includes('eur') ? { venta: 1100 } : { venta: 1000 })))
+    );
+    expect(await fetchEurUsd(fetchImpl)).toBeCloseTo(1.1);
+  });
+
+  it('returns null when a quote is missing or the network fails', async () => {
+    expect(await fetchEurUsd(vi.fn<typeof fetch>().mockResolvedValue(new Response('{}')))).toBeNull();
+    expect(await fetchEurUsd(vi.fn<typeof fetch>().mockRejectedValue(new Error('offline')))).toBeNull();
   });
 });

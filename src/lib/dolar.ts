@@ -27,3 +27,19 @@ export async function fetchRates(fetchImpl: typeof fetch = fetch): Promise<Fetch
     return null;
   }
 }
+
+/** Cuántos dólares vale un euro, cruzando el euro oficial con el dólar oficial de dolarapi. */
+export async function fetchEurUsd(fetchImpl: typeof fetch = fetch): Promise<number | null> {
+  try {
+    const [eur, usd] = await Promise.all([
+      fetchImpl('https://dolarapi.com/v1/cotizaciones/eur').then((r) => (r.ok ? r.json() : null)),
+      fetchImpl('https://dolarapi.com/v1/dolares/oficial').then((r) => (r.ok ? r.json() : null)),
+    ]);
+    const e = eur?.venta;
+    const u = usd?.venta;
+    if (typeof e !== 'number' || typeof u !== 'number' || !(e > 0) || !(u > 0)) return null;
+    return e / u;
+  } catch {
+    return null;
+  }
+}

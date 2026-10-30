@@ -16,7 +16,9 @@ Dominio: https://ofertas.knunet.com
 
 ## Reglas de datos
 
-- Nada de precios, ratings ni imágenes escritos a mano. Salen de `offers.json`.
+- Nada de precios ni ratings escritos a mano. Salen de `offers.json`.
+- Fotos: la de Amazon sólo si viene de la API (`offers.json`). Mientras tanto, foto oficial del fabricante en `public/products/` (con su origen embebido); nunca una imagen de Amazon bajada a mano.
+- Amazon.es cobra en euros: la calculadora convierte con el euro oficial cruzado con el dólar oficial (dolarapi).
 - Un precio con más de 24 horas no se muestra.
 - Sin credenciales de la API el worker corre en modo `offline` y el sitio sale sin precios.
 - IVA por defecto 21%. El 10,5% no está verificado.

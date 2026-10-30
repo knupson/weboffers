@@ -13,7 +13,7 @@ const offers = await loadOffers();
   </div>
   <section style="padding-top: 24px">
     <div class="wrap">
-      <Calculator client:load buildRates={offers.rates} title="Datos de la compra" />
+      <Calculator client:load buildRates={offers.rates} title="Datos de la compra" switchable />
       <p class="fine" style="margin-top: 16px">¿No sabés qué comprar? <a class="link" href="/productos/">Mirá los productos</a></p>
     </div>
   </section>

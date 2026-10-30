@@ -10,7 +10,7 @@ interface Props {
 }
 
 const { product: p } = Astro.props;
-const photo = p.price?.imageUrl ?? null;
+const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
 ---
 

@@ -42,6 +42,11 @@ export const CATEGORY_ART: Record<string, string> = {
   Audio: "/art/cat-audio.webp",
   Cocina: "/art/cat-cocina.webp",
   Hogar: "/art/cat-hogar.webp",
+  Gaming: "/art/cat-joystick.webp",
+  "Tablets y lectores": "/art/cat-lectores.webp",
+  "Carga y energía": "/art/cat-carga.webp",
+  Redes: "/art/cat-redes.webp",
+  "Cuidado personal": "/art/cat-cuidado.webp",
 };
 
 // Productos cuya categoría no los representa bien llevan su propia ilustración genérica.
