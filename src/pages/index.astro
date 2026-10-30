@@ -3,7 +3,7 @@ import Base from "../layouts/Base.astro";
 import Catalog from "../components/Catalog.astro";
 import QuickCalc from "../components/QuickCalc.tsx";
 import Icon from "../components/Icon.astro";
-import { amazonDealsUrl, amazonSearchUrl, CATEGORY_ART, SEARCHES, SITE, STORE_LABEL } from "../config";
+import { amazonDealsUrl, amazonSearchUrl, CATEGORY_ART, SEARCHES, SITE, SOCIAL, STORE_LABEL } from "../config";
 import { loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
@@ -14,16 +14,14 @@ const stamp = offers.rates ? `de las ${new Date(offers.rates.fetchedAt).toLocale
 const withProducts = [...new Set(shown.map((p) => p.category))];
 const cats = [
   ...withProducts.map((c) => ({ name: c, href: `/productos/?categoria=${encodeURIComponent(c)}`, sub: ((n) => `${n} ${n === 1 ? "elegido" : "elegidos"}`)(shown.filter((p) => p.category === c).length), external: false })),
-  ...[
-    { name: "Cocina", href: amazonSearchUrl("cafetera espresso", "ES"), sub: "220 V en Amazon.es", external: true },
-    { name: "Hogar", href: amazonSearchUrl("robot aspirador", "ES"), sub: "220 V en Amazon.es", external: true },
-  ].filter((c) => !withProducts.includes(c.name)),
+
 ];
 ---
 
 <Base
   jsonLd={[
     { "@type": "WebSite", name: SITE.name, url: SITE.url, inLanguage: "es-AR", description: SITE.description },
+    { "@type": "Organization", name: SITE.name, url: SITE.url, logo: `${SITE.url}/icon-512.png`, sameAs: SOCIAL.map((r) => r.url) },
     {
       "@type": "ItemList",
       name: "Productos que entran en la franquicia de USD 400",
@@ -52,7 +50,7 @@ const cats = [
           <QuickCalc client:load mep={offers.rates?.mep ?? null} />
         </div>
         <p class="fine" style="text-align:center; margin-top: 8px">
-          Ejemplo con envío de USD 35 e IVA 21%, al dólar MEP <span data-rate-when>{stamp}</span>. <a class="link" href="/calculadora/">Hacé la cuenta exacta</a>
+          Desde USD 100, Amazon envía gratis a Argentina los productos elegibles. Incluye IVA y cargos de Amazon (≈25%), al dólar MEP <span data-rate-when>{stamp}</span>. <a class="link" href="/calculadora/">Hacé la cuenta exacta</a>
         </p>
       </div>
     </div>
@@ -62,7 +60,7 @@ const cats = [
     <nav class="cats" aria-label="Categorías">
       {cats.map((c) => (
         <a class="cat" href={c.href} {...(c.external ? { target: "_blank", rel: "noopener noreferrer sponsored", "data-umami-event": "amazon", "data-umami-event-tienda": "ES", "data-umami-event-origen": "categoria" } : {})}>
-          <img src={CATEGORY_ART[c.name]} alt="" loading="lazy" width="900" height="658" />
+          <img src={CATEGORY_ART[c.name] ?? shown.find((p) => p.category === c.name)?.image} alt="" loading="lazy" width="900" height="658" />
           <span>{c.name}<small>{c.sub}</small></span>
         </a>
       ))}

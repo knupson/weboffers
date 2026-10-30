@@ -7,17 +7,13 @@
     "brand": "ASUS",
     "category": "Monitores",
     "summary": "Monitor gamer de 27 pulgadas con resolución 1440p, 180 Hz, panel Fast IPS de 1 ms y compatibilidad G-SYNC y FreeSync Premium.",
-    "verified": true,
+    "verified": false,
     "image": "/products/asus-tuf-gaming-vg27aq3a.webp",
     "imageSource": "https://www.asus.com/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
     "listPrice": {
       "amount": 209,
       "currency": "USD",
       "source": "https://www.asus.com/us/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -88,14 +84,14 @@
     }
   },
   {
-    "asin": "B0C59G4TLQ",
+    "asin": "B08GTYFC37",
     "store": "US",
     "slug": "sandisk-extreme-portable-ssd-1tb",
     "name": "SanDisk 1TB Extreme Portable SSD",
     "brand": "SanDisk",
     "category": "Almacenamiento",
     "summary": "SSD portátil de 1 TB con USB-C 3.2 Gen 2, lectura de hasta 1050 MB/s, resistencia IP65 y cifrado AES de 256 bits.",
-    "verified": false,
+    "verified": true,
     "image": "/products/sandisk-extreme-portable-ssd-1tb.webp",
     "imageSource": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25",
     "listPrice": {
@@ -103,6 +99,10 @@
       "sale": 219.99,
       "currency": "USD",
       "source": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
       "checked": "2026-10-30"
     }
   },
@@ -143,17 +143,13 @@
     "brand": "Samsung",
     "category": "Almacenamiento",
     "summary": "SSD portátil de 1 TB con USB 3.2 Gen 2 y velocidades de lectura de hasta 1.050 MB/s.",
-    "verified": true,
+    "verified": false,
     "image": "/products/samsung-t7-portable-ssd-1tb.webp",
     "imageSource": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
     "listPrice": {
       "amount": 274.99,
       "currency": "USD",
       "source": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -293,17 +289,13 @@
     "brand": "Razer",
     "category": "Periféricos",
     "summary": "Mouse gamer con cable de 59 gramos, sensor óptico Focus Pro 30K y polling de hasta 8 kHz.",
-    "verified": true,
+    "verified": false,
     "image": "/products/razer-deathadder-v3-wired-negro.webp",
     "imageSource": "https://www.razer.com/gaming-mice/razer-deathadder-v3/RZ01-04640100-R3U1",
     "listPrice": {
       "amount": 69.99,
       "currency": "USD",
       "source": "https://www.razer.com/gaming-mice/Razer-DeathAdder-V3/RZ01-04640100-R3U1",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -418,13 +410,9 @@
     "brand": "Logitech",
     "category": "Periféricos",
     "summary": "Webcam Full HD de 1080p a 30 fps con micrófono estéreo y enfoque automático.",
-    "verified": true,
+    "verified": false,
     "image": "/products/logitech-c920x-hd-pro-webcam.webp",
-    "imageSource": "https://www.logitech.com/en-gb/shop/p/c920-pro-hd-webcam",
-    "shipsToAr": {
-      "freeShipping": false,
-      "checked": "2026-10-30"
-    }
+    "imageSource": "https://www.logitech.com/en-gb/shop/p/c920-pro-hd-webcam"
   },
   {
     "asin": "B0BS1PRC4L",
@@ -434,7 +422,7 @@
     "brand": "Sony",
     "category": "Audio",
     "summary": "Auriculares on-ear inalámbricos con micrófono, conexión multipunto y diseño giratorio, en color negro.",
-    "verified": true,
+    "verified": false,
     "image": "/products/sony-wh-ch520-negro.webp",
     "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
     "listPrice": {
@@ -442,10 +430,6 @@
       "sale": 39.99,
       "currency": "USD",
       "source": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -457,7 +441,7 @@
     "brand": "De'Longhi",
     "category": "Cocina",
     "summary": "Cafetera espresso manual de bomba de 15 bar, de solo 15 cm de ancho, con vaporizador para leche; viene con enchufe europeo (Schuko), así que hace falta un adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/delonghi-dedica-style-ec685-bk.webp",
     "imageSource": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
@@ -465,10 +449,6 @@
       "amount": 159.9,
       "currency": "EUR",
       "source": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -506,7 +486,7 @@
     "brand": "De'Longhi",
     "category": "Cocina",
     "summary": "Cafetera de cápsulas Nespresso Original de 19 bar y tanque de 0,7 L, con apagado automático; trae enchufe europeo (Schuko), así que se necesita un adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/nespresso-delonghi-inissia-en80-b.webp",
     "imageSource": "https://www.delonghi.com/es-es/p/inissia-en80.b-cafeteras-nespresso-inissia/EN80.B.html?pid=0132193902",
@@ -515,10 +495,6 @@
       "sale": 99,
       "currency": "EUR",
       "source": "https://www.delonghi.com/es-es/c/cafe/cafeteras/cafeteras-de-capsulas/cafeteras-nespresso/inissia",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -574,12 +550,8 @@
     "brand": "Philips",
     "category": "Cocina",
     "summary": "Freidora de aire de 6,2 L y 1700 W con ventana, pantalla táctil y 16 modos de cocción; viene con enchufe europeo (Schuko), hace falta adaptador.",
-    "verified": true,
-    "voltage": "220-240 V, 50 Hz",
-    "shipsToAr": {
-      "freeShipping": false,
-      "checked": "2026-10-30"
-    }
+    "verified": false,
+    "voltage": "220-240 V, 50 Hz"
   },
   {
     "asin": "B075FC8ZJ3",
@@ -589,7 +561,7 @@
     "brand": "Philips",
     "category": "Cocina",
     "summary": "Hervidor eléctrico de acero inoxidable de 1,7 L y hasta 2200 W, con base giratoria y apagado automático; trae enchufe europeo (Schuko) y requiere adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/philips-hervidor-hd9350-90-1-7l.webp",
     "imageSource": "https://www.philips.es/c-p/HD9350_90R0/daily-collection-kettle",
@@ -597,10 +569,6 @@
       "amount": 41.99,
       "currency": "EUR",
       "source": "https://www.philips.es/c-p/HD9350_90/daily-collection-hervidor",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -612,7 +580,7 @@
     "brand": "Philips",
     "category": "Cuidado personal",
     "summary": "Secador de pelo de 2300 W con tecnología ThermoShield, difusor de volumen y boquillas de 9 y 11 mm; el enchufe es europeo (Schuko) y se necesita adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V",
     "image": "/products/philips-secador-serie-5000-bhd530-20.webp",
     "imageSource": "https://www.philips.es/c-p/BHD530_20/secador-de-pelo-serie-5000",
@@ -620,10 +588,6 @@
       "amount": 64.99,
       "currency": "EUR",
       "source": "https://www.philips.es/tienda/ES_Loyaltyshop/cuidado-personal/cuidado-del-cabello/secador-de-pelo-serie-5000/p/BHD530_20",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -635,16 +599,12 @@
     "brand": "Philips",
     "category": "Cuidado personal",
     "summary": "Secador de pelo iónico de 2100 W con boquilla estrecha de 14 mm, difusor y seis combinaciones de calor y velocidad; trae enchufe europeo (Schuko), requiere adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V",
     "listPrice": {
       "amount": 39.99,
       "currency": "EUR",
       "source": "https://www.philips.es/tienda/ES_Mysalus/cuidado-personal/cuidado-del-cabello/3000-secador/p/BHD360_20",
-      "checked": "2026-10-30"
-    },
-    "shipsToAr": {
-      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -656,14 +616,10 @@
     "brand": "Rowenta",
     "category": "Cuidado personal",
     "summary": "Secador de pelo de 2100 W de consumo con tecnología Effiwatts y seis ajustes de temperatura; el enchufe es europeo (Schuko) y hace falta adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/rowenta-studio-dry-karl-lagerfeld-cv581l.webp",
-    "imageSource": "https://www.rowenta.es/p/studio-dry-karl-lagerfeld/1830008506",
-    "shipsToAr": {
-      "freeShipping": false,
-      "checked": "2026-10-30"
-    }
+    "imageSource": "https://www.rowenta.es/p/studio-dry-karl-lagerfeld/1830008506"
   },
   {
     "asin": "B0DT186MR9",
@@ -697,6 +653,359 @@
       "sale": 139.99,
       "currency": "EUR",
       "source": "https://es.roborock.com/products/roborock-q7-m5",
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CGKHGMW5",
+    "store": "US",
+    "slug": "lexar-nm790-2tb",
+    "name": "Lexar NM790 with Heatsink 2TB M.2 2280 PCIe Gen4x4 NVMe SSD",
+    "brand": "Lexar",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe PCIe Gen4 x4 M.2 2280 de 2 TB con disipador, lectura de hasta 7400 MB/s y escritura de hasta 6500 MB/s.",
+    "verified": true,
+    "weightKg": 0.0486,
+    "image": "/products/lexar-nm790-2tb.webp",
+    "imageSource": "https://www.lexar.com/global/products/NM790-with-Heatsink-M-2-2280-PCIe-Gen-4x4-NVMe-SSD",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0DN6ZQ3PD",
+    "store": "US",
+    "slug": "wd-black-sn7100-2tb",
+    "name": "WD_BLACK SN7100 2TB NVMe SSD Gen4",
+    "brand": "WD_BLACK",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe PCIe Gen4 de 2 TB en formato M.2 2280, con lectura de hasta 7250 MB/s.",
+    "verified": true,
+    "image": "/products/wd-black-sn7100-2tb.webp",
+    "imageSource": "https://www.sandisk.com/products/ssd/internal-ssd/wd-black-sn7100-nvme-internal-ssd?sku=WDS200T4X0E-00CJA0",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B09VCHQHZ6",
+    "store": "US",
+    "slug": "amd-ryzen-7-5700x",
+    "name": "AMD Ryzen 7 5700X 8-Core Desktop Processor",
+    "brand": "AMD",
+    "category": "Componentes",
+    "summary": "Procesador de 8 núcleos y 16 hilos para socket AM4, hasta 4,6 GHz. No trae gráficos integrados.",
+    "verified": true,
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0BTZB7F88",
+    "store": "US",
+    "slug": "amd-ryzen-7-7800x3d",
+    "name": "AMD Ryzen 7 7800X3D 8-Core Desktop Processor",
+    "brand": "AMD",
+    "category": "Componentes",
+    "summary": "Procesador de escritorio de 8 núcleos con caché 3D V-Cache de 96 MB para juegos, en socket AM5.",
+    "verified": true,
+    "image": "/products/amd-ryzen-7-7800x3d.webp",
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-7-7800x3d.html",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CGJ41C9W",
+    "store": "US",
+    "slug": "intel-core-i7-14700k",
+    "name": "Intel Core i7-14700K Desktop Processor",
+    "brand": "Intel",
+    "category": "Componentes",
+    "summary": "Procesador de 20 núcleos (8 P y 12 E) y 28 hilos para socket LGA1700, hasta 5,6 GHz, desbloqueado.",
+    "verified": true,
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CVCG2VPK",
+    "store": "US",
+    "slug": "asus-dual-rtx-3050-6gb",
+    "name": "ASUS Dual GeForce RTX 3050 OC Edition 6GB GDDR6",
+    "brand": "ASUS",
+    "category": "Componentes",
+    "summary": "Placa de video con 6 GB GDDR6, refrigeración de doble ventilador y versión OC de fábrica.",
+    "verified": true,
+    "image": "/products/asus-dual-rtx-3050-6gb.webp",
+    "imageSource": "https://www.asus.com/motherboards-components/graphics-cards/dual/dual-rtx3050-o6g/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FC5SJNQX",
+    "store": "US",
+    "slug": "logitech-mx-master-4",
+    "name": "Logitech MX Master 4 Wireless Mouse",
+    "brand": "Logitech",
+    "category": "Periféricos",
+    "summary": "Mouse inalámbrico ergonómico con rueda de desplazamiento de metal de alta velocidad y peso de 150 g.",
+    "verified": true,
+    "weightKg": 0.15,
+    "image": "/products/logitech-mx-master-4.webp",
+    "imageSource": "https://www.logitech.com/en-us/shop/p/mx-master-4",
+    "listPrice": {
+      "amount": 119.99,
+      "currency": "USD",
+      "source": "https://www.logitech.com/en-us/shop/p/mx-master-4",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0BFJ4CRKD",
+    "store": "US",
+    "slug": "logitech-mx-brio",
+    "name": "Logitech MX Brio Ultra HD 4K Webcam",
+    "brand": "Logitech",
+    "category": "Periféricos",
+    "summary": "Webcam 4K Ultra HD para videollamadas y streaming, con enfoque y exposición automáticos.",
+    "verified": true,
+    "image": "/products/logitech-mx-brio.webp",
+    "imageSource": "https://www.logitech.com/en-us/shop/p/mx-brio-4k-webcam",
+    "listPrice": {
+      "amount": 199.99,
+      "currency": "USD",
+      "source": "https://www.logitech.com/en-us/shop/p/mx-brio-4k-webcam",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0DVBP5L6Y",
+    "store": "US",
+    "slug": "tp-link-archer-be400-be6500",
+    "name": "TP-Link Archer BE400 BE6500 Dual-Band Wi-Fi 7 Router",
+    "brand": "TP-Link",
+    "category": "Redes",
+    "summary": "Router Wi-Fi 7 de doble banda con velocidades de hasta 6.5 Gbps.",
+    "verified": true,
+    "image": "/products/tp-link-archer-be400-be6500.webp",
+    "imageSource": "https://www.tp-link.com/us/home-networking/wifi-router/archer-be400/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0C9L8ZR6Q",
+    "store": "US",
+    "slug": "skullcandy-crusher-anc-2",
+    "name": "Skullcandy Crusher ANC 2 Wireless Noise-Cancelling Headphones",
+    "brand": "Skullcandy",
+    "category": "Audio",
+    "summary": "Auriculares inalámbricos con cancelación de ruido activa, graves sensoriales y app para ajustar EQ y perfil auditivo.",
+    "verified": true,
+    "image": "/products/skullcandy-crusher-anc-2.webp",
+    "imageSource": "https://www.skullcandy.com/products/crusher-anc-2-sensory-bass-headphones-with-active-noise-canceling",
+    "listPrice": {
+      "amount": 239.99,
+      "currency": "USD",
+      "source": "https://www.skullcandy.com/products/crusher-anc-2-sensory-bass-headphones-with-active-noise-canceling",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CYWFH5Y9",
+    "store": "US",
+    "slug": "turtle-beach-stealth-600-gen3",
+    "name": "Turtle Beach Stealth 600 Gen 3 Wireless Multiplatform Gaming Headset",
+    "brand": "Turtle Beach",
+    "category": "Audio",
+    "summary": "Auriculares gamer inalámbricos multiplataforma con micrófono y hasta 80 horas de batería según el fabricante.",
+    "verified": true,
+    "image": "/products/turtle-beach-stealth-600-gen3.webp",
+    "imageSource": "https://www.turtlebeach.com/products/stealth-600-headset",
+    "listPrice": {
+      "amount": 109.99,
+      "currency": "USD",
+      "source": "https://www.turtlebeach.com/products/stealth-600-headset",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CG6NBJ61",
+    "store": "US",
+    "slug": "garmin-vivoactive-5",
+    "name": "Garmin vívoactive 5 Health & Fitness GPS Smartwatch",
+    "brand": "Garmin",
+    "category": "Relojes",
+    "summary": "Reloj inteligente con pantalla AMOLED, GPS, monitoreo de sueño y salud, y hasta 11 días de batería.",
+    "verified": true,
+    "image": "/products/garmin-vivoactive-5.webp",
+    "imageSource": "https://www.garmin.com/en-US/p/1057989/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0DS2B3P2B",
+    "store": "US",
+    "slug": "dji-osmo-action-4-essential",
+    "name": "DJI Osmo Action 4 Essential Combo",
+    "brand": "DJI",
+    "category": "Cámaras",
+    "summary": "Cámara de acción 4K a 120 cuadros con sensor de 1/1,3 pulgadas, sumergible a 18 m sin carcasa.",
+    "verified": true,
+    "image": "/products/dji-osmo-action-4-essential.webp",
+    "imageSource": "https://www.dji.com/global/osmo-action-4",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0B9H572LC",
+    "store": "US",
+    "slug": "insta360-x3",
+    "name": "Insta360 X3 360 Action Camera",
+    "brand": "Insta360",
+    "category": "Cámaras",
+    "summary": "Cámara de acción 360° con herramientas de reencuadre por IA y lentes duales, en bundle estándar. Modelo de la generación anterior.",
+    "verified": true,
+    "image": "/products/insta360-x3.webp",
+    "imageSource": "https://store.insta360.com/product/insta360-x3",
+    "listPrice": {
+      "amount": 299.99,
+      "currency": "USD",
+      "source": "https://store.insta360.com/product/insta360-x3",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B08MFVH7SV",
+    "store": "US",
+    "slug": "canon-rf-50mm-f18-stm",
+    "name": "Canon RF 50mm F1.8 STM Lens",
+    "brand": "Canon",
+    "category": "Cámaras",
+    "summary": "Lente fijo de 50 mm f/1.8 para cámaras Canon de montura RF, liviano y con enfoque STM silencioso.",
+    "verified": true,
+    "image": "/products/canon-rf-50mm-f18-stm.webp",
+    "imageSource": "https://www.usa.canon.com/shop/p/rf50mm-f1-8-stm",
+    "listPrice": {
+      "amount": 239.99,
+      "sale": 199.99,
+      "currency": "USD",
+      "source": "https://www.usa.canon.com/shop/p/rf50mm-f1-8-stm",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0GQWSKBLD",
+    "store": "US",
+    "slug": "philips-sonicare-5950",
+    "name": "Philips Sonicare 5950 Rechargeable Electric Toothbrush",
+    "brand": "Philips",
+    "category": "Cuidado personal",
+    "summary": "Cepillo de dientes eléctrico sónico recargable de Philips Sonicare, con cabezal intercambiable.",
+    "verified": true,
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FVXLPWHM",
+    "store": "US",
+    "slug": "samsung-galaxy-tab-a11-plus-256gb",
+    "name": "Samsung Galaxy Tab A11+ 11-inch Wi-Fi 8GB RAM 256GB",
+    "brand": "Samsung",
+    "category": "Tablets y lectores",
+    "summary": "Tablet Android de 11 pulgadas con 8 GB de RAM y 256 GB de almacenamiento, versión Wi-Fi.",
+    "verified": true,
+    "image": "/products/samsung-galaxy-tab-a11-plus-256gb.webp",
+    "imageSource": "https://www.samsung.com/us/tablets/galaxy-tab-a11-plus/buy/",
+    "listPrice": {
+      "amount": 379.99,
+      "currency": "USD",
+      "source": "https://www.samsung.com/us/tablets/galaxy-tab-a11-plus/buy/",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CZY1LRT4",
+    "store": "US",
+    "slug": "kobo-clara-colour",
+    "name": "Kobo Clara Colour eReader 6\"",
+    "brand": "Kobo",
+    "category": "Tablets y lectores",
+    "summary": "Lector de 6 pulgadas con pantalla E Ink Kaleido 3 a color, 16 GB, resistente al agua y luz cálida regulable.",
+    "verified": true,
+    "image": "/products/kobo-clara-colour.webp",
+    "imageSource": "https://ereader.kobo.com/en-us/products/kobo-clara-colour",
+    "listPrice": {
+      "amount": 179.99,
+      "currency": "USD",
+      "source": "https://ereader.kobo.com/en-us/products/kobo-clara-colour",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CZXWGK79",
+    "store": "US",
+    "slug": "kobo-libra-colour",
+    "name": "Kobo Libra Colour eReader 7\"",
+    "brand": "Kobo",
+    "category": "Tablets y lectores",
+    "summary": "Lector de 7 pulgadas con pantalla E Ink Kaleido 3 a color, botones para pasar página y resistente al agua.",
+    "verified": true,
+    "listPrice": {
+      "amount": 259.99,
+      "currency": "USD",
+      "source": "https://ereader.kobo.com/en-us/products/kobo-libra-colour",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
       "checked": "2026-10-30"
     }
   }

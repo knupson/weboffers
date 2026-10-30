@@ -2,13 +2,16 @@ import { useEffect, useState } from "preact/hooks";
 import { calculate } from "../lib/calc";
 import { fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd } from "../lib/format";
+import { AMAZON_EXTRA } from "../lib/estimate";
 
 interface Props {
   mep: number | null;
 }
 
 const MAX = 600;
-const SHIPPING = 35;
+// Medido el 30/10/2026: desde USD 100 Amazon envía gratis a Argentina los productos
+// elegibles; debajo, el envío ronda USD 40 a 50.
+const shippingFor = (fob: number) => (fob >= 100 ? 0 : 45);
 const START = 279;
 
 const usd0 = (n: number) => formatUsd(n).replace(",00", "");
@@ -22,7 +25,9 @@ export default function QuickCalc({ mep: buildMep }: Props) {
     fetchRates().then((r) => r && setMep(r.mep));
   }, []);
 
-  const r = calculate({ fobUsd: fob, shippingUsd: SHIPPING }, mep ? { mep, tarjeta: mep } : null);
+  const shipping = shippingFor(fob);
+  const r = calculate({ fobUsd: fob, shippingUsd: shipping }, mep ? { mep, tarjeta: mep } : null);
+  const totalUsd = r.totalUsd + fob * AMAZON_EXTRA;
   const over = r.excessUsd > 0;
 
   return (
@@ -43,8 +48,8 @@ export default function QuickCalc({ mep: buildMep }: Props) {
         />
       </div>
       <p class="k">te sale puesto en tu casa</p>
-      <p class="ars num">{r.totalArsMep != null ? formatArs(r.totalArsMep) : usd0(r.totalUsd)}</p>
-      <p class="state">{over ? `Pagás derechos sobre ${usd0(r.excessUsd)}` : "Sin derechos de importación"}</p>
+      <p class="ars num">{mep ? formatArs(totalUsd * mep) : usd0(totalUsd)}</p>
+      <p class="state">{shipping ? `Envío ≈ ${usd0(shipping)}: debajo de USD 100 no es gratis` : over ? `Envío gratis. Pagás derechos sobre ${usd0(r.excessUsd)}` : "Envío gratis y sin derechos de importación"}</p>
     </div>
   );
 }

@@ -15,7 +15,8 @@ const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
 const lp = p.price ? null : p.listPrice;
 const quotes = lp ? await buildQuotes() : null;
-const est = lp && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : null;
+const free = p.shipsToAr?.freeShipping === true;
+const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : null;
 ---
 
 <article class="card" data-category={p.category}>
@@ -29,6 +30,7 @@ const est = lp && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : nul
       {logo ? <svg viewBox={logo.viewBox} style={logo.ratio === 1 ? "height:24px;aspect-ratio:1" : `aspect-ratio:${logo.ratio}`} role="img" aria-label={p.brand}><path d={logo.path} /></svg> : p.brand}
     </span>
     <span class="store">{STORE_LABEL[p.store]}</span>
+    {free && <span class="envio"><Icon name="truck" size={14} /> Envío gratis a Argentina</span>}
   </div>
   <div class="body">
     <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
@@ -48,7 +50,14 @@ const est = lp && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : nul
           {formatPrice(officialPrice(lp), lp.currency)}
           {lp.sale != null && <s>{formatPrice(lp.amount, lp.currency)}</s>}
         </span>
-        <small>Sin envío ni impuestos. Mirá el precio de hoy en Amazon.</small>
+        {free ? (
+          <>
+            <span class="casa">A precio oficial, puesto en casa <b class="num" data-est={officialPrice(lp)} data-est-cur={lp.currency}>{est != null ? `≈ ${formatArs(est)}` : "…"}</b></span>
+            <small>Amazon cobra el precio + ≈25% (IVA y cargos), con envío gratis. Si en Amazon está más barato, te sale menos.</small>
+          </>
+        ) : (
+          <small>Sin envío ni impuestos. Mirá el precio de hoy en Amazon.</small>
+        )}
       </div>
     )}
     <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">

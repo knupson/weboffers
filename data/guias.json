@@ -43,8 +43,8 @@
       {
         "heading": "Un ejemplo con números hipotéticos",
         "paragraphs": [
-          "Supongamos, como ejemplo, un producto de USD 500 con USD 40 de envío. El exceso sobre la franquicia se mide sobre el producto: USD 100. Los derechos estimados al 35% sobre ese exceso son USD 35. La tasa de estadística al 3% sobre el exceso son USD 3.",
-          "La base queda en 500 + 40 + 35 + 3 = USD 578. Con IVA al 21%, el IVA son USD 121,38 y el total llega a USD 699,38. Son cifras de ejemplo con la fórmula del sitio, no el precio de ningún producto real.",
+          "Supongamos, como ejemplo, un producto de USD 500 con envío gratis. El exceso sobre la franquicia se mide sobre el producto: USD 100. Los derechos estimados al 35% sobre ese exceso son USD 35. La tasa de estadística al 3% sobre el exceso son USD 3.",
+          "La base queda en 500 + 0 + 35 + 3 = USD 538. Con IVA al 21%, el IVA son USD 112,98 y el total llega a USD 650,98. Son cifras de ejemplo con la fórmula del sitio, no el precio de ningún producto real.",
           "Si en cambio la compra queda por debajo de USD 400, derechos y tasa valen cero y solo se suma el IVA. Por eso, en muchos casos, conviene que cada compra grande entre dentro del tope."
         ]
       },
@@ -90,7 +90,6 @@
       }
     ],
     "related": [
-      "kindle-paperwhite-16gb-2024",
       "sony-wh-1000xm5-negro",
       "samsung-t7-portable-ssd-1tb"
     ]
@@ -113,13 +112,15 @@
         "heading": "Paso 2: elegí la tienda de Amazon correcta",
         "paragraphs": [
           "Amazon tiene tiendas por país. Las más usadas desde Argentina son Amazon.com, con precios en dólares, y Amazon.es, con precios en euros. Cada una tiene su catálogo, sus vendedores y sus condiciones de envío.",
-          "Antes de agregar un producto al carrito, mirá en la ficha si se envía a Argentina. No todos los productos ni todos los vendedores lo hacen. Si el envío no está disponible, Amazon lo indica al elegir la dirección de entrega."
+          "Antes de agregar un producto al carrito, mirá en la ficha si se envía a Argentina. No todos los productos ni todos los vendedores lo hacen. Si no se envía, al elegir la dirección argentina Amazon muestra el mensaje “This item cannot be shipped to your selected delivery location”. Ese es el primer chequeo que conviene hacer."
         ]
       },
       {
         "heading": "Paso 3: cargá la dirección y mirá el envío",
         "paragraphs": [
-          "Cargá tu dirección en Argentina en el formato que pide Amazon y revisá el costo de envío internacional que aparece antes de pagar. El envío es parte del costo real, y pesa en el cálculo de la franquicia y de los impuestos.",
+          "Cargá tu dirección en Argentina en el formato que pide Amazon y revisá el costo de envío internacional que aparece antes de pagar. El envío es parte del costo real: no cuenta para el tope de USD 400 FOB, pero sí suma en la base del IVA.",
+          "Con Amazon.com, el envío suele ser gratis en productos de unos USD 100 o más. Por debajo de ese monto ronda los USD 40 a 50, y en un artículo barato puede duplicar el costo. Al pagar, el total que cobra Amazon queda alrededor de un 23% a 27% por encima del precio del producto, porque incluye el IVA del 21% y los cargos de importación de Amazon.",
+          "Cuidado con los productos grandes o pesados, como los monitores: pueden pagar envío aunque superen los USD 100. Un monitor de USD 199 pagó USD 128,63 entre envío y cargos de importación.",
           "En Amazon.com, al pagar para Argentina, Amazon cobra un depósito de import fees (cargos de importación). Si la liquidación final resulta distinta de ese depósito, se aplican las condiciones de Amazon. Leelas directamente en Amazon antes de confirmar."
         ]
       },
@@ -180,8 +181,6 @@
       }
     ],
     "related": [
-      "kindle-paperwhite-16gb-2024",
-      "apple-airpods-pro-2-usb-c",
       "logitech-mx-master-3s",
       "samsung-t7-portable-ssd-1tb"
     ]
@@ -235,6 +234,7 @@
         "heading": "Cuándo conviene mirar Amazon.es",
         "paragraphs": [
           "Amazon.es tiene sentido cuando buscás un producto que no está en Amazon.com, o cuando necesitás una versión de 220 a 240 V de un electrodoméstico. También cuando el modelo europeo tiene una variante que te interesa.",
+          "Dicho sin vueltas: Amazon.es casi nunca compensa el envío. Medimos envíos desde Amazon.es a Argentina de entre 36 y 95 € por artículo; por ejemplo, una pava de 37 € se envió por 42 €. Solo conviene con productos caros, donde el envío pesa menos en el total.",
           "Si el mismo producto está en las dos tiendas, comparalo con el costo final. Pasá cada precio a dólares, sumá el envío y compará los totales en la calculadora (/calculadora/). La diferencia de precio de lista a veces desaparece cuando se agrega el envío.",
           "Verificá también que el vendedor despache a Argentina. Si el producto no aparece disponible para tu dirección, no hay forma de avanzar con esa publicación."
         ]
@@ -271,109 +271,71 @@
         "a": "No, rige el mismo régimen de courier. Hay franquicia de USD 400 FOB por envío y el exceso paga derechos y tasa de estadística. El IVA sigue el régimen general."
       }
     ],
-    "related": [
-      "delonghi-dedica-style-ec685-bk",
-      "philips-airfryer-3000-doble-cesta-na352-9l",
-      "roborock-q7-l5-negro",
-      "philips-secador-serie-5000-bhd530-20"
-    ]
+    "related": []
   },
   {
     "slug": "cuanto-sale-traer-un-kindle",
-    "title": "Cuánto sale traer un Kindle a Argentina",
-    "description": "Cuánto sale traer un Kindle a Argentina: ejemplo con números hipotéticos, qué impuestos se pagan con la franquicia y cómo calcular tu caso.",
-    "h1": "Cuánto sale traer un Kindle a Argentina: un ejemplo con números",
-    "intro": "La pregunta de siempre es si conviene traer un Kindle desde afuera y cuánto termina costando puesto en tu casa. La respuesta depende del precio de Amazon el día que compres, y ese número cambia. Por eso esta guía usa un precio hipotético, claramente marcado como ejemplo, para mostrarte la cuenta completa. Con tu precio real, repetís el mismo procedimiento en la calculadora (/calculadora/).",
+    "title": "Kindle en Argentina: por qué Amazon no lo envía y qué lector traer",
+    "description": "Amazon.com no envía el Kindle a Argentina. Qué lector traer (Kobo Clara Colour o Libra Colour con envío gratis), cuánto cobra Amazon y cómo calcular el total.",
+    "h1": "Kindle en Argentina: por qué Amazon no lo envía y qué lector traer",
+    "intro": "Mucha gente busca traer un Kindle desde Amazon.com, pero el Kindle no se envía a Argentina. Esta guía explica por qué, qué lector Kobo sí llega con envío gratis y cuánto puede terminar costando puesto en tu casa.",
     "sections": [
       {
-        "heading": "Aclaración: los números son un ejemplo",
+        "heading": "Por qué Amazon no envía el Kindle a Argentina",
         "paragraphs": [
-          "Todos los valores de esta guía son hipotéticos. No son el precio actual de ningún Kindle en Amazon ni una oferta. Están elegidos para que se vea la mecánica de la cuenta. Antes de comprar, consultá el precio vigente en Amazon y cargalo en la calculadora."
+          "Amazon.com no envía el Kindle Paperwhite a Argentina. Si elegís una dirección argentina en la ficha, la página muestra el mensaje “This item cannot be shipped to your selected delivery location”, y no hay forma de avanzar con esa compra.",
+          "Lo mismo pasa con otros productos populares, como los AirPods, los power banks de Anker o las mini PC de Beelink. Por eso conviene revisar la ficha antes de hacer cualquier otra cuenta."
         ]
       },
       {
-        "heading": "Los datos del ejemplo",
+        "heading": "La alternativa: un lector Kobo",
         "paragraphs": [
-          "Supongamos que en Amazon el Kindle sale USD 160 y el envío internacional a Argentina son USD 35. Es solo un ejemplo para hacer la cuenta.",
-          "El precio del producto, USD 160, está bien por debajo de la franquicia de USD 400 FOB por envío del régimen courier. El envío no cuenta para ese tope.",
-          "Elegimos un precio redondo a propósito, para que la aritmética se pueda seguir de cabeza y se note qué parte corresponde a cada concepto. Si tu precio real es otro, solo cambian los valores de entrada, no el procedimiento."
+          "Los lectores Kobo Clara Colour (/productos/kobo-clara-colour/) y Kobo Libra Colour (/productos/kobo-libra-colour/) sí se envían a Argentina desde Amazon.com, con envío gratis. Son la alternativa a considerar si buscás un lector electrónico traído del exterior."
         ]
       },
       {
-        "heading": "Qué se paga y qué no",
+        "heading": "Un ejemplo con números",
         "paragraphs": [
-          "Como el envío está dentro de la franquicia, no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). Esos dos conceptos valen cero en este caso.",
-          "Lo que sí se suma es el IVA, que sigue el régimen general de importación (RG ARCA 5608/2024). El sitio lo calcula con 21% por defecto.",
-          "Conviene recordar que esta exención tiene un cupo anual de hasta 5 envíos por persona, así que cada envío que hacés con franquicia cuenta dentro de ese límite."
-        ],
-        "bullets": [
-          "Derechos de importación: cero, porque entra en la franquicia.",
-          "Tasa de estadística: cero, por la misma razón.",
-          "IVA: se calcula sobre el total de producto más envío."
+          "Supongamos un lector de USD 160 en Amazon.com. Como el precio supera los USD 100, el envío es gratis. Aun así, Amazon cobra alrededor de USD 200 en total al pagar, es decir unos 25% más que el precio del producto. Ese recargo incluye el IVA del 21% y los cargos de importación de Amazon. Es un ejemplo con cifras redondas, no el precio de ningún modelo.",
+          "Como el producto vale menos de USD 400 FOB, entra en la franquicia del courier: no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). Cada envío con franquicia cuenta dentro del cupo de 5 por año por persona."
         ]
       },
       {
-        "heading": "La cuenta paso a paso",
+        "heading": "Qué revisar antes de pagar",
         "paragraphs": [
-          "La fórmula del sitio es: total = (producto + envío + derechos + tasa de estadística) × (1 + IVA).",
-          "Con los datos del ejemplo: producto 160, envío 35, derechos 0, tasa 0. La base es 195. El IVA al 21% son USD 40,95. El total es USD 235,95.",
-          "Ese total en dólares es el que después se pasa a pesos."
+          "Confirmá el total exacto en el checkout de Amazon. El 25% es una referencia para comparar, no reemplaza el número final.",
+          "Para ver el total en pesos, cargá el precio y el envío en la calculadora (/calculadora/). Si querés entender la diferencia entre los dos tipos de cambio, leé la guía de dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/).",
+          "Sobre el IVA: el sitio lo calcula con 21% por defecto, pero la alícuota correcta depende de la posición arancelaria del producto y no confirmamos 10,5% para courier. Un despachante o el micrositio de envíos internacionales de ARCA pueden confirmarla."
         ]
       },
       {
-        "heading": "Cómo se pasa a pesos",
-        "paragraphs": [
-          "El total en pesos es el total en dólares multiplicado por el dólar MEP del día, si pagás con dólares comprados a MEP. Si pagás con una tarjeta argentina, se usa el dólar tarjeta, que es más alto. El sitio te muestra ambos resultados lado por lado.",
-          "No incluimos un valor de dólar en esta guía porque cambia todos los días. En la calculadora (/calculadora/) vas a ver el valor actualizado. Para entender la diferencia entre las dos opciones, leé la guía de dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/)."
-        ]
-      },
-      {
-        "heading": "Qué cambia si el precio real es distinto",
-        "paragraphs": [
-          "Si el precio real es otro, la mecánica no cambia. Verificás que el precio del producto no supere USD 400, le sumás el envío y le agregás el IVA. Mientras el envío quede dentro de la franquicia, derechos y tasa siguen en cero.",
-          "Si en cambio comprás el Kindle junto con otros productos en un mismo envío y el valor de los productos pasa de USD 400, el exceso empieza a pagar derechos y tasa de estadística. En ese caso, el sitio estima los derechos en 35%, editable, y la tasa en 3%, solo sobre el exceso.",
-          "Por eso, para un dispositivo de este rango de precio, lo más simple suele ser comprarlo solo y mantenerlo dentro de la franquicia. Siempre podés comprobarlo en la calculadora (/calculadora/) con los valores del día."
-        ]
-      },
-      {
-        "heading": "Sobre el IVA: cambiá la alícuota si hace falta",
-        "paragraphs": [
-          "El IVA correcto depende de la posición arancelaria del producto. El sitio calcula con 21% por defecto y no confirmó que corresponda 10,5% para courier. Podés modificar el porcentaje en la calculadora. Si querés certeza, un despachante o el micrositio de envíos internacionales de ARCA pueden confirmarlo.",
-          "Si la alícuota cambia, cambia el total. Con el mismo ejemplo, el cálculo es siempre base por uno más el IVA."
-        ]
-      },
-      {
-        "heading": "Antes de comprar: requisitos y condiciones",
+        "heading": "Antes de comprar: requisitos",
         "paragraphs": [
           "Para recibir el paquete por courier necesitás CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA. Verificalo antes de pagar.",
-          "Amazon.com cobra al pagar un depósito de import fees para Argentina. Si la liquidación final difiere de ese depósito, aplican las condiciones de Amazon, que conviene leer en Amazon.",
-          "Para el paso a paso completo de la compra, mirá la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/).",
+          "Para el paso a paso completo, mirá la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/).",
           "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
         ]
       }
     ],
     "faq": [
       {
-        "q": "¿Cuánto cuesta traer un Kindle a Argentina?",
-        "a": "Depende del precio de Amazon el día de la compra. En el ejemplo de esta guía, con USD 160 de producto y USD 35 de envío, el total con IVA al 21% es USD 235,95. Son números hipotéticos."
+        "q": "¿Amazon envía el Kindle a Argentina?",
+        "a": "No. Amazon.com no envía el Kindle Paperwhite a Argentina: al elegir una dirección argentina, la ficha indica que el producto no puede enviarse a esa ubicación."
       },
       {
-        "q": "¿Se pagan aranceles por un Kindle?",
-        "a": "Si el envío no pasa de USD 400 FOB y está dentro de los 5 envíos anuales con franquicia, no hay derechos de importación ni tasa de estadística. Sí se paga IVA."
+        "q": "¿Qué lector puedo traer desde Amazon?",
+        "a": "Los Kobo Clara Colour y Kobo Libra Colour sí se envían a Argentina desde Amazon.com, con envío gratis."
       },
       {
-        "q": "¿El IVA es siempre 21%?",
-        "a": "El sitio calcula con 21% por defecto, pero la alícuota correcta depende de la posición arancelaria del producto. Podés cambiarla en la calculadora y confirmarla con un despachante o con ARCA."
+        "q": "¿Cuánto termina costando?",
+        "a": "Amazon cobra alrededor de un 25% por encima del precio del producto, entre IVA y cargos de importación. En el ejemplo de esta guía, con un lector de USD 160, el total es de unos USD 200."
       },
       {
-        "q": "¿Cuánto es en pesos?",
-        "a": "El total en dólares multiplicado por el dólar MEP del día si pagás con dólares MEP, o por el dólar tarjeta si pagás con tarjeta argentina. La calculadora muestra ambos."
+        "q": "¿Se pagan aranceles por un lector?",
+        "a": "Si el producto no supera USD 400 FOB y el envío entra dentro de los 5 envíos anuales con franquicia, no hay derechos de importación ni tasa de estadística. El IVA ya está incluido en el total que cobra Amazon."
       }
     ],
-    "related": [
-      "kindle-paperwhite-16gb-2024",
-      "amazon-fire-hd-10-2023-32gb"
-    ]
+    "related": []
   },
   {
     "slug": "mep-o-tarjeta-para-comprar-en-amazon",
@@ -461,9 +423,7 @@
       }
     ],
     "related": [
-      "apple-airpods-pro-2-usb-c",
-      "asus-tuf-gaming-vg27aq3a",
-      "nespresso-delonghi-inissia-en80-b"
+      "asus-tuf-gaming-vg27aq3a"
     ]
   }
 ]

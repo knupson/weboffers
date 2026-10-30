@@ -2,7 +2,10 @@
 import "@fontsource/ultra";
 import "@fontsource-variable/archivo";
 import "../styles/global.css";
-import { SITE, UMAMI } from "../config";
+import { SITE, SOCIAL, UMAMI } from "../config";
+import { siInstagram, siTelegram, siYoutube } from "simple-icons";
+
+const socialIcon = { YouTube: siYoutube, Telegram: siTelegram, Instagram: siInstagram };
 import { loadOffers } from "../lib/data";
 
 interface Props {
@@ -79,6 +82,16 @@ const nav = [
         <div>
           <p>{SITE.disclosure}</p>
           {hasPrices && <p>{SITE.priceNotice}</p>}
+          <ul class="redes" aria-label="Redes de Franquicia 400">
+            {SOCIAL.map((r) => (
+              <li>
+                <a href={r.url} target="_blank" rel="noopener me" data-umami-event="red" data-umami-event-red={r.name}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d={socialIcon[r.name].path} /></svg>
+                  <span>{r.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
         <nav aria-label="Legales">
           <a href="/guia/">Cómo funciona la franquicia</a>

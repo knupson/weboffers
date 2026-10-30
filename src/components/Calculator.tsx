@@ -109,7 +109,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
               <span>{currency}</span>
               <input id="c-ship" class="in" inputMode="decimal" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
             </div>
-            <small>Amazon lo muestra en el carrito, antes de pagar.</small>
+            <small>Amazon lo muestra en la ficha como "Shipping &amp; Import Charges". Desde USD 100, los productos elegibles tienen envío gratis: poné 0.</small>
           </div>
           <div class="field">
             <span class="lab" id="c-iva">IVA</span>
