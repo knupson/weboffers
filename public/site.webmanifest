@@ -1,0 +1,32 @@
+{
+  "name": "Franquicia 400 · Monitor Técnico de Importación Courier Argentina",
+  "short_name": "Franquicia 400",
+  "description": "Comparador técnico de hardware y calculadora aduanera de importación por Courier Privado (USD 400 FOB, 0% arancel) desde Amazon EE.UU. y España hacia Argentina.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#110C08",
+  "theme_color": "#110C08",
+  "lang": "es-AR",
+  "icons": [
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

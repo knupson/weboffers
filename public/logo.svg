@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 64" fill="none">
+  <!-- Symbol Mark -->
+  <polygon fill="#141311" points="14,4 50,4 60,14 60,50 50,60 14,60 4,50 4,14" />
+  <polygon stroke="#FFA82E" stroke-width="2" points="15.5,6.5 48.5,6.5 57.5,15.5 57.5,48.5 48.5,57.5 15.5,57.5 6.5,48.5 6.5,15.5" />
+  <path stroke="#FFA82E" stroke-width="1.5" d="M6.5 22H12M52 22H57.5M6.5 42H12M52 42H57.5" />
+  <path fill="#FAF8F4" d="M16 17H32V23H22.5V29.5H30.5V35H22.5V47H16V17Z" />
+  <path fill="#E04812" d="M43 17H49V35H52.5V40.5H49V47H43V40.5H33V35L43 17ZM43 26.2L38.2 35H43V26.2Z" />
+  <!-- Lockup Divider -->
+  <line x1="74" y1="10" x2="74" y2="54" stroke="#C83E0B" stroke-width="2" />
+  <!-- Wordmark -->
+  <text x="88" y="34" fill="#141311" font-family="'Barlow Condensed', 'Arial Narrow', sans-serif" font-weight="700" font-size="28" letter-spacing="1.5">FRANQUICIA 400</text>
+  <text x="88" y="51" fill="#524D46" font-family="'JetBrains Mono', monospace" font-weight="500" font-size="11" letter-spacing="2.2">MONITOR COURIER · KNUNET</text>
+</svg>

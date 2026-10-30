@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <style>
+    .bg { fill: #141311; }
+    .frame { stroke: #FFA82E; }
+    .mark { fill: #FFC06A; }
+    .accent { fill: #D9480F; }
+    @media (prefers-color-scheme: light) {
+      .bg { fill: #141311; }
+      .frame { stroke: #FFA82E; }
+      .mark { fill: #FAF8F4; }
+      .accent { fill: #E04812; }
+    }
+  </style>
+  <!-- Chamfered octagonal customs seal -->
+  <polygon class="bg" points="14,4 50,4 60,14 60,50 50,60 14,60 4,50 4,14" />
+  <polygon class="frame" points="15.5,6.5 48.5,6.5 57.5,15.5 57.5,48.5 48.5,57.5 15.5,57.5 6.5,48.5 6.5,15.5" stroke-width="2" />
+  <!-- Corner calibration ticks -->
+  <path class="frame" d="M6.5 22H12M52 22H57.5M6.5 42H12M52 42H57.5" stroke-width="1.5" />
+  <!-- Monogram F + 4 precision geometry -->
+  <path class="mark" d="M16 17H32V23H22.5V29.5H30.5V35H22.5V47H16V17Z" />
+  <path class="accent" d="M43 17H49V35H52.5V40.5H49V47H43V40.5H33V35L43 17ZM43 26.2L38.2 35H43V26.2Z" />
+</svg>

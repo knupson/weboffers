@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es-AR" data-theme="manifiesto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FRANQUICIA 400 · KnuNet | Monitor Técnico y Simulador Aduanero Courier Argentina</title>
+    <meta
+      name="description"
+      content="Planilla técnica de importación vía Courier Privado a Argentina bajo franquicia de USD 400 FOB (RG 5617 ARCA). Simulador aduanero con Dólar MEP en vivo, desglose de IVA (10,5% / 21%) y comparador de hardware contra precio local."
+    />
+    <meta name="theme-color" content="#110C08" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://ofertas.knunet.com/" />
+
+    <!-- Iconografía y Manifiesto -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:site_name" content="FRANQUICIA 400 · KnuNet" />
+    <meta property="og:title" content="FRANQUICIA 400 · KnuNet | Hardware Puerta a Puerta sin Sobreprecio Local" />
+    <meta
+      property="og:description"
+      content="Calculadora aduanera en vivo con Dólar MEP, desglose real de IVA (10,5% / 21%) y comparador técnico de hardware desde Amazon US y España hacia Argentina."
+    />
+    <meta property="og:url" content="https://ofertas.knunet.com/" />
+    <meta property="og:image" content="https://ofertas.knunet.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="FRANQUICIA 400 · KnuNet - Monitor de Importación Courier Argentina" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FRANQUICIA 400 · KnuNet | Monitor de Importación Courier Argentina" />
+    <meta
+      name="twitter:description"
+      content="Simulador aduanero con Dólar MEP en vivo, cálculo de IVA (10,5% y 21%) y comparativa real de hardware frente a tiendas locales."
+    />
+    <meta name="twitter:image" content="https://ofertas.knunet.com/og.png" />
+
+    <!-- Inicialización sincrónica de sustrato visual (evita parpadeo) -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("f400_theme");
+          var theme = saved === "hud" || saved === "manifiesto" ? saved : "manifiesto";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "manifiesto");
+        }
+      })();
+    </script>
+
+    <!-- Datos estructurados JSON-LD -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "FRANQUICIA 400 · KnuNet",
+        "url": "https://ofertas.knunet.com/",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "es-AR",
+        "description": "Simulador de costos de importación por Courier Privado hacia Argentina (franquicia USD 400 FOB, RG 5617) y comparador técnico de hardware con cotización Dólar MEP en tiempo real.",
+        "publisher": {
+          "@type": "Organization",
+          "name": "KnuNet",
+          "url": "https://knunet.com"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
