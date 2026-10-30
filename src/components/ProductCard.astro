@@ -107,6 +107,8 @@ const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUs
     await ready;
     if (!mep) return void (out.textContent = "No pudimos traer el dólar MEP. Probá en un rato.");
     const envio = usd >= 100 ? "envío gratis" : "con ≈ USD 45 de envío";
+    const link = input.closest(".card")?.querySelector<HTMLAnchorElement>("a.costo");
+    if (link) link.href = `${link.pathname}?fob=${usd}#calculadora`;
     out.innerHTML = `Puesto en casa <b>≈ ${formatArs(estimateFromAmazon(usd, mep))}</b><br>IVA y cargos de Amazon (≈25%), ${envio}, al MEP.`;
     if (!tracked) {
       tracked = true;

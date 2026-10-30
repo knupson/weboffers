@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { calculate } from "../lib/calc";
 import { fetchEurUsd, fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd, formatStamp } from "../lib/format";
+import { AMAZON_EXTRA, shippingFor } from "../lib/estimate";
 
 interface BuildRates {
   mep: number;
@@ -52,20 +53,28 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
 
   const toUsd = currency === "EUR" ? eurUsd ?? 0 : 1;
 
+  // En Amazon.com el envío sale solo (medido el 30/10/2026); en Amazon.es lo carga la persona.
+  const autoShip = currency === "USD" ? shippingFor(num(fob)) : 0;
+  const shipUsd = ship.trim() === "" ? autoShip : num(ship) * toUsd;
   const result = useMemo(
     () =>
       calculate(
-        { fobUsd: num(fob) * toUsd, shippingUsd: num(ship) * toUsd, ivaRate: num(iva) / 100, dutyRate: num(duty) / 100 },
+        { fobUsd: num(fob) * toUsd, shippingUsd: shipUsd, ivaRate: num(iva) / 100, dutyRate: num(duty) / 100 },
         rates
       ),
-    [fob, ship, iva, duty, rates, toUsd]
+    [fob, shipUsd, iva, duty, rates, toUsd]
   );
+  // Amazon cobra, además del IVA, cargos de importación propios (≈4% del precio).
+  const extraUsd = currency === "USD" ? result.fobUsd * AMAZON_EXTRA : 0;
+  const totalUsd = result.totalUsd + extraUsd;
+  const totalArsMep = rates ? totalUsd * rates.mep : null;
+  const totalArsTarjeta = rates ? totalUsd * rates.tarjeta : null;
 
   const empty = num(fob) === 0 || toUsd === 0;
   const hasExcess = result.excessUsd > 0;
   const used = Math.min(1, result.fobUsd / 400);
   const localArs = num(local);
-  const saving = result.totalArsMep != null && localArs > 0 ? localArs - result.totalArsMep : null;
+  const saving = totalArsMep != null && localArs > 0 ? localArs - totalArsMep : null;
   const extraWarnings = result.warnings.filter((w) => !w.startsWith("El régimen permite hasta 5"));
 
   return (
@@ -104,12 +113,12 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
             </small>
           </div>
           <div class="field">
-            <label for="c-ship">Envío a Argentina</label>
+            <label for="c-ship">Envío a Argentina (opcional)</label>
             <div class="money">
               <span>{currency}</span>
-              <input id="c-ship" class="in" inputMode="decimal" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
+              <input id="c-ship" class="in" inputMode="decimal" placeholder={currency === "USD" ? (autoShip === 0 ? "Gratis" : String(autoShip)) : ""} value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
             </div>
-            <small>Amazon lo muestra en la ficha como "Shipping &amp; Import Charges". Desde USD 100, los productos elegibles tienen envío gratis: poné 0.</small>
+            <small>{currency === "USD" ? "Lo calculamos solo: gratis desde USD 100 en productos elegibles, unos USD 45 debajo. Cargalo sólo si Amazon te muestra otro." : "Cargá el envío que te muestra Amazon.es antes de pagar."}</small>
           </div>
           <div class="field">
             <span class="lab" id="c-iva">IVA</span>
@@ -147,16 +156,16 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
           <div>
             <p class="total-k">Te sale puesto en tu casa</p>
             <p class="total-v num">
-              {empty ? "Cargá el precio" : result.totalArsMep != null ? formatArs(result.totalArsMep) : formatUsd(result.totalUsd)}
+              {empty ? "Cargá el precio" : totalArsMep != null ? formatArs(totalArsMep) : formatUsd(totalUsd)}
             </p>
             <div class="alt-v">
               {rates ? (
                 <>
                   <span>al MEP <span class="num">${ars0(rates.mep)}</span></span>
-                  {!empty && result.totalArsTarjeta != null && (
-                    <span>Con tarjeta: <span class="num">{formatArs(result.totalArsTarjeta)}</span></span>
+                  {!empty && totalArsTarjeta != null && (
+                    <span>Con tarjeta: <span class="num">{formatArs(totalArsTarjeta)}</span></span>
                   )}
-                  {!empty && <span>En dólares: <span class="num">{formatUsd(result.totalUsd)}</span></span>}
+                  {!empty && <span>En dólares: <span class="num">{formatUsd(totalUsd)}</span></span>}
                 </>
               ) : (
                 <span>{ratesFailed ? "No pude traer el dólar del día. Te muestro el total en dólares." : "Trayendo el dólar del día..."}</span>
@@ -192,11 +201,12 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
                 <summary>Ver el desglose</summary>
                 <div class="rows">
                   <div><span>Producto</span><span class="num">{formatUsd(result.fobUsd)}</span></div>
-                  <div><span>Envío</span><span class="num">{formatUsd(result.shippingUsd)}</span></div>
+                  <div><span>Envío</span><span class="num">{result.shippingUsd === 0 ? "Gratis" : formatUsd(result.shippingUsd)}</span></div>
                   <div><span>Derechos de importación</span><span class="num">{formatUsd(result.dutyUsd)}</span></div>
                   <div><span>Tasa de estadística</span><span class="num">{formatUsd(result.statFeeUsd)}</span></div>
                   <div><span>IVA {iva.replace(".", ",")}%</span><span class="num">{formatUsd(result.ivaUsd)}</span></div>
-                  <div class="sum"><span>Total</span><span class="num">{formatUsd(result.totalUsd)}</span></div>
+                  {extraUsd > 0 && <div><span>Cargos de Amazon (≈4%)</span><span class="num">{formatUsd(extraUsd)}</span></div>}
+                  <div class="sum"><span>Total</span><span class="num">{formatUsd(totalUsd)}</span></div>
                 </div>
               </details>
             </>

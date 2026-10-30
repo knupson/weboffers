@@ -872,6 +872,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "listPrice": {
+      "amount": 269.99,
+      "currency": "USD",
+      "source": "https://www.garmin.com/en-US/p/1057989/",
+      "checked": "2026-10-30"
     }
   },
   {
@@ -1180,6 +1186,12 @@
     "imageSource": "https://www.asus.com/networking-iot-servers/wifi-routers/asus-wifi-routers/rt-be82u/",
     "shipsToAr": {
       "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "listPrice": {
+      "amount": 219.99,
+      "currency": "USD",
+      "source": "https://eshop.asus.com/us/90ig0990-ma1b0t-rt-be82u.html",
       "checked": "2026-10-30"
     }
   },

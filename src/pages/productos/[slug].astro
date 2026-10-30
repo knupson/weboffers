@@ -104,7 +104,9 @@ const specs: Array<[string, string]> = [
           </a>
           <p class="fine">{SITE.disclosure}</p>
         </div>
+        <div id="calculadora" style="scroll-margin-top: 96px">
         <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? (p.listPrice ? officialPrice(p.listPrice) : null)} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" />
+        </div>
       </div>
     </div>
   </div>
