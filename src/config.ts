@@ -10,14 +10,9 @@ export const SITE = {
     "Los precios los consulta un proceso automático a Amazon y se muestran con la hora de la consulta. Rige siempre el precio que ves en Amazon al pagar.",
 };
 
-const US_TAG = import.meta.env.PUBLIC_AMAZON_US_TAG ?? "";
-const ES_TAG = import.meta.env.PUBLIC_AMAZON_ES_TAG ?? "";
-
-if (!US_TAG || !ES_TAG) {
-  console.warn(
-    "[config] Falta PUBLIC_AMAZON_US_TAG o PUBLIC_AMAZON_ES_TAG: los links salen sin tag de afiliado."
-  );
-}
+// Tags de Associates confirmados por el titular. Las variables de entorno los pisan si hace falta.
+const US_TAG = import.meta.env.PUBLIC_AMAZON_US_TAG ?? "knunet-20";
+const ES_TAG = import.meta.env.PUBLIC_AMAZON_ES_TAG ?? "knunet-21";
 
 export type Store = "US" | "ES";
 

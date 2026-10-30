@@ -1,32 +1,102 @@
 [
   {
-    "asin": "EXAMPLE0001",
+    "asin": "B0BZR9TMBJ",
     "store": "US",
-    "slug": "placeholder-1",
-    "name": "Producto de ejemplo 1 (placeholder)",
-    "brand": "Marca de ejemplo (placeholder)",
-    "category": "Categoría de ejemplo (placeholder)",
-    "summary": "Texto placeholder para desarrollo. No representa un producto real.",
+    "slug": "asus-tuf-gaming-vg27aq3a",
+    "name": "ASUS TUF Gaming VG27AQ3A 27 Inch 1440p 180Hz Gaming Monitor",
+    "brand": "ASUS",
+    "category": "Monitores",
+    "summary": "Monitor gamer de 27 pulgadas con resolución 1440p, 180 Hz, panel Fast IPS de 1 ms y compatibilidad G-SYNC y FreeSync Premium.",
+    "verified": true
+  },
+  {
+    "asin": "B095V23PTM",
+    "store": "US",
+    "slug": "dell-s2722dgm",
+    "name": "Dell S2722DGM Curved Gaming Monitor 27 Inch QHD",
+    "brand": "Dell",
+    "category": "Monitores",
+    "summary": "Monitor curvo de 27 pulgadas con resolución QHD (2560 x 1440), curvatura 1500R, 165 Hz y entradas HDMI y DisplayPort.",
+    "verified": true
+  },
+  {
+    "asin": "B0B6VTGRSG",
+    "store": "US",
+    "slug": "beelink-mini-s12-pro",
+    "name": "Beelink MINI S12 PRO Mini Desktop PC",
+    "brand": "Beelink",
+    "category": "Mini PCs",
+    "summary": "Mini PC con procesador Intel Alder Lake N100, 16 GB de RAM, SSD de 512 GB, doble salida HDMI 4K a 60 Hz, WiFi 6 y LAN de 2,5G.",
+    "verified": true
+  },
+  {
+    "asin": "B0BHJF2VRN",
+    "store": "US",
+    "slug": "samsung-990-pro-1tb",
+    "name": "Samsung SSD 990 PRO 1TB PCIe 4.0 M.2 2280",
+    "brand": "Samsung",
+    "category": "Almacenamiento",
+    "summary": "SSD interno NVMe de 1 TB, PCIe 4.0, formato M.2 2280, con lectura secuencial de hasta 7.450 MB/s.",
+    "verified": true
+  },
+  {
+    "asin": "B0B7CKVCCV",
+    "store": "US",
+    "slug": "wd-black-sn850x-1tb",
+    "name": "WD_BLACK SN850X 1TB NVMe SSD M.2 2280",
+    "brand": "WD_BLACK",
+    "category": "Almacenamiento",
+    "summary": "SSD interno NVMe de 1 TB, formato M.2 2280, con lectura de hasta 7.300 MB/s y escritura de hasta 6.300 MB/s.",
+    "verified": true
+  },
+  {
+    "asin": "B0C59G4TLQ",
+    "store": "US",
+    "slug": "sandisk-extreme-portable-ssd-1tb",
+    "name": "SanDisk 1TB Extreme Portable SSD",
+    "brand": "SanDisk",
+    "category": "Almacenamiento",
+    "summary": "SSD portátil de 1 TB con USB-C 3.2 Gen 2, lectura de hasta 1050 MB/s, resistencia IP65 y cifrado AES de 256 bits.",
     "verified": false
   },
   {
-    "asin": "EXAMPLE0002",
-    "store": "ES",
-    "slug": "placeholder-2",
-    "name": "Producto de ejemplo 2 (placeholder)",
-    "brand": "Marca de ejemplo (placeholder)",
-    "category": "Categoría de ejemplo (placeholder)",
-    "summary": "Texto placeholder para desarrollo. No representa un producto real.",
-    "verified": false
+    "asin": "B09HM94VDS",
+    "store": "US",
+    "slug": "logitech-mx-master-3s",
+    "name": "Logitech MX Master 3S Wireless Bluetooth Mouse",
+    "brand": "Logitech",
+    "category": "Periféricos",
+    "summary": "Mouse inalámbrico con sensor de 8K DPI, scroll MagSpeed, clics silenciosos y conexión por Bluetooth o receptor Logi Bolt USB.",
+    "verified": true
   },
   {
-    "asin": "EXAMPLE0003",
+    "asin": "B07Y9Y69N7",
     "store": "US",
-    "slug": "placeholder-3",
-    "name": "Producto de ejemplo 3 (placeholder)",
-    "brand": "Marca de ejemplo (placeholder)",
-    "category": "Categoría de ejemplo (placeholder)",
-    "summary": "Texto placeholder para desarrollo. No representa un producto real.",
-    "verified": false
+    "slug": "keychron-k2-v2",
+    "name": "Keychron K2 Wireless Mechanical Keyboard 75% Layout 84 Key",
+    "brand": "Keychron",
+    "category": "Periféricos",
+    "summary": "Teclado mecánico compacto de 84 teclas (75%), con conexión Bluetooth y USB-C, switches Gateron G Pro Red, retroiluminación RGB y estructura de aluminio.",
+    "verified": true
+  },
+  {
+    "asin": "B0B9BGJVLL",
+    "store": "US",
+    "slug": "8bitdo-ultimate-bluetooth-negro",
+    "name": "8BitDo Ultimate Bluetooth Controller with Charging Dock (Black)",
+    "brand": "8BitDo",
+    "category": "Periféricos",
+    "summary": "Control inalámbrico Bluetooth con base de carga y joysticks de efecto Hall, compatible con Switch, Windows y Steam Deck.",
+    "verified": true
+  },
+  {
+    "asin": "B09XS7JWHH",
+    "store": "US",
+    "slug": "sony-wh-1000xm5-negro",
+    "name": "Sony WH-1000XM5 Wireless Noise Canceling Headphones (Black)",
+    "brand": "Sony",
+    "category": "Audio",
+    "summary": "Auriculares inalámbricos over-ear con cancelación de ruido y optimizador automático, hasta 30 horas de batería y estuche de transporte incluido.",
+    "verified": true
   }
 ]
