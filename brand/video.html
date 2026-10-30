@@ -63,7 +63,11 @@ const V = {
   ],
 };
 
-const scenes = V[new URLSearchParams(location.search).get("v") || "1"];
+const params = new URLSearchParams(location.search);
+const scenes = V[params.get("v") || "1"];
+// Duraciones medidas de la voz en off, si vienen (ms por escena).
+const durs = params.get("d") ? JSON.parse(params.get("d")) : null;
+if (durs) durs.forEach((d, i) => scenes[i] && (scenes[i][0] = d));
 const stage = document.getElementById("stage");
 window.TOTAL_MS = scenes.reduce((a, [d]) => a + d, 0);
 (async () => {
