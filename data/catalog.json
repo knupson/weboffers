@@ -15,6 +15,10 @@
       "currency": "USD",
       "source": "https://www.asus.com/us/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -25,7 +29,7 @@
     "brand": "Dell",
     "category": "Monitores",
     "summary": "Monitor curvo de 27 pulgadas con resolución QHD (2560 x 1440), curvatura 1500R, 165 Hz y entradas HDMI y DisplayPort.",
-    "verified": true,
+    "verified": false,
     "image": "/products/dell-s2722dgm.webp",
     "imageSource": "https://www.dell.com/en-us/shop/dell-27-curved-gaming-monitor-s2722dgm/apd/210-azzp/monitors-monitor-accessories",
     "listPrice": {
@@ -43,7 +47,7 @@
     "brand": "Beelink",
     "category": "Mini PCs",
     "summary": "Mini PC con procesador Intel Alder Lake N100, 16 GB de RAM, SSD de 512 GB, doble salida HDMI 4K a 60 Hz, WiFi 6 y LAN de 2,5G.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B0BHJF2VRN",
@@ -53,13 +57,17 @@
     "brand": "Samsung",
     "category": "Almacenamiento",
     "summary": "SSD interno NVMe de 1 TB, PCIe 4.0, formato M.2 2280, con lectura secuencial de hasta 7.450 MB/s.",
-    "verified": false,
+    "verified": true,
     "image": "/products/samsung-990-pro-1tb.webp",
     "imageSource": "https://www.samsung.com/us/memory-storage/nvme-ssd/990-pro-pcie-4-0-nvme-ssd-2tb-sku-mz-v9p1t0b-am/",
     "listPrice": {
       "amount": 319.99,
       "currency": "USD",
       "source": "https://www.samsung.com/us/memory-storage/nvme-ssd/990-pro-pcie-4-0-nvme-ssd-2tb-sku-mz-v9p1t0b-am/",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
       "checked": "2026-10-30"
     }
   },
@@ -73,7 +81,11 @@
     "summary": "SSD interno NVMe de 1 TB, formato M.2 2280, con lectura de hasta 7.300 MB/s y escritura de hasta 6.300 MB/s.",
     "verified": true,
     "image": "/products/wd-black-sn850x-1tb.webp",
-    "imageSource": "https://www.westerndigital.com/products/internal-drives/wd-black-sn850x-nvme-ssd"
+    "imageSource": "https://www.westerndigital.com/products/internal-drives/wd-black-sn850x-nvme-ssd",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0C59G4TLQ",
@@ -83,7 +95,7 @@
     "brand": "SanDisk",
     "category": "Almacenamiento",
     "summary": "SSD portátil de 1 TB con USB-C 3.2 Gen 2, lectura de hasta 1050 MB/s, resistencia IP65 y cifrado AES de 256 bits.",
-    "verified": true,
+    "verified": false,
     "image": "/products/sandisk-extreme-portable-ssd-1tb.webp",
     "imageSource": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25",
     "listPrice": {
@@ -102,7 +114,7 @@
     "brand": "LG",
     "category": "Monitores",
     "summary": "Monitor de 27 pulgadas con resolución 4K (3840 x 2160), panel IPS, DisplayHDR 400, USB-C con carga de 90 W y base regulable en altura.",
-    "verified": true,
+    "verified": false,
     "image": "/products/lg-27up850k-w-4k.webp",
     "imageSource": "https://www.lg.com/us/monitors/lg-27up850k-w-4k-uhd-led-monitor",
     "listPrice": {
@@ -121,7 +133,7 @@
     "brand": "Samsung",
     "category": "Monitores",
     "summary": "Monitor curvo de 27 pulgadas con resolución WQHD (2560 x 1440), 144 Hz, 1 ms y compatibilidad con FreeSync Premium.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B0874XN4D8",
@@ -139,6 +151,10 @@
       "currency": "USD",
       "source": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -149,7 +165,7 @@
     "brand": "Crucial",
     "category": "Almacenamiento",
     "summary": "SSD interno NVMe de 1 TB, PCIe 4.0, formato M.2 2280, con lectura de hasta 5.000 MB/s.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B0B2943QSJ",
@@ -159,7 +175,7 @@
     "brand": "Beelink",
     "category": "Mini PCs",
     "summary": "Mini PC con procesador AMD Ryzen 5 5560U de 6 núcleos y 12 hilos, hasta 4,0 GHz, 16 GB de RAM DDR4 y SSD NVMe de 1 TB.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B0CFPJYX7P",
@@ -169,7 +185,7 @@
     "brand": "Amazon",
     "category": "Tablets y lectores",
     "summary": "Lector de libros electrónicos con pantalla de 7 pulgadas y 300 ppp, 16 GB de almacenamiento, resistencia al agua IPX8 y batería de hasta 12 semanas.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B0BL5XPDR6",
@@ -179,7 +195,7 @@
     "brand": "Amazon",
     "category": "Tablets y lectores",
     "summary": "Tablet de 10,1 pulgadas con pantalla Full HD, procesador octa-core, 3 GB de RAM, 32 GB de almacenamiento y ranura microSD.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B09HM94VDS",
@@ -189,7 +205,7 @@
     "brand": "Logitech",
     "category": "Periféricos",
     "summary": "Mouse inalámbrico con sensor de 8K DPI, scroll MagSpeed, clics silenciosos y conexión por Bluetooth o receptor Logi Bolt USB.",
-    "verified": true,
+    "verified": false,
     "image": "/products/logitech-mx-master-3s.webp",
     "imageSource": "https://www.logitech.com/en-us/shop/p/mx-master-3s",
     "listPrice": {
@@ -207,7 +223,7 @@
     "brand": "Keychron",
     "category": "Periféricos",
     "summary": "Teclado mecánico compacto de 84 teclas (75%), con conexión Bluetooth y USB-C, switches Gateron G Pro Red, retroiluminación RGB y estructura de aluminio.",
-    "verified": true,
+    "verified": false,
     "image": "/products/keychron-k2-v2.webp",
     "imageSource": "https://www.keychron.com/products/keychron-k2-wireless-mechanical-keyboard",
     "listPrice": {
@@ -226,7 +242,7 @@
     "brand": "8BitDo",
     "category": "Gaming",
     "summary": "Control inalámbrico Bluetooth con base de carga y joysticks de efecto Hall, compatible con Switch, Windows y Steam Deck.",
-    "verified": true
+    "verified": false
   },
   {
     "asin": "B09XS7JWHH",
@@ -236,7 +252,7 @@
     "brand": "Sony",
     "category": "Audio",
     "summary": "Auriculares inalámbricos over-ear con cancelación de ruido y optimizador automático, hasta 30 horas de batería y estuche de transporte incluido.",
-    "verified": true,
+    "verified": false,
     "image": "/products/sony-wh-1000xm5-negro.webp",
     "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b",
     "listPrice": {
@@ -263,6 +279,10 @@
       "currency": "USD",
       "source": "https://www.logitechg.com/en-us/shop/p/pro-x2-superlight-wireless-mouse",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -281,6 +301,10 @@
       "currency": "USD",
       "source": "https://www.razer.com/gaming-mice/Razer-DeathAdder-V3/RZ01-04640100-R3U1",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -291,7 +315,7 @@
     "brand": "Keychron",
     "category": "Periféricos",
     "summary": "Teclado mecánico inalámbrico TKL con Bluetooth, switches hot-swap, estructura de aluminio y compatibilidad con QMK/VIA.",
-    "verified": true,
+    "verified": false,
     "image": "/products/keychron-k8-pro-apex-red.webp",
     "imageSource": "https://www.keychron.com/products/keychron-k8-pro-qmk-via-wireless-mechanical-keyboard",
     "listPrice": {
@@ -310,7 +334,7 @@
     "brand": "Microsoft",
     "category": "Gaming",
     "summary": "Control inalámbrico de Xbox en negro carbón, compatible con consolas Xbox, Windows y dispositivos Android e iOS por Bluetooth.",
-    "verified": true,
+    "verified": false,
     "image": "/products/xbox-core-wireless-controller-carbon-black.webp",
     "imageSource": "https://www.xbox.com/en-US/accessories/controllers/xbox-wireless-controller",
     "listPrice": {
@@ -338,6 +362,10 @@
       "currency": "USD",
       "source": "https://electronics.sony.com/audio/headphones/truly-wireless-earbuds/p/wf1000xm5-b",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -348,7 +376,7 @@
     "brand": "Apple",
     "category": "Audio",
     "summary": "Auriculares in-ear inalámbricos con cancelación activa de ruido, audio espacial y estuche de carga USB-C.",
-    "verified": true,
+    "verified": false,
     "image": "/products/apple-airpods-pro-2-usb-c.webp",
     "imageSource": "https://support.apple.com/en-us/111851"
   },
@@ -360,7 +388,7 @@
     "brand": "Anker",
     "category": "Carga y energía",
     "summary": "Power bank de 24.000 mAh y 140 W con tres puertos y pantalla inteligente, apto para cargar notebooks.",
-    "verified": true,
+    "verified": false,
     "image": "/products/anker-737-power-bank-24k.webp",
     "imageSource": "https://www.anker.com/products/a1289",
     "listPrice": {
@@ -378,7 +406,7 @@
     "brand": "TP-Link",
     "category": "Redes",
     "summary": "Router Wi-Fi 6 de doble banda AX3000 con puertos Gigabit, puerto USB 3.0 y compatibilidad con EasyMesh.",
-    "verified": true,
+    "verified": false,
     "image": "/products/tp-link-archer-ax55.webp",
     "imageSource": "https://www.tp-link.com/us/home-networking/wifi-router/archer-ax55/"
   },
@@ -392,7 +420,11 @@
     "summary": "Webcam Full HD de 1080p a 30 fps con micrófono estéreo y enfoque automático.",
     "verified": true,
     "image": "/products/logitech-c920x-hd-pro-webcam.webp",
-    "imageSource": "https://www.logitech.com/en-gb/shop/p/c920-pro-hd-webcam"
+    "imageSource": "https://www.logitech.com/en-gb/shop/p/c920-pro-hd-webcam",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0BS1PRC4L",
@@ -410,6 +442,10 @@
       "sale": 39.99,
       "currency": "USD",
       "source": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -430,6 +466,10 @@
       "currency": "EUR",
       "source": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -440,7 +480,7 @@
     "brand": "De'Longhi",
     "category": "Cocina",
     "summary": "Cafetera espresso manual de 15 bar con termobloque y varilla de vapor para espumar leche; trae enchufe europeo (Schuko), por lo que se usa con adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/delonghi-dedica-arte-ec885-gy.webp",
     "imageSource": "https://www.delonghi.com/en-my/p/dedica-manual-espresso-makers-dedica-arte-manual-coffee-maker-ec885.gy/EC885.GY.html?pid=0132106255"
@@ -453,7 +493,7 @@
     "brand": "De'Longhi",
     "category": "Cocina",
     "summary": "Cafetera espresso manual compacta de 15 bar con espumador de leche, para café molido; el enchufe es europeo (Schuko) y requiere adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/delonghi-stilosa-ec230-bk.webp",
     "imageSource": "https://www.delonghi.com/en-gb/p/stilosa-ec230.bk-stilosa-manual-espresso-maker/EC230.BK.html?pid=0132104203"
@@ -476,6 +516,10 @@
       "currency": "EUR",
       "source": "https://www.delonghi.com/es-es/c/cafe/cafeteras/cafeteras-de-capsulas/cafeteras-nespresso/inissia",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -486,7 +530,7 @@
     "brand": "Krups",
     "category": "Cocina",
     "summary": "Cafetera de cápsulas Nespresso Original, muy compacta, con bomba de 19 bar y tanque de 0,6 L; se entrega con enchufe europeo (Schuko) y hace falta adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz"
   },
   {
@@ -497,7 +541,7 @@
     "brand": "Krups",
     "category": "Cocina",
     "summary": "Cafetera de cápsulas Dolce Gusto de 15 bar y tanque de 0,8 L, con bebidas frías y calientes; viene con enchufe europeo (Schuko), por lo que requiere adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/krups-nescafe-dolce-gusto-mini-me-kp123b.webp",
     "imageSource": "https://www.krups.es/CAF%C3%89/Nescaf%C3%A9-Dolce-Gusto/MINI-ME-GRIS-ANTRACITA/p/1510002371"
@@ -510,7 +554,7 @@
     "brand": "Philips",
     "category": "Cocina",
     "summary": "Freidora de aire de doble cesta con 9 L en total y 2750 W, que cocina dos preparaciones a la vez; trae enchufe europeo (Schuko) y se usa con adaptador.",
-    "verified": true,
+    "verified": false,
     "voltage": "220-240 V, 50 Hz",
     "image": "/products/philips-airfryer-3000-doble-cesta-na352-9l.webp",
     "imageSource": "https://www.home-appliances.philips/sg/en/p/NA352_00",
@@ -531,7 +575,11 @@
     "category": "Cocina",
     "summary": "Freidora de aire de 6,2 L y 1700 W con ventana, pantalla táctil y 16 modos de cocción; viene con enchufe europeo (Schuko), hace falta adaptador.",
     "verified": true,
-    "voltage": "220-240 V, 50 Hz"
+    "voltage": "220-240 V, 50 Hz",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B075FC8ZJ3",
@@ -549,6 +597,10 @@
       "amount": 41.99,
       "currency": "EUR",
       "source": "https://www.philips.es/c-p/HD9350_90/daily-collection-hervidor",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
       "checked": "2026-10-30"
     }
   },
@@ -569,6 +621,10 @@
       "currency": "EUR",
       "source": "https://www.philips.es/tienda/ES_Loyaltyshop/cuidado-personal/cuidado-del-cabello/secador-de-pelo-serie-5000/p/BHD530_20",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -586,6 +642,10 @@
       "currency": "EUR",
       "source": "https://www.philips.es/tienda/ES_Mysalus/cuidado-personal/cuidado-del-cabello/3000-secador/p/BHD360_20",
       "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
     }
   },
   {
@@ -599,7 +659,11 @@
     "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/rowenta-studio-dry-karl-lagerfeld-cv581l.webp",
-    "imageSource": "https://www.rowenta.es/p/studio-dry-karl-lagerfeld/1830008506"
+    "imageSource": "https://www.rowenta.es/p/studio-dry-karl-lagerfeld/1830008506",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0DT186MR9",
@@ -609,7 +673,7 @@
     "brand": "Roborock",
     "category": "Hogar",
     "summary": "Robot aspirador y fregasuelos con succión de 8000 Pa y navegación LiDAR; la base se alimenta con adaptador de 100-240 V y enchufe europeo (Schuko), por lo que hace falta un adaptador de ficha.",
-    "verified": true,
+    "verified": false,
     "voltage": "100-240 V, 50/60 Hz (adaptador de la base)",
     "listPrice": {
       "amount": 229.99,
@@ -626,7 +690,7 @@
     "brand": "Roborock",
     "category": "Hogar",
     "summary": "Robot aspirador y fregasuelos con succión de 10000 Pa y navegación LiDAR; la base usa adaptador de 100-240 V con enchufe europeo (Schuko) y se necesita adaptador de ficha.",
-    "verified": true,
+    "verified": false,
     "voltage": "100-240 V, 50/60 Hz (adaptador de la base)",
     "listPrice": {
       "amount": 239.99,

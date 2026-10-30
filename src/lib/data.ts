@@ -19,6 +19,8 @@ export interface CatalogEntry {
   imageSource?: string;
   /** Precio oficial del fabricante, con su fuente. Nunca un precio de Amazon. */
   listPrice?: ListPrice;
+  /** Verificado en Amazon con dirección en Argentina: se puede comprar y enviar. */
+  shipsToAr?: { freeShipping: boolean; checked: string };
 }
 
 export interface ListPrice {
