@@ -53,7 +53,7 @@
     "brand": "Samsung",
     "category": "Almacenamiento",
     "summary": "SSD interno NVMe de 1 TB, PCIe 4.0, formato M.2 2280, con lectura secuencial de hasta 7.450 MB/s.",
-    "verified": true,
+    "verified": false,
     "image": "/products/samsung-990-pro-1tb.webp",
     "imageSource": "https://www.samsung.com/us/memory-storage/nvme-ssd/990-pro-pcie-4-0-nvme-ssd-2tb-sku-mz-v9p1t0b-am/",
     "listPrice": {

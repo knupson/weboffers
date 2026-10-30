@@ -48,13 +48,12 @@ const est = lp && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : nul
           {formatPrice(officialPrice(lp), lp.currency)}
           {lp.sale != null && <s>{formatPrice(lp.amount, lp.currency)}</s>}
         </span>
-        <span class="casa">Puesto en casa <b class="num" data-est={officialPrice(lp)} data-est-cur={lp.currency}>{est != null ? `≈ ${formatArs(est)}` : "…"}</b></span>
-        <small>Con IVA al dólar MEP, sin envío. En Amazon suele estar más barato.</small>
+        <small>Sin envío ni impuestos. Mirá el precio de hoy en Amazon.</small>
       </div>
     )}
     <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
       Ver en Amazon <Icon name="arrow-up-right" size={16} />
     </a>
-    <a class="costo" href={`/productos/${p.slug}/`}>{lp ? "Ver la cuenta completa" : "¿Cuánto me sale en pesos?"}</a>
+    <a class="costo" href={`/productos/${p.slug}/`}>¿Cuánto me sale en pesos?</a>
   </div>
 </article>
