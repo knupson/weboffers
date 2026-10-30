@@ -1016,5 +1016,842 @@
     },
     "image": "/products/kobo-libra-colour.webp",
     "imageSource": "https://ereader.kobo.com/en-ww/products/kobo-libra-colour"
+  },
+  {
+    "asin": "B0G6FCDZMK",
+    "store": "US",
+    "slug": "asrock-rx-7600-challenger-pro-8gb",
+    "name": "ASRock Radeon RX 7600 Challenger Pro 8GB OC",
+    "brand": "ASRock",
+    "category": "Componentes",
+    "summary": "Placa de video Radeon RX 7600 con 8 GB de memoria y versión OC de fábrica para 1080p.",
+    "verified": false,
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0DQYM2MHX",
+    "store": "US",
+    "slug": "asrock-arc-b570-challenger-10gb",
+    "name": "ASRock Intel Arc B570 Challenger 10GB OC",
+    "brand": "ASRock",
+    "category": "Componentes",
+    "summary": "Placa de video Intel Arc B570 con 10 GB de memoria y versión OC de fábrica.",
+    "verified": false,
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0BBJDS62N",
+    "store": "US",
+    "slug": "amd-ryzen-5-7600x",
+    "name": "AMD Ryzen 5 7600X 6-Core Desktop Processor",
+    "brand": "AMD",
+    "category": "Componentes",
+    "summary": "Procesador de 6 núcleos y 12 hilos para socket AM5, con boost de hasta 5,3 GHz y TDP de 105 W.",
+    "verified": true,
+    "image": "/products/amd-ryzen-5-7600x.webp",
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600x.html",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B08166SLDF",
+    "store": "US",
+    "slug": "amd-ryzen-5-5600x",
+    "name": "AMD Ryzen 5 5600X 6-Core Desktop Processor",
+    "brand": "AMD",
+    "category": "Componentes",
+    "summary": "Procesador de 6 núcleos y 12 hilos para socket AM4, con boost de hasta 4,6 GHz y TDP de 65 W.",
+    "verified": true,
+    "image": "/products/amd-ryzen-5-5600x.webp",
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-5-5600x.html",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0D6NN87T8",
+    "store": "US",
+    "slug": "amd-ryzen-9-9900x",
+    "name": "AMD Ryzen 9 9900X 12-Core Desktop Processor",
+    "brand": "AMD",
+    "category": "Componentes",
+    "summary": "Procesador de 12 núcleos y 24 hilos para socket AM5, con boost de hasta 5,6 GHz y TDP de 120 W.",
+    "verified": true,
+    "image": "/products/amd-ryzen-9-9900x.webp",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0D6NMCZG1",
+    "store": "US",
+    "slug": "amd-ryzen-9-5900xt",
+    "name": "AMD Ryzen 9 5900XT 16-Core Desktop Processor",
+    "brand": "AMD",
+    "category": "Componentes",
+    "summary": "Procesador de 16 núcleos y 32 hilos para socket AM4, con boost de hasta 4,8 GHz y TDP de 105 W.",
+    "verified": true,
+    "image": "/products/amd-ryzen-9-5900xt.webp",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0GMKXVVJQ",
+    "store": "US",
+    "slug": "intel-core-ultra-5-250k-plus",
+    "name": "Intel Core Ultra 5 250K Plus Processor",
+    "brand": "Intel",
+    "category": "Componentes",
+    "summary": "Procesador de escritorio Intel Core Ultra 5 para socket LGA1851, con gráficos integrados.",
+    "verified": true,
+    "image": "/products/intel-core-ultra-5-250k-plus.webp",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B09FWYK5M9",
+    "store": "US",
+    "slug": "intel-core-i9-12900kf",
+    "name": "Intel Core i9-12900KF Desktop Processor",
+    "brand": "Intel",
+    "category": "Componentes",
+    "summary": "Procesador de escritorio de 16 núcleos (8P + 8E) para socket LGA1700, sin gráficos integrados.",
+    "verified": true,
+    "image": "/products/intel-core-i9-12900kf.webp",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FXGWKHND",
+    "store": "US",
+    "slug": "noctua-nh-d15-g2-chromax-black",
+    "name": "Noctua NH-D15 G2 chromax.black CPU Cooler",
+    "brand": "Noctua",
+    "category": "Componentes",
+    "summary": "Cooler de aire de doble torre con acabado negro, compatible con sockets Intel y AMD.",
+    "verified": true,
+    "image": "/products/noctua-nh-d15-g2-chromax-black.webp",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0BH7GTY9C",
+    "store": "US",
+    "slug": "gigabyte-b650-aorus-elite-ax",
+    "name": "GIGABYTE B650 AORUS Elite AX AM5 Motherboard",
+    "brand": "GIGABYTE",
+    "category": "Componentes",
+    "summary": "Placa madre ATX para AM5 con chipset B650, WiFi 6E y Bluetooth 5.3.",
+    "verified": true,
+    "image": "/products/gigabyte-b650-aorus-elite-ax.webp",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0D48GS6KB",
+    "store": "US",
+    "slug": "asus-rt-be82u",
+    "name": "ASUS RT-BE82U WiFi 7 Router",
+    "brand": "ASUS",
+    "category": "Redes",
+    "summary": "Router WiFi 7 con cinco puertos 2.5GbE y soporte AiMesh para redes domésticas.",
+    "verified": true,
+    "image": "/products/asus-rt-be82u.webp",
+    "imageSource": "https://www.asus.com/networking-iot-servers/wifi-routers/asus-wifi-routers/rt-be82u/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0BRNBVTJK",
+    "store": "US",
+    "slug": "synology-ds223",
+    "name": "Synology DiskStation DS223 2-Bay NAS",
+    "brand": "Synology",
+    "category": "Almacenamiento",
+    "summary": "NAS de 2 bahías con CPU Realtek RTD1619B, puerto 1GbE y USB 3.2 Gen 1 para respaldo en red.",
+    "verified": true,
+    "weightKg": 1.28,
+    "image": "/products/synology-ds223.webp",
+    "imageSource": "https://www.synology.com/en-us/products/DS223",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0F2TT8Q7M",
+    "store": "US",
+    "slug": "sony-wh-1000xm6",
+    "name": "Sony WH-1000XM6 Wireless Noise Cancelling Headphones",
+    "brand": "Sony",
+    "category": "Audio",
+    "summary": "Auriculares over-ear inalámbricos con cancelación de ruido activa y conexión Bluetooth, de la serie WH-1000X de Sony.",
+    "verified": true,
+    "image": "/products/sony-wh-1000xm6.webp",
+    "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm6-b",
+    "listPrice": {
+      "amount": 459.99,
+      "currency": "USD",
+      "source": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm6-b",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CCZ1HQ39",
+    "store": "US",
+    "slug": "bose-quietcomfort-ultra-headphones",
+    "name": "Bose QuietComfort Ultra Headphones",
+    "brand": "Bose",
+    "category": "Audio",
+    "summary": "Auriculares over-ear inalámbricos con cancelación de ruido y audio espacial, con conexión Bluetooth.",
+    "verified": true,
+    "image": "/products/bose-quietcomfort-ultra-headphones.webp",
+    "imageSource": "https://www.bose.com/p/headphones/bose-quietcomfort-ultra-headphones/QCUH-HEADPHONEARN.html?dwvar_QCUH-HEADPHONEARN_color=BLACK",
+    "listPrice": {
+      "amount": 429,
+      "currency": "USD",
+      "source": "https://www.bose.com/p/headphones/bose-quietcomfort-ultra-headphones/QCUH-HEADPHONEARN.html",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0G1PJLWLZ",
+    "store": "US",
+    "slug": "samsung-galaxy-buds-4-pro",
+    "name": "Samsung Galaxy Buds 4 Pro",
+    "brand": "Samsung",
+    "category": "Audio",
+    "summary": "Auriculares inalámbricos in-ear con cancelación de ruido activa y estuche de carga, de la serie Galaxy Buds 4 de Samsung.",
+    "verified": true,
+    "image": "/products/samsung-galaxy-buds-4-pro.webp",
+    "imageSource": "https://www.samsung.com/us/audio-sound/galaxy-buds4-pro/buy/galaxy-buds4-pro-white-sku-sm-r640nzwaxar/",
+    "listPrice": {
+      "amount": 249.99,
+      "currency": "USD",
+      "source": "https://www.samsung.com/us/audio-sound/galaxy-buds4-pro/buy/galaxy-buds4-pro-white-sku-sm-r640nzwaxar/",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FGYDF3DD",
+    "store": "US",
+    "slug": "samsung-galaxy-buds-3-fe",
+    "name": "Samsung Galaxy Buds 3 FE",
+    "brand": "Samsung",
+    "category": "Audio",
+    "summary": "Auriculares inalámbricos in-ear con cancelación de ruido activa y estuche de carga, versión económica de la serie Galaxy Buds 3.",
+    "verified": true,
+    "image": "/products/samsung-galaxy-buds-3-fe.webp",
+    "imageSource": "https://www.samsung.com/us/mobile-audio/galaxy-buds3-fe/buy/",
+    "listPrice": {
+      "amount": 149.99,
+      "currency": "USD",
+      "source": "https://www.samsung.com/us/mobile-audio/galaxy-buds3-fe/buy/",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0D2YBQQ1P",
+    "store": "US",
+    "slug": "steelseries-arctis-nova-5-wireless",
+    "name": "SteelSeries Arctis Nova 5 Wireless Gaming Headset",
+    "brand": "SteelSeries",
+    "category": "Audio",
+    "summary": "Auriculares gamer inalámbricos con conexión 2.4 GHz y Bluetooth, de la serie Arctis Nova 5 de SteelSeries.",
+    "verified": true,
+    "image": "/products/steelseries-arctis-nova-5-wireless.webp",
+    "imageSource": "https://steelseries.com/gaming-headsets/arctis-nova-5",
+    "listPrice": {
+      "amount": 134.99,
+      "currency": "USD",
+      "source": "https://steelseries.com/gaming-headsets/arctis-nova-5",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0F6NZWPTC",
+    "store": "US",
+    "slug": "hyperx-cloud-iii-s-wireless",
+    "name": "HyperX Cloud III S Wireless Gaming Headset",
+    "brand": "HyperX",
+    "category": "Audio",
+    "summary": "Auriculares gamer inalámbricos con conexión 2.4 GHz y Bluetooth, de la serie Cloud III de HyperX.",
+    "verified": true,
+    "image": "/products/hyperx-cloud-iii-s-wireless.webp",
+    "imageSource": "https://www.hyperx.com/products/hyperx-cloud-iii-s-wireless-gaming-headset",
+    "listPrice": {
+      "amount": 179.99,
+      "currency": "USD",
+      "source": "https://www.hyperx.com/products/hyperx-cloud-iii-s-wireless-gaming-headset",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0HD9VYLY7",
+    "store": "US",
+    "slug": "shure-mv6",
+    "name": "Shure MV6 USB Microphone",
+    "brand": "Shure",
+    "category": "Audio",
+    "summary": "Micrófono USB de condensador para grabación y streaming, con conexión USB-C y salida para auriculares.",
+    "verified": true,
+    "image": "/products/shure-mv6.webp",
+    "imageSource": "https://www.shure.com/en-US/products/microphones/mv6",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CTJ7PVN1",
+    "store": "US",
+    "slug": "shure-mv7-plus",
+    "name": "Shure MV7+ USB-C & XLR Podcast Microphone",
+    "brand": "Shure",
+    "category": "Audio",
+    "summary": "Micrófono dinámico para podcast con salida USB-C y XLR, panel táctil y procesamiento de voz integrado.",
+    "verified": true,
+    "image": "/products/shure-mv7-plus.webp",
+    "imageSource": "https://www.shure.com/en-US/products/microphones/mv7",
+    "listPrice": {
+      "amount": 299,
+      "currency": "USD",
+      "source": "https://www.shure.com/en-US/products/microphones/mv7",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CKVD62NX",
+    "store": "US",
+    "slug": "rode-nt1-signature",
+    "name": "RØDE NT1 Signature Series Studio Condenser Microphone",
+    "brand": "RØDE",
+    "category": "Audio",
+    "summary": "Micrófono de condensador de estudio con bajo ruido propio y manejo de alto nivel de presión sonora (SPL).",
+    "verified": true,
+    "image": "/products/rode-nt1-signature.webp",
+    "imageSource": "https://rode.com/en-us/microphones/studio-condenser/nt1-signature-series",
+    "listPrice": {
+      "amount": 159,
+      "currency": "USD",
+      "source": "https://rode.com/en-us/microphones/studio-condenser/nt1-signature-series",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FJK231C6",
+    "store": "US",
+    "slug": "jbl-flip-7",
+    "name": "JBL Flip 7 Portable Bluetooth Speaker",
+    "brand": "JBL",
+    "category": "Audio",
+    "summary": "Parlante Bluetooth portátil de la serie Flip de JBL, pensado para uso al aire libre.",
+    "verified": true,
+    "image": "/products/jbl-flip-7.webp",
+    "imageSource": "https://www.jbl.com/FLIP-7.html",
+    "listPrice": {
+      "amount": 149.95,
+      "currency": "USD",
+      "source": "https://www.jbl.com/FLIP-7.html",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0H1F79N52",
+    "store": "US",
+    "slug": "garmin-forerunner-170-music",
+    "name": "Garmin Forerunner 170 Music GPS Running Smartwatch",
+    "brand": "Garmin",
+    "category": "Relojes",
+    "summary": "Reloj GPS para running con música almacenada, monitoreo de salud y métricas de entrenamiento.",
+    "verified": true,
+    "image": "/products/garmin-forerunner-170-music.webp",
+    "imageSource": "https://www.garmin.com/en-US/p/2014513",
+    "listPrice": {
+      "amount": 349.99,
+      "currency": "USD",
+      "source": "https://www.garmin.com/en-US/p/2014513",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0H1FBRQD9",
+    "store": "US",
+    "slug": "garmin-forerunner-70",
+    "name": "Garmin Forerunner 70 GPS Running Smartwatch",
+    "brand": "Garmin",
+    "category": "Relojes",
+    "summary": "Reloj GPS de entrada para running con pantalla táctil a color, hasta 13 días de batería y 43 mm.",
+    "verified": true,
+    "image": "/products/garmin-forerunner-70.webp",
+    "imageSource": "https://www.garmin.com/en-US/p/1941179",
+    "listPrice": {
+      "amount": 249.99,
+      "currency": "USD",
+      "source": "https://www.garmin.com/en-US/p/1941179",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CDC6Y617",
+    "store": "US",
+    "slug": "garmin-venu-3s",
+    "name": "Garmin Venu 3S Fitness and Health Smartwatch",
+    "brand": "Garmin",
+    "category": "Relojes",
+    "summary": "Smartwatch de fitness y salud con GPS, pantalla AMOLED y seguimiento de salud y sueño.",
+    "verified": true,
+    "image": "/products/garmin-venu-3s.webp",
+    "imageSource": "https://www.garmin.com/en-US/p/873214",
+    "listPrice": {
+      "amount": 449.99,
+      "currency": "USD",
+      "source": "https://www.garmin.com/en-US/p/873214",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0G4F6ZCSV",
+    "store": "US",
+    "slug": "amazfit-active-max",
+    "name": "Amazfit Active Max Smart Watch",
+    "brand": "Amazfit",
+    "category": "Relojes",
+    "summary": "Smartwatch con pantalla AMOLED, GPS y monitoreo de salud y actividad. Pesa 39,5 g sin correa.",
+    "verified": true,
+    "weightKg": 0.0395,
+    "image": "/products/amazfit-active-max.webp",
+    "imageSource": "https://us.amazfit.com/products/active-max",
+    "listPrice": {
+      "amount": 169.99,
+      "currency": "USD",
+      "source": "https://us.amazfit.com/products/active-max",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0F7QD4HSD",
+    "store": "US",
+    "slug": "samsung-galaxy-watch-8-40mm",
+    "name": "Samsung Galaxy Watch 8 40mm Bluetooth Smartwatch",
+    "brand": "Samsung",
+    "category": "Relojes",
+    "summary": "Smartwatch de 40 mm con Wi-Fi y Bluetooth, monitoreo de salud y actividad, y sistema Wear OS.",
+    "verified": true,
+    "image": "/products/samsung-galaxy-watch-8-40mm.webp",
+    "imageSource": "https://www.samsung.com/us/watches/galaxy-watch8/buy/galaxy-watch8-40mm-graphite-wi-fi-bluetooth-sku-sm-l320ndadxaa/",
+    "listPrice": {
+      "amount": 299.99,
+      "currency": "USD",
+      "source": "https://www.samsung.com/us/watches/galaxy-watch8/buy/galaxy-watch8-40mm-graphite-wi-fi-bluetooth-sku-sm-l320ndadxaa/",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0GHPHNF5D",
+    "store": "US",
+    "slug": "scuf-omega-ps5",
+    "name": "SCUF Omega wireless controller for PS5",
+    "brand": "SCUF Gaming",
+    "category": "Gaming",
+    "summary": "Control inalámbrico para PS5 y PC con sticks TMR, interruptores mecánicos, 4 paletas traseras y 5 teclas G programables.",
+    "verified": true,
+    "image": "/products/scuf-omega-ps5.webp",
+    "imageSource": "https://scufgaming.com/p/scuf-omega-black",
+    "listPrice": {
+      "amount": 219.99,
+      "currency": "USD",
+      "source": "https://scufgaming.com/p/scuf-omega-black",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0DB6S6R89",
+    "store": "US",
+    "slug": "razer-wolverine-v3-pro",
+    "name": "Razer Wolverine V3 Pro wireless controller (Xbox/PC)",
+    "brand": "Razer",
+    "category": "Gaming",
+    "summary": "Control inalámbrico para Xbox y PC con sticks Hall Effect, gatillos hápticos y 6 botones remapeables.",
+    "verified": true,
+    "weightKg": 0.304,
+    "image": "/products/razer-wolverine-v3-pro.webp",
+    "imageSource": "https://www.razer.com/console-controllers/razer-wolverine-v3-pro",
+    "listPrice": {
+      "amount": 199.99,
+      "currency": "USD",
+      "source": "https://www.razer.com/console-controllers/razer-wolverine-v3-pro",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B00P5DSM6Q",
+    "store": "US",
+    "slug": "8bitdo-ultimate-3e",
+    "name": "8BitDo Ultimate 3E wireless controller for Xbox",
+    "brand": "8BitDo",
+    "category": "Gaming",
+    "summary": "Control modular para Xbox y PC con 2.4G inalámbrico, sticks y D-pad intercambiables, 3 perfiles y base de carga.",
+    "verified": true,
+    "image": "/products/8bitdo-ultimate-3e.webp",
+    "imageSource": "https://shop.8bitdo.com/products/8bitdo-ultimate-3e-controller-for-xbox",
+    "listPrice": {
+      "amount": 149.99,
+      "currency": "USD",
+      "source": "https://shop.8bitdo.com/products/8bitdo-ultimate-3e-controller-for-xbox",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0F29F712R",
+    "store": "US",
+    "slug": "gamesir-g7-pro-wireless",
+    "name": "GameSir G7 Pro Xbox controller (TMR)",
+    "brand": "GameSir",
+    "category": "Gaming",
+    "summary": "Control para Xbox y PC con sticks TMR, gatillos Hall Effect con topes, batería de 1200 mAh y 2.4G/Bluetooth.",
+    "verified": true,
+    "image": "/products/gamesir-g7-pro-wireless.webp",
+    "imageSource": "https://gamesir.com/products/gamesir-g7-pro",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0GRWN18WL",
+    "store": "US",
+    "slug": "sandisk-microsd-express-512gb",
+    "name": "SanDisk 512GB microSD Express card for Nintendo Switch 2",
+    "brand": "SanDisk",
+    "category": "Almacenamiento",
+    "summary": "Tarjeta microSD Express de 512 GB con licencia oficial para Switch 2, lectura de hasta 880 MB/s y escritura de hasta 650 MB/s.",
+    "verified": true,
+    "image": "/products/sandisk-microsd-express-512gb.webp",
+    "imageSource": "https://www.sandisk.com/products/memory-cards/microsd-cards/sandisk-microsd-express-card-for-nintendo-switch-2?sku=SDSQXFN-512G-GR6ZN",
+    "listPrice": {
+      "amount": 249.99,
+      "currency": "USD",
+      "source": "https://www.sandisk.com/products/memory-cards/microsd-cards/sandisk-microsd-express-card-for-nintendo-switch-2?sku=SDSQXFN-512G-GR6ZN",
+      "checked": "2026-10-30",
+      "sale": 159.99
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CZMG5L6X",
+    "store": "US",
+    "slug": "gopro-hero12-black",
+    "name": "GoPro HERO12 Black",
+    "brand": "GoPro",
+    "category": "Cámaras",
+    "summary": "Cámara de acción sumergible hasta 10 m con video 5.3K60, estabilización HyperSmooth 6.0 y 27 MP.",
+    "verified": true,
+    "weightKg": 0.154,
+    "image": "/products/gopro-hero12-black.webp",
+    "imageSource": "https://gopro.com/en/us/shop/cameras/hero12-black/CHDHX-121-master.html",
+    "listPrice": {
+      "amount": 369.99,
+      "currency": "USD",
+      "source": "https://gopro.com/en/us/shop/cameras/hero12-black/CHDHX-121-master.html",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FQNTZPX1",
+    "store": "US",
+    "slug": "insta360-x4-air",
+    "name": "Insta360 X4 Air 8K 360 camera",
+    "brand": "Insta360",
+    "category": "Cámaras",
+    "summary": "Cámara 360 de 8K con cuerpo de 165 g y lentes reemplazables, pensada para viajes y acción.",
+    "verified": true,
+    "weightKg": 0.165,
+    "image": "/products/insta360-x4-air.webp",
+    "imageSource": "https://store.insta360.com/product/x4-air",
+    "listPrice": {
+      "amount": 399.99,
+      "currency": "USD",
+      "source": "https://store.insta360.com/product/x4-air",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B09FFTB9V6",
+    "store": "US",
+    "slug": "canon-rf-16mm-f28-stm",
+    "name": "Canon RF16mm F2.8 STM lens",
+    "brand": "Canon",
+    "category": "Cámaras",
+    "summary": "Lente ultra gran angular fijo RF f/2.8 con motor STM para enfoque silencioso, compacto y liviano.",
+    "verified": true,
+    "image": "/products/canon-rf-16mm-f28-stm.webp",
+    "imageSource": "https://www.usa.canon.com/shop/p/rf16mm-f2-8-stm",
+    "listPrice": {
+      "amount": 349.99,
+      "currency": "USD",
+      "source": "https://www.usa.canon.com/shop/p/rf16mm-f2-8-stm",
+      "checked": "2026-10-30",
+      "sale": 299.99
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B00HNJWSDS",
+    "store": "US",
+    "slug": "sony-e-55-210mm",
+    "name": "Sony E 55-210mm F4.5-6.3 OSS telephoto lens",
+    "brand": "Sony",
+    "category": "Cámaras",
+    "summary": "Teleobjetivo zoom para montura E APS-C, 55-210 mm f/4.5-6.3 con estabilización óptica SteadyShot.",
+    "verified": true,
+    "weightKg": 0.345,
+    "image": "/products/sony-e-55-210mm.webp",
+    "imageSource": "https://electronics.sony.com/imaging/lenses/all-e-mount/p/sel55210-b",
+    "listPrice": {
+      "amount": 329.99,
+      "currency": "USD",
+      "source": "https://electronics.sony.com/imaging/lenses/all-e-mount/p/sel55210-b",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B07QQB9VCV",
+    "store": "US",
+    "slug": "logitech-g-pro-tkl",
+    "name": "Logitech G PRO mechanical TKL keyboard",
+    "brand": "Logitech G",
+    "category": "Periféricos",
+    "summary": "Teclado mecánico sin teclado numérico con switches GX Blue clicky, RGB LIGHTSYNC y cable USB desmontable.",
+    "verified": true,
+    "image": "/products/logitech-g-pro-tkl.webp",
+    "imageSource": "https://www.logitechg.com/en-us/shop/p/pro-mechanical-gaming-keyboard.920-009388",
+    "listPrice": {
+      "amount": 119.99,
+      "currency": "USD",
+      "source": "https://www.logitechg.com/en-us/shop/p/pro-mechanical-gaming-keyboard.920-009388",
+      "checked": "2026-10-30",
+      "sale": 109.99
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0FRPHGXJZ",
+    "store": "US",
+    "slug": "razer-huntsman-v3-pro",
+    "name": "Razer Huntsman V3 Pro 8KHz keyboard",
+    "brand": "Razer",
+    "category": "Periféricos",
+    "summary": "Teclado de tamaño completo con switches ópticos analógicos, Rapid Trigger, 8000 Hz y apoyamuñecas magnético.",
+    "verified": true,
+    "image": "/products/razer-huntsman-v3-pro.webp",
+    "imageSource": "https://www.razer.com/gaming-keyboards/razer-huntsman-v3-pro",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0GMLBSSTD",
+    "store": "US",
+    "slug": "razer-viper-v4-pro",
+    "name": "Razer Viper V4 Pro wireless mouse",
+    "brand": "Razer",
+    "category": "Periféricos",
+    "summary": "Mouse inalámbrico ultraliviano de 49 g para esports, con sensor de 50K DPI y 930 IPS.",
+    "verified": true,
+    "weightKg": 0.049,
+    "image": "/products/razer-viper-v4-pro.webp",
+    "imageSource": "https://www.razer.com/gaming-mice/razer-viper-v4-pro",
+    "listPrice": {
+      "amount": 159.99,
+      "currency": "USD",
+      "source": "https://www.razer.com/gaming-mice/razer-viper-v4-pro",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0H4SBT4SH",
+    "store": "US",
+    "slug": "razer-naga-v3-pro",
+    "name": "Razer Naga V3 Pro wireless MMO mouse",
+    "brand": "Razer",
+    "category": "Periféricos",
+    "summary": "Mouse inalámbrico para MMO con paneles laterales intercambiables de 2, 6 o 12 botones.",
+    "verified": true,
+    "weightKg": 0.117,
+    "image": "/products/razer-naga-v3-pro.webp",
+    "imageSource": "https://www.razer.com/gaming-mice/razer-naga-v3-pro",
+    "listPrice": {
+      "amount": 179.99,
+      "currency": "USD",
+      "source": "https://www.razer.com/gaming-mice/razer-naga-v3-pro",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0CPFWXMBL",
+    "store": "US",
+    "slug": "elgato-4k-x",
+    "name": "Elgato Game Capture 4K X",
+    "brand": "Elgato",
+    "category": "Periféricos",
+    "summary": "Capturadora externa USB 3.2 con HDMI 2.1 para grabar y transmitir hasta 4K60 HDR10 y 1080p a 240 fps.",
+    "verified": true,
+    "weightKg": 0.091,
+    "image": "/products/elgato-4k-x.webp",
+    "imageSource": "https://www.elgato.com/us/en/p/game-capture-4k-x",
+    "listPrice": {
+      "amount": 249.99,
+      "currency": "USD",
+      "source": "https://www.elgato.com/us/en/p/game-capture-4k-x",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
+  },
+  {
+    "asin": "B0G3T1QKWL",
+    "store": "US",
+    "slug": "insta360-link-2-pro",
+    "name": "Insta360 Link 2 Pro 4K PTZ webcam",
+    "brand": "Insta360",
+    "category": "Periféricos",
+    "summary": "Webcam 4K con sensor de 1/2 pulgada, gimbal de 3 ejes y encuadre automático que te sigue.",
+    "verified": true,
+    "weightKg": 0.114,
+    "image": "/products/insta360-link-2-pro.webp",
+    "imageSource": "https://store.insta360.com/product/link-2-pro",
+    "listPrice": {
+      "amount": 249.99,
+      "currency": "USD",
+      "source": "https://store.insta360.com/product/link-2-pro",
+      "checked": "2026-10-30"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    }
   }
 ]
