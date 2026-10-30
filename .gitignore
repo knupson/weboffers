@@ -19,3 +19,4 @@ __pycache__/
 .impeccable/mocks/
 .impeccable/assets/
 .impeccable/build/
+worker/.pytest_tmp/

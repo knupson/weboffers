@@ -32,7 +32,8 @@ def test_offline_output_matches_spec(tmp_path, monkeypatch, capsys):
     assert payload["mode"] == "offline"
     assert payload["rates"] is None
     assert datetime.fromisoformat(payload["generatedAt"]).tzinfo is not None
-    assert len(payload["items"]) == 3
+    catalog = json.loads((Path(__file__).parent / "../data/catalog.json").read_text(encoding="utf-8"))
+    assert len(payload["items"]) == len(catalog)
     for item in payload["items"]:
         assert set(item) == {"asin", "store", "title", "priceUsd", "priceFetchedAt",
                              "imageUrl", "availability"}
@@ -158,11 +159,14 @@ def test_loop_honors_stop_flag(monkeypatch):
     run.assert_called_once()
 
 
-def test_catalog_is_only_three_unverified_placeholders():
+def test_catalog_entries_are_complete_and_unique():
     catalog = json.loads((Path(__file__).parent / "../data/catalog.json").read_text(encoding="utf-8"))
-    assert [item["asin"] for item in catalog] == ["EXAMPLE0001", "EXAMPLE0002", "EXAMPLE0003"]
     required = {"asin", "store", "slug", "name", "brand", "category", "summary", "verified"}
     for item in catalog:
-        assert set(item) == required
-        assert item["verified"] is False
-        assert "placeholder" in item["summary"]
+        assert required <= set(item)
+        assert item["store"] in ("US", "ES")
+        assert item["verified"] is True
+        if "image" in item:
+            assert item["image"].startswith("/products/") and item["imageSource"].startswith("https://")
+    assert len({item["slug"] for item in catalog}) == len(catalog)
+    assert len({(item["store"], item["asin"]) for item in catalog}) == len(catalog)

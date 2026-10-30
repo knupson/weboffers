@@ -11,6 +11,7 @@ import time
 import creators_api
 import publish
 import rates
+import telegram
 
 
 WORKER_DIR = Path(__file__).resolve().parent
@@ -43,6 +44,10 @@ def run_once():
     output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
     changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
     print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
+    try:
+        telegram.maybe_post(catalog, resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")))
+    except Exception as exc:
+        print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
     return payload
 
 

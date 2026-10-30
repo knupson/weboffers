@@ -25,7 +25,7 @@ const mep = rates ? `$${Math.round(rates.mep).toLocaleString("es-AR")}` : "...";
 const nav = [
   ["/productos/", "Productos"],
   ["/calculadora/", "Calculadora"],
-  ["/guia/", "Cómo funciona"],
+  ["/guias/", "Guías"],
 ];
 ---
 
@@ -61,7 +61,7 @@ const nav = [
         <a class="logo letra" href="/" aria-label={`${SITE.name}, inicio`}>{SITE.name}</a>
         <nav aria-label="Secciones">
           {nav.map(([href, label]) => (
-            <a href={href} class={href === "/guia/" ? "hide-sm" : undefined} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
+            <a href={href} class={href === "/guias/" ? "hide-sm" : undefined} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
           ))}
         </nav>
         <span class="rate-pill">MEP <b class="num" data-rate="mep">{mep}</b> <small data-rate-time>{stamp}</small></span>
@@ -81,6 +81,8 @@ const nav = [
           {hasPrices && <p>{SITE.priceNotice}</p>}
         </div>
         <nav aria-label="Legales">
+          <a href="/guia/">Cómo funciona la franquicia</a>
+          <a href="/guias/">Guías</a>
           <a href="/legal/afiliados/">Afiliación con Amazon</a>
           <a href="/legal/privacidad/">Privacidad</a>
           <a href="/legal/cookies/">Cookies</a>

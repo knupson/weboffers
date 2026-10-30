@@ -1,0 +1,83 @@
+---
+import Base from "../../layouts/Base.astro";
+import ProductCard from "../../components/ProductCard.astro";
+import Icon from "../../components/Icon.astro";
+import { SITE } from "../../config";
+import { loadGuias, linkify } from "../../lib/guias";
+import { loadProducts } from "../../lib/data";
+
+export async function getStaticPaths() {
+  const { products } = await loadProducts();
+  const guias = loadGuias();
+  return guias.map((g) => ({
+    params: { slug: g.slug },
+    props: {
+      g,
+      related: g.related.map((s) => products.find((p) => p.slug === s && p.verified)).filter((p) => p != null),
+      otras: guias.filter((o) => o.slug !== g.slug),
+    },
+  }));
+}
+
+const { g, related, otras } = Astro.props;
+const url = `${SITE.url}/guias/${g.slug}/`;
+---
+
+<Base
+  title={g.title}
+  description={g.description}
+  jsonLd={[
+    { "@type": "Article", headline: g.h1, description: g.description, inLanguage: "es-AR", mainEntityOfPage: url, author: { "@type": "Person", name: "Alejandro Benzoni" }, publisher: { "@type": "Organization", name: SITE.name, url: SITE.url } },
+    { "@type": "FAQPage", mainEntity: g.faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Guías", item: `${SITE.url}/guias/` },
+        { "@type": "ListItem", position: 2, name: g.h1, item: url },
+      ],
+    },
+  ]}
+>
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Ubicación"><a href="/guias/">Guías</a></nav>
+  </div>
+  <div class="wrap page-head">
+    <h1 class="letra" style="font-size: clamp(34px, 4.2vw, 56px)">{g.h1}</h1>
+    <p class="lead" set:html={linkify(g.intro)} />
+  </div>
+  <section style="padding-top: 16px">
+    <div class="wrap"><div class="prose">
+      {g.sections.map((s) => (
+        <>
+          <h2>{s.heading}</h2>
+          {s.paragraphs.map((p) => <p set:html={linkify(p)} />)}
+          {s.bullets && <ul>{s.bullets.map((b) => <li set:html={linkify(b)} />)}</ul>}
+        </>
+      ))}
+      <h2>Preguntas frecuentes</h2>
+      {g.faq.map((f) => (
+        <details class="faq">
+          <summary>{f.q}</summary>
+          <p set:html={linkify(f.a)} />
+        </details>
+      ))}
+      <p style="margin-top: 32px"><a class="btn" href="/calculadora/">Hacer la cuenta <Icon name="arrow-right" size={16} /></a></p>
+    </div></div>
+  </section>
+
+  {related.length > 0 && (
+    <section style="padding-top: 0">
+      <div class="wrap">
+        <div class="head"><h2 class="letra">Productos de esta guía</h2></div>
+        <div class="grid-products">{related.map((p) => <ProductCard product={p} />)}</div>
+      </div>
+    </section>
+  )}
+
+  <section style="padding-top: 0">
+    <div class="wrap"><div class="prose">
+      <h2>Otras guías</h2>
+      <ul>{otras.map((o) => <li><a href={`/guias/${o.slug}/`}>{o.h1}</a></li>)}</ul>
+    </div></div>
+  </section>
+</Base>

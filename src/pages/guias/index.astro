@@ -1,0 +1,26 @@
+---
+import Base from "../../layouts/Base.astro";
+import Icon from "../../components/Icon.astro";
+import { loadGuias } from "../../lib/guias";
+
+const guias = loadGuias();
+---
+
+<Base title="Guías para comprar en Amazon desde Argentina" description="Cómo funciona la franquicia de USD 400, cómo comprar en Amazon y Amazon España desde Argentina y qué dólar conviene usar.">
+  <div class="wrap page-head">
+    <h1 class="letra">Guías</h1>
+    <p class="lead">Todo lo que conviene saber antes de traer algo de Amazon a Argentina.</p>
+  </div>
+  <section style="padding-top: 16px">
+    <div class="wrap">
+      <div class="pizarra">
+        {guias.map((g) => (
+          <a href={`/guias/${g.slug}/`}>
+            <span class="label">{g.h1}<span class="where">{g.description}</span></span>
+            <Icon name="arrow-right" size={18} class="go" />
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</Base>

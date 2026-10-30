@@ -1,0 +1,469 @@
+[
+  {
+    "slug": "franquicia-400-dolares",
+    "title": "Franquicia de 400 dólares courier Argentina 2026",
+    "description": "Cómo funciona la franquicia de 400 dólares del courier en Argentina 2026: qué se paga, cuántos envíos entran y qué límites tiene.",
+    "h1": "Franquicia de 400 dólares del courier en Argentina: cómo funciona y qué se paga",
+    "intro": "Cuando comprás en el exterior y el paquete llega por courier, lo que pagás no es solo el precio de la tienda. Hay un tramo del envío que está libre de aranceles, y ese tramo es la franquicia de 400 dólares. Esta guía explica cómo funciona en 2026, qué impuestos quedan adentro y cuáles no, y dónde está el límite para que sepas el costo real antes de apretar el botón de compra.",
+    "sections": [
+      {
+        "heading": "Qué es la franquicia de 400 dólares",
+        "paragraphs": [
+          "La franquicia es un monto por envío que entra al país sin derechos de importación y sin tasa de estadística. El monto es de USD 400 FOB por envío. Es un tope por paquete, no por producto: cuenta el valor FOB de todo lo que viaja junto, es decir el precio de los productos sin el costo del envío.",
+          "El esquema surge del Decreto 1065/2024 y se aplica al régimen de courier, que es el circuito de envíos puerta a puerta que usan las tiendas internacionales como Amazon. No es un descuento sobre el precio del producto. Es una exención de ciertos gravámenes sobre el tramo de hasta USD 400."
+        ]
+      },
+      {
+        "heading": "Cuántos envíos podés hacer y cuáles son los límites",
+        "paragraphs": [
+          "La franquicia no es ilimitada. Se puede usar hasta 5 envíos por año por persona. Pasado ese número, los envíos siguientes ya no gozan de la exención y tributan completos.",
+          "Además, el régimen courier tiene topes por envío:"
+        ],
+        "bullets": [
+          "Hasta USD 3.000 FOB por envío.",
+          "Hasta 50 kg por envío.",
+          "Hasta 5 envíos por año por persona con franquicia."
+        ]
+      },
+      {
+        "heading": "Qué pagás si el envío entra en la franquicia",
+        "paragraphs": [
+          "Dentro de los USD 400 no se pagan derechos de importación ni tasa de estadística. Pero eso no significa que el envío salga sin impuestos. Los demás tributos siguen el régimen general de importación, según lo establece la RG ARCA 5608/2024. El que más pesa es el IVA.",
+          "En este sitio el IVA se calcula con 21% por defecto. La alícuota correcta depende de la posición arancelaria de cada producto, y nosotros no confirmamos que corresponda 10,5% para courier. Por eso podés cambiar el porcentaje en la calculadora (/calculadora/). Si necesitás certeza para un producto puntual, un despachante de aduana o el micrositio de envíos internacionales de ARCA pueden confirmarte la alícuota."
+        ]
+      },
+      {
+        "heading": "Qué pasa con lo que excede los 400 dólares",
+        "paragraphs": [
+          "Si el valor FOB del paquete (los productos, sin el envío) supera USD 400, el exceso sí paga derechos de importación y tasa de estadística. Solo el exceso, no el monto completo. Los primeros 400 siguen exentos.",
+          "En el sitio estimamos los derechos en 35%, un valor editable porque puede variar según el producto, y la tasa de estadística en 3%. Después se aplica el IVA sobre el total acumulado. La fórmula completa es:",
+          "total = (producto + envío + derechos + tasa de estadística) × (1 + IVA)"
+        ]
+      },
+      {
+        "heading": "Un ejemplo con números hipotéticos",
+        "paragraphs": [
+          "Supongamos, como ejemplo, un producto de USD 500 con USD 40 de envío. El exceso sobre la franquicia se mide sobre el producto: USD 100. Los derechos estimados al 35% sobre ese exceso son USD 35. La tasa de estadística al 3% sobre el exceso son USD 3.",
+          "La base queda en 500 + 40 + 35 + 3 = USD 578. Con IVA al 21%, el IVA son USD 121,38 y el total llega a USD 699,38. Son cifras de ejemplo con la fórmula del sitio, no el precio de ningún producto real.",
+          "Si en cambio la compra queda por debajo de USD 400, derechos y tasa valen cero y solo se suma el IVA. Por eso, en muchos casos, conviene que cada compra grande entre dentro del tope."
+        ]
+      },
+      {
+        "heading": "Errores comunes al usar la franquicia",
+        "paragraphs": [
+          "El error más frecuente es pensar que la franquicia deja el envío sin ningún costo. Dentro de los USD 400 no hay derechos ni tasa de estadística, pero el IVA se sigue pagando según el régimen general de importación.",
+          "Otro error es no llevar la cuenta de los envíos del año. Como el beneficio alcanza a 5 envíos por persona, conviene juntar las compras chicas en un solo pedido cuando el vendedor lo permite, y reservar los envíos con franquicia para las compras donde más se nota.",
+          "Por último, mirá siempre el costo de envío. Dos productos con el mismo precio pueden dar totales bien distintos según lo que cobre el vendedor por llevarlos hasta Argentina."
+        ]
+      },
+      {
+        "heading": "Requisitos para recibir compras por courier",
+        "paragraphs": [
+          "Para recibir envíos por courier necesitás tener CUIT o CUIL, Clave Fiscal y el domicilio fiscal electrónico en ARCA. Conviene verificar esto antes de comprar, porque sin estos requisitos el paquete puede quedar demorado.",
+          "Si dudás de si lo tenés resuelto, entrá a ARCA con tu Clave Fiscal y revisá que el domicilio fiscal electrónico figure activo. Es un trámite que se hace una vez."
+        ]
+      },
+      {
+        "heading": "Cómo estimar el costo final antes de comprar",
+        "paragraphs": [
+          "Lo práctico es cargar el precio del producto y el costo del envío en la calculadora (/calculadora/). El sitio aplica la franquicia, calcula derechos y tasa solo sobre el exceso, suma el IVA y te muestra el total puesto en tu casa en dólares y en pesos.",
+          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿La franquicia de 400 dólares es por compra o por año?",
+        "a": "Es por envío, y se puede usar hasta 5 envíos por año por persona. Desde el sexto envío en el año ya no rige la exención."
+      },
+      {
+        "q": "¿Dentro de la franquicia se paga algún impuesto?",
+        "a": "No se pagan derechos de importación ni tasa de estadística. El resto de los tributos, incluido el IVA, siguen el régimen general de importación."
+      },
+      {
+        "q": "¿Qué pasa si mi compra supera los 400 dólares?",
+        "a": "El exceso sobre USD 400 paga derechos y tasa de estadística. Los primeros 400 siguen exentos de esos dos conceptos. El IVA se calcula sobre el total."
+      },
+      {
+        "q": "¿Cuál es el tope máximo del courier?",
+        "a": "USD 3.000 FOB y 50 kg por envío. Por encima de eso ya no se trata como envío courier."
+      }
+    ],
+    "related": [
+      "kindle-paperwhite-16gb-2024",
+      "sony-wh-1000xm5-negro",
+      "samsung-t7-portable-ssd-1tb"
+    ]
+  },
+  {
+    "slug": "comprar-en-amazon-desde-argentina",
+    "title": "Cómo comprar en Amazon desde Argentina paso a paso",
+    "description": "Cómo comprar en Amazon desde Argentina: requisitos en ARCA, pago, envío por courier y cómo calcular el costo final puesto en tu casa.",
+    "h1": "Cómo comprar en Amazon desde Argentina, paso a paso",
+    "intro": "Comprar en Amazon desde Argentina es posible y bastante simple una vez que tenés los datos en orden. Lo que confunde a la mayoría es el costo real: el precio de la página no es lo que terminás pagando. En esta guía vas paso a paso desde los requisitos previos hasta que el paquete llega a tu puerta, y con una forma clara de calcular el total antes de comprar.",
+    "sections": [
+      {
+        "heading": "Paso 1: revisá tus datos en ARCA",
+        "paragraphs": [
+          "Para recibir compras por courier necesitás CUIT o CUIL, Clave Fiscal y el domicilio fiscal electrónico en ARCA. Hacelo antes de comprar, no después. Si algo falta, el paquete puede quedar frenado y vas a perder tiempo.",
+          "Con la Clave Fiscal entrá al sitio de ARCA y fijate que el domicilio fiscal electrónico esté activo. Es un trámite único."
+        ]
+      },
+      {
+        "heading": "Paso 2: elegí la tienda de Amazon correcta",
+        "paragraphs": [
+          "Amazon tiene tiendas por país. Las más usadas desde Argentina son Amazon.com, con precios en dólares, y Amazon.es, con precios en euros. Cada una tiene su catálogo, sus vendedores y sus condiciones de envío.",
+          "Antes de agregar un producto al carrito, mirá en la ficha si se envía a Argentina. No todos los productos ni todos los vendedores lo hacen. Si el envío no está disponible, Amazon lo indica al elegir la dirección de entrega."
+        ]
+      },
+      {
+        "heading": "Paso 3: cargá la dirección y mirá el envío",
+        "paragraphs": [
+          "Cargá tu dirección en Argentina en el formato que pide Amazon y revisá el costo de envío internacional que aparece antes de pagar. El envío es parte del costo real, y pesa en el cálculo de la franquicia y de los impuestos.",
+          "En Amazon.com, al pagar para Argentina, Amazon cobra un depósito de import fees (cargos de importación). Si la liquidación final resulta distinta de ese depósito, se aplican las condiciones de Amazon. Leelas directamente en Amazon antes de confirmar."
+        ]
+      },
+      {
+        "heading": "Paso 4: entendé qué impuestos se suman",
+        "paragraphs": [
+          "El régimen courier tiene una franquicia de USD 400 FOB por envío, hasta 5 envíos por año por persona. Dentro de esa franquicia no hay derechos de importación ni tasa de estadística (Decreto 1065/2024). El exceso sobre USD 400 paga ambos. Los demás impuestos, como el IVA, siguen el régimen general (RG ARCA 5608/2024).",
+          "El tope del courier es USD 3.000 FOB y 50 kg por envío. Para la mayoría de las compras de electrónica, hogar o libros, estás muy por debajo.",
+          "Podés ver el detalle de cómo se calcula en la guía sobre la franquicia (/guias/franquicia-400-dolares/)."
+        ]
+      },
+      {
+        "heading": "Paso 5: calculá el costo final antes de pagar",
+        "paragraphs": [
+          "La fórmula del sitio es: total = (producto + envío + derechos + tasa de estadística) × (1 + IVA). Los derechos, estimados en 35% y editables, y la tasa de 3% se aplican solo al exceso sobre USD 400.",
+          "El IVA se calcula por defecto con 21%. La alícuota correcta depende de la posición arancelaria del producto y el sitio no confirmó que 10,5% aplique a courier. Podés cambiarlo en la calculadora (/calculadora/). Para confirmarlo, consultá a un despachante o al micrositio de envíos internacionales de ARCA.",
+          "Cargá el precio y el envío en la calculadora y vas a ver el total puesto en tu casa."
+        ]
+      },
+      {
+        "heading": "Paso 6: elegí cómo pagar",
+        "paragraphs": [
+          "Podés pagar con tarjeta argentina o con dólares que ya tengas, por ejemplo en una tarjeta o cuenta en dólares. El tipo de cambio que se aplica cambia el total en pesos, y por eso el sitio muestra el resultado con el dólar MEP y con el dólar tarjeta. Tenés el detalle en la guía sobre dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/)."
+        ]
+      },
+      {
+        "heading": "Errores que conviene evitar",
+        "paragraphs": [
+          "El primero es mirar solo el precio del producto. El costo real incluye el envío, el IVA y, si superás los USD 400 FOB, derechos y tasa de estadística sobre el exceso. Calcularlo antes evita sorpresas.",
+          "El segundo es dejar los trámites de ARCA para el final. Si te falta la Clave Fiscal o el domicilio fiscal electrónico, el paquete puede frenarse mientras lo resolvés.",
+          "El tercero es no leer las condiciones de Amazon sobre el depósito de cargos de importación. Esa letra chica explica qué pasa si la liquidación final no coincide con lo que cobraron al pagar."
+        ]
+      },
+      {
+        "heading": "Paso 7: seguí el envío y recibí el paquete",
+        "paragraphs": [
+          "Después de la compra, Amazon te da un número de seguimiento. Estate atento a los mails del courier, porque a veces piden confirmar datos o documentación. Si todo está en orden en ARCA, el paquete sigue su curso y llega a tu domicilio.",
+          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Qué necesito para comprar en Amazon desde Argentina?",
+        "a": "CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA, además de una tarjeta o una cuenta en dólares para pagar. Conviene verificarlo antes de comprar."
+      },
+      {
+        "q": "¿Todos los productos de Amazon se envían a Argentina?",
+        "a": "No. Depende del producto y del vendedor. Amazon lo indica al elegir la dirección de entrega o en la ficha del producto."
+      },
+      {
+        "q": "¿Cuántas compras puedo hacer con la franquicia?",
+        "a": "Hasta 5 envíos por año por persona, con USD 400 FOB cada uno sin derechos ni tasa de estadística."
+      },
+      {
+        "q": "¿Cómo sé cuánto voy a pagar en total?",
+        "a": "Aplicás derechos y tasa sólo sobre lo que el producto pase de USD 400, sumás el envío y después el IVA. La calculadora del sitio hace esa cuenta por vos."
+      }
+    ],
+    "related": [
+      "kindle-paperwhite-16gb-2024",
+      "apple-airpods-pro-2-usb-c",
+      "logitech-mx-master-3s",
+      "samsung-t7-portable-ssd-1tb"
+    ]
+  },
+  {
+    "slug": "amazon-espana-desde-argentina",
+    "title": "Comprar en Amazon España desde Argentina",
+    "description": "Comprar en Amazon España desde Argentina: precios en euros, voltaje de 220 V, enchufe europeo y adaptador, y cómo calcular el costo final.",
+    "h1": "Comprar en Amazon España desde Argentina: euros, voltaje y enchufe",
+    "intro": "Amazon.es tiene un catálogo distinto al de Amazon.com y, en algunas categorías, productos que no encontrás con facilidad del otro lado, como electrodomésticos pensados para 220 V. Pero hay tres cosas que conviene entender antes de comprar: el precio está en euros, el régimen de impuestos es el mismo del courier y el enchufe no es el argentino. Esta guía repasa cada punto.",
+    "sections": [
+      {
+        "heading": "Precios en euros y cómo se convierten",
+        "paragraphs": [
+          "Amazon.es muestra todo en euros. Para comparar con una compra en dólares, el sitio convierte usando el euro oficial dividido por el dólar oficial. De esa manera obtenés el precio equivalente en dólares, que es la base sobre la que se calcula el régimen de courier.",
+          "Los impuestos argentinos se calculan en dólares, así que ese paso intermedio importa. El resultado final en pesos depende después del tipo de cambio con el que pagues, y por eso el sitio muestra el total con dólar MEP y con dólar tarjeta."
+        ]
+      },
+      {
+        "heading": "Qué impuestos se aplican",
+        "paragraphs": [
+          "El régimen es el mismo que para cualquier compra por courier. Hay una franquicia de USD 400 FOB por envío, hasta 5 envíos por año por persona. Dentro de la franquicia no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). El exceso sobre USD 400 paga ambos, y los demás impuestos, como el IVA, siguen el régimen general (RG ARCA 5608/2024).",
+          "El tope por envío es de USD 3.000 FOB y 50 kg. El detalle completo está en la guía de la franquicia (/guias/franquicia-400-dolares/).",
+          "En el sitio el IVA se calcula con 21% por defecto. La alícuota correcta depende de la posición arancelaria del producto, y no confirmamos 10,5% para courier. Podés cambiarla en la calculadora (/calculadora/)."
+        ]
+      },
+      {
+        "heading": "Voltaje: qué funciona en Argentina",
+        "paragraphs": [
+          "Argentina usa 220 V y 50 Hz, igual que España. La corriente es compatible. El punto a revisar es el equipo en sí.",
+          "La mayoría de la electrónica tiene fuentes multivoltaje, de 100 a 240 V. Eso incluye cargadores, notebooks, e-readers, auriculares, monitores y discos externos. Fijate que la etiqueta o la ficha técnica diga el rango de entrada.",
+          "Los electrodomésticos con motor o resistencia, como cafeteras, secadores, aspiradoras o freidoras de aire, deberían ser de 220 a 240 V. Amazon.es vende esa versión, que es una de las razones para mirarlo."
+        ]
+      },
+      {
+        "heading": "Enchufe: vas a necesitar un adaptador",
+        "paragraphs": [
+          "Los productos de Amazon.es vienen con enchufe europeo tipo Schuko, con dos patas redondas y contactos laterales a tierra. El enchufe argentino es el tipo I, con patas planas en V.",
+          "Necesitás un adaptador de Schuko a tipo I. Suele ser barato y se consigue en ferreterías o tiendas de electrónica. Para electrodomésticos de mucha potencia elegí un adaptador de buena calidad, porque calientan más que un cargador.",
+          "Otra opción es cambiar la ficha del cable si el cable es desmontable, pero para la mayoría de la gente el adaptador es lo más simple."
+        ]
+      },
+      {
+        "heading": "Cómo comprar paso a paso",
+        "paragraphs": [
+          "Primero, verificá que tengas CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA. Después, buscá el producto en Amazon.es y mirá si el vendedor envía a Argentina. No todos los productos lo hacen, y Amazon lo avisa al cargar la dirección.",
+          "Con el precio en euros y el costo de envío, usá la calculadora (/calculadora/) para ver el total en dólares y en pesos. Para ver el paso a paso general de la compra, tenés la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/)."
+        ]
+      },
+      {
+        "heading": "Cuándo conviene mirar Amazon.es",
+        "paragraphs": [
+          "Amazon.es tiene sentido cuando buscás un producto que no está en Amazon.com, o cuando necesitás una versión de 220 a 240 V de un electrodoméstico. También cuando el modelo europeo tiene una variante que te interesa.",
+          "Si el mismo producto está en las dos tiendas, comparalo con el costo final. Pasá cada precio a dólares, sumá el envío y compará los totales en la calculadora (/calculadora/). La diferencia de precio de lista a veces desaparece cuando se agrega el envío.",
+          "Verificá también que el vendedor despache a Argentina. Si el producto no aparece disponible para tu dirección, no hay forma de avanzar con esa publicación."
+        ]
+      },
+      {
+        "heading": "Qué mirar antes de confirmar",
+        "bullets": [
+          "Que el producto se envíe a Argentina.",
+          "El costo de envío internacional, que va dentro del cálculo de impuestos.",
+          "El voltaje del equipo, sobre todo si tiene motor o resistencia.",
+          "Que tengas el adaptador de Schuko a tipo I.",
+          "Las condiciones de Amazon sobre cargos de importación, que conviene leer en Amazon antes de pagar."
+        ],
+        "paragraphs": [
+          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Los productos de Amazon.es funcionan en Argentina?",
+        "a": "La electrónica con fuente de 100 a 240 V funciona sin problema. Los electrodomésticos con motor o resistencia deberían ser de 220 a 240 V, y Amazon.es vende esa versión. Siempre revisá la etiqueta del equipo."
+      },
+      {
+        "q": "¿Qué enchufe traen los productos de Amazon.es?",
+        "a": "Enchufe europeo tipo Schuko. Para usarlos en Argentina necesitás un adaptador al enchufe tipo I."
+      },
+      {
+        "q": "¿Cómo se convierte el precio en euros?",
+        "a": "El sitio usa el euro oficial dividido por el dólar oficial para llevar el precio a dólares, y sobre esa base calcula el régimen de courier."
+      },
+      {
+        "q": "¿Pago diferentes impuestos si compro en Amazon.es?",
+        "a": "No, rige el mismo régimen de courier. Hay franquicia de USD 400 FOB por envío y el exceso paga derechos y tasa de estadística. El IVA sigue el régimen general."
+      }
+    ],
+    "related": [
+      "delonghi-dedica-style-ec685-bk",
+      "philips-airfryer-3000-doble-cesta-na352-9l",
+      "roborock-q7-l5-negro",
+      "philips-secador-serie-5000-bhd530-20"
+    ]
+  },
+  {
+    "slug": "cuanto-sale-traer-un-kindle",
+    "title": "Cuánto sale traer un Kindle a Argentina",
+    "description": "Cuánto sale traer un Kindle a Argentina: ejemplo con números hipotéticos, qué impuestos se pagan con la franquicia y cómo calcular tu caso.",
+    "h1": "Cuánto sale traer un Kindle a Argentina: un ejemplo con números",
+    "intro": "La pregunta de siempre es si conviene traer un Kindle desde afuera y cuánto termina costando puesto en tu casa. La respuesta depende del precio de Amazon el día que compres, y ese número cambia. Por eso esta guía usa un precio hipotético, claramente marcado como ejemplo, para mostrarte la cuenta completa. Con tu precio real, repetís el mismo procedimiento en la calculadora (/calculadora/).",
+    "sections": [
+      {
+        "heading": "Aclaración: los números son un ejemplo",
+        "paragraphs": [
+          "Todos los valores de esta guía son hipotéticos. No son el precio actual de ningún Kindle en Amazon ni una oferta. Están elegidos para que se vea la mecánica de la cuenta. Antes de comprar, consultá el precio vigente en Amazon y cargalo en la calculadora."
+        ]
+      },
+      {
+        "heading": "Los datos del ejemplo",
+        "paragraphs": [
+          "Supongamos que en Amazon el Kindle sale USD 160 y el envío internacional a Argentina son USD 35. Es solo un ejemplo para hacer la cuenta.",
+          "El precio del producto, USD 160, está bien por debajo de la franquicia de USD 400 FOB por envío del régimen courier. El envío no cuenta para ese tope.",
+          "Elegimos un precio redondo a propósito, para que la aritmética se pueda seguir de cabeza y se note qué parte corresponde a cada concepto. Si tu precio real es otro, solo cambian los valores de entrada, no el procedimiento."
+        ]
+      },
+      {
+        "heading": "Qué se paga y qué no",
+        "paragraphs": [
+          "Como el envío está dentro de la franquicia, no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). Esos dos conceptos valen cero en este caso.",
+          "Lo que sí se suma es el IVA, que sigue el régimen general de importación (RG ARCA 5608/2024). El sitio lo calcula con 21% por defecto.",
+          "Conviene recordar que esta exención tiene un cupo anual de hasta 5 envíos por persona, así que cada envío que hacés con franquicia cuenta dentro de ese límite."
+        ],
+        "bullets": [
+          "Derechos de importación: cero, porque entra en la franquicia.",
+          "Tasa de estadística: cero, por la misma razón.",
+          "IVA: se calcula sobre el total de producto más envío."
+        ]
+      },
+      {
+        "heading": "La cuenta paso a paso",
+        "paragraphs": [
+          "La fórmula del sitio es: total = (producto + envío + derechos + tasa de estadística) × (1 + IVA).",
+          "Con los datos del ejemplo: producto 160, envío 35, derechos 0, tasa 0. La base es 195. El IVA al 21% son USD 40,95. El total es USD 235,95.",
+          "Ese total en dólares es el que después se pasa a pesos."
+        ]
+      },
+      {
+        "heading": "Cómo se pasa a pesos",
+        "paragraphs": [
+          "El total en pesos es el total en dólares multiplicado por el dólar MEP del día, si pagás con dólares comprados a MEP. Si pagás con una tarjeta argentina, se usa el dólar tarjeta, que es más alto. El sitio te muestra ambos resultados lado por lado.",
+          "No incluimos un valor de dólar en esta guía porque cambia todos los días. En la calculadora (/calculadora/) vas a ver el valor actualizado. Para entender la diferencia entre las dos opciones, leé la guía de dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/)."
+        ]
+      },
+      {
+        "heading": "Qué cambia si el precio real es distinto",
+        "paragraphs": [
+          "Si el precio real es otro, la mecánica no cambia. Verificás que el precio del producto no supere USD 400, le sumás el envío y le agregás el IVA. Mientras el envío quede dentro de la franquicia, derechos y tasa siguen en cero.",
+          "Si en cambio comprás el Kindle junto con otros productos en un mismo envío y el valor de los productos pasa de USD 400, el exceso empieza a pagar derechos y tasa de estadística. En ese caso, el sitio estima los derechos en 35%, editable, y la tasa en 3%, solo sobre el exceso.",
+          "Por eso, para un dispositivo de este rango de precio, lo más simple suele ser comprarlo solo y mantenerlo dentro de la franquicia. Siempre podés comprobarlo en la calculadora (/calculadora/) con los valores del día."
+        ]
+      },
+      {
+        "heading": "Sobre el IVA: cambiá la alícuota si hace falta",
+        "paragraphs": [
+          "El IVA correcto depende de la posición arancelaria del producto. El sitio calcula con 21% por defecto y no confirmó que corresponda 10,5% para courier. Podés modificar el porcentaje en la calculadora. Si querés certeza, un despachante o el micrositio de envíos internacionales de ARCA pueden confirmarlo.",
+          "Si la alícuota cambia, cambia el total. Con el mismo ejemplo, el cálculo es siempre base por uno más el IVA."
+        ]
+      },
+      {
+        "heading": "Antes de comprar: requisitos y condiciones",
+        "paragraphs": [
+          "Para recibir el paquete por courier necesitás CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA. Verificalo antes de pagar.",
+          "Amazon.com cobra al pagar un depósito de import fees para Argentina. Si la liquidación final difiere de ese depósito, aplican las condiciones de Amazon, que conviene leer en Amazon.",
+          "Para el paso a paso completo de la compra, mirá la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/).",
+          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Cuánto cuesta traer un Kindle a Argentina?",
+        "a": "Depende del precio de Amazon el día de la compra. En el ejemplo de esta guía, con USD 160 de producto y USD 35 de envío, el total con IVA al 21% es USD 235,95. Son números hipotéticos."
+      },
+      {
+        "q": "¿Se pagan aranceles por un Kindle?",
+        "a": "Si el envío no pasa de USD 400 FOB y está dentro de los 5 envíos anuales con franquicia, no hay derechos de importación ni tasa de estadística. Sí se paga IVA."
+      },
+      {
+        "q": "¿El IVA es siempre 21%?",
+        "a": "El sitio calcula con 21% por defecto, pero la alícuota correcta depende de la posición arancelaria del producto. Podés cambiarla en la calculadora y confirmarla con un despachante o con ARCA."
+      },
+      {
+        "q": "¿Cuánto es en pesos?",
+        "a": "El total en dólares multiplicado por el dólar MEP del día si pagás con dólares MEP, o por el dólar tarjeta si pagás con tarjeta argentina. La calculadora muestra ambos."
+      }
+    ],
+    "related": [
+      "kindle-paperwhite-16gb-2024",
+      "amazon-fire-hd-10-2023-32gb"
+    ]
+  },
+  {
+    "slug": "mep-o-tarjeta-para-comprar-en-amazon",
+    "title": "Dólar MEP o tarjeta para comprar en Amazon",
+    "description": "Dólar MEP o tarjeta para comprar en Amazon desde Argentina: en qué se diferencian, cuándo se usa cada uno y cómo los muestra el sitio.",
+    "h1": "Dólar MEP o tarjeta para comprar en Amazon: en qué se diferencian",
+    "intro": "Cuando comprás en Amazon desde Argentina, el total en dólares es solo la mitad de la cuenta. La otra mitad es cuántos pesos te cuesta ese dólar, y eso depende de cómo pagues. Las dos formas más comunes son pagar con una tarjeta argentina, que usa el dólar tarjeta, o pagar con dólares comprados a MEP. Esta guía explica la diferencia y cómo la ves reflejada en el sitio.",
+    "sections": [
+      {
+        "heading": "Qué es el dólar tarjeta",
+        "paragraphs": [
+          "El dólar tarjeta es el tipo de cambio que se aplica cuando pagás una compra en el exterior con una tarjeta argentina, de crédito o débito, que resuelve el pago en pesos. Es un valor más alto que el MEP, porque incluye conceptos adicionales que se suman en el resumen.",
+          "La ventaja es la comodidad. No necesitás tener dólares: pagás y el banco te cobra en pesos en el resumen. La desventaja es que el total en pesos suele ser mayor."
+        ]
+      },
+      {
+        "heading": "Qué es el dólar MEP",
+        "paragraphs": [
+          "El dólar MEP es el que resulta de comprar dólares a través del mercado de bonos, de manera legal y desde tu cuenta. Una vez que tenés esos dólares disponibles, por ejemplo en una cuenta o tarjeta en dólares, pagás la compra en esa moneda.",
+          "En ese caso, el costo en pesos de tu compra se mide con el dólar MEP que usaste para conseguir los dólares. El número final suele ser menor que con tarjeta, pero requiere organizarse antes: tener la cuenta, comprar los dólares y después pagar."
+        ]
+      },
+      {
+        "heading": "Cómo lo muestra el sitio",
+        "paragraphs": [
+          "En ofertas.knunet.com cada total se muestra en las dos versiones: con dólar MEP y con dólar tarjeta. Así podés ver cuánto cambia el costo en pesos según tu forma de pago, sin hacer la cuenta a mano.",
+          "El total en dólares es el mismo en los dos casos. Lo que cambia es el tipo de cambio que se le aplica. Para ver tu caso cargá el precio y el envío en la calculadora (/calculadora/).",
+          "Recordá la fórmula: total = (producto + envío + derechos + tasa de estadística) × (1 + IVA). Los derechos y la tasa se aplican solo al exceso sobre la franquicia de USD 400 FOB por envío. El resultado en pesos es ese total multiplicado por el tipo de cambio que corresponda."
+        ]
+      },
+      {
+        "heading": "Cuál conviene según tu situación",
+        "paragraphs": [
+          "No hay una respuesta única. Depende de si ya tenés dólares, de cuánto tiempo querés dedicarle y del monto de la compra.",
+          "Algunos criterios para decidir:"
+        ],
+        "bullets": [
+          "Si ya tenés una cuenta o tarjeta en dólares con fondos, pagar con esos dólares suele dar un total en pesos menor.",
+          "Si no tenés dólares y la compra es chica, pagar con tarjeta argentina es más cómodo, aunque el total en pesos sea mayor.",
+          "Si la compra es grande, la diferencia entre ambos totales también es grande, y vale la pena compararlos en la calculadora antes de pagar.",
+          "Si vas a hacer varias compras en el año, organizar una cuenta en dólares puede simplificar todo."
+        ]
+      },
+      {
+        "heading": "Lo que no cambia con el método de pago",
+        "paragraphs": [
+          "El régimen de courier es el mismo. Franquicia de USD 400 FOB por envío, hasta 5 envíos por año por persona, y sin derechos ni tasa de estadística dentro de ese monto (Decreto 1065/2024). El exceso paga ambos, y los demás impuestos siguen el régimen general (RG ARCA 5608/2024).",
+          "El IVA se calcula con 21% por defecto en el sitio. La alícuota correcta depende del producto y podés modificarla en la calculadora. Un despachante o el micrositio de envíos internacionales de ARCA pueden confirmarla.",
+          "También se mantiene el requisito de tener CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA para recibir compras por courier."
+        ]
+      },
+      {
+        "heading": "Un ejemplo de cómo leer los dos totales",
+        "paragraphs": [
+          "Imaginá, como ejemplo hipotético, que el total de una compra da USD 235,95. En el sitio vas a ver ese mismo número convertido a pesos de dos maneras: multiplicado por el dólar MEP del día y multiplicado por el dólar tarjeta del día.",
+          "La diferencia entre las dos columnas es lo que te cuesta pagar con tarjeta argentina en lugar de hacerlo con dólares MEP. No estamos mencionando porcentajes porque los componentes del dólar tarjeta pueden cambiar con el tiempo. Lo importante es que veas el número final de cada opción.",
+          "Con esos dos valores a la vista, decidir es más simple: si la diferencia justifica el trabajo de conseguir dólares antes de comprar, o si preferís la comodidad de la tarjeta."
+        ]
+      },
+      {
+        "heading": "Un consejo antes de pagar",
+        "paragraphs": [
+          "Comparar siempre los dos totales antes de confirmar. Fijate también qué dice Amazon sobre el depósito de import fees que cobra al pagar con destino a Argentina y qué ocurre si la liquidación final difiere. Las condiciones están en Amazon y conviene leerlas.",
+          "Si todavía no compraste nunca, la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/) te lleva por el proceso completo.",
+          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Qué diferencia hay entre dólar MEP y dólar tarjeta?",
+        "a": "El dólar tarjeta se aplica cuando pagás con una tarjeta argentina y es más alto. El MEP se usa cuando pagás con dólares que conseguiste por esa vía, por ejemplo desde una cuenta o tarjeta en dólares."
+      },
+      {
+        "q": "¿El total en dólares cambia según cómo pague?",
+        "a": "No. El total en dólares es el mismo. Lo que cambia es el tipo de cambio con el que se calcula el costo en pesos."
+      },
+      {
+        "q": "¿El sitio muestra los dos valores?",
+        "a": "Sí. Cada total aparece con dólar MEP y con dólar tarjeta, para que compares antes de comprar."
+      },
+      {
+        "q": "¿Cambian los impuestos según el método de pago?",
+        "a": "No. El régimen de courier y el cálculo de derechos, tasa e IVA son los mismos. Solo cambia el tipo de cambio aplicado al total."
+      }
+    ],
+    "related": [
+      "apple-airpods-pro-2-usb-c",
+      "asus-tuf-gaming-vg27aq3a",
+      "nespresso-delonghi-inissia-en80-b"
+    ]
+  }
+]

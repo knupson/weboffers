@@ -328,7 +328,7 @@ details.break summary { cursor: pointer; font-size: 14px; font-weight: 600; colo
 .rows .sum { border-top: 1px solid var(--linea); padding-top: 6px; font-weight: 700; }
 
 /* Texto largo */
-.page-head { padding: 48px 0 8px; display: grid; gap: 16px; }
+.page-head { padding-top: 48px; padding-bottom: 8px; display: grid; gap: 16px; }
 .page-head h1 { font-size: clamp(40px, 5.6vw, 72px); }
 .prose { max-width: 68ch; }
 .prose h2 { font: 800 22px/1.25 var(--sans); margin: 36px 0 10px; }
@@ -378,3 +378,10 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .reglamento li { display: flex; gap: 12px; align-items: baseline; color: var(--crema-2); }
 .reglamento b { font-family: var(--letra); font-weight: 400; color: var(--celeste); white-space: nowrap; }
 .cuenta .links { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 28px; }
+
+/* Preguntas frecuentes de las guías */
+.faq { border-top: 1px solid var(--linea); padding: 14px 0; }
+.faq summary { cursor: pointer; font-weight: 700; color: var(--crema); }
+.faq summary::marker { color: var(--amarillo); }
+.faq p { margin-top: 8px; }
+.pizarra.una { grid-template-columns: 1fr; }
