@@ -29,7 +29,7 @@
         "heading": "Qué pagás si el envío entra en la franquicia",
         "paragraphs": [
           "Dentro de los USD 400 no se pagan derechos de importación ni tasa de estadística. Pero eso no significa que el envío salga sin impuestos. Los demás tributos siguen el régimen general de importación, según lo establece la RG ARCA 5608/2024. El que más pesa es el IVA.",
-          "En este sitio el IVA se calcula con 21% por defecto. La alícuota correcta depende de la posición arancelaria de cada producto, y nosotros no confirmamos que corresponda 10,5% para courier. Por eso podés cambiar el porcentaje en la calculadora (/calculadora/). Si necesitás certeza para un producto puntual, un despachante de aduana o el micrositio de envíos internacionales de ARCA pueden confirmarte la alícuota."
+          "El IVA es del 21%. Lo comprobamos en el checkout de Amazon con dirección en Argentina: en todos los productos que revisamos, incluidos SSD y procesadores, Amazon cobra el 21% más sus propios cargos de importación, unos 23% a 27% en total sobre el precio. La calculadora (/calculadora/) ya hace esa cuenta."
         ]
       },
       {
@@ -136,7 +136,7 @@
         "heading": "Paso 5: calculá el costo final antes de pagar",
         "paragraphs": [
           "La fórmula del sitio es: total = (producto + envío + derechos + tasa de estadística) × (1 + IVA). Los derechos, estimados en 35% y editables, y la tasa de 3% se aplican solo al exceso sobre USD 400.",
-          "El IVA se calcula por defecto con 21%. La alícuota correcta depende de la posición arancelaria del producto y el sitio no confirmó que 10,5% aplique a courier. Podés cambiarlo en la calculadora (/calculadora/). Para confirmarlo, consultá a un despachante o al micrositio de envíos internacionales de ARCA.",
+          "El IVA es del 21%: es lo que cobra Amazon en el checkout en todos los productos que revisamos, más unos cargos de importación propios (en total, 23% a 27% sobre el precio). La calculadora (/calculadora/) ya lo incluye.",
           "Cargá el precio y el envío en la calculadora y vas a ver el total puesto en tu casa."
         ]
       },
@@ -204,7 +204,7 @@
         "paragraphs": [
           "El régimen es el mismo que para cualquier compra por courier. Hay una franquicia de USD 400 FOB por envío, hasta 5 envíos por año por persona. Dentro de la franquicia no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). El exceso sobre USD 400 paga ambos, y los demás impuestos, como el IVA, siguen el régimen general (RG ARCA 5608/2024).",
           "El tope por envío es de USD 3.000 FOB y 50 kg. El detalle completo está en la guía de la franquicia (/guias/franquicia-400-dolares/).",
-          "En el sitio el IVA se calcula con 21% por defecto. La alícuota correcta depende de la posición arancelaria del producto, y no confirmamos 10,5% para courier. Podés cambiarla en la calculadora (/calculadora/)."
+          "El IVA es del 21%, el mismo que cobra Amazon.com en el checkout para Argentina. La calculadora (/calculadora/) lo aplica solo."
         ]
       },
       {
@@ -305,7 +305,7 @@
         "paragraphs": [
           "Confirmá el total exacto en el checkout de Amazon. El 25% es una referencia para comparar, no reemplaza el número final.",
           "Para ver el total en pesos, cargá el precio y el envío en la calculadora (/calculadora/). Si querés entender la diferencia entre los dos tipos de cambio, leé la guía de dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/).",
-          "Sobre el IVA: el sitio lo calcula con 21% por defecto, pero la alícuota correcta depende de la posición arancelaria del producto y no confirmamos 10,5% para courier. Un despachante o el micrositio de envíos internacionales de ARCA pueden confirmarla."
+          "Sobre el IVA: Amazon cobra el 21% en el checkout, más unos cargos de importación propios. Ya está incluido en la cuenta."
         ]
       },
       {

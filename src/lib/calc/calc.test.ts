@@ -36,14 +36,10 @@ describe('calculate', () => {
       .toEqual([expect.stringContaining('5 envíos')]);
   });
 
-  it('uses 10.5 percent only when explicitly selected and warns', () => {
-    const input = { fobUsd: 100, shippingUsd: 0 };
-    const standard = calculate(input, null);
+  it('uses 21 percent IVA by default', () => {
+    const standard = calculate({ fobUsd: 100, shippingUsd: 0 }, null);
     expect(standard.ivaUsd).toBe(21);
     expect(standard.warnings).toHaveLength(1);
-    const chosen = calculate({ ...input, ivaRate: 0.105 }, null);
-    expect(chosen.ivaUsd).toBe(10.5);
-    expect(chosen.warnings).toContainEqual(expect.stringMatching(/10,5%.*no está verificada.*usuario/));
   });
 
   it('converts using each supplied rate', () => {

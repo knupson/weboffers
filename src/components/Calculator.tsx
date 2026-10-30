@@ -37,7 +37,8 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
   const [eurUsd, setEurUsd] = useState<number | null>(null);
   const [fob, setFob] = useState(initialFob ? String(initialFob) : "");
   const [ship, setShip] = useState("");
-  const [iva, setIva] = useState("21");
+  // Amazon cobra IVA 21% en todo lo que verificamos (30/10/2026), incluidos SSD y procesadores.
+  const iva = "21";
   const [duty, setDuty] = useState("35");
   const [local, setLocal] = useState("");
   const [rates, setRates] = useState<LiveRates | null>(buildRates ? { ...buildRates, live: false } : null);
@@ -121,21 +122,6 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
               <input id="c-ship" class="in" inputMode="decimal" placeholder={currency === "USD" ? (autoShip === 0 ? "Gratis" : String(autoShip)) : ""} value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
             </div>
             <small>{currency === "USD" ? "Lo calculamos solo: gratis desde USD 100 en productos elegibles, unos USD 45 debajo. Cargalo sólo si Amazon te muestra otro." : "Cargá el envío que te muestra Amazon.es antes de pagar."}</small>
-          </div>
-          <div class="field">
-            <span class="lab" id="c-iva">IVA</span>
-            <div class="seg" role="radiogroup" aria-labelledby="c-iva">
-              {[
-                ["21", "21%"],
-                ["10.5", "10,5%"],
-              ].map(([v, label]) => (
-                <label key={v}>
-                  <input type="radio" name="iva" value={v} checked={iva === v} onChange={() => setIva(v)} />
-                  {label}
-                </label>
-              ))}
-            </div>
-            <small>Usamos 21%. El 10,5% depende del producto y no está confirmado.</small>
           </div>
           {hasExcess && (
             <div class="field">

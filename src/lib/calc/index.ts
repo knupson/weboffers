@@ -28,9 +28,6 @@ export function calculate(input: CalcInput, rates: Rates | null): CalcResult {
 
   if (fobUsd > 3000) warnings.push('El FOB supera USD 3000 y queda fuera del régimen courier.');
   if (weightKg > 50) warnings.push('El peso supera el límite de 50 kg por envío.');
-  if (input.ivaRate === 0.105) {
-    warnings.push('La tasa de IVA del 10,5% no está verificada y fue elegida por el usuario.');
-  }
 
   return {
     fobUsd: cents(fobUsd),
