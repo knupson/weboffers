@@ -2,21 +2,29 @@
 import Icon from "./Icon.astro";
 import { amazonUrl, artFor, STORE_LABEL } from "../config";
 import { brandLogo } from "../lib/brands";
-import { formatArs, formatPrice, formatUsd, formatStamp } from "../lib/format";
-import { buildQuotes, estimateArs, officialPrice } from "../lib/estimate";
+import { formatArs, formatUsd, formatStamp } from "../lib/format";
 import type { CatalogEntry, OfferItem } from "../lib/data";
 
 interface Props {
   product: CatalogEntry & { price: OfferItem | null; offer?: OfferItem };
 }
 
+// Una sola tarjeta para todo el catálogo: precio en pesos, veredicto y el botón de compra que conviene.
+// El detalle (precio de lista, calculadora, desglose) vive en la ficha.
 const { product: p } = Astro.props;
 const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
-const lp = p.price ? null : p.listPrice;
-const quotes = lp ? await buildQuotes() : null;
 const free = p.shipsToAr?.freeShipping === true;
-const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : null;
+const amazon = amazonUrl(p.asin, p.store);
+const fecha = p.ml?.checked.split("-").reverse().slice(0, 2).join("/");
+const verdict = p.ml ? p.verdict ?? "parejo" : null;
+const track = (tienda: string, origen: string) => ({
+  "data-umami-event": tienda === "ml" ? "mercadolibre" : "amazon",
+  "data-umami-event-tienda": tienda === "ml" ? "ML" : p.store,
+  "data-umami-event-producto": p.slug,
+  "data-umami-event-origen": origen,
+});
+const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
 ---
 
 <article class="card" data-category={p.category}>
@@ -29,112 +37,59 @@ const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUs
     <span class="badge" title={p.brand}>
       {logo ? <svg viewBox={logo.viewBox} style={logo.ratio === 1 ? "height:24px;aspect-ratio:1" : `aspect-ratio:${logo.ratio}`} role="img" aria-label={p.brand}><path d={logo.path} /></svg> : p.brand}
     </span>
-    <span class="store">{STORE_LABEL[p.store]}</span>
     {free && <span class="envio"><Icon name="truck" size={14} /> Envío gratis a Argentina</span>}
   </div>
   <div class="body">
     <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
     <p class="sum">{p.summary}</p>
   </div>
-  <div class={p.verdict === "ml" ? "foot gana-ml" : "foot"}>
-    {p.verdict && (
-      <p class={`veredicto ${p.verdict}`}>
-        {p.verdict === "amazon" ? "Conviene traerlo de Amazon" : p.verdict === "ml" ? "Conviene comprarlo en Mercado Libre" : "Da parecido: elegí por entrega"}
-        <small>Comparado el {p.ml?.checked.split("-").reverse().slice(0, 2).join("/")}</small>
+  <div class="foot">
+    {p.price && (
+      <p class="precio">
+        <span class="lab">En {STORE_LABEL[p.store]}</span>
+        <span class="monto num">{formatUsd(p.price.priceUsd as number)}</span>
+        <small>al {formatStamp(p.price.priceFetchedAt as string)}</small>
       </p>
     )}
-    {p.price && (
-      <span class="price num">
-        {formatUsd(p.price.priceUsd as number)}
-        <small>al {formatStamp(p.price.priceFetchedAt as string)}</small>
-      </span>
+    {p.ml && (
+      <p class="precio">
+        <span class="lab">En Argentina</span>
+        <span class="monto num">{formatArs(p.ml.price)}</span>
+        <small>Mercado Libre, {fecha}</small>
+      </p>
     )}
-    {lp && (
-      <div class="oficial">
-        <span class="lab">{lp.retailer ? `Referencia en ${lp.retailer} (EE.UU.)` : `Precio oficial de ${p.brand}`}</span>
-        <span class="ref num">
-          {formatPrice(officialPrice(lp), lp.currency)}
-          {lp.sale != null && <s>{formatPrice(lp.amount, lp.currency)}</s>}
-        </span>
-        {free && !p.verdict ? (
-          <>
-            <span class="casa">{lp.retailer ? "A ese precio" : "A precio oficial"}, puesto en casa <b class="num" data-est={officialPrice(lp)} data-est-cur={lp.currency}>{est != null ? `≈ ${formatArs(est)}` : "…"}</b></span>
-            <small>Amazon cobra el precio + ≈25% (IVA y cargos), con envío gratis. Si en Amazon está más barato, te sale menos.</small>
-          </>
-        ) : (
-          <small>{p.verdict ? "Precio de lista. Pegá abajo el de hoy en Amazon para ver cuánto te sale puesto en casa." : "Sin envío ni impuestos. Mirá el precio de hoy en Amazon."}</small>
-        )}
-      </div>
-    )}
-    {!lp && !p.price && (
-      <div class="oficial">
-        <span class="lab">Precio</span>
-        <span class="ref">{p.brand} no publica precio oficial</span>
-        <small>Miralo en Amazon y pegalo abajo: te decimos cuánto te sale puesto en casa.</small>
-      </div>
-    )}
-    <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
-      Ver en Amazon <Icon name="arrow-up-right" size={16} />
-    </a>
-    {p.store === "US" && !p.price && (
+
+    {verdict === "amazon" && (
       <>
-        <label class="hoy">
-          <span>¿Cuánto sale hoy en Amazon?</span>
-          <span class="in-usd"><span>USD</span><input data-hoy inputmode="decimal" autocomplete="off" placeholder="Pegá el precio" aria-describedby={`hoy-${p.slug}`} /></span>
-        </label>
-        <p class="hoy-out" id={`hoy-${p.slug}`} data-hoy-out aria-live="polite"></p>
-        <a class="btn comprar" hidden data-hoy-buy href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta-calculo">
-          Comprarlo en Amazon <Icon name="arrow-up-right" size={16} />
+        <a class="gana amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
+          <span class="v">Conviene traerlo</span>
+          <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={16} /></span>
         </a>
-        <p class="hoy-tip">¿Amazon te muestra pesos? <a href="https://www.amazon.com/customer-preferences/edit" target="_blank" rel="noopener noreferrer">Cambiá la moneda a USD</a>.</p>
+        <a class="alt" href={p.ml!.url} {...ext} {...track("ml", "alternativa")}>o comprarlo en Mercado Libre</a>
       </>
     )}
-    {p.ml && (
-      <div class="opcion-ml">
-        <span class="lab">En Mercado Libre</span>
-        <span class="ml-precio num">desde {formatArs(p.ml.price)}</span>
-        <a class="btn ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
-          Ver en Mercado Libre <Icon name="arrow-up-right" size={16} />
+    {verdict === "ml" && (
+      <>
+        <a class="gana ml" href={p.ml!.url} {...ext} {...track("ml", "veredicto")}>
+          <span class="v">Conviene comprarlo acá</span>
+          <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
         </a>
-        <small>Entrega en días, sin aduana. Si comprás desde acá, Mercado Libre nos paga una comisión.</small>
-      </div>
+        <a class="alt" href={amazon} {...ext} {...track("amazon", "alternativa")}>o traerlo de Amazon</a>
+      </>
     )}
+    {verdict === "parejo" && (
+      <>
+        <p class="parejo">Da parecido: elegí por entrega</p>
+        <div class="dos">
+          <a class="btn chico" href={amazon} {...ext} {...track("amazon", "parejo")}>Amazon</a>
+          <a class="btn chico ml" href={p.ml!.url} {...ext} {...track("ml", "parejo")}>Mercado Libre</a>
+        </div>
+      </>
+    )}
+    {!verdict && (
+      <a class="btn" href={amazon} {...ext} {...track("amazon", "tarjeta")}>Ver precio en Amazon <Icon name="arrow-up-right" size={16} /></a>
+    )}
+
     <a class="costo" href={`/productos/${p.slug}/`}>Ver la cuenta completa</a>
   </div>
 </article>
-
-<script>
-  import { fetchRates } from "../lib/dolar";
-  import { estimateFromAmazon } from "../lib/estimate";
-  import { formatArs } from "../lib/format";
-
-  // Calculadora de la tarjeta: la persona carga el precio que ve en Amazon (no lo publicamos nosotros).
-  let mep: number | null = null;
-  const ready = fetchRates().then((r) => (mep = r?.mep ?? null));
-  let tracked = false;
-  document.addEventListener("input", async (e) => {
-    const input = e.target as HTMLInputElement;
-    if (!input.matches?.("[data-hoy]")) return;
-    const out = input.closest(".card")?.querySelector<HTMLElement>("[data-hoy-out]");
-    if (!out) return;
-    // Amazon escribe "$1,299.99"; acá también se escribe "259,99".
-    const raw = input.value.replace(/[^\d.,]/g, "");
-    const usd = Number(raw.includes(".") ? raw.replace(/,/g, "") : raw.replace(",", "."));
-    const buy = input.closest(".card")?.querySelector<HTMLElement>("[data-hoy-buy]");
-    if (buy) buy.hidden = true;
-    if (!(usd > 0)) return void (out.textContent = "");
-    // Con dirección en Argentina, Amazon muestra pesos por defecto: un número así no es un precio en dólares.
-    if (usd > 5000) return void (out.textContent = "Eso parece un precio en pesos. Cambiá la moneda de Amazon a USD y pegá el precio en dólares.");
-    await ready;
-    if (!mep) return void (out.textContent = "No pudimos traer el dólar MEP. Probá en un rato.");
-    const envio = usd >= 100 ? "envío gratis" : "con ≈ USD 45 de envío";
-    const link = input.closest(".card")?.querySelector<HTMLAnchorElement>("a.costo");
-    if (link) link.href = `${link.pathname}?fob=${usd}#calculadora`;
-    if (buy) buy.hidden = false;
-    out.innerHTML = `Puesto en casa <b>≈ ${formatArs(estimateFromAmazon(usd, mep))}</b><br>IVA y cargos de Amazon (≈25%), ${envio}, al MEP.`;
-    if (!tracked) {
-      tracked = true;
-      (window as unknown as { umami?: { track: (n: string) => void } }).umami?.track("calc-tarjeta");
-    }
-  });
-</script>

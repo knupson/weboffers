@@ -297,7 +297,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 219838,
+      "url": "https://meli.la/241Nt3U",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0B6XTDJS1",
@@ -940,7 +946,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 198462,
+      "url": "https://meli.la/1nhEt6i",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0CG6NBJ61",
@@ -950,7 +962,7 @@
     "brand": "Garmin",
     "category": "Relojes",
     "summary": "Reloj inteligente con pantalla AMOLED, GPS, monitoreo de sueño y salud, y hasta 11 días de batería.",
-    "verified": true,
+    "verified": false,
     "image": "/products/garmin-vivoactive-5.webp",
     "imageSource": "https://www.garmin.com/en-US/p/1057989/",
     "shipsToAr": {
@@ -1035,7 +1047,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 368644,
+      "url": "https://meli.la/13ngUbF",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0GQWSKBLD",
@@ -1051,7 +1069,13 @@
       "checked": "2026-10-30"
     },
     "image": "/products/philips-sonicare-5950.webp",
-    "imageSource": "https://www.philips.ca/c-p/HX7130_03/series-5950-rechargeable-toothbrush"
+    "imageSource": "https://www.philips.ca/c-p/HX7130_03/series-5950-rechargeable-toothbrush",
+    "ml": {
+      "price": 380178,
+      "url": "https://meli.la/1WLbQTx",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0FVXLPWHM",
@@ -1073,7 +1097,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 716000,
+      "url": "https://meli.la/1sStGhM",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0CZY1LRT4",
@@ -1195,7 +1225,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 370443,
+      "url": "https://meli.la/11z2kRe",
+      "checked": "2026-10-30"
+    },
+    "verdict": "parejo"
   },
   {
     "asin": "B0D6NN87T8",
@@ -1252,7 +1288,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 494999,
+      "url": "https://meli.la/29FnkHS",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B09FWYK5M9",
@@ -1288,7 +1330,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 443991,
+      "url": "https://meli.la/1wyUMkj",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0BH7GTY9C",
@@ -1303,7 +1351,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 393479,
+      "url": "https://meli.la/2w1fXwn",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0D48GS6KB",
@@ -1348,7 +1402,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 665820,
+      "url": "https://meli.la/1GXwyfh",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0F2TT8Q7M",
@@ -1560,7 +1620,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 660990,
+      "url": "https://meli.la/15jquzi",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0CKVD62NX",
@@ -1779,7 +1845,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 577750,
+      "url": "https://meli.la/2NNaRYA",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B0DB6S6R89",
@@ -1910,7 +1982,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 481634,
+      "url": "https://meli.la/2cvgnao",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0FQNTZPX1",
@@ -1933,7 +2011,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 691929,
+      "url": "https://meli.la/2mQ8CuZ",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B09FFTB9V6",
@@ -1956,7 +2040,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 690000,
+      "url": "https://meli.la/1cX2axV",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon"
   },
   {
     "asin": "B00HNJWSDS",
@@ -1979,7 +2069,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 445561,
+      "url": "https://meli.la/1Ubne5Q",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B07QQB9VCV",
@@ -1989,7 +2085,7 @@
     "brand": "Logitech G",
     "category": "Periféricos",
     "summary": "Teclado mecánico sin teclado numérico con switches GX Blue clicky, RGB LIGHTSYNC y cable USB desmontable.",
-    "verified": true,
+    "verified": false,
     "image": "/products/logitech-g-pro-tkl.webp",
     "imageSource": "https://www.logitechg.com/en-us/shop/p/pro-mechanical-gaming-keyboard.920-009388",
     "listPrice": {
@@ -2018,7 +2114,13 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "ml": {
+      "price": 305019,
+      "url": "https://meli.la/1GoPc3T",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml"
   },
   {
     "asin": "B0GMLBSSTD",

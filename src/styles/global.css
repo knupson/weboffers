@@ -387,14 +387,6 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .faq p { margin-top: 8px; }
 .pizarra.una { grid-template-columns: 1fr; }
 
-/* Precio oficial del fabricante en la tarjeta */
-.card .oficial { display: grid; gap: 2px; padding-bottom: 12px; border-bottom: 1px dashed var(--linea); }
-.card .oficial .lab { font-size: 12px; font-weight: 600; color: var(--apagado); }
-.card .oficial .ref { font: 600 15px var(--sans); color: var(--crema); }
-.card .oficial .ref s { margin-left: 6px; font-size: 13px; color: var(--apagado); }
-.card .oficial .casa { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--crema-2); }
-.card .oficial .casa b { display: block; font-family: var(--letra); font-weight: 400; font-size: 24px; line-height: 1.15; color: var(--amarillo); }
-.card .oficial small { font-size: 12px; color: var(--apagado); }
 .envio { z-index: 3; position: absolute; left: 10px; bottom: 10px; height: 26px; padding: 0 9px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; background: var(--verde); color: #fff; font: 700 12px var(--sans); }
 
 /* Redes en el pie */
@@ -403,35 +395,26 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .redes a:hover { background: var(--placa-2); }
 .redes svg { width: 18px; height: 18px; fill: var(--amarillo); }
 
-/* Calculadora en la tarjeta: el precio lo carga quien mira */
-.card .hoy { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 6px; font-size: 13px; font-weight: 600; color: var(--crema-2); }
-.card .hoy .in-usd { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: 10px; background: var(--placa-2); box-shadow: inset 0 0 0 1px var(--linea); }
-.card .hoy .in-usd:focus-within { box-shadow: inset 0 0 0 2px var(--amarillo); }
-.card .hoy .in-usd span { font: 700 13px var(--sans); color: var(--apagado); }
-.card .hoy input { flex: 1; width: 100%; min-width: 0; height: 100%; border: 0; background: none; color: var(--crema); font: 600 16px var(--sans); outline: none; }
-.card .hoy-out { position: relative; z-index: 1; min-height: 1.4em; font-size: 13px; color: var(--crema-2); }
-.card .hoy-out b { font-family: var(--letra); font-weight: 400; font-size: 20px; color: var(--amarillo); }
-.card .hoy-tip { position: relative; z-index: 1; font-size: 12px; color: var(--apagado); }
-.card .hoy-tip a { color: var(--celeste); }
 
-/* Botón de compra que aparece después de la cuenta */
-.card .btn.comprar { position: relative; z-index: 1; padding: 0 12px; font-size: 14px; background: #187a42; box-shadow: inset 0 0 0 3px #187a42, inset 0 0 0 4.5px var(--crema); }
-.card .btn.comprar[hidden] { display: none; }
 .calc .comprar { display: grid; gap: 8px; }
 .calc .comprar .btn { background: #187a42; box-shadow: inset 0 0 0 3px #187a42, inset 0 0 0 4.5px var(--crema); }
 
-/* Comparación Amazon / Mercado Libre */
-.card .veredicto { position: relative; z-index: 1; margin: 0; padding: 8px 10px; border-radius: 10px; font: 700 14px/1.25 var(--sans); display: grid; gap: 2px; }
-.card .veredicto small { font: 500 11px var(--sans); opacity: .8; }
-.card .veredicto.amazon { background: #187a42; color: #fff; }
-.card .veredicto.ml { background: var(--amarillo); color: var(--esmalte); }
-.card .veredicto.parejo { background: var(--placa-2); color: var(--crema); box-shadow: inset 0 0 0 1px var(--linea); }
-.card .opcion-ml { position: relative; z-index: 1; display: grid; gap: 4px; padding-top: 12px; border-top: 1px dashed var(--linea); }
-.card .opcion-ml .lab { font-size: 12px; font-weight: 600; color: var(--apagado); }
-.card .opcion-ml .ml-precio { font: 600 15px var(--sans); color: var(--crema); }
-.card .opcion-ml small { font-size: 12px; color: var(--apagado); }
-.btn.ml { padding: 0 12px; font-size: 14px; background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }
-.card .foot.gana-ml .opcion-ml { order: 1; border-top: 0; padding-top: 0; }
-.card .foot.gana-ml .veredicto { order: 0; }
-.card .foot.gana-ml > :not(.veredicto):not(.opcion-ml) { order: 2; }
-.card .foot .btn { max-width: 100%; }
+
+/* Tarjeta: precio en pesos, veredicto y compra */
+.precio { margin: 0; display: grid; gap: 1px; }
+.precio .lab { font-size: 12px; font-weight: 600; color: var(--apagado); }
+.precio .monto { font-family: var(--letra); font-size: 26px; line-height: 1.1; color: var(--amarillo); }
+.precio small { font-size: 12px; color: var(--apagado); }
+.gana { position: relative; z-index: 1; display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--r-campo); text-decoration: none; transition: transform 120ms var(--ease-out), filter 150ms var(--ease-out); }
+.gana:hover { filter: brightness(1.08); }
+.gana:active { transform: translateY(1px); }
+.gana .v { font: 700 13px var(--sans); opacity: .9; }
+.gana .cta { display: inline-flex; align-items: center; gap: 8px; font: 400 16px/1.1 var(--letra); }
+.gana.amazon { background: #187a42; color: #fff; box-shadow: inset 0 0 0 3px #187a42, inset 0 0 0 4.5px var(--crema); }
+.gana.ml { background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }
+.alt { position: relative; z-index: 1; justify-self: center; font-size: 13px; font-weight: 600; color: var(--crema-2); }
+.card .foot > .btn { padding: 0 12px; font-size: 15px; }
+.parejo { margin: 0; font: 700 13px var(--sans); color: var(--crema); }
+.dos { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn.chico { height: 42px; padding: 0 10px; font-size: 14px; }
+.btn.ml { background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }

@@ -5,8 +5,7 @@ import ProductCard from "../../components/ProductCard.astro";
 import Icon from "../../components/Icon.astro";
 import { amazonUrl, artFor, SITE, STORE_LABEL } from "../../config";
 import { brandLogo } from "../../lib/brands";
-import { formatPrice, formatUsd, formatStamp } from "../../lib/format";
-import { officialPrice } from "../../lib/estimate";
+import { formatArs } from "../../lib/format";
 import { loadProducts } from "../../lib/data";
 
 export async function getStaticPaths() {
@@ -85,27 +84,44 @@ const specs: Array<[string, string]> = [
 
       <div class="buybox">
         <div class="buy">
-          {p.price ? (
-            <div>
-              <span class="price num">{formatUsd(p.price.priceUsd as number)}</span>
-              <p class="fine">En {STORE_LABEL[p.store]}, consultado el {formatStamp(p.price.priceFetchedAt as string)}.</p>
-            </div>
-          ) : p.listPrice ? (
-            <div>
-              <p class="fine">{p.listPrice.retailer ? `Referencia en ${p.listPrice.retailer} (EE.UU.)` : `Precio oficial de ${p.brand}`}</p>
-              <span class="price num">{formatPrice(officialPrice(p.listPrice), p.listPrice.currency)}</span>
-              <p class="fine">Consultado el {p.listPrice.checked.split("-").reverse().join("/")} en <a class="link" href={p.listPrice.source} target="_blank" rel="noopener noreferrer">{p.listPrice.retailer ?? "la tienda oficial"}</a>. En {STORE_LABEL[p.store]} suele estar más barato: mirá el precio de hoy y ajustalo abajo.</p>
-            </div>
-          ) : (
-            <p>Mirá el precio en {STORE_LABEL[p.store]} y cargalo abajo para ver el costo final en pesos.</p>
+          {p.ml && (
+            <p class="precio">
+              <span class="lab">En Argentina</span>
+              <span class="monto num">{formatArs(p.ml.price)}</span>
+              <small>Mercado Libre, consultado el {p.ml.checked.split("-").reverse().join("/")}</small>
+            </p>
           )}
-          <a class="btn lg" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha">
-            Ver en {STORE_LABEL[p.store]} <Icon name="arrow-up-right" size={18} />
-          </a>
-          <p class="fine">{SITE.disclosure}</p>
+          {p.verdict === "amazon" && p.ml && (
+            <>
+              <a class="gana amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
+                <span class="v">Conviene traerlo: Amazon lo deja más barato puesto en tu casa</span>
+                <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={18} /></span>
+              </a>
+              <a class="alt" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o comprarlo en Mercado Libre</a>
+            </>
+          )}
+          {p.verdict === "ml" && p.ml && (
+            <>
+              <a class="gana ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
+                <span class="v">Conviene comprarlo acá: traerlo no te ahorra</span>
+                <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={18} /></span>
+              </a>
+              <a class="alt" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o traerlo de Amazon</a>
+            </>
+          )}
+          {(p.verdict === "parejo" || !p.verdict) && (
+            <>
+              {p.ml && <p class="parejo">Da parecido: si lo querés ya, Mercado Libre; si podés esperar, Amazon.</p>}
+              <div class="dos">
+                <a class="btn" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha">Amazon <Icon name="arrow-up-right" size={16} /></a>
+                {p.ml && <a class="btn ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha">Mercado Libre <Icon name="arrow-up-right" size={16} /></a>}
+              </div>
+            </>
+          )}
+          <p class="fine">Comparamos el total que cobra Amazon con envío e impuestos contra el precio nuevo más barato del mismo modelo en Mercado Libre. Para tu cuenta exacta, pegá abajo el precio de Amazon de hoy. {SITE.disclosure}</p>
         </div>
         <div id="calculadora" style="scroll-margin-top: 96px">
-        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? (p.listPrice ? officialPrice(p.listPrice) : null)} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={{ url: buy, store: p.store, slug: p.slug }} />
+        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? null} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={{ url: buy, store: p.store, slug: p.slug }} />
         </div>
       </div>
     </div>
