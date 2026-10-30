@@ -43,7 +43,7 @@ const cats = [
             <option value="US">Amazon.com</option>
             <option value="ES">Amazon.es</option>
           </select>
-          <button class="btn" type="submit">Buscar</button>
+          <button class="btn" type="submit" data-umami-event="busqueda">Buscar</button>
         </form>
       </div>
       <div>
@@ -61,7 +61,7 @@ const cats = [
   <div class="wrap">
     <nav class="cats" aria-label="Categorías">
       {cats.map((c) => (
-        <a class="cat" href={c.href} {...(c.external ? { target: "_blank", rel: "noopener noreferrer sponsored" } : {})}>
+        <a class="cat" href={c.href} {...(c.external ? { target: "_blank", rel: "noopener noreferrer sponsored", "data-umami-event": "amazon", "data-umami-event-tienda": "ES", "data-umami-event-origen": "categoria" } : {})}>
           <img src={CATEGORY_ART[c.name]} alt="" loading="lazy" width="900" height="658" />
           <span>{c.name}<small>{c.sub}</small></span>
         </a>
@@ -87,7 +87,7 @@ const cats = [
       </div>
       <div class="pizarra">
         {SEARCHES.map((s) => (
-          <a href={amazonSearchUrl(s.query, s.store)} target="_blank" rel="noopener noreferrer sponsored">
+          <a href={amazonSearchUrl(s.query, s.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={s.store} data-umami-event-producto={s.query} data-umami-event-origen="busqueda-armada">
             <img src={s.art ?? CATEGORY_ART[s.category]} alt="" loading="lazy" width="900" height="658" />
             <span class="label">{s.label}<span class="where">{STORE_LABEL[s.store]}</span></span>
             <Icon name="arrow-up-right" size={18} class="go" />
@@ -95,8 +95,8 @@ const cats = [
         ))}
       </div>
       <div class="deals">
-        <a class="btn ghost" href={amazonDealsUrl("US")} target="_blank" rel="noopener noreferrer sponsored">Ofertas del día en Amazon.com</a>
-        <a class="btn ghost" href={amazonDealsUrl("ES")} target="_blank" rel="noopener noreferrer sponsored">Ofertas del día en Amazon.es</a>
+        <a class="btn ghost" href={amazonDealsUrl("US")} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda="US" data-umami-event-origen="ofertas-del-dia">Ofertas del día en Amazon.com</a>
+        <a class="btn ghost" href={amazonDealsUrl("ES")} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda="ES" data-umami-event-origen="ofertas-del-dia">Ofertas del día en Amazon.es</a>
       </div>
     </div>
   </section>

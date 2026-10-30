@@ -92,7 +92,7 @@ const specs: Array<[string, string]> = [
           ) : (
             <p>Mirá el precio en {STORE_LABEL[p.store]} y cargalo abajo para ver el costo final en pesos.</p>
           )}
-          <a class="btn lg" href={buy} target="_blank" rel="noopener noreferrer sponsored">
+          <a class="btn lg" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha">
             Ver en {STORE_LABEL[p.store]} <Icon name="arrow-up-right" size={18} />
           </a>
           <p class="fine">{SITE.disclosure}</p>

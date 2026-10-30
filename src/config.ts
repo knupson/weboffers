@@ -1,3 +1,5 @@
+export const UMAMI = { src: "https://analytics.knunet.com/k.js", id: "a0176c95-f04a-4452-95d1-d60ae943a76e" };
+
 export const SITE = {
   name: "Franquicia 400",
   url: "https://ofertas.knunet.com",

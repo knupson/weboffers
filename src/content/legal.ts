@@ -8,7 +8,7 @@ export interface LegalDoc {
   sections: Array<{ heading: string; body: string[]; bullets?: string[] }>;
 }
 
-// Borrador editorial. Faltan datos del responsable (nombre y contacto): ver CONTACT en config.
+// Borrador editorial: conviene que lo revise un abogado.
 export const LEGAL: Record<LegalId, LegalDoc> = {
   afiliados: {
     id: "afiliados",
@@ -51,6 +51,12 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
     updated: "30 de octubre de 2026",
     sections: [
       {
+        heading: "Quién es el responsable",
+        body: [
+          "Responsable: Alejandro Benzoni (Argentina). Contacto: ofertas@knunet.com. Por ese mail podés hacer cualquier consulta o pedido sobre tus datos.",
+        ],
+      },
+      {
         heading: "Lo que no hacemos",
         body: [
           "No hay cuentas, formularios ni pagos. No te pedimos nombre, CUIT, mail ni dirección. Los números que cargás en la calculadora se procesan en tu navegador y no se envían a ningún servidor nuestro.",
@@ -58,8 +64,9 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
       },
       {
         heading: "Lo que sí pasa",
-        body: ["Hay dos conexiones técnicas:"],
+        body: ["Hay tres conexiones técnicas:"],
         bullets: [
+          "Para saber cuánta gente visita el sitio usamos una analítica propia y libre (Umami, en un servidor del responsable, analytics.knunet.com; sin terceros). Cuenta páginas vistas, de qué sitio llegaste, país (deducido de la IP en el momento, que no se guarda), navegador, sistema, tamaño de pantalla y qué links a Amazon tocaste. No usa cookies ni identificadores guardados en tu navegador, y si tu navegador pide «no rastrear» (Do Not Track) no se cuenta nada. Los datos se usan sólo para mejorar el sitio y no se comparten.",
           "Tu navegador consulta la cotización del dólar a dolarapi.com cuando abrís la calculadora. Ese servicio ve tu dirección IP, como cualquier sitio que visites.",
           "Cloudflare, que aloja el sitio, registra datos técnicos de las visitas (IP, navegador, página) para entregar el contenido y protegerlo de abusos.",
         ],
@@ -73,7 +80,7 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
       {
         heading: "Tus derechos",
         body: [
-          "La Ley 25.326 te da derecho de acceso, rectificación y supresión sobre tus datos personales. La Agencia de Acceso a la Información Pública es el órgano de control y atiende denuncias y reclamos.",
+          "La Ley 25.326 te da derecho de acceso, rectificación y supresión sobre tus datos personales. Pedilo a ofertas@knunet.com. La Agencia de Acceso a la Información Pública es el órgano de control y atiende denuncias y reclamos.",
         ],
       },
     ],
@@ -87,7 +94,7 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
       {
         heading: "Nuestro sitio",
         body: [
-          "No usamos cookies propias, ni de analítica, ni píxeles de publicidad. Por eso no hay un banner de consentimiento.",
+          "No usamos cookies propias ni píxeles de publicidad. La analítica (Umami, propia) funciona sin cookies ni identificadores guardados en tu navegador y respeta «no rastrear». Por eso no hay un banner de consentimiento.",
         ],
       },
       {
@@ -99,7 +106,7 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
       {
         heading: "Si esto cambia",
         body: [
-          "Si más adelante sumamos analítica o cualquier cookie propia, actualizamos esta página y agregamos el aviso de consentimiento antes de activarla.",
+          "Si más adelante sumamos alguna cookie propia, actualizamos esta página y agregamos el aviso de consentimiento antes de activarla.",
         ],
       },
     ],
@@ -129,6 +136,12 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
         heading: "IVA",
         body: [
           "Calculamos con 21% por defecto. La alícuota que corresponde a cada producto depende de su posición arancelaria y no pudimos confirmarla en las normas del régimen courier. Podés cambiarla a mano. Si tenés dudas, consultá con un despachante o en el micrositio de envíos internacionales de ARCA.",
+        ],
+      },
+      {
+        heading: "Responsable y contacto",
+        body: [
+          "Este sitio es de Alejandro Benzoni (Argentina). Si encontrás un error en la cuenta o en un producto, escribí a ofertas@knunet.com.",
         ],
       },
       {

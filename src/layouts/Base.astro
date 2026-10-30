@@ -2,7 +2,7 @@
 import "@fontsource/ultra";
 import "@fontsource-variable/archivo";
 import "../styles/global.css";
-import { SITE } from "../config";
+import { SITE, UMAMI } from "../config";
 import { loadOffers } from "../lib/data";
 
 interface Props {
@@ -51,6 +51,7 @@ const nav = [
     <meta property="og:image" content={`${SITE.url}/og.png`} />
     <meta name="twitter:card" content="summary_large_image" />
     {jsonLd.map((d) => <script type="application/ld+json" set:html={JSON.stringify({ "@context": "https://schema.org", ...d })} />)}
+    <script is:inline defer src={UMAMI.src} data-website-id={UMAMI.id} data-domains="ofertas.knunet.com" data-do-not-track="true"></script>
     <slot name="head" />
   </head>
   <body>
@@ -84,6 +85,7 @@ const nav = [
           <a href="/legal/privacidad/">Privacidad</a>
           <a href="/legal/cookies/">Cookies</a>
           <a href="/legal/terminos/">Términos</a>
+          <a href="mailto:ofertas@knunet.com" data-umami-event="contacto">ofertas@knunet.com</a>
           <a href={SITE.parent.url} rel="noopener">Un proyecto de KnuNet</a>
         </nav>
         </div>

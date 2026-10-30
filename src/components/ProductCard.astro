@@ -37,7 +37,7 @@ const logo = brandLogo(p.brand);
         <small>al {formatStamp(p.price.priceFetchedAt as string)}</small>
       </span>
     )}
-    <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">
+    <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
       Ver en Amazon <Icon name="arrow-up-right" size={16} />
     </a>
     <a class="costo" href={`/productos/${p.slug}/`}>¿Cuánto me sale en pesos?</a>
