@@ -2,7 +2,8 @@
 import Icon from "./Icon.astro";
 import { amazonUrl, artFor, STORE_LABEL } from "../config";
 import { brandLogo } from "../lib/brands";
-import { formatUsd, formatStamp } from "../lib/format";
+import { formatArs, formatPrice, formatUsd, formatStamp } from "../lib/format";
+import { buildQuotes, estimateArs, officialPrice } from "../lib/estimate";
 import type { CatalogEntry, OfferItem } from "../lib/data";
 
 interface Props {
@@ -12,6 +13,9 @@ interface Props {
 const { product: p } = Astro.props;
 const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
+const lp = p.price ? null : p.listPrice;
+const quotes = lp ? await buildQuotes() : null;
+const est = lp && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUsd) : null;
 ---
 
 <article class="card" data-category={p.category}>
@@ -37,9 +41,20 @@ const logo = brandLogo(p.brand);
         <small>al {formatStamp(p.price.priceFetchedAt as string)}</small>
       </span>
     )}
+    {lp && (
+      <div class="oficial">
+        <span class="lab">Precio oficial de {p.brand}</span>
+        <span class="ref num">
+          {formatPrice(officialPrice(lp), lp.currency)}
+          {lp.sale != null && <s>{formatPrice(lp.amount, lp.currency)}</s>}
+        </span>
+        <span class="casa">Puesto en casa <b class="num" data-est={officialPrice(lp)} data-est-cur={lp.currency}>{est != null ? `≈ ${formatArs(est)}` : "…"}</b></span>
+        <small>Con IVA al dólar MEP, sin envío. En Amazon suele estar más barato.</small>
+      </div>
+    )}
     <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
       Ver en Amazon <Icon name="arrow-up-right" size={16} />
     </a>
-    <a class="costo" href={`/productos/${p.slug}/`}>¿Cuánto me sale en pesos?</a>
+    <a class="costo" href={`/productos/${p.slug}/`}>{lp ? "Ver la cuenta completa" : "¿Cuánto me sale en pesos?"}</a>
   </div>
 </article>

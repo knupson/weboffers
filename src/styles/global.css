@@ -385,3 +385,12 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .faq summary::marker { color: var(--amarillo); }
 .faq p { margin-top: 8px; }
 .pizarra.una { grid-template-columns: 1fr; }
+
+/* Precio oficial del fabricante en la tarjeta */
+.card .oficial { display: grid; gap: 2px; padding-bottom: 12px; border-bottom: 1px dashed var(--linea); }
+.card .oficial .lab { font-size: 12px; font-weight: 600; color: var(--apagado); }
+.card .oficial .ref { font: 600 15px var(--sans); color: var(--crema); }
+.card .oficial .ref s { margin-left: 6px; font-size: 13px; color: var(--apagado); }
+.card .oficial .casa { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--crema-2); }
+.card .oficial .casa b { display: block; font-family: var(--letra); font-weight: 400; font-size: 24px; line-height: 1.15; color: var(--amarillo); }
+.card .oficial small { font-size: 12px; color: var(--apagado); }

@@ -9,7 +9,13 @@
     "summary": "Monitor gamer de 27 pulgadas con resolución 1440p, 180 Hz, panel Fast IPS de 1 ms y compatibilidad G-SYNC y FreeSync Premium.",
     "verified": true,
     "image": "/products/asus-tuf-gaming-vg27aq3a.webp",
-    "imageSource": "https://www.asus.com/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/"
+    "imageSource": "https://www.asus.com/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
+    "listPrice": {
+      "amount": 209,
+      "currency": "USD",
+      "source": "https://www.asus.com/us/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B095V23PTM",
@@ -21,7 +27,13 @@
     "summary": "Monitor curvo de 27 pulgadas con resolución QHD (2560 x 1440), curvatura 1500R, 165 Hz y entradas HDMI y DisplayPort.",
     "verified": true,
     "image": "/products/dell-s2722dgm.webp",
-    "imageSource": "https://www.dell.com/en-us/shop/dell-27-curved-gaming-monitor-s2722dgm/apd/210-azzp/monitors-monitor-accessories"
+    "imageSource": "https://www.dell.com/en-us/shop/dell-27-curved-gaming-monitor-s2722dgm/apd/210-azzp/monitors-monitor-accessories",
+    "listPrice": {
+      "amount": 249.99,
+      "currency": "USD",
+      "source": "https://www.dell.com/en-us/shop/dell-27-curved-gaming-monitor-s2722dgm/apd/210-azzp/monitors-monitor-accessories",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0B6VTGRSG",
@@ -43,7 +55,13 @@
     "summary": "SSD interno NVMe de 1 TB, PCIe 4.0, formato M.2 2280, con lectura secuencial de hasta 7.450 MB/s.",
     "verified": true,
     "image": "/products/samsung-990-pro-1tb.webp",
-    "imageSource": "https://www.samsung.com/us/memory-storage/nvme-ssd/990-pro-pcie-4-0-nvme-ssd-2tb-sku-mz-v9p1t0b-am/"
+    "imageSource": "https://www.samsung.com/us/memory-storage/nvme-ssd/990-pro-pcie-4-0-nvme-ssd-2tb-sku-mz-v9p1t0b-am/",
+    "listPrice": {
+      "amount": 319.99,
+      "currency": "USD",
+      "source": "https://www.samsung.com/us/memory-storage/nvme-ssd/990-pro-pcie-4-0-nvme-ssd-2tb-sku-mz-v9p1t0b-am/",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0B7CKVCCV",
@@ -67,7 +85,14 @@
     "summary": "SSD portátil de 1 TB con USB-C 3.2 Gen 2, lectura de hasta 1050 MB/s, resistencia IP65 y cifrado AES de 256 bits.",
     "verified": true,
     "image": "/products/sandisk-extreme-portable-ssd-1tb.webp",
-    "imageSource": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25"
+    "imageSource": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25",
+    "listPrice": {
+      "amount": 282.99,
+      "sale": 219.99,
+      "currency": "USD",
+      "source": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0DQFF7FBS",
@@ -79,7 +104,14 @@
     "summary": "Monitor de 27 pulgadas con resolución 4K (3840 x 2160), panel IPS, DisplayHDR 400, USB-C con carga de 90 W y base regulable en altura.",
     "verified": true,
     "image": "/products/lg-27up850k-w-4k.webp",
-    "imageSource": "https://www.lg.com/us/monitors/lg-27up850k-w-4k-uhd-led-monitor"
+    "imageSource": "https://www.lg.com/us/monitors/lg-27up850k-w-4k-uhd-led-monitor",
+    "listPrice": {
+      "amount": 379.99,
+      "sale": 349.99,
+      "currency": "USD",
+      "source": "https://www.lg.com/us/monitors/lg-27up850k-w-4k-uhd-led-monitor",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B08FF3F5HR",
@@ -101,7 +133,13 @@
     "summary": "SSD portátil de 1 TB con USB 3.2 Gen 2 y velocidades de lectura de hasta 1.050 MB/s.",
     "verified": true,
     "image": "/products/samsung-t7-portable-ssd-1tb.webp",
-    "imageSource": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/"
+    "imageSource": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
+    "listPrice": {
+      "amount": 274.99,
+      "currency": "USD",
+      "source": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0B25NXWC7",
@@ -153,7 +191,13 @@
     "summary": "Mouse inalámbrico con sensor de 8K DPI, scroll MagSpeed, clics silenciosos y conexión por Bluetooth o receptor Logi Bolt USB.",
     "verified": true,
     "image": "/products/logitech-mx-master-3s.webp",
-    "imageSource": "https://www.logitech.com/en-us/shop/p/mx-master-3s"
+    "imageSource": "https://www.logitech.com/en-us/shop/p/mx-master-3s",
+    "listPrice": {
+      "amount": 99.99,
+      "currency": "USD",
+      "source": "https://www.logitech.com/en-us/shop/p/mx-master-3s",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B07Y9Y69N7",
@@ -165,7 +209,14 @@
     "summary": "Teclado mecánico compacto de 84 teclas (75%), con conexión Bluetooth y USB-C, switches Gateron G Pro Red, retroiluminación RGB y estructura de aluminio.",
     "verified": true,
     "image": "/products/keychron-k2-v2.webp",
-    "imageSource": "https://www.keychron.com/products/keychron-k2-wireless-mechanical-keyboard"
+    "imageSource": "https://www.keychron.com/products/keychron-k2-wireless-mechanical-keyboard",
+    "listPrice": {
+      "amount": 94.99,
+      "sale": 69.99,
+      "currency": "USD",
+      "source": "https://www.keychron.com/products/keychron-k2-wireless-mechanical-keyboard",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0B9BGJVLL",
@@ -187,7 +238,14 @@
     "summary": "Auriculares inalámbricos over-ear con cancelación de ruido y optimizador automático, hasta 30 horas de batería y estuche de transporte incluido.",
     "verified": true,
     "image": "/products/sony-wh-1000xm5-negro.webp",
-    "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b"
+    "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b",
+    "listPrice": {
+      "amount": 399.99,
+      "sale": 228,
+      "currency": "USD",
+      "source": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B09NBWL8J5",
@@ -199,7 +257,13 @@
     "summary": "Mouse gamer inalámbrico de unos 60 gramos con sensor HERO 2 de hasta 44K DPI y conexión LIGHTSPEED.",
     "verified": true,
     "image": "/products/logitech-g-pro-x-superlight-2-negro.webp",
-    "imageSource": "https://www.logitechg.com/en-us/shop/p/pro-x2-superlight-wireless-mouse"
+    "imageSource": "https://www.logitechg.com/en-us/shop/p/pro-x2-superlight-wireless-mouse",
+    "listPrice": {
+      "amount": 159.99,
+      "currency": "USD",
+      "source": "https://www.logitechg.com/en-us/shop/p/pro-x2-superlight-wireless-mouse",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0B6XTDJS1",
@@ -211,7 +275,13 @@
     "summary": "Mouse gamer con cable de 59 gramos, sensor óptico Focus Pro 30K y polling de hasta 8 kHz.",
     "verified": true,
     "image": "/products/razer-deathadder-v3-wired-negro.webp",
-    "imageSource": "https://www.razer.com/gaming-mice/razer-deathadder-v3/RZ01-04640100-R3U1"
+    "imageSource": "https://www.razer.com/gaming-mice/razer-deathadder-v3/RZ01-04640100-R3U1",
+    "listPrice": {
+      "amount": 69.99,
+      "currency": "USD",
+      "source": "https://www.razer.com/gaming-mice/Razer-DeathAdder-V3/RZ01-04640100-R3U1",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0BHVJ1HNY",
@@ -223,7 +293,14 @@
     "summary": "Teclado mecánico inalámbrico TKL con Bluetooth, switches hot-swap, estructura de aluminio y compatibilidad con QMK/VIA.",
     "verified": true,
     "image": "/products/keychron-k8-pro-apex-red.webp",
-    "imageSource": "https://www.keychron.com/products/keychron-k8-pro-qmk-via-wireless-mechanical-keyboard"
+    "imageSource": "https://www.keychron.com/products/keychron-k8-pro-qmk-via-wireless-mechanical-keyboard",
+    "listPrice": {
+      "amount": 99.99,
+      "sale": 74.99,
+      "currency": "USD",
+      "source": "https://www.keychron.com/products/keychron-k8-pro-qmk-via-wireless-mechanical-keyboard",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B08DF248LD",
@@ -235,7 +312,14 @@
     "summary": "Control inalámbrico de Xbox en negro carbón, compatible con consolas Xbox, Windows y dispositivos Android e iOS por Bluetooth.",
     "verified": true,
     "image": "/products/xbox-core-wireless-controller-carbon-black.webp",
-    "imageSource": "https://www.xbox.com/en-US/accessories/controllers/xbox-wireless-controller"
+    "imageSource": "https://www.xbox.com/en-US/accessories/controllers/xbox-wireless-controller",
+    "listPrice": {
+      "amount": 64.99,
+      "sale": 49.49,
+      "currency": "USD",
+      "source": "https://www.xbox.com/en-US/accessories/controllers/xbox-wireless-controller",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0C33XXS56",
@@ -247,7 +331,14 @@
     "summary": "Auriculares in-ear totalmente inalámbricos con cancelación de ruido, en color negro.",
     "verified": true,
     "image": "/products/sony-wf-1000xm5-negro.webp",
-    "imageSource": "https://electronics.sony.com/audio/headphones/truly-wireless/p/wf1000xm5-b"
+    "imageSource": "https://electronics.sony.com/audio/headphones/truly-wireless/p/wf1000xm5-b",
+    "listPrice": {
+      "amount": 329.99,
+      "sale": 249.99,
+      "currency": "USD",
+      "source": "https://electronics.sony.com/audio/headphones/truly-wireless-earbuds/p/wf1000xm5-b",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0D1XD1ZV3",
@@ -271,7 +362,13 @@
     "summary": "Power bank de 24.000 mAh y 140 W con tres puertos y pantalla inteligente, apto para cargar notebooks.",
     "verified": true,
     "image": "/products/anker-737-power-bank-24k.webp",
-    "imageSource": "https://www.anker.com/products/a1289"
+    "imageSource": "https://www.anker.com/products/a1289",
+    "listPrice": {
+      "amount": 109.99,
+      "currency": "USD",
+      "source": "https://www.anker.com/products/a1289",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B09G5W9R6R",
@@ -307,7 +404,14 @@
     "summary": "Auriculares on-ear inalámbricos con micrófono, conexión multipunto y diseño giratorio, en color negro.",
     "verified": true,
     "image": "/products/sony-wh-ch520-negro.webp",
-    "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b"
+    "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
+    "listPrice": {
+      "amount": 69.99,
+      "sale": 39.99,
+      "currency": "USD",
+      "source": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B06X3Z9MF3",
@@ -320,7 +424,13 @@
     "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/delonghi-dedica-style-ec685-bk.webp",
-    "imageSource": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272"
+    "imageSource": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
+    "listPrice": {
+      "amount": 159.9,
+      "currency": "EUR",
+      "source": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0B8DTVKPV",
@@ -359,7 +469,14 @@
     "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/nespresso-delonghi-inissia-en80-b.webp",
-    "imageSource": "https://www.delonghi.com/es-es/p/inissia-en80.b-cafeteras-nespresso-inissia/EN80.B.html?pid=0132193902"
+    "imageSource": "https://www.delonghi.com/es-es/p/inissia-en80.b-cafeteras-nespresso-inissia/EN80.B.html?pid=0132193902",
+    "listPrice": {
+      "amount": 109,
+      "sale": 99,
+      "currency": "EUR",
+      "source": "https://www.delonghi.com/es-es/c/cafe/cafeteras/cafeteras-de-capsulas/cafeteras-nespresso/inissia",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B06XJ3MFMN",
@@ -396,7 +513,14 @@
     "verified": true,
     "voltage": "220-240 V, 50 Hz",
     "image": "/products/philips-airfryer-3000-doble-cesta-na352-9l.webp",
-    "imageSource": "https://www.home-appliances.philips/sg/en/p/NA352_00"
+    "imageSource": "https://www.home-appliances.philips/sg/en/p/NA352_00",
+    "listPrice": {
+      "amount": 199.99,
+      "sale": 129.99,
+      "currency": "EUR",
+      "source": "https://www.philips.es/c-p/NA352_00/3000-series-dual-basket-airfryer",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0D9S9Y16Y",
@@ -420,7 +544,13 @@
     "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/philips-hervidor-hd9350-90-1-7l.webp",
-    "imageSource": "https://www.philips.es/c-p/HD9350_90R0/daily-collection-kettle"
+    "imageSource": "https://www.philips.es/c-p/HD9350_90R0/daily-collection-kettle",
+    "listPrice": {
+      "amount": 41.99,
+      "currency": "EUR",
+      "source": "https://www.philips.es/c-p/HD9350_90/daily-collection-hervidor",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0C7PT4T8F",
@@ -433,7 +563,13 @@
     "verified": true,
     "voltage": "220-240 V",
     "image": "/products/philips-secador-serie-5000-bhd530-20.webp",
-    "imageSource": "https://www.philips.es/c-p/BHD530_20/secador-de-pelo-serie-5000"
+    "imageSource": "https://www.philips.es/c-p/BHD530_20/secador-de-pelo-serie-5000",
+    "listPrice": {
+      "amount": 64.99,
+      "currency": "EUR",
+      "source": "https://www.philips.es/tienda/ES_Loyaltyshop/cuidado-personal/cuidado-del-cabello/secador-de-pelo-serie-5000/p/BHD530_20",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0BG8H6B3T",
@@ -444,7 +580,13 @@
     "category": "Cuidado personal",
     "summary": "Secador de pelo iónico de 2100 W con boquilla estrecha de 14 mm, difusor y seis combinaciones de calor y velocidad; trae enchufe europeo (Schuko), requiere adaptador.",
     "verified": true,
-    "voltage": "220-240 V"
+    "voltage": "220-240 V",
+    "listPrice": {
+      "amount": 39.99,
+      "currency": "EUR",
+      "source": "https://www.philips.es/tienda/ES_Mysalus/cuidado-personal/cuidado-del-cabello/3000-secador/p/BHD360_20",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B09TW215N7",
@@ -468,7 +610,13 @@
     "category": "Hogar",
     "summary": "Robot aspirador y fregasuelos con succión de 8000 Pa y navegación LiDAR; la base se alimenta con adaptador de 100-240 V y enchufe europeo (Schuko), por lo que hace falta un adaptador de ficha.",
     "verified": true,
-    "voltage": "100-240 V, 50/60 Hz (adaptador de la base)"
+    "voltage": "100-240 V, 50/60 Hz (adaptador de la base)",
+    "listPrice": {
+      "amount": 229.99,
+      "currency": "EUR",
+      "source": "https://es.roborock.com/products/roborock-q7-l5",
+      "checked": "2026-10-30"
+    }
   },
   {
     "asin": "B0DT4GT2PR",
@@ -479,6 +627,13 @@
     "category": "Hogar",
     "summary": "Robot aspirador y fregasuelos con succión de 10000 Pa y navegación LiDAR; la base usa adaptador de 100-240 V con enchufe europeo (Schuko) y se necesita adaptador de ficha.",
     "verified": true,
-    "voltage": "100-240 V, 50/60 Hz (adaptador de la base)"
+    "voltage": "100-240 V, 50/60 Hz (adaptador de la base)",
+    "listPrice": {
+      "amount": 239.99,
+      "sale": 139.99,
+      "currency": "EUR",
+      "source": "https://es.roborock.com/products/roborock-q7-m5",
+      "checked": "2026-10-30"
+    }
   }
 ]

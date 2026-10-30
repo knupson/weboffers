@@ -24,3 +24,9 @@ export function formatStamp(iso: string): string {
     timeZone: "America/Argentina/Buenos_Aires",
   });
 }
+
+/** "USD 399" o "EUR 189,99": sin decimales cuando el precio es redondo. */
+export function formatPrice(n: number, currency: "USD" | "EUR"): string {
+  const digits = Number.isInteger(n) ? 0 : 2;
+  return `${currency} ${n.toLocaleString("es-AR", { minimumFractionDigits: digits, maximumFractionDigits: 2 })}`;
+}

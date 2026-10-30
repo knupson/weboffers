@@ -17,6 +17,18 @@ export interface CatalogEntry {
   /** Foto oficial del fabricante, guardada en public/products. Nunca una imagen de Amazon. */
   image?: string;
   imageSource?: string;
+  /** Precio oficial del fabricante, con su fuente. Nunca un precio de Amazon. */
+  listPrice?: ListPrice;
+}
+
+export interface ListPrice {
+  amount: number;
+  /** Precio de oferta en la tienda oficial, si lo hay. */
+  sale?: number;
+  currency: "USD" | "EUR";
+  source: string;
+  /** Fecha de consulta, AAAA-MM-DD. */
+  checked: string;
 }
 
 export interface OfferItem {

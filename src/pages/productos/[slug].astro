@@ -5,7 +5,8 @@ import ProductCard from "../../components/ProductCard.astro";
 import Icon from "../../components/Icon.astro";
 import { amazonUrl, artFor, SITE, STORE_LABEL } from "../../config";
 import { brandLogo } from "../../lib/brands";
-import { formatUsd, formatStamp } from "../../lib/format";
+import { formatPrice, formatUsd, formatStamp } from "../../lib/format";
+import { officialPrice } from "../../lib/estimate";
 import { loadProducts } from "../../lib/data";
 
 export async function getStaticPaths() {
@@ -89,6 +90,12 @@ const specs: Array<[string, string]> = [
               <span class="price num">{formatUsd(p.price.priceUsd as number)}</span>
               <p class="fine">En {STORE_LABEL[p.store]}, consultado el {formatStamp(p.price.priceFetchedAt as string)}.</p>
             </div>
+          ) : p.listPrice ? (
+            <div>
+              <p class="fine">Precio oficial de {p.brand}</p>
+              <span class="price num">{formatPrice(officialPrice(p.listPrice), p.listPrice.currency)}</span>
+              <p class="fine">Consultado el {p.listPrice.checked.split("-").reverse().join("/")} en <a class="link" href={p.listPrice.source} target="_blank" rel="noopener noreferrer">la tienda oficial</a>. En {STORE_LABEL[p.store]} suele estar más barato: mirá el precio de hoy y ajustalo abajo.</p>
+            </div>
           ) : (
             <p>Mirá el precio en {STORE_LABEL[p.store]} y cargalo abajo para ver el costo final en pesos.</p>
           )}
@@ -97,7 +104,7 @@ const specs: Array<[string, string]> = [
           </a>
           <p class="fine">{SITE.disclosure}</p>
         </div>
-        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? null} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" />
+        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? (p.listPrice ? officialPrice(p.listPrice) : null)} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" />
       </div>
     </div>
   </div>

@@ -20,3 +20,6 @@ __pycache__/
 .impeccable/assets/
 .impeccable/build/
 worker/.pytest_tmp/
+
+# Claude Code (permisos locales)
+.claude/settings.local.json

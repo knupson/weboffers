@@ -95,10 +95,21 @@ const nav = [
     </footer>
 
     <script>
-      import { fetchRates } from "../lib/dolar";
+      import { fetchEurUsd, fetchRates } from "../lib/dolar";
+      import { estimateArs } from "../lib/estimate";
+      import { formatArs } from "../lib/format";
       // Actualiza las cotizaciones impresas en la página con el valor del momento.
-      fetchRates().then((r) => {
+      fetchRates().then(async (r) => {
         if (!r) return;
+        const ests = document.querySelectorAll<HTMLElement>("[data-est]");
+        if (ests.length) {
+          const eurUsd = [...ests].some((el) => el.dataset.estCur === "EUR") ? await fetchEurUsd() : null;
+          ests.forEach((el) => {
+            const currency = el.dataset.estCur === "EUR" ? "EUR" : "USD";
+            const ars = estimateArs({ amount: Number(el.dataset.est), currency, source: "", checked: "" }, r.mep, eurUsd);
+            if (ars != null) el.textContent = `≈ ${formatArs(ars)}`;
+          });
+        }
         document.querySelectorAll<HTMLElement>("[data-rate]").forEach((el) => {
           const key = el.dataset.rate as "mep" | "tarjeta";
           el.textContent = `$${Math.round(r[key]).toLocaleString("es-AR")}`;
