@@ -2,16 +2,13 @@ import { useEffect, useState } from "preact/hooks";
 import { calculate } from "../lib/calc";
 import { fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd } from "../lib/format";
-import { AMAZON_EXTRA } from "../lib/estimate";
+import { AMAZON_EXTRA, shippingFor } from "../lib/estimate";
 
 interface Props {
   mep: number | null;
 }
 
 const MAX = 600;
-// Medido el 30/10/2026: desde USD 100 Amazon envía gratis a Argentina los productos
-// elegibles; debajo, el envío ronda USD 40 a 50.
-const shippingFor = (fob: number) => (fob >= 100 ? 0 : 45);
 const START = 279;
 
 const usd0 = (n: number) => formatUsd(n).replace(",00", "");

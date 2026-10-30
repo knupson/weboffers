@@ -23,6 +23,15 @@ export function estimateArs(lp: ListPrice, mep: number, eurUsd: number | null): 
   return Math.round((r.totalUsd + fobUsd * AMAZON_EXTRA) * mep);
 }
 
+/** Medido el 30/10/2026: desde USD 100 el envío a Argentina es gratis en productos elegibles; debajo ronda USD 45. */
+export const shippingFor = (usd: number) => (usd >= 100 ? 0 : 45);
+
+/** Puesto en casa, en pesos al MEP, a partir del precio que la persona ve hoy en Amazon.com. */
+export function estimateFromAmazon(usd: number, mep: number): number {
+  const r = calculate({ fobUsd: usd, shippingUsd: shippingFor(usd) }, { mep, tarjeta: 0 });
+  return Math.round((r.totalUsd + usd * AMAZON_EXTRA) * mep);
+}
+
 let cached: Promise<{ mep: number | null; eurUsd: number | null }> | null = null;
 
 /** Cotizaciones del momento del build, pedidas una sola vez por build. */

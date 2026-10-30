@@ -63,6 +63,44 @@ const est = lp && free && quotes?.mep ? estimateArs(lp, quotes.mep, quotes.eurUs
     <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="tarjeta">
       Ver en Amazon <Icon name="arrow-up-right" size={16} />
     </a>
-    <a class="costo" href={`/productos/${p.slug}/`}>¿Cuánto me sale en pesos?</a>
+    {p.store === "US" && !p.price && (
+      <>
+        <label class="hoy">
+          <span>¿Cuánto sale hoy en Amazon?</span>
+          <span class="in-usd"><span>USD</span><input data-hoy inputmode="decimal" autocomplete="off" placeholder="Pegá el precio" aria-describedby={`hoy-${p.slug}`} /></span>
+        </label>
+        <p class="hoy-out" id={`hoy-${p.slug}`} data-hoy-out aria-live="polite"></p>
+      </>
+    )}
+    <a class="costo" href={`/productos/${p.slug}/`}>Ver la cuenta completa</a>
   </div>
 </article>
+
+<script>
+  import { fetchRates } from "../lib/dolar";
+  import { estimateFromAmazon } from "../lib/estimate";
+  import { formatArs } from "../lib/format";
+
+  // Calculadora de la tarjeta: la persona carga el precio que ve en Amazon (no lo publicamos nosotros).
+  let mep: number | null = null;
+  const ready = fetchRates().then((r) => (mep = r?.mep ?? null));
+  let tracked = false;
+  document.addEventListener("input", async (e) => {
+    const input = e.target as HTMLInputElement;
+    if (!input.matches?.("[data-hoy]")) return;
+    const out = input.closest(".card")?.querySelector<HTMLElement>("[data-hoy-out]");
+    if (!out) return;
+    // Amazon escribe "$1,299.99"; acá también se escribe "259,99".
+    const raw = input.value.replace(/[^\d.,]/g, "");
+    const usd = Number(raw.includes(".") ? raw.replace(/,/g, "") : raw.replace(",", "."));
+    if (!(usd > 0)) return void (out.textContent = "");
+    await ready;
+    if (!mep) return void (out.textContent = "No pudimos traer el dólar MEP. Probá en un rato.");
+    const envio = usd >= 100 ? "envío gratis" : "con ≈ USD 45 de envío";
+    out.innerHTML = `Puesto en casa <b>≈ ${formatArs(estimateFromAmazon(usd, mep))}</b><br>IVA y cargos de Amazon (≈25%), ${envio}, al MEP.`;
+    if (!tracked) {
+      tracked = true;
+      (window as unknown as { umami?: { track: (n: string) => void } }).umami?.track("calc-tarjeta");
+    }
+  });
+</script>

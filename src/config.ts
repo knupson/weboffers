@@ -55,7 +55,9 @@ export const CATEGORY_ART: Record<string, string> = {
   "Carga y energía": "/art/cat-carga.webp",
   Redes: "/art/cat-redes.webp",
   "Cuidado personal": "/art/cat-cuidado.webp",
-  Componentes: "/art/cat-minipc.webp",
+  Componentes: "/art/cat-componentes.webp",
+  Cámaras: "/art/cat-camaras.webp",
+  Relojes: "/art/cat-relojes.webp",
 };
 
 // Productos cuya categoría no los representa bien llevan su propia ilustración genérica.
@@ -69,10 +71,10 @@ export const artFor = (p: { slug: string; category: string }) => PRODUCT_ART[p.s
 // Búsquedas curadas: llevan a Amazon con el tag aunque el producto no esté en el catálogo.
 export const SEARCHES: Array<{ label: string; query: string; store: Store; category: string; art?: string }> = [
   { label: "SSD NVMe de 2 TB", query: "nvme ssd 2tb pcie 4.0", store: "US", category: "Almacenamiento" },
-  { label: "Procesadores AMD Ryzen", query: "amd ryzen processor", store: "US", category: "Componentes", art: "/products/amd-ryzen-7-7800x3d.webp" },
+  { label: "Procesadores AMD Ryzen", query: "amd ryzen processor", store: "US", category: "Componentes" },
   { label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", category: "Audio" },
-  { label: "Relojes Garmin", query: "garmin smartwatch", store: "US", category: "Relojes", art: "/products/garmin-vivoactive-5.webp" },
-  { label: "Cámaras de acción", query: "action camera 4k", store: "US", category: "Cámaras", art: "/products/dji-osmo-action-4-essential.webp" },
+  { label: "Relojes Garmin", query: "garmin smartwatch", store: "US", category: "Relojes" },
+  { label: "Cámaras de acción", query: "action camera 4k", store: "US", category: "Cámaras" },
   { label: "Lectores de libros Kobo", query: "kobo ereader", store: "US", category: "Tablets y lectores" },
   { label: "Mouse inalámbricos premium", query: "logitech mx master", store: "US", category: "Periféricos", art: "/art/cat-mouse.webp" },
   { label: "Routers Wi-Fi 7", query: "wifi 7 router", store: "US", category: "Redes" },

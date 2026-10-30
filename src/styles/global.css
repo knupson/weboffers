@@ -204,7 +204,8 @@ section { padding: 64px 0; }
 .cat:hover { box-shadow: inset 0 0 0 2px var(--amarillo); transform: translateY(-2px); }
 
 /* Filtros */
-.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px; scrollbar-width: none; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px; scrollbar-width: none; padding-right: 48px; mask-image: linear-gradient(90deg, #000 85%, transparent); }
+@media (min-width: 760px) { .chips { flex-wrap: wrap; overflow: visible; padding-right: 0; mask-image: none; } }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
   flex: none; height: 38px; padding: 0 14px; border-radius: var(--r-campo); border: 0;
@@ -230,7 +231,7 @@ section { padding: 64px 0; }
 .card[hidden] { display: none; }
 .card .media { position: relative; margin: 10px 10px 0; border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; background: #000; }
 .card .media img { width: 100%; height: 100%; object-fit: cover; }
-.card .media img.photo { object-fit: contain; background: #fff; padding: 16px; }
+.card .media img.photo { object-fit: contain; background: radial-gradient(120% 90% at 50% 40%, #fffdf8 0%, #efe7d6 100%); padding: 16px; }
 .badge {
   z-index: 3;
   position: absolute; top: 10px; left: 10px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center;
@@ -244,7 +245,7 @@ section { padding: 64px 0; }
 .card h3 a { text-decoration: none; }
 .card h3 a::after { content: ""; position: absolute; inset: 0; }
 .card .sum { font-size: 14px; color: var(--crema-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card .foot { padding: 16px 18px 18px; display: grid; gap: 10px; margin-top: auto; }
+.card .foot { padding: 16px 18px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: auto; }
 .card .costo { position: relative; z-index: 1; justify-self: center; font-size: 14px; font-weight: 600; color: var(--amarillo); text-decoration: none; }
 .card .costo:hover { text-decoration: underline; }
 .card .foot .btn { position: relative; z-index: 1; }
@@ -275,7 +276,7 @@ section { padding: 64px 0; }
 @media (min-width: 1024px) { .pdp { grid-template-columns: 1.2fr 1fr; gap: 48px; align-items: start; } }
 .pdp .media { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-placa); overflow: hidden; background: #000; box-shadow: inset 0 0 0 2px var(--amarillo); }
 .pdp .media img { width: 100%; height: 100%; object-fit: cover; }
-.pdp .media img.photo { object-fit: contain; background: #fff; padding: 32px; }
+.pdp .media img.photo { object-fit: contain; background: radial-gradient(120% 90% at 50% 40%, #fffdf8 0%, #efe7d6 100%); padding: 32px; }
 .pdp .media .badge { top: 16px; left: 16px; height: 36px; font-size: 15px; }
 .pdp .media .badge svg { height: 22px; }
 .pdp h1 { font: 800 clamp(28px, 3.4vw, 42px)/1.1 var(--sans); letter-spacing: -0.02em; margin-top: 28px; }
@@ -401,3 +402,12 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .redes a { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: var(--placa); box-shadow: inset 0 0 0 1px var(--linea); color: var(--crema); font: 600 14px var(--sans); text-decoration: none; transition: background-color 150ms var(--ease-out); }
 .redes a:hover { background: var(--placa-2); }
 .redes svg { width: 18px; height: 18px; fill: var(--amarillo); }
+
+/* Calculadora en la tarjeta: el precio lo carga quien mira */
+.card .hoy { position: relative; z-index: 1; display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--crema-2); }
+.card .hoy .in-usd { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: 10px; background: var(--placa-2); box-shadow: inset 0 0 0 1px var(--linea); }
+.card .hoy .in-usd:focus-within { box-shadow: inset 0 0 0 2px var(--amarillo); }
+.card .hoy .in-usd span { font: 700 13px var(--sans); color: var(--apagado); }
+.card .hoy input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; color: var(--crema); font: 600 16px var(--sans); outline: none; }
+.card .hoy-out { position: relative; z-index: 1; min-height: 1.4em; font-size: 13px; color: var(--crema-2); }
+.card .hoy-out b { font-family: var(--letra); font-weight: 400; font-size: 20px; color: var(--amarillo); }
