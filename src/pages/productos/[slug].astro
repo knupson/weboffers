@@ -12,125 +12,48 @@ export async function getStaticPaths() {
 }
 
 const { product: p } = Astro.props;
-const image = p.offer?.imageUrl ?? null;
 const calcHref = p.price ? `/?fob=${p.price.priceUsd}#calculadora` : "/#calculadora";
 
 const rows: Array<[string, string]> = [
   ["Marca", p.brand],
   ["Categoría", p.category],
   ["Tienda", p.store === "ES" ? "Amazon España" : "Amazon Estados Unidos"],
-  ["Tensión", p.voltage ?? "Revisala en la ficha de Amazon"],
+  ["Tensión", p.voltage ?? "Mirala en la ficha de Amazon"],
   ["Peso", p.weightKg ? `${p.weightKg.toString().replace(".", ",")} kg` : "Sin dato"],
   ["Posición arancelaria", p.ncm ?? "Sin confirmar"],
 ];
 ---
 
 <Base title={p.name} description={p.summary}>
-  <article class="wrap section">
-    <p class="eyebrow"><a href="/productos/">Productos</a> / {p.brand}</p>
-    <div class="layout">
-      <div class="plate card">
-        {image ? (
-          <img src={image} alt={p.name} width="420" height="420" referrerpolicy="no-referrer" />
-        ) : (
-          <span class="mono muted">{p.brand}</span>
-        )}
-      </div>
-      <div class="info">
-        <h1>{p.name}</h1>
-        <p class="lede">{p.summary}</p>
-
-        <div class="price card">
-          {p.price ? (
-            <>
-              <strong class="mono">{formatUsd(p.price.priceUsd as number)}</strong>
-              <span class="muted">Consultado el {formatStamp(p.price.priceFetchedAt as string)}. {SITE.priceNotice}</span>
-            </>
-          ) : (
-            <span class="muted">No tenemos un precio reciente. Miralo en Amazon, y si querés estimar el costo final cargalo en la calculadora.</span>
-          )}
-          <div class="actions">
-            <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">Ver en Amazon</a>
-            <a class="btn ghost" href={calcHref}>Calcular costo final</a>
-          </div>
-        </div>
-
-        <dl class="spec">
+  <div class="wrap hero">
+    <a class="crumb" href="/productos/">Productos</a>
+    <h1 style="font-size: clamp(34px, 5.4vw, 64px)">{p.name}</h1>
+    <p class="lead">{p.summary}</p>
+  </div>
+  <section>
+    <div class="wrap grid">
+      <div class="side">
+        <div class="spec">
           {rows.map(([k, v]) => (
-            <>
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </>
+            <div class="row"><span class="lab">{k}</span><span class="v">{v}</span></div>
           ))}
-        </dl>
-        <p class="muted small">{SITE.disclosure}</p>
+        </div>
+      </div>
+      <div class="main">
+        {p.price ? (
+          <>
+            <span class="price-line">{formatUsd(p.price.priceUsd as number)}</span>
+            <p class="stamp">Consultado el {formatStamp(p.price.priceFetchedAt as string)}. {SITE.priceNotice}</p>
+          </>
+        ) : (
+          <p class="lead" style="margin-top: 0">No tenemos precio para mostrar. Miralo en Amazon y cargalo en la calculadora para ver cuánto sale puesto en tu casa.</p>
+        )}
+        <div class="actions" style="margin-top: var(--s3)">
+          <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">Ver en Amazon</a>
+          <a class="btn ghost" href={calcHref}>Calcular costo final</a>
+        </div>
+        <p class="stamp" style="margin-top: var(--s3)">{SITE.disclosure}</p>
       </div>
     </div>
-  </article>
+  </section>
 </Base>
-
-<style>
-  .layout {
-    margin-top: 24px;
-    display: grid;
-    gap: 40px;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 860px) {
-    .layout {
-      grid-template-columns: 0.9fr 1.1fr;
-      align-items: start;
-    }
-  }
-  .plate {
-    display: grid;
-    place-items: center;
-    aspect-ratio: 1;
-    background: #fff;
-    padding: 32px;
-  }
-  .plate img {
-    max-height: 100%;
-    object-fit: contain;
-  }
-  .info {
-    display: grid;
-    gap: 24px;
-  }
-  .price {
-    padding: 24px;
-    display: grid;
-    gap: 12px;
-  }
-  .price strong {
-    font-size: 1.75rem;
-    font-weight: 500;
-  }
-  .actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .muted {
-    color: var(--muted);
-  }
-  .small {
-    font-size: 0.8125rem;
-  }
-  .spec {
-    margin: 0;
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0 24px;
-  }
-  .spec dt,
-  .spec dd {
-    margin: 0;
-    padding: 12px 0;
-    border-top: 1px solid var(--line);
-  }
-  .spec dt {
-    color: var(--muted);
-    font-size: 0.9375rem;
-  }
-</style>

@@ -8,38 +8,20 @@ const shown = products.filter((p) => p.verified);
 ---
 
 <Base title="Productos" description="Hardware que entra en la franquicia de USD 400, con link a Amazon y calculadora de costo final.">
-  <section class="wrap section">
+  <div class="wrap hero">
+    <span class="sector">Sector D · Productos</span>
     <h1>Productos</h1>
-    <p class="lede" style="margin-top: 16px">
-      Una lista corta, revisada a mano. Cada ficha te lleva a Amazon y a la calculadora con el precio cargado.
-    </p>
-
-    {shown.length === 0 ? (
-      <p class="empty card">
-        Todavía no hay productos verificados. Mientras tanto podés usar la calculadora con cualquier precio.
-        <a href="/#calculadora">Ir a la calculadora</a>
-      </p>
-    ) : (
-      <div class="grid">
-        {shown.map((p, i) => <ProductCard product={p} index={i} />)}
-      </div>
-    )}
+    <p class="lead">Una lista corta. Cada ficha lleva a Amazon y a la calculadora.</p>
+  </div>
+  <section>
+    <div class="wrap">
+      {shown.length === 0 ? (
+        <p class="lead">Todavía no hay productos revisados. Mientras tanto la <a href="/#calculadora">calculadora</a> funciona con cualquier precio.</p>
+      ) : (
+        <div class="projects three">
+          {shown.map((p) => <ProductCard product={p} />)}
+        </div>
+      )}
+    </div>
   </section>
 </Base>
-
-<style>
-  .grid {
-    margin-top: 48px;
-    display: grid;
-    gap: 20px;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
-  .empty {
-    margin-top: 48px;
-    padding: 28px;
-    color: var(--muted);
-    display: grid;
-    gap: 8px;
-    max-width: 560px;
-  }
-</style>
