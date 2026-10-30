@@ -667,7 +667,7 @@
     "verified": true,
     "weightKg": 0.0486,
     "image": "/products/lexar-nm790-2tb.webp",
-    "imageSource": "https://www.lexar.com/global/products/NM790-with-Heatsink-M-2-2280-PCIe-Gen-4x4-NVMe-SSD",
+    "imageSource": "https://americas.lexar.com/product/nm790-with-heatsink-m-2-2280-pcie-gen-4x4-nvme-ssd/",
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
@@ -701,7 +701,9 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "image": "/products/amd-ryzen-7-5700x.webp",
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-7-5800x.html"
   },
   {
     "asin": "B0BTZB7F88",
@@ -731,7 +733,9 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "image": "/products/intel-core-i7-14700k.webp",
+    "imageSource": "https://brightstarcomp.com/products/intel-core-i7-14700k-lga1700-processor"
   },
   {
     "asin": "B0CVCG2VPK",
@@ -880,7 +884,7 @@
     "summary": "Cámara de acción 4K a 120 cuadros con sensor de 1/1,3 pulgadas, sumergible a 18 m sin carcasa.",
     "verified": true,
     "image": "/products/dji-osmo-action-4-essential.webp",
-    "imageSource": "https://www.dji.com/global/osmo-action-4",
+    "imageSource": "https://store.dji.com/product/osmo-action-4-adventure-combo",
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
@@ -943,7 +947,9 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "image": "/products/philips-sonicare-5950.webp",
+    "imageSource": "https://www.philips.ca/c-p/HX7130_03/series-5950-rechargeable-toothbrush"
   },
   {
     "asin": "B0FVXLPWHM",
@@ -1007,6 +1013,8 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
-    }
+    },
+    "image": "/products/kobo-libra-colour.webp",
+    "imageSource": "https://ereader.kobo.com/en-ww/products/kobo-libra-colour"
   }
 ]
