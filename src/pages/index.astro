@@ -3,7 +3,7 @@ import Base from "../layouts/Base.astro";
 import Catalog from "../components/Catalog.astro";
 import QuickCalc from "../components/QuickCalc.tsx";
 import Icon from "../components/Icon.astro";
-import { amazonDealsUrl, amazonSearchUrl, CATEGORY_ART, SEARCHES, SITE, SOCIAL, STORE_LABEL } from "../config";
+import { CATEGORY_ART, SEARCHES, SITE, SOCIAL } from "../config";
 import { loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
@@ -24,7 +24,7 @@ const cats = [
     { "@type": "Organization", name: SITE.name, url: SITE.url, logo: `${SITE.url}/icon-512.png`, sameAs: SOCIAL.map((r) => r.url) },
     {
       "@type": "ItemList",
-      name: "Productos que entran en la franquicia de USD 400",
+      name: "Dónde conviene comprarlo: Amazon o Mercado Libre",
       itemListElement: shown.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${SITE.url}/productos/${p.slug}/`, name: p.name })),
     },
   ]}
@@ -32,26 +32,21 @@ const cats = [
   <div class="hero">
     <div class="wrap hero-grid">
       <div>
-        <h1 class="letra">¿Conviene<br />traerlo?</h1>
-        <p class="lead">Elegí el producto, mirá cuánto te sale puesto en tu casa y comprá directo en Amazon.</p>
-        <form class="search" action="/buscar/" method="get" target="_blank" role="search">
+        <h1 class="letra">¿Amazon o<br />Mercado Libre?</h1>
+        <p class="lead">Comparamos lo que te sale traerlo puesto en tu casa con lo que sale acá, y te decimos dónde te conviene comprarlo.</p>
+        <form class="search" action="/buscar/" method="get" role="search">
           <Icon name="magnifying-glass" size={18} />
-          <input name="q" type="search" placeholder="Buscá en Amazon: monitor, cafetera..." aria-label="Qué querés buscar en Amazon" required />
-          <select name="tienda" aria-label="Tienda">
-            <option value="US">Amazon.com</option>
-            <option value="ES">Amazon.es</option>
-          </select>
-          <button class="btn" type="submit" data-umami-event="busqueda">Buscar</button>
+          <input name="q" type="search" placeholder="SSD, Ryzen, auriculares, Garmin..." aria-label="Qué producto buscás" required />
+          <button class="btn" type="submit" data-umami-event="busqueda">Comparar</button>
         </form>
       </div>
-      <div>
-        <div class="placa-hero">
-          <img src="/art/placa-hero.webp" alt="" width="1600" height="1185" fetchpriority="high" />
-          <QuickCalc client:load mep={offers.rates?.mep ?? null} />
-        </div>
-        <p class="fine" style="text-align:center; margin-top: 8px">
-          Desde USD 100, Amazon envía gratis a Argentina los productos elegibles. Incluye IVA y cargos de Amazon (≈25%), al dólar MEP <span data-rate-when>{stamp}</span>. <a class="link" href="/calculadora/">Hacé la cuenta exacta</a>
-        </p>
+      <div class="placa-hero">
+        <img src="/art/placa-hero.webp" alt="" width="1600" height="1185" fetchpriority="high" />
+        <ol class="pasos">
+          <li><b>Amazon</b><span>Total con envío, IVA y cargos, puesto en tu casa</span></li>
+          <li><b>Mercado Libre</b><span>El precio nuevo más barato del mismo modelo</span></li>
+          <li><b>Veredicto</b><span>Si traerlo no ahorra al menos 10%, conviene comprarlo acá</span></li>
+        </ol>
       </div>
     </div>
   </div>
@@ -70,8 +65,8 @@ const cats = [
   <section id="productos" style="padding-top: 48px">
     <div class="wrap">
       <div class="head">
-        <h2 class="letra">Lo que conviene traer</h2>
-        <p>Productos que entran en la franquicia de USD 400. Entrá a cada uno para ver el costo final en pesos.</p>
+        <h2 class="letra">Dónde conviene cada uno</h2>
+        <p>Precio en pesos de Mercado Libre y el veredicto contra el total de Amazon con envío e impuestos.</p>
       </div>
       <Catalog products={shown} />
     </div>
@@ -81,20 +76,30 @@ const cats = [
     <div class="wrap">
       <div class="head">
         <h2 class="letra">¿Buscás otra cosa?</h2>
-        <p>Búsquedas armadas en Amazon, ya filtradas para lo que conviene traer.</p>
+        <p>Elegí un tema y te mostramos qué tenemos comparado y dónde seguir buscando.</p>
       </div>
       <div class="pizarra">
         {SEARCHES.map((s) => (
-          <a href={amazonSearchUrl(s.query, s.store)} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={s.store} data-umami-event-producto={s.query} data-umami-event-origen="busqueda-armada">
+          <a href={`/buscar/?q=${encodeURIComponent(s.query)}`} data-umami-event="busqueda-armada" data-umami-event-producto={s.query}>
             <img src={s.art ?? CATEGORY_ART[s.category]} alt="" loading="lazy" width="900" height="658" />
-            <span class="label">{s.label}<span class="where">{STORE_LABEL[s.store]}</span></span>
-            <Icon name="arrow-up-right" size={18} class="go" />
+            <span class="label">{s.label}<span class="where">Amazon y Mercado Libre</span></span>
+            <Icon name="arrow-right" size={18} class="go" />
           </a>
         ))}
       </div>
-      <div class="deals">
-        <a class="btn ghost" href={amazonDealsUrl("US")} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda="US" data-umami-event-origen="ofertas-del-dia">Ofertas del día en Amazon.com</a>
-        <a class="btn ghost" href={amazonDealsUrl("ES")} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda="ES" data-umami-event-origen="ofertas-del-dia">Ofertas del día en Amazon.es</a>
+    </div>
+  </section>
+
+  <section style="padding-top: 0">
+    <div class="wrap calc-home">
+      <div>
+        <h2 class="letra">¿Ya viste un precio en Amazon?</h2>
+        <p class="lead">Mové la cinta y mirá cuánto te sale puesto en tu casa. Desde USD 100 el envío es gratis; Amazon suma IVA y cargos (≈25%), al dólar MEP <span data-rate-when>{stamp}</span>.</p>
+        <a class="link" href="/calculadora/">Hacer la cuenta exacta <Icon name="arrow-right" size={16} /></a>
+      </div>
+      <div class="placa-hero">
+        <img src="/art/placa-hero.webp" alt="" width="1600" height="1185" loading="lazy" />
+        <QuickCalc client:visible mep={offers.rates?.mep ?? null} />
       </div>
     </div>
   </section>
@@ -103,8 +108,8 @@ const cats = [
     <div class="wrap">
       <div class="cuenta">
         <h2 class="letra" style="text-align:center; margin-bottom: 24px">Cómo sacamos la cuenta</h2>
-        <p class="formula">Producto <span class="op">+</span> envío <span class="op">+</span> IVA <span class="op">=</span> <span class="res">puesto en tu casa</span></p>
-        <p class="nota">El IVA es 21% sobre producto y envío. Si el producto pasa los USD 400, sólo el excedente suma derechos y tasa de estadística. Te lo damos en pesos al MEP y al dólar tarjeta.</p>
+        <p class="formula">Producto <span class="op">+</span> envío <span class="op">+</span> IVA y cargos <span class="op">=</span> <span class="res">puesto en tu casa</span></p>
+        <p class="nota">Desde USD 100 el envío de Amazon a Argentina es gratis en productos elegibles. El IVA es 21% y Amazon suma sus cargos de importación. Si el producto pasa los USD 400, el excedente paga derechos y tasa de estadística. Ese total lo comparamos con Mercado Libre.</p>
         <ul class="reglamento">
           <li><b>USD 400</b><span>por envío sin derechos de importación</span></li>
           <li><b>5 envíos</b><span>por año y por persona</span></li>

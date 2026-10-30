@@ -16,7 +16,7 @@ interface Props {
 }
 
 const { title, description = SITE.description, jsonLd = [] } = Astro.props;
-const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name}: productos de Amazon con el costo final para Argentina`;
+const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name}: ¿Amazon o Mercado Libre? Dónde te conviene comprarlo`;
 const canonical = new URL(Astro.url.pathname, SITE.url).toString();
 const path = Astro.url.pathname;
 
@@ -96,7 +96,7 @@ const nav = [
         <nav aria-label="Legales">
           <a href="/guia/">Cómo funciona la franquicia</a>
           <a href="/guias/">Guías</a>
-          <a href="/legal/afiliados/">Afiliación con Amazon</a>
+          <a href="/legal/afiliados/">Afiliación con Amazon y Mercado Libre</a>
           <a href="/legal/privacidad/">Privacidad</a>
           <a href="/legal/cookies/">Cookies</a>
           <a href="/legal/terminos/">Términos</a>

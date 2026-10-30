@@ -1,5 +1,9 @@
 export const UMAMI = { src: "https://analytics.knunet.com/k.js", id: "a0176c95-f04a-4452-95d1-d60ae943a76e" };
 
+// Afiliados de Mercado Libre: etiqueta y herramienta de la cuenta (públicas, van en cada link compartido).
+// Los links de producto salen del generador oficial (meli.la); estos parámetros se usan en búsquedas.
+export const ML_AFFILIATE = { word: "ale_benzoni", tool: "58527537" } as const;
+
 export const SOCIAL = [
   { name: "YouTube", handle: "@Franquicia400", url: "https://www.youtube.com/@Franquicia400" },
   { name: "Telegram", handle: "@franquicia400", url: "https://t.me/franquicia400" },
@@ -11,7 +15,7 @@ export const SITE = {
   url: "https://ofertas.knunet.com",
   parent: { name: "KnuNet", url: "https://knunet.com" },
   description:
-    "Tecnología, cocina y hogar de Amazon con lo que te sale de verdad puesto en Argentina: franquicia de USD 400, IVA y dólar del día.",
+    "¿Amazon o Mercado Libre? Comparamos lo que te sale traer cada producto puesto en tu casa con lo que sale acá, y te decimos dónde te conviene comprarlo.",
   disclosure:
     "En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.",
   priceNotice:

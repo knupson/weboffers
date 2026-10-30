@@ -415,3 +415,30 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .alt { position: relative; z-index: 1; justify-self: center; font-size: 13px; font-weight: 600; color: var(--crema-2); }
 .card .foot > .btn { padding: 0 12px; font-size: 15px; }
 .btn.ml { background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }
+
+/* Hero: cómo decidimos, pintado en la placa */
+.hero h1 { font-size: clamp(40px, 4.2vw, 64px); }
+.pasos { position: absolute; left: 23%; right: 23%; top: 25%; bottom: 23%; margin: 0; padding: 0; list-style: none; counter-reset: paso; display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.2vw, 14px); }
+.pasos li { counter-increment: paso; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline; }
+.pasos li::before { content: counter(paso); grid-row: span 2; font-family: var(--letra); font-size: clamp(20px, 2.2vw, 32px); color: var(--rojo); line-height: 1; }
+.pasos b { font-family: var(--letra); font-weight: 400; font-size: clamp(14px, 1.45vw, 21px); color: var(--amarillo); line-height: 1.1; }
+.pasos span { font-size: clamp(11px, 1vw, 14px); line-height: 1.3; color: var(--crema-2); }
+
+/* Calculadora rápida, como herramienta secundaria */
+.calc-home { display: grid; gap: 24px; align-items: center; }
+@media (min-width: 1024px) { .calc-home { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 40px; } }
+.calc-home .lead { margin: 16px 0; }
+
+/* Búsqueda */
+.hit { display: contents; }
+.hit[hidden] { display: none; }
+.afuera { margin-top: 32px; padding: 24px; border-radius: var(--r-placa); background: var(--placa); box-shadow: inset 0 0 0 1.5px var(--linea); display: grid; gap: 12px; }
+.afuera h2 { font-size: clamp(24px, 2.4vw, 34px); }
+.tiendas { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 640px) {
+  .placa-hero:has(.pasos) { aspect-ratio: auto; border-radius: var(--r-placa); background: var(--placa); box-shadow: inset 0 0 0 2px var(--amarillo), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--rojo); padding: 22px; }
+  .placa-hero:has(.pasos) > img { display: none; }
+  .pasos { position: static; gap: 14px; }
+  .pasos b { font-size: 18px; }
+  .pasos span { font-size: 14px; }
+}

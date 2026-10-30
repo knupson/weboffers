@@ -62,19 +62,19 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
     {verdict === "amazon" && (
       <>
         <a class="gana amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
-          <span class="v">Conviene traerlo</span>
+          <span class="v">Mejor opción · sale bastante menos, aunque tarda más</span>
           <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={16} /></span>
         </a>
-        <a class="alt" href={p.ml!.url} {...ext} {...track("ml", "alternativa")}>o comprarlo en Mercado Libre</a>
+        <a class="alt" href={p.ml!.url} {...ext} {...track("ml", "alternativa")}>o verlo en Mercado Libre</a>
       </>
     )}
     {verdict === "ml" && (
       <>
         <a class="gana ml" href={p.ml!.url} {...ext} {...track("ml", "veredicto")}>
-          <span class="v">Conviene comprarlo acá</span>
+          <span class="v">Mejor opción · mismo precio o menos, llega en días</span>
           <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
         </a>
-        <a class="alt" href={amazon} {...ext} {...track("amazon", "alternativa")}>o traerlo de Amazon</a>
+        <a class="alt" href={amazon} {...ext} {...track("amazon", "alternativa")}>o verlo en Amazon</a>
       </>
     )}
     {!verdict && (

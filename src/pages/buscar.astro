@@ -1,25 +1,73 @@
 ---
 import Base from "../layouts/Base.astro";
-import { amazonSearchUrl } from "../config";
+import ProductCard from "../components/ProductCard.astro";
+import Icon from "../components/Icon.astro";
+import { amazonSearchUrl, ML_AFFILIATE } from "../config";
+import { loadProducts } from "../lib/data";
 
-// Plantillas con el tag ya puesto; el script sólo cambia el término.
-const bases = { US: amazonSearchUrl("", "US"), ES: amazonSearchUrl("", "ES") };
+const { products } = await loadProducts();
+const shown = products.filter((p) => p.verified);
+// Texto en el que se busca: sin tildes y en minúsculas, igual que la consulta.
+const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const amazonBase = amazonSearchUrl("", "US");
 ---
 
-<Base title="Buscando en Amazon" description="Redirección a la búsqueda de Amazon.">
+<Base title="Buscar y comparar" description="Buscá un producto y te decimos si conviene traerlo de Amazon o comprarlo en Mercado Libre.">
   <meta name="robots" content="noindex" slot="head" />
   <div class="wrap page-head">
-    <h1>Te llevamos a Amazon...</h1>
-    <p class="lead" id="msg">Si no pasa nada, volvé a la <a href="/">portada</a> y probá de nuevo.</p>
+    <h1 class="letra">Buscar y comparar</h1>
+    <form class="search" action="/buscar/" method="get" role="search">
+      <Icon name="magnifying-glass" size={18} />
+      <input name="q" type="search" placeholder="SSD, Ryzen, auriculares, Garmin..." aria-label="Qué producto buscás" required />
+      <button class="btn" type="submit">Comparar</button>
+    </form>
+    <p class="lead" id="resumen" aria-live="polite"></p>
   </div>
-  <script is:inline define:vars={{ bases }}>
-    const params = new URLSearchParams(location.search);
-    const q = (params.get("q") || "").trim();
-    const store = params.get("tienda") === "ES" ? "ES" : "US";
+
+  <section style="padding-top: 0">
+    <div class="wrap">
+      <div class="grid-products" id="resultados">
+        {shown.map((p) => (
+          <div class="hit" hidden data-q={norm(`${p.name} ${p.brand} ${p.category} ${p.slug.replace(/-/g, " ")}`)}>
+            <ProductCard product={p} />
+          </div>
+        ))}
+      </div>
+
+      <div class="afuera" id="afuera" hidden>
+        <h2 class="letra">Seguí buscando en las tiendas</h2>
+        <p>Si no está en nuestra lista, compará vos: mirá el precio en Mercado Libre y pegá el de Amazon en la <a class="link" href="/calculadora/">calculadora</a> para ver cuánto te sale puesto en tu casa.</p>
+        <div class="tiendas">
+          <a class="btn ml" id="ir-ml" href="https://listado.mercadolibre.com.ar/" target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-origen="busqueda">Buscar en Mercado Libre <Icon name="arrow-up-right" size={16} /></a>
+          <a class="btn" id="ir-amazon" href={amazonBase} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda="US" data-umami-event-origen="busqueda">Buscar en Amazon <Icon name="arrow-up-right" size={16} /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline define:vars={{ amazonBase, ml: ML_AFFILIATE }}>
+    const q = (new URLSearchParams(location.search).get("q") || "").trim();
+    const input = document.querySelector('input[name="q"]');
+    if (input) input.value = q;
+    const norm = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const tokens = norm(q).split(/\s+/).filter(Boolean);
+    let n = 0;
+    document.querySelectorAll(".hit").forEach((el) => {
+      const ok = tokens.length > 0 && tokens.every((t) => el.dataset.q.includes(t));
+      el.hidden = !ok;
+      if (ok) n++;
+    });
+    const resumen = document.getElementById("resumen");
+    resumen.textContent = !q ? "Escribí qué producto buscás." : n ? `Tenemos ${n} ${n === 1 ? "producto comparado" : "productos comparados"} para "${q}".` : `No tenemos "${q}" comparado todavía.`;
     if (q) {
-      const url = new URL(bases[store]);
-      url.searchParams.set("k", q);
-      location.replace(url.toString());
+      document.getElementById("afuera").hidden = false;
+      const a = new URL(amazonBase);
+      a.searchParams.set("k", q);
+      document.getElementById("ir-amazon").href = a.toString();
+      const m = new URL("https://listado.mercadolibre.com.ar/" + encodeURIComponent(q.replace(/\s+/g, "-")));
+      m.searchParams.set("matt_word", ml.word);
+      m.searchParams.set("matt_tool", ml.tool);
+      document.getElementById("ir-ml").href = m.toString();
     }
   </script>
 </Base>

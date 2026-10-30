@@ -12,7 +12,7 @@ export interface LegalDoc {
 export const LEGAL: Record<LegalId, LegalDoc> = {
   afiliados: {
     id: "afiliados",
-    title: "Afiliación con Amazon",
+    title: "Afiliación con Amazon y Mercado Libre",
     summary: "Cómo ganamos plata con este sitio y qué significa para vos.",
     updated: "30 de octubre de 2026",
     sections: [
@@ -21,6 +21,8 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
         body: [
           "En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.",
           "Participamos en el Programa de Afiliados de Amazon (Amazon.com y Amazon.es). Los links a Amazon llevan un código de seguimiento. Si comprás después de entrar por uno, Amazon nos paga una comisión.",
+          "También participamos en el Programa de Afiliados y Creadores de Mercado Libre. Los links a Mercado Libre (meli.la y los que llevan matt_word) también llevan un código, y si comprás por ellos Mercado Libre nos paga una comisión.",
+          "Que cobremos de las dos tiendas no cambia el veredicto: recomendamos la que te deja el producto más barato puesto en tu casa, y a igual precio, Mercado Libre, porque llega antes y sin aduana.",
         ],
       },
       {

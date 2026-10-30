@@ -94,19 +94,19 @@ const specs: Array<[string, string]> = [
           {p.verdict === "amazon" && p.ml && (
             <>
               <a class="gana amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
-                <span class="v">Conviene traerlo: Amazon lo deja más barato puesto en tu casa</span>
+                <span class="v">Mejor opción: Amazon. Puesto en tu casa sale bastante menos, aunque tarda más.</span>
                 <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={18} /></span>
               </a>
-              <a class="alt" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o comprarlo en Mercado Libre</a>
+              <a class="alt" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o verlo en Mercado Libre</a>
             </>
           )}
           {(p.verdict ?? "ml") === "ml" && p.ml && (
             <>
               <a class="gana ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
-                <span class="v">Conviene comprarlo acá: llega en días, sin aduana y con garantía local</span>
+                <span class="v">Mejor opción: Mercado Libre. Mismo precio o menos, llega en días, sin aduana y con garantía local.</span>
                 <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={18} /></span>
               </a>
-              <a class="alt" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o traerlo de Amazon</a>
+              <a class="alt" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o verlo en Amazon</a>
             </>
           )}
           {!p.ml && (
