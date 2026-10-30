@@ -126,7 +126,7 @@ section { padding: 64px 0; }
 @media (min-width: 960px) { .hero { padding: 56px 0 32px; } }
 .hero-grid { display: grid; gap: 32px; align-items: center; }
 @media (min-width: 1024px) { .hero-grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 40px; } }
-.hero h1 { font-size: clamp(48px, 4.8vw, 84px); }
+.hero h1 { font-size: clamp(48px, 4.6vw, 70px); }
 .hero .lead { margin-top: 24px; }
 
 .search {
