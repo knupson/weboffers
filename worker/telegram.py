@@ -13,7 +13,7 @@ SITE = "https://ofertas.knunet.com"
 ART = timezone(timedelta(hours=-3))
 POST_HOUR = 12
 STORES = {"US": "Amazon.com", "ES": "Amazon.es"}
-DISCLOSURE = "Links de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
+DISCLOSURE = "Links de afiliado: si comprás, Amazon o Mercado Libre nos pagan una comisión y a vos te sale lo mismo."
 
 
 def is_configured():
@@ -43,15 +43,18 @@ def pick(catalog, posted):
 
 def caption(product):
     url = f"{SITE}/productos/{product['slug']}/?utm_source=telegram"
-    lines = [
-        f"<b>{html.escape(product['name'])}</b>",
-        html.escape(product["summary"]),
-        "",
-        f"En {STORES.get(product['store'], 'Amazon')}. Mirá cuánto te sale puesto en tu casa, con IVA y el dólar de hoy:",
-        url,
-        "",
-        f"<i>{DISCLOSURE}</i>",
-    ]
+    ml = product.get("ml")
+    lines = [f"<b>{html.escape(product['name'])}</b>", html.escape(product["summary"]), ""]
+    if ml:
+        precio = f"${ml['price']:,.0f}".replace(",", ".")
+        lines.append(f"En Argentina: <b>{precio}</b> en Mercado Libre.")
+        if product.get("verdict") == "amazon":
+            lines.append(f"Traerlo de {STORES.get(product['store'], 'Amazon')} sale bastante menos puesto en tu casa.")
+        else:
+            lines.append("Traerlo de Amazon no te ahorra: conviene comprarlo acá, llega en días.")
+    else:
+        lines.append(f"En {STORES.get(product['store'], 'Amazon')}. Mirá cuánto te sale puesto en tu casa:")
+    lines += ["Comparación completa y links:", url, "", f"<i>{DISCLOSURE}</i>"]
     return "\n".join(lines)
 
 

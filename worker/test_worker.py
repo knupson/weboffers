@@ -165,7 +165,12 @@ def test_catalog_entries_are_complete_and_unique():
     for item in catalog:
         assert required <= set(item)
         assert item["store"] in ("US", "ES")
-        assert item["verified"] is True
+        assert isinstance(item["verified"], bool)
+        if item["verified"]:
+            # Visible = verificado en Amazon con envío a Argentina y comparado con Mercado Libre.
+            assert item["shipsToAr"]["freeShipping"] is True
+            assert item["ml"]["price"] > 0 and item["ml"]["url"].startswith("https://meli.la/")
+            assert item["verdict"] in ("amazon", "ml")
         if "image" in item:
             assert item["image"].startswith("/products/") and item["imageSource"].startswith("https://")
     assert len({item["slug"] for item in catalog}) == len(catalog)

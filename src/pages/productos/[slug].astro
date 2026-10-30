@@ -35,8 +35,8 @@ const specs: Array<[string, string]> = [
 ---
 
 <Base
-  title={`${p.name}: cuánto sale traerlo a Argentina`}
-  description={`${p.summary} Calculá el costo final en pesos con la franquicia de USD 400, IVA y dólar del día.`}
+  title={`${p.name}: precio en Argentina, ¿Amazon o Mercado Libre?`}
+  description={p.ml ? `${p.name} en Argentina: ${formatArs(p.ml.price)} en Mercado Libre. ${(p.verdict ?? "ml") === "amazon" ? "Traerlo de Amazon sale bastante menos puesto en tu casa." : "Traerlo de Amazon no te ahorra: conviene comprarlo acá."} ${p.summary}` : `${p.summary} Calculá cuánto te sale traerlo de Amazon puesto en tu casa.`}
   jsonLd={[
     {
       "@type": "Product",
@@ -46,6 +46,9 @@ const specs: Array<[string, string]> = [
       category: p.category,
       sku: p.asin,
       ...(p.image ? { image: `${SITE.url}${p.image}` } : {}),
+      ...(p.ml
+        ? { offers: { "@type": "Offer", price: p.ml.price, priceCurrency: "ARS", availability: "https://schema.org/InStock", itemCondition: "https://schema.org/NewCondition", url: `${SITE.url}/productos/${p.slug}/`, priceValidUntil: p.ml.checked.replace(/^(\d{4})/, (y) => String(Number(y) + 1)) } }
+        : {}),
     },
     {
       "@type": "BreadcrumbList",

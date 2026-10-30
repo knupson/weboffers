@@ -1252,7 +1252,8 @@
       "url": "https://meli.la/1srKs7v",
       "checked": "2026-10-30"
     },
-    "verdict": "amazon"
+    "verdict": "amazon",
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9900x.html"
   },
   {
     "asin": "B0D6NMCZG1",
@@ -1273,7 +1274,8 @@
       "url": "https://meli.la/2Veucfd",
       "checked": "2026-10-30"
     },
-    "verdict": "ml"
+    "verdict": "ml",
+    "imageSource": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-9-5900xt.html"
   },
   {
     "asin": "B0GMKXVVJQ",
@@ -1294,7 +1296,8 @@
       "url": "https://meli.la/29FnkHS",
       "checked": "2026-10-30"
     },
-    "verdict": "amazon"
+    "verdict": "amazon",
+    "imageSource": "https://www.intel.com/content/www/us/en/newsroom/news/client-computing/intel-announces-new-intel-core-ultra-200s-plus-series-desktop-processors.html"
   },
   {
     "asin": "B09FWYK5M9",
@@ -1315,7 +1318,8 @@
       "url": "https://meli.la/1pbtHLe",
       "checked": "2026-10-30"
     },
-    "verdict": "amazon"
+    "verdict": "amazon",
+    "imageSource": "https://www.intel.com/content/www/us/en/newsroom/resources/press-kit-12th-gen-core-procesors.html"
   },
   {
     "asin": "B0FXGWKHND",
@@ -1336,7 +1340,8 @@
       "url": "https://meli.la/1wyUMkj",
       "checked": "2026-10-30"
     },
-    "verdict": "amazon"
+    "verdict": "amazon",
+    "imageSource": "https://www.noctua.at/en/products/nh-d15-g2-chromax-black"
   },
   {
     "asin": "B0BH7GTY9C",
@@ -1357,7 +1362,8 @@
       "url": "https://meli.la/2w1fXwn",
       "checked": "2026-10-30"
     },
-    "verdict": "amazon"
+    "verdict": "amazon",
+    "imageSource": "https://www.gigabyte.com/Motherboard/B650-AORUS-ELITE-AX-rev-10-11"
   },
   {
     "asin": "B0D48GS6KB",
