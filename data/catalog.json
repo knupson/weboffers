@@ -264,7 +264,7 @@
     "slug": "sony-wh-1000xm5-negro",
     "name": "Sony WH-1000XM5 Wireless Noise Canceling Headphones (Black)",
     "brand": "Sony",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares inalámbricos over-ear con cancelación de ruido y optimizador automático, hasta 30 horas de batería y estuche de transporte incluido.",
     "verified": false,
     "image": "/products/sony-wh-1000xm5-negro.webp",
@@ -367,7 +367,7 @@
     "slug": "sony-wf-1000xm5-negro",
     "name": "Sony WF-1000XM5 Noise Cancelling Truly Wireless Earbuds (Black)",
     "brand": "Sony",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares in-ear totalmente inalámbricos con cancelación de ruido, en color negro.",
     "verified": true,
     "image": "/products/sony-wf-1000xm5-negro.webp",
@@ -396,7 +396,7 @@
     "slug": "apple-airpods-pro-2-usb-c",
     "name": "Apple AirPods Pro 2 Wireless Earbuds (USB-C)",
     "brand": "Apple",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares in-ear inalámbricos con cancelación activa de ruido, audio espacial y estuche de carga USB-C.",
     "verified": false,
     "image": "/products/apple-airpods-pro-2-usb-c.webp",
@@ -450,7 +450,7 @@
     "slug": "sony-wh-ch520-negro",
     "name": "Sony WH-CH520 Wireless On-Ear Bluetooth Headphones (Black)",
     "brand": "Sony",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares on-ear inalámbricos con micrófono, conexión multipunto y diseño giratorio, en color negro.",
     "verified": false,
     "image": "/products/sony-wh-ch520-negro.webp",
@@ -904,7 +904,7 @@
     "slug": "skullcandy-crusher-anc-2",
     "name": "Skullcandy Crusher ANC 2 Wireless Noise-Cancelling Headphones",
     "brand": "Skullcandy",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares inalámbricos con cancelación de ruido activa, graves sensoriales y app para ajustar EQ y perfil auditivo.",
     "verified": true,
     "image": "/products/skullcandy-crusher-anc-2.webp",
@@ -932,7 +932,7 @@
     "slug": "turtle-beach-stealth-600-gen3",
     "name": "Turtle Beach Stealth 600 Gen 3 Wireless Multiplatform Gaming Headset",
     "brand": "Turtle Beach",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares gamer inalámbricos multiplataforma con micrófono y hasta 80 horas de batería según el fabricante.",
     "verified": true,
     "image": "/products/turtle-beach-stealth-600-gen3.webp",
@@ -1422,7 +1422,7 @@
     "slug": "sony-wh-1000xm6",
     "name": "Sony WH-1000XM6 Wireless Noise Cancelling Headphones",
     "brand": "Sony",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares over-ear inalámbricos con cancelación de ruido activa y conexión Bluetooth, de la serie WH-1000X de Sony.",
     "verified": true,
     "image": "/products/sony-wh-1000xm6.webp",
@@ -1450,7 +1450,7 @@
     "slug": "bose-quietcomfort-ultra-headphones",
     "name": "Bose QuietComfort Ultra Headphones",
     "brand": "Bose",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares over-ear inalámbricos con cancelación de ruido y audio espacial, con conexión Bluetooth.",
     "verified": true,
     "image": "/products/bose-quietcomfort-ultra-headphones.webp",
@@ -1478,7 +1478,7 @@
     "slug": "samsung-galaxy-buds-4-pro",
     "name": "Samsung Galaxy Buds 4 Pro",
     "brand": "Samsung",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares inalámbricos in-ear con cancelación de ruido activa y estuche de carga, de la serie Galaxy Buds 4 de Samsung.",
     "verified": true,
     "image": "/products/samsung-galaxy-buds-4-pro.webp",
@@ -1506,7 +1506,7 @@
     "slug": "samsung-galaxy-buds-3-fe",
     "name": "Samsung Galaxy Buds 3 FE",
     "brand": "Samsung",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares inalámbricos in-ear con cancelación de ruido activa y estuche de carga, versión económica de la serie Galaxy Buds 3.",
     "verified": true,
     "image": "/products/samsung-galaxy-buds-3-fe.webp",
@@ -1534,7 +1534,7 @@
     "slug": "steelseries-arctis-nova-5-wireless",
     "name": "SteelSeries Arctis Nova 5 Wireless Gaming Headset",
     "brand": "SteelSeries",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares gamer inalámbricos con conexión 2.4 GHz y Bluetooth, de la serie Arctis Nova 5 de SteelSeries.",
     "verified": true,
     "image": "/products/steelseries-arctis-nova-5-wireless.webp",
@@ -1562,7 +1562,7 @@
     "slug": "hyperx-cloud-iii-s-wireless",
     "name": "HyperX Cloud III S Wireless Gaming Headset",
     "brand": "HyperX",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Auriculares gamer inalámbricos con conexión 2.4 GHz y Bluetooth, de la serie Cloud III de HyperX.",
     "verified": true,
     "image": "/products/hyperx-cloud-iii-s-wireless.webp",
@@ -1590,7 +1590,7 @@
     "slug": "shure-mv6",
     "name": "Shure MV6 USB Microphone",
     "brand": "Shure",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Micrófono USB de condensador para grabación y streaming, con conexión USB-C y salida para auriculares.",
     "verified": true,
     "image": "/products/shure-mv6.webp",
@@ -1612,7 +1612,7 @@
     "slug": "shure-mv7-plus",
     "name": "Shure MV7+ USB-C & XLR Podcast Microphone",
     "brand": "Shure",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Micrófono dinámico para podcast con salida USB-C y XLR, panel táctil y procesamiento de voz integrado.",
     "verified": true,
     "image": "/products/shure-mv7-plus.webp",
@@ -1640,7 +1640,7 @@
     "slug": "rode-nt1-signature",
     "name": "RØDE NT1 Signature Series Studio Condenser Microphone",
     "brand": "RØDE",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Micrófono de condensador de estudio con bajo ruido propio y manejo de alto nivel de presión sonora (SPL).",
     "verified": true,
     "image": "/products/rode-nt1-signature.webp",
@@ -1668,7 +1668,7 @@
     "slug": "jbl-flip-7",
     "name": "JBL Flip 7 Portable Bluetooth Speaker",
     "brand": "JBL",
-    "category": "Audio",
+    "category": "Audio y video",
     "summary": "Parlante Bluetooth portátil de la serie Flip de JBL, pensado para uso al aire libre.",
     "verified": true,
     "image": "/products/jbl-flip-7.webp",
@@ -2243,5 +2243,471 @@
       "checked": "2026-10-30"
     },
     "verdict": "amazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "redragon-k552-kumara",
+    "name": "Redragon K552 Kumara teclado mecánico TKL",
+    "brand": "Redragon",
+    "category": "Periféricos",
+    "summary": "Teclado mecánico TKL de 87 teclas con switches Outemu Blue, retroiluminación LED rainbow y cable USB.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/redragon-k552-kumara.webp",
+    "imageSource": "https://redragonshop.com/products/redragon-kumara-k552",
+    "ml": {
+      "price": 245998,
+      "url": "https://meli.la/1cEvoaX",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "B0DBR3DZWG",
+    "store": "US",
+    "slug": "kingston-nv3-1tb",
+    "name": "Kingston NV3 1TB SSD NVMe PCIe 4.0",
+    "brand": "Kingston",
+    "category": "Almacenamiento",
+    "summary": "SSD M.2 2280 NVMe PCIe 4.0 x4 de 1 TB con lecturas de hasta 6.000 MB/s.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/kingston-nv3-1tb.webp",
+    "imageSource": "https://www.kingston.com/en/ssd/nv3-nvme-pcie-ssd",
+    "ml": {
+      "price": 291283,
+      "url": "https://meli.la/19hHXAU",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "kingston-a400-480gb",
+    "name": "Kingston A400 480GB SSD SATA",
+    "brand": "Kingston",
+    "category": "Almacenamiento",
+    "summary": "SSD SATA III de 2,5 pulgadas y 480 GB con lecturas de hasta 500 MB/s.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/kingston-a400-480gb.webp",
+    "imageSource": "https://www.kingston.com/en/ssd/a400-solid-state-drive",
+    "ml": {
+      "price": 167599,
+      "url": "https://meli.la/1X5cWB4",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "B0BQX6NNVC",
+    "store": "US",
+    "slug": "toshiba-canvio-basics-2tb",
+    "name": "Toshiba Canvio Basics 2TB disco externo",
+    "brand": "Toshiba",
+    "category": "Almacenamiento",
+    "summary": "Disco duro portátil de 2 TB con USB 3.2 Gen 1 (compatible USB 2.0), formato 2,5 pulgadas y alimentación por USB.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/toshiba-canvio-basics-2tb.webp",
+    "imageSource": "https://www.toshiba-storage.com/products/canvio-basics/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 279999,
+      "url": "https://meli.la/1bJjK9E",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "B0BS1PRC4L",
+    "store": "US",
+    "slug": "sony-wh-ch520",
+    "name": "Sony WH-CH520 auriculares inalámbricos",
+    "brand": "Sony",
+    "category": "Audio y video",
+    "summary": "Auriculares on-ear Bluetooth con micrófono y hasta 50 horas de batería.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/sony-wh-ch520.webp",
+    "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
+    "ml": {
+      "price": 89999,
+      "url": "https://meli.la/14Cvyd7",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "B0DXXYS4BJ",
+    "store": "US",
+    "slug": "roku-streaming-stick-2025",
+    "name": "Roku Streaming Stick HD (2025)",
+    "brand": "Roku",
+    "category": "Audio y video",
+    "summary": "Reproductor de streaming HD con HDMI, Wi-Fi y control remoto por voz.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/roku-streaming-stick-2025.webp",
+    "imageSource": "https://www.roku.com/es-ar/products/players/roku-streaming-stick",
+    "ml": {
+      "price": 85500,
+      "url": "https://meli.la/2G34thZ",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "B0FY6X2XXY",
+    "store": "US",
+    "slug": "sony-dualsense-negro",
+    "name": "Sony DualSense Midnight Black para PS5",
+    "brand": "Sony",
+    "category": "Gaming",
+    "summary": "Control inalámbrico para PS5 con gatillos adaptativos, respuesta háptica y micrófono integrado.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/sony-dualsense-negro.webp",
+    "imageSource": "https://direct.playstation.com/en-us/buy-accessories/dualsense-wireless-controller-midnight-black-for-ps5-pc-mac-mobile",
+    "ml": {
+      "price": 144999,
+      "url": "https://meli.la/2tQuRVm",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "redragon-h510-zeus-pro",
+    "name": "Redragon H510 Zeus Pro auriculares gamer inalámbricos",
+    "brand": "Redragon",
+    "category": "Gaming",
+    "summary": "Auriculares gamer inalámbricos con sonido 7.1 virtual, micrófono desmontable y conexión de 2,4 GHz y Bluetooth.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/redragon-h510-zeus-pro.webp",
+    "imageSource": "https://redragonshop.com/products/h510-zeus-wireless-gaming-headset",
+    "ml": {
+      "price": 117511,
+      "url": "https://meli.la/1Q849Y6",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "hp-smart-tank-210",
+    "name": "HP Smart Tank 210 impresora multifunción",
+    "brand": "HP",
+    "category": "Periféricos",
+    "summary": "Impresora de tanque de tinta con Wi-Fi, hasta 6.000 páginas a color y 12.000 en negro con las botellas incluidas.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/hp-smart-tank-210.webp",
+    "imageSource": "https://www.hp.com/ec-es/products/printers/product-details/product-specifications/2101019181",
+    "ml": {
+      "price": 314999,
+      "url": "https://meli.la/2PPdQJd",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "dji-mic-mini-2",
+    "name": "DJI Mic Mini 2 kit con 2 transmisores",
+    "brand": "DJI",
+    "category": "Audio y video",
+    "summary": "Micrófonos inalámbricos con 2 transmisores, receptor y estuche de carga para grabar video o streaming.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/dji-mic-mini-2.webp",
+    "imageSource": "https://www.dji.com/global/mic-mini-2",
+    "ml": {
+      "price": 176000,
+      "url": "https://meli.la/2NFf1HZ",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "hp-laserjet-m111w",
+    "name": "HP LaserJet M111w impresora láser monocromática",
+    "brand": "HP",
+    "category": "Periféricos",
+    "summary": "Impresora láser monocromática compacta con Wi-Fi, hasta 20 ppm y conexión USB.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/hp-laserjet-m111w.webp",
+    "imageSource": "https://www.hp.com/ar-es/shop/impresora-hp-laserjet-m111w-7md68a.html",
+    "ml": {
+      "price": 254695,
+      "url": "https://meli.la/2wZFeud",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "B0H4NX3MM6",
+    "store": "US",
+    "slug": "starlink-mini",
+    "name": "Starlink Mini kit de internet satelital",
+    "brand": "Starlink",
+    "category": "Redes",
+    "summary": "Antena satelital portátil con router Wi-Fi integrado, pensada para viajes y uso en movimiento; se alimenta por USB-C PD o 12-48 V.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/starlink-mini.webp",
+    "imageSource": "https://starlink.com/support/article/61d2f65f-85b8-a5b2-9bad-b3c2f27379d6",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 219000,
+      "url": "https://meli.la/1Y6sEuC",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "tp-link-deco-s7",
+    "name": "TP-Link Deco S7 AC1900 Wi-Fi mesh (1 unidad)",
+    "brand": "TP-Link",
+    "category": "Redes",
+    "summary": "Nodo mesh Wi-Fi 5 doble banda AC1900 con 3 puertos Gigabit; una unidad cubre hasta unos 190 m² y se amplía con más Deco.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/tp-link-deco-s7.webp",
+    "imageSource": "https://www.tp-link.com/pe/home-networking/deco/deco-s7/",
+    "ml": {
+      "price": 90433,
+      "url": "https://meli.la/1nmGotz",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "tp-link-re505x",
+    "name": "TP-Link RE505X repetidor Wi-Fi 6 AX1500",
+    "brand": "TP-Link",
+    "category": "Redes",
+    "summary": "Repetidor Wi-Fi 6 doble banda AX1500 con puerto Gigabit y compatibilidad OneMesh; se enchufa directo a la pared.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/tp-link-re505x.webp",
+    "imageSource": "https://www.tp-link.com/mx/home-networking/range-extender/re505x/",
+    "ml": {
+      "price": 83168,
+      "url": "https://meli.la/1eesva7",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "amazon-kindle-2024-16gb",
+    "name": "Amazon Kindle 2024 (11.ª gen) 16 GB",
+    "brand": "Amazon",
+    "category": "Tablets y lectores",
+    "summary": "Lector de libros con pantalla e-ink antirreflejo de 6\" y 300 ppi, luz frontal ajustable, 16 GB y USB-C.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/amazon-kindle-2024-16gb.webp",
+    "imageSource": "https://www.aboutamazon.com/news/devices/new-kindle-color-scribe-paperwhite-entry",
+    "ml": {
+      "price": 310000,
+      "url": "https://meli.la/2XnPVPq",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "B0FXBPWCQY",
+    "store": "US",
+    "slug": "samsung-galaxy-tab-a11",
+    "name": "Samsung Galaxy Tab A11 8,7\" Wi-Fi 4 GB/64 GB",
+    "brand": "Samsung",
+    "category": "Tablets y lectores",
+    "summary": "Tablet de 8,7\" con 4 GB de RAM, 64 GB de almacenamiento, Wi-Fi y cuerpo metálico, pensada para uso diario y lectura.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/samsung-galaxy-tab-a11.webp",
+    "imageSource": "https://www.samsung.com/latin/tablets/galaxy-tab-a/galaxy-tab-a11-gray-64gb-sm-x133nzaagto/buy/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 329289,
+      "url": "https://meli.la/1Q8A64p",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "B0F9B9QDNK",
+    "store": "US",
+    "slug": "xiaomi-redmi-pad-2-256gb",
+    "name": "Xiaomi Redmi Pad 2 11\" Wi-Fi 8 GB/256 GB",
+    "brand": "Xiaomi",
+    "category": "Tablets y lectores",
+    "summary": "Tablet de 11\" con pantalla de 90 Hz, 8 GB de RAM, 256 GB de almacenamiento, cuatro parlantes y batería de 9.000 mAh.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/xiaomi-redmi-pad-2-256gb.webp",
+    "imageSource": "https://www.mi.com/es/product/redmi-pad-2/",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 489999,
+      "url": "https://meli.la/265aau1",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "B0G4NS8NTX",
+    "store": "US",
+    "slug": "lenovo-idea-tab-11",
+    "name": "Lenovo Idea Tab 11 (TB336FU) 8 GB/128 GB",
+    "brand": "Lenovo",
+    "category": "Tablets y lectores",
+    "summary": "Tablet de 11\" con pantalla de 90 Hz, 8 GB de RAM y 128 GB de almacenamiento, ideal para estudio y entretenimiento.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/lenovo-idea-tab-11.webp",
+    "imageSource": "https://www.lenovo.com/ar/es/p/tablets/lenovo-tab-series/lenovo-idea-tab/len103l0028",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 629999,
+      "url": "https://meli.la/1UhNPw2",
+      "checked": "2026-10-30"
+    },
+    "verdict": "amazon",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "amazon-kindle-paperwhite-2024",
+    "name": "Amazon Kindle Paperwhite 2024 (12.ª gen) 16 GB",
+    "brand": "Amazon",
+    "category": "Tablets y lectores",
+    "summary": "Lector con pantalla e-ink sin bordes de 7\" y 300 ppi, hasta 12 semanas de batería, 16 GB, resistente al agua IPX8.",
+    "verified": false,
+    "hot": "2026-10-30",
+    "ml": {
+      "price": 418000,
+      "url": "https://meli.la/21YkLqw",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "",
+    "store": "US",
+    "slug": "anker-laptop-power-bank-25k",
+    "name": "Anker Laptop Power Bank 25.000 mAh 165 W",
+    "brand": "Anker",
+    "category": "Carga y energía",
+    "summary": "Batería externa de 25.000 mAh con 165 W de salida, dos cables USB-C integrados (uno retráctil) y pantalla con datos en tiempo real.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/anker-laptop-power-bank-25k.webp",
+    "imageSource": "https://www.anker.com/products/a1695-anker-power-bank-25000mah-165w",
+    "ml": {
+      "price": 197303,
+      "url": "https://meli.la/2C8MSao",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "sinAmazon"
+  },
+  {
+    "asin": "B0DBR9RZLV",
+    "store": "US",
+    "slug": "kingston-nv3-500gb",
+    "name": "Kingston NV3 500GB SSD NVMe PCIe 4.0 M.2",
+    "brand": "Kingston",
+    "category": "Almacenamiento",
+    "summary": "SSD M.2 2280 NVMe PCIe 4.0 x4 de 500 GB con lecturas de hasta 5.000 MB/s, económico y de bajo consumo.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/kingston-nv3-500gb.webp",
+    "imageSource": "https://www.kingston.com/en/ssd/nv3-nvme-pcie-ssd",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 196299,
+      "url": "https://meli.la/1rEEYq9",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
+  },
+  {
+    "asin": "B0FNCPHMXM",
+    "store": "US",
+    "slug": "wd-green-sata-1tb",
+    "name": "WD Green SSD SATA 1TB 2,5\"",
+    "brand": "Western Digital",
+    "category": "Almacenamiento",
+    "summary": "SSD SATA III de 2,5\" y 1 TB con lecturas de hasta 545 MB/s, pensado para renovar notebooks y PC de uso general.",
+    "verified": true,
+    "hot": "2026-10-30",
+    "image": "/products/wd-green-sata-1tb.webp",
+    "imageSource": "https://www.sandisk.com/products/ssd/internal-ssd/wd-green-sata-internal-ssd-7mm",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-10-30"
+    },
+    "ml": {
+      "price": 295999,
+      "url": "https://meli.la/1nw7JLQ",
+      "checked": "2026-10-30"
+    },
+    "verdict": "ml",
+    "verdictReason": "precio"
   }
 ]

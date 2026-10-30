@@ -167,11 +167,14 @@ def test_catalog_entries_are_complete_and_unique():
         assert item["store"] in ("US", "ES")
         assert isinstance(item["verified"], bool)
         if item["verified"]:
-            # Visible = verificado en Amazon con envío a Argentina y comparado con Mercado Libre.
-            assert item["shipsToAr"]["freeShipping"] is True
+            # Visible = comparado con Mercado Libre; si gana Amazon, tiene que estar verificado el envío gratis.
             assert item["ml"]["price"] > 0 and item["ml"]["url"].startswith("https://meli.la/")
             assert item["verdict"] in ("amazon", "ml")
+            if item["verdict"] == "amazon":
+                assert item["asin"] and item["shipsToAr"]["freeShipping"] is True
         if "image" in item:
             assert item["image"].startswith("/products/") and item["imageSource"].startswith("https://")
     assert len({item["slug"] for item in catalog}) == len(catalog)
-    assert len({(item["store"], item["asin"]) for item in catalog}) == len(catalog)
+    # Sin ASIN = no está en Amazon con envío a Argentina; los visibles con ASIN no se repiten.
+    with_asin = [item for item in catalog if item["verified"] and item["asin"]]
+    assert len({(item["store"], item["asin"]) for item in with_asin}) == len(with_asin)

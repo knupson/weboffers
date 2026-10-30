@@ -51,7 +51,7 @@ export const CATEGORY_ART: Record<string, string> = {
   "Mini PCs": "/art/cat-minipc.webp",
   Almacenamiento: "/art/cat-almacenamiento.webp",
   Periféricos: "/art/cat-perifericos.webp",
-  Audio: "/art/cat-audio.webp",
+  "Audio y video": "/art/cat-audio.webp",
   Cocina: "/art/cat-cocina.webp",
   Hogar: "/art/cat-hogar.webp",
   Gaming: "/art/cat-joystick.webp",
@@ -77,7 +77,7 @@ export const artFor = (p: { slug: string; category: string }) => PRODUCT_ART[p.s
 export const SEARCHES: Array<{ label: string; query: string; store: Store; category: string; art?: string; ml?: string; term: string }> = [
   { term: "ssd", label: "SSD NVMe de 2 TB", query: "nvme ssd 2tb pcie 4.0", store: "US", category: "Almacenamiento", ml: "https://meli.la/1YNptPJ" },
   { term: "ryzen", label: "Procesadores AMD Ryzen", query: "amd ryzen processor", store: "US", category: "Componentes", ml: "https://meli.la/1ZnvKXh" },
-  { term: "auriculares", label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", category: "Audio", ml: "https://meli.la/1UsPwMm" },
+  { term: "auriculares", label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", category: "Audio y video", ml: "https://meli.la/1UsPwMm" },
   { term: "garmin", label: "Relojes Garmin", query: "garmin smartwatch", store: "US", category: "Relojes", ml: "https://meli.la/2cxStP1" },
   { term: "cámara", label: "Cámaras de acción", query: "action camera 4k", store: "US", category: "Cámaras", ml: "https://meli.la/1Q632PA" },
   { term: "kobo", label: "Lectores de libros Kobo", query: "kobo ereader", store: "US", category: "Tablets y lectores", ml: "https://meli.la/1b92rDR" },

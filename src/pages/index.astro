@@ -1,6 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import Catalog from "../components/Catalog.astro";
+import ProductCard from "../components/ProductCard.astro";
 import QuickCalc from "../components/QuickCalc.tsx";
 import Icon from "../components/Icon.astro";
 import { CATEGORY_ART, SEARCHES, SITE, SOCIAL } from "../config";
@@ -8,6 +9,9 @@ import { loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
 const shown = products.filter((p) => p.verified);
+// Lo más vendido de Mercado Libre va en su sección; el resto, en el catálogo de abajo.
+const hot = shown.filter((p) => p.hot);
+const rest = shown.filter((p) => !p.hot);
 const stamp = offers.rates ? `de las ${new Date(offers.rates.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" })}` : "de hoy";
 
 // Categorías con productos van al catálogo; las demás, directo a una búsqueda en Amazon.
@@ -62,13 +66,27 @@ const cats = [
     </nav>
   </div>
 
+  {hot.length > 0 && (
+    <section id="mas-vendidos" style="padding-top: 48px">
+      <div class="wrap">
+        <div class="head">
+          <h2 class="letra">Lo más vendido esta semana</h2>
+          <p>Lo que más se vende en tecnología en Mercado Libre, comparado con traerlo de Amazon.</p>
+        </div>
+        <div class="grid-products">
+          {hot.map((p) => <ProductCard product={p} />)}
+        </div>
+      </div>
+    </section>
+  )}
+
   <section id="productos" style="padding-top: 48px">
     <div class="wrap">
       <div class="head">
         <h2 class="letra">Dónde conviene cada uno</h2>
         <p>Precio en pesos de Mercado Libre y el veredicto contra el total de Amazon con envío e impuestos.</p>
       </div>
-      <Catalog products={shown} />
+      <Catalog products={rest} />
     </div>
   </section>
 

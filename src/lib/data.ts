@@ -29,6 +29,10 @@ export interface CatalogEntry {
    * sin aduana, garantía local, cuotas y sin gastar uno de los 5 envíos anuales con franquicia).
    */
   verdict?: "amazon" | "ml";
+  /** Por qué ganó Mercado Libre: por precio, o porque Amazon no lo envía a Argentina (sin ASIN comparable). */
+  verdictReason?: "precio" | "sinAmazon";
+  /** Fecha (AAAA-MM-DD) en que entró a "Lo más vendido" de Mercado Libre. */
+  hot?: string;
 }
 
 export interface ListPrice {
