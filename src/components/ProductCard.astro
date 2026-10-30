@@ -17,7 +17,7 @@ const logo = brandLogo(p.brand);
 const free = p.shipsToAr?.freeShipping === true;
 const amazon = amazonUrl(p.asin, p.store);
 const fecha = p.ml?.checked.split("-").reverse().slice(0, 2).join("/");
-const verdict = p.ml ? p.verdict ?? "parejo" : null;
+const verdict = p.ml ? p.verdict ?? "ml" : null;
 const track = (tienda: string, origen: string) => ({
   "data-umami-event": tienda === "ml" ? "mercadolibre" : "amazon",
   "data-umami-event-tienda": tienda === "ml" ? "ML" : p.store,
@@ -75,15 +75,6 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
           <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
         </a>
         <a class="alt" href={amazon} {...ext} {...track("amazon", "alternativa")}>o traerlo de Amazon</a>
-      </>
-    )}
-    {verdict === "parejo" && (
-      <>
-        <p class="parejo">Da parecido: elegí por entrega</p>
-        <div class="dos">
-          <a class="btn chico" href={amazon} {...ext} {...track("amazon", "parejo")}>Amazon</a>
-          <a class="btn chico ml" href={p.ml!.url} {...ext} {...track("ml", "parejo")}>Mercado Libre</a>
-        </div>
       </>
     )}
     {!verdict && (

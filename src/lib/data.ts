@@ -23,8 +23,12 @@ export interface CatalogEntry {
   shipsToAr?: { freeShipping: boolean; checked: string };
   /** Publicación más barata en Mercado Libre del mismo modelo, con link de afiliado. */
   ml?: { price: number; url: string; checked: string };
-  /** Dónde conviene comprarlo, comparando el total real de Amazon (no publicado) con Mercado Libre. */
-  verdict?: "amazon" | "ml" | "parejo";
+  /**
+   * Dónde conviene comprarlo, comparando el total real de Amazon (no publicado) con Mercado Libre.
+   * Traerlo sólo conviene si ahorra 10% o más: a igual precio gana Mercado Libre (entrega en días,
+   * sin aduana, garantía local, cuotas y sin gastar uno de los 5 envíos anuales con franquicia).
+   */
+  verdict?: "amazon" | "ml";
 }
 
 export interface ListPrice {
