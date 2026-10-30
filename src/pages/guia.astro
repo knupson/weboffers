@@ -10,45 +10,33 @@ const steps = [
 ---
 
 <Base title="Cómo funciona" description="La franquicia de USD 400, qué impuestos se pagan y cómo estimar el costo final de una compra por courier a Argentina.">
-  <div class="wrap hero">
-    <span class="sector">Sector E · Guía</span>
+  <div class="wrap page-head">
     <h1>Cómo funciona</h1>
     <p class="lead">El régimen de courier deja traer compras personales sin derechos de importación hasta cierto valor. Esto dice la norma y así la usa la calculadora.</p>
   </div>
 
-  <section>
-    <div class="wrap grid">
-      <div class="side" data-reveal>
-        <span class="sector">Norma</span>
-        <h2>Qué dice</h2>
-      </div>
-      <div class="main prose" data-reveal>
-        <ul>
-          <li>Hasta <strong>USD 400 de valor FOB</strong> por envío, y hasta 5 envíos por año y por persona, no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024).</li>
-          <li>El excedente sobre USD 400 no entra en la franquicia y paga derechos y tasa de estadística.</li>
-          <li>El resto de los tributos, entre ellos el IVA, sigue el régimen general de importación (RG ARCA 5608/2024).</li>
-          <li>El tope por envío del régimen courier es de USD 3.000 de FOB.</li>
-        </ul>
-        <p class="state">La alícuota de IVA depende de la posición arancelaria del producto. No la pudimos confirmar en las normas del régimen courier, así que la calculadora arranca en 21% y te deja cambiarla.</p>
-      </div>
+  <section style="padding-top: 24px">
+    <div class="wrap prose">
+      <h2 style="margin-top: 0">Qué dice la norma</h2>
+      <ul>
+        <li>Hasta <strong>USD 400 de valor FOB</strong> por envío, y hasta 5 envíos por año y por persona, no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024).</li>
+        <li>El excedente sobre USD 400 no entra en la franquicia y paga derechos y tasa de estadística.</li>
+        <li>El resto de los tributos, entre ellos el IVA, sigue el régimen general de importación (RG ARCA 5608/2024).</li>
+        <li>El tope por envío del régimen courier es de USD 3.000 de FOB.</li>
+      </ul>
+      <p class="note" style="margin-top: 20px">La alícuota de IVA depende de la posición arancelaria del producto. No la pudimos confirmar en las normas del régimen courier, así que la calculadora arranca en 21% y te deja cambiarla.</p>
     </div>
   </section>
 
-  <section class="alt">
-    <div class="wrap grid">
-      <div class="side" data-reveal>
-        <span class="sector">Pasos</span>
-        <h2>Antes de pagar</h2>
-      </div>
-      <div class="main steps">
-        {steps.map(([title, body], i) => (
-          <div data-reveal>
-            <span class="n">{String(i + 1).padStart(2, "0")}</span>
-            <h3>{title}</h3>
-            <p>{body}</p>
-          </div>
+  <section style="padding-top: 0">
+    <div class="wrap">
+      <div class="head"><h2>Antes de pagar</h2></div>
+      <ol class="steps">
+        {steps.map(([title, body]) => (
+          <li><h3>{title}</h3><p>{body}</p></li>
         ))}
-      </div>
+      </ol>
+      <p style="margin-top: 28px"><a class="btn" href="/productos/">Ver productos</a></p>
     </div>
   </section>
 </Base>

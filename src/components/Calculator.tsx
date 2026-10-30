@@ -12,6 +12,8 @@ interface BuildRates {
 
 interface Props {
   buildRates: BuildRates | null;
+  initialFob?: number | null;
+  title?: string;
 }
 
 type LiveRates = BuildRates & { live: boolean };
@@ -23,29 +25,19 @@ const num = (v: string) => {
 
 const ars0 = (n: number) => Math.round(n).toLocaleString("es-AR");
 
-export default function Calculator({ buildRates }: Props) {
-  const [fob, setFob] = useState("279");
-  const [ship, setShip] = useState("54");
+export default function Calculator({ buildRates, initialFob = null, title = "Calculá el costo final" }: Props) {
+  const [fob, setFob] = useState(initialFob ? String(initialFob) : "");
+  const [ship, setShip] = useState("");
   const [iva, setIva] = useState("21");
   const [duty, setDuty] = useState("35");
   const [local, setLocal] = useState("");
-  const [rates, setRates] = useState<LiveRates | null>(
-    buildRates ? { ...buildRates, live: false } : null
-  );
+  const [rates, setRates] = useState<LiveRates | null>(buildRates ? { ...buildRates, live: false } : null);
   const [ratesFailed, setRatesFailed] = useState(false);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("fob");
     if (q && num(q) > 0) setFob(String(num(q)));
-    fetchRates().then((r) => {
-      if (r) {
-        setRates({ ...r, live: true });
-        document.querySelectorAll<HTMLElement>("[data-rate]").forEach((el) => {
-          const key = el.dataset.rate as "mep" | "tarjeta";
-          el.textContent = `$${ars0(r[key])}`;
-        });
-      } else setRatesFailed(true);
-    });
+    fetchRates().then((r) => (r ? setRates({ ...r, live: true }) : setRatesFailed(true)));
   }, []);
 
   const result = useMemo(
@@ -57,110 +49,133 @@ export default function Calculator({ buildRates }: Props) {
     [fob, ship, iva, duty, rates]
   );
 
+  const empty = num(fob) === 0;
   const hasExcess = result.excessUsd > 0;
+  const used = Math.min(1, result.fobUsd / 400);
   const localArs = num(local);
   const saving = result.totalArsMep != null && localArs > 0 ? localArs - result.totalArsMep : null;
   const extraWarnings = result.warnings.filter((w) => !w.startsWith("El régimen permite hasta 5"));
 
   return (
-    <div class="calc-grid">
-      <div class="table">
-        <div class="t">Datos de la compra</div>
-        <form class="body" onSubmit={(e) => e.preventDefault()}>
-          <label class="field">
-            <span class="k">Precio del producto (USD)</span>
-            <input class="in" inputMode="decimal" value={fob} onInput={(e) => setFob(e.currentTarget.value)} />
-            <small>Sin envío ni impuestos. La franquicia cubre hasta USD 400.</small>
-          </label>
-          <label class="field">
-            <span class="k">Envío a Argentina (USD)</span>
-            <input class="in" inputMode="decimal" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
-            <small>Lo ves en Amazon antes de pagar.</small>
-          </label>
-          <label class="field">
-            <span class="k">IVA</span>
-            <select class="in" value={iva} onChange={(e) => setIva(e.currentTarget.value)}>
-              <option value="21">21% (por defecto)</option>
-              <option value="10.5">10,5% (sin verificar)</option>
-            </select>
-            <small>Depende de la posición arancelaria del producto.</small>
-          </label>
-          {hasExcess && (
-            <label class="field">
-              <span class="k">Derechos sobre el excedente (%)</span>
-              <input class="in" inputMode="decimal" value={duty} onInput={(e) => setDuty(e.currentTarget.value)} />
-              <small>Estimación. Varía por producto.</small>
-            </label>
-          )}
-          <label class="field">
-            <span class="k">Precio en tienda argentina (ARS, opcional)</span>
-            <input class="in" inputMode="numeric" value={local} placeholder="890000" onInput={(e) => setLocal(e.currentTarget.value)} />
-            <small>Lo cargás vos, para comparar.</small>
-          </label>
-        </form>
-      </div>
-
-      <div class="table" aria-live="polite">
-        <div class="t">Liquidación estimada</div>
-        <div class="row"><span class="lab">Producto</span><span class="v">{formatUsd(result.fobUsd)}</span></div>
-        <div class="row"><span class="lab">Envío</span><span class="v">{formatUsd(result.shippingUsd)}</span></div>
-        <div class="row">
-          <span class="lab">Derechos de importación</span>
-          <span class="v">{hasExcess ? formatUsd(result.dutyUsd) : "USD 0,00"}</span>
-        </div>
-        <div class="row">
-          <span class="lab">Tasa de estadística</span>
-          <span class="v">{hasExcess ? formatUsd(result.statFeeUsd) : "USD 0,00"}</span>
-        </div>
-        <div class="row">
-          <span class="lab">IVA ({iva.replace(".", ",")}%)</span>
-          <span class="v">{formatUsd(result.ivaUsd)}</span>
-        </div>
-        <div class="row total"><span class="lab">Total</span><span class="v">{formatUsd(result.totalUsd)}</span></div>
-
-        {rates ? (
-          <div class="pesos">
-            <div class="row">
-              <span class="lab">En pesos al MEP (${ars0(rates.mep)})</span>
-              <span class="v big">{result.totalArsMep != null ? formatArs(result.totalArsMep) : "-"}</span>
+    <div class="calc">
+      <div class="calc-inner">
+        <form class="calc-in" onSubmit={(e) => e.preventDefault()}>
+          <p class="title">{title}</p>
+          <div class="field">
+            <label for="c-fob">Precio del producto</label>
+            <div class="money">
+              <span>USD</span>
+              <input id="c-fob" class="in" inputMode="decimal" placeholder="279" value={fob} onInput={(e) => setFob(e.currentTarget.value)} />
             </div>
-            <div class="row">
-              <span class="lab">En pesos al dólar tarjeta (${ars0(rates.tarjeta)})</span>
-              <span class="v">{result.totalArsTarjeta != null ? formatArs(result.totalArsTarjeta) : "-"}</span>
+            <small>El precio que ves en Amazon, sin envío ni impuestos.</small>
+          </div>
+          <div class="field">
+            <label for="c-ship">Envío a Argentina</label>
+            <div class="money">
+              <span>USD</span>
+              <input id="c-ship" class="in" inputMode="decimal" placeholder="35" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
+            </div>
+            <small>Amazon lo muestra en el carrito, antes de pagar.</small>
+          </div>
+          <div class="field">
+            <span class="lab" id="c-iva">IVA</span>
+            <div class="seg" role="radiogroup" aria-labelledby="c-iva">
+              {[
+                ["21", "21%"],
+                ["10.5", "10,5%"],
+              ].map(([v, label]) => (
+                <label key={v}>
+                  <input type="radio" name="iva" value={v} checked={iva === v} onChange={() => setIva(v)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <small>Usamos 21%. El 10,5% depende del producto y no está confirmado.</small>
+          </div>
+          {hasExcess && (
+            <div class="field">
+              <label for="c-duty">Derechos sobre el excedente (%)</label>
+              <input id="c-duty" class="in" inputMode="decimal" value={duty} onInput={(e) => setDuty(e.currentTarget.value)} />
+              <small>Estimación. Varía según el producto.</small>
+            </div>
+          )}
+          <div class="field">
+            <label for="c-local">Precio en Argentina (opcional)</label>
+            <div class="money">
+              <span>ARS</span>
+              <input id="c-local" class="in" inputMode="numeric" placeholder="890000" value={local} onInput={(e) => setLocal(e.currentTarget.value)} />
+            </div>
+            <small>Cargalo para ver cuánto ahorrás.</small>
+          </div>
+        </form>
+
+        <div class="calc-out" aria-live="polite">
+          <div>
+            <p class="total-k">Te sale puesto en tu casa</p>
+            <p class="total-v num">
+              {empty ? "$ -" : result.totalArsMep != null ? formatArs(result.totalArsMep) : formatUsd(result.totalUsd)}
+            </p>
+            <div class="alt-v">
+              {rates ? (
+                <>
+                  <span>al MEP <span class="num">${ars0(rates.mep)}</span></span>
+                  {!empty && result.totalArsTarjeta != null && (
+                    <span>Con tarjeta: <span class="num">{formatArs(result.totalArsTarjeta)}</span></span>
+                  )}
+                  {!empty && <span>En dólares: <span class="num">{formatUsd(result.totalUsd)}</span></span>}
+                </>
+              ) : (
+                <span>{ratesFailed ? "No pude traer el dólar del día. Te muestro el total en dólares." : "Trayendo el dólar del día..."}</span>
+              )}
             </div>
           </div>
-        ) : (
-          <p class="state">
-            {ratesFailed
-              ? "No pude traer la cotización del dólar. El total en dólares está bien, el pasaje a pesos no está disponible ahora."
-              : "Trayendo la cotización del dólar..."}
-          </p>
-        )}
 
-        <div style="padding: 0 var(--s2) var(--s2)">
-          <p class={hasExcess ? "state" : "state ok"}>
-            {hasExcess
-              ? `Pasás la franquicia por ${formatUsd(result.excessUsd)}. Ese excedente paga derechos.`
-              : "Dentro de la franquicia: sin derechos de importación ni tasa de estadística."}
+          {empty ? (
+            <p class="fine">Cargá el precio del producto para ver el total.</p>
+          ) : (
+            <>
+              <div class={hasExcess ? "meter over" : "meter"}>
+                <div class="meter-bar"><i style={{ transform: `scaleX(${used})` }} /></div>
+                <p>
+                  {hasExcess
+                    ? `Te pasás de la franquicia por ${formatUsd(result.excessUsd)}. Ese excedente paga derechos.`
+                    : `Usás ${formatUsd(result.fobUsd)} de los USD 400 de franquicia.`}
+                </p>
+              </div>
+
+              {saving != null && (
+                <p class={saving > 0 ? "note ok" : "note"}>
+                  {saving > 0
+                    ? `Ahorrás ${formatArs(saving)} contra el precio en Argentina.`
+                    : "En Argentina te sale igual o menos. No conviene traerlo."}
+                </p>
+              )}
+              {extraWarnings.map((w) => (
+                <p class="note" key={w}>{w}</p>
+              ))}
+
+              <details class="break">
+                <summary>Ver el desglose</summary>
+                <div class="rows">
+                  <div><span>Producto</span><span class="num">{formatUsd(result.fobUsd)}</span></div>
+                  <div><span>Envío</span><span class="num">{formatUsd(result.shippingUsd)}</span></div>
+                  <div><span>Derechos de importación</span><span class="num">{formatUsd(result.dutyUsd)}</span></div>
+                  <div><span>Tasa de estadística</span><span class="num">{formatUsd(result.statFeeUsd)}</span></div>
+                  <div><span>IVA {iva.replace(".", ",")}%</span><span class="num">{formatUsd(result.ivaUsd)}</span></div>
+                  <div class="sum"><span>Total</span><span class="num">{formatUsd(result.totalUsd)}</span></div>
+                </div>
+              </details>
+            </>
+          )}
+
+          <p class="fine">
+            {rates
+              ? rates.live
+                ? `Dólar de dolarapi.com, ${formatStamp(rates.fetchedAt)}. `
+                : `Dólar guardado del ${formatStamp(rates.fetchedAt)}. `
+              : ""}
+            Estimación orientativa. Cupo: 5 envíos por año y por persona.
           </p>
-          {saving != null && (
-            <p class={saving > 0 ? "state ok" : "state"}>
-              {saving > 0
-                ? `Contra el precio local que cargaste, la diferencia a favor es de ${formatArs(saving)}.`
-                : "El precio local que cargaste es igual o menor que el total puesto en tu casa."}
-            </p>
-          )}
-          {extraWarnings.map((w) => (
-            <p class="state" key={w}>{w}</p>
-          ))}
-          {rates && (
-            <p class="stamp">
-              {rates.live
-                ? `Cotización de dolarapi.com del ${formatStamp(rates.fetchedAt)}`
-                : `No pude actualizar la cotización. Uso la última guardada, del ${formatStamp(rates.fetchedAt)}`}
-            </p>
-          )}
-          <p class="stamp">Estimación orientativa. Cupo: 5 envíos por año y por persona.</p>
         </div>
       </div>
     </div>

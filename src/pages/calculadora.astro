@@ -1,0 +1,20 @@
+---
+import Base from "../layouts/Base.astro";
+import Calculator from "../components/Calculator.tsx";
+import { loadOffers } from "../lib/data";
+
+const offers = await loadOffers();
+---
+
+<Base title="Calculadora de costo final" description="Calculá cuánto te sale traer un producto de Amazon a Argentina por courier: franquicia de USD 400, IVA y dólar del día.">
+  <div class="wrap page-head">
+    <h1>¿Cuánto te sale traerlo?</h1>
+    <p class="lead">Poné el precio y el envío que ves en Amazon. Te damos el total en pesos con IVA y el dólar del día.</p>
+  </div>
+  <section style="padding-top: 24px">
+    <div class="wrap">
+      <Calculator client:load buildRates={offers.rates} title="Datos de la compra" />
+      <p class="fine" style="margin-top: 16px">¿No sabés qué comprar? <a class="link" href="/productos/">Mirá los productos</a></p>
+    </div>
+  </section>
+</Base>

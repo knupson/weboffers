@@ -11,12 +11,12 @@ const entry = LEGAL[doc as LegalId];
 ---
 
 <Base title={entry.title} description={entry.summary}>
-  <div class="wrap hero">
-    <span class="sector">Legal · Actualizado el {entry.updated}</span>
-    <h1 style="font-size: clamp(36px, 6vw, 72px)">{entry.title}</h1>
+  <div class="wrap page-head">
+    <p class="fine">Actualizado el {entry.updated}</p>
+    <h1>{entry.title}</h1>
     <p class="lead">{entry.summary}</p>
   </div>
-  <section>
+  <section style="padding-top: 8px">
     <div class="wrap">
       <article class="prose">
         {entry.sections.map((s) => (

@@ -1,5 +1,6 @@
 ---
-import { amazonUrl } from "../config";
+import Icon from "./Icon.astro";
+import { amazonUrl, CATEGORY_ICON, STORE_LABEL } from "../config";
 import { formatUsd, formatStamp } from "../lib/format";
 import type { CatalogEntry, OfferItem } from "../lib/data";
 
@@ -8,23 +9,30 @@ interface Props {
 }
 
 const { product: p } = Astro.props;
-const calcHref = p.price ? `/?fob=${p.price.priceUsd}#calculadora` : "/#calculadora";
+const image = p.price?.imageUrl ?? null;
 ---
 
-<div class="proj" data-reveal>
-  <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
-  <span class="k">{p.category} · {p.store === "ES" ? "Amazon.es" : "Amazon.com"}</span>
-  <p>{p.summary}</p>
-  {p.price ? (
-    <p>
-      <span class="price-line">{formatUsd(p.price.priceUsd as number)}</span><br />
-      <small class="stamp">consultado el {formatStamp(p.price.priceFetchedAt as string)}</small>
-    </p>
-  ) : (
-    <p class="stamp" style="margin-top:0">El precio miralo en Amazon.</p>
-  )}
-  <div class="actions">
-    <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">Ver en Amazon</a>
-    <a class="btn ghost" href={calcHref}>Calcular</a>
+<article class="card" data-category={p.category}>
+  <div class="media">
+    {image ? <img src={image} alt="" loading="lazy" /> : <Icon name={CATEGORY_ICON[p.category] ?? "package"} size={56} />}
+    <span class="store">{STORE_LABEL[p.store]}</span>
   </div>
-</div>
+  <div class="body">
+    <span class="brand">{p.brand} · {p.category}</span>
+    <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
+    <p class="sum">{p.summary}</p>
+  </div>
+  <div class="foot">
+    {p.price ? (
+      <span class="price num">
+        {formatUsd(p.price.priceUsd as number)}
+        <small>al {formatStamp(p.price.priceFetchedAt as string)}</small>
+      </span>
+    ) : (
+      <a class="btn sm ghost" href={`/productos/${p.slug}/`}>Costo final</a>
+    )}
+    <a class="btn sm" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">
+      Ver en Amazon <Icon name="arrow-up-right" size={16} />
+    </a>
+  </div>
+</article>

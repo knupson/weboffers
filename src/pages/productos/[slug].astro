@@ -1,59 +1,84 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { amazonUrl, SITE } from "../../config";
+import Calculator from "../../components/Calculator.tsx";
+import ProductCard from "../../components/ProductCard.astro";
+import Icon from "../../components/Icon.astro";
+import { amazonUrl, CATEGORY_ICON, SITE, STORE_LABEL } from "../../config";
 import { formatUsd, formatStamp } from "../../lib/format";
 import { loadProducts } from "../../lib/data";
 
 export async function getStaticPaths() {
-  const { products } = await loadProducts();
-  return products
-    .filter((p) => p.verified)
-    .map((product) => ({ params: { slug: product.slug }, props: { product } }));
+  const { products, offers } = await loadProducts();
+  const shown = products.filter((p) => p.verified);
+  return shown.map((product) => ({
+    params: { slug: product.slug },
+    props: {
+      product,
+      rates: offers.rates,
+      related: shown.filter((o) => o.slug !== product.slug && o.category === product.category).slice(0, 3),
+    },
+  }));
 }
 
-const { product: p } = Astro.props;
-const calcHref = p.price ? `/?fob=${p.price.priceUsd}#calculadora` : "/#calculadora";
+const { product: p, rates, related } = Astro.props;
+const buy = amazonUrl(p.asin, p.store);
+const image = p.price?.imageUrl ?? null;
 
-const rows: Array<[string, string]> = [
+const specs: Array<[string, string]> = [
   ["Marca", p.brand],
-  ["Categoría", p.category],
-  ["Tienda", p.store === "ES" ? "Amazon España" : "Amazon Estados Unidos"],
+  ["Tienda", STORE_LABEL[p.store]],
   ["Tensión", p.voltage ?? "Mirala en la ficha de Amazon"],
   ["Peso", p.weightKg ? `${p.weightKg.toString().replace(".", ",")} kg` : "Sin dato"],
-  ["Posición arancelaria", p.ncm ?? "Sin confirmar"],
 ];
 ---
 
-<Base title={p.name} description={p.summary}>
-  <div class="wrap hero">
-    <a class="crumb" href="/productos/">Productos</a>
-    <h1 style="font-size: clamp(34px, 5.4vw, 64px)">{p.name}</h1>
-    <p class="lead">{p.summary}</p>
-  </div>
-  <section>
-    <div class="wrap grid">
-      <div class="side">
-        <div class="spec">
-          {rows.map(([k, v]) => (
-            <div class="row"><span class="lab">{k}</span><span class="v">{v}</span></div>
+<Base title={p.name} description={`${p.summary} Cuánto te sale traerlo a Argentina.`}>
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Ubicación">
+      <a href="/productos/">Productos</a><span aria-hidden="true">/</span><span>{p.category}</span>
+    </nav>
+    <div class="pdp">
+      <div>
+        <div class="media">
+          {image ? <img src={image} alt={p.name} /> : <Icon name={CATEGORY_ICON[p.category] ?? "package"} size={96} />}
+        </div>
+        <h1>{p.name}</h1>
+        <p class="lead">{p.summary}</p>
+        <dl class="specs">
+          {specs.map(([k, v]) => (
+            <div><dt>{k}</dt><dd>{v}</dd></div>
           ))}
-        </div>
+        </dl>
       </div>
-      <div class="main">
-        {p.price ? (
-          <>
-            <span class="price-line">{formatUsd(p.price.priceUsd as number)}</span>
-            <p class="stamp">Consultado el {formatStamp(p.price.priceFetchedAt as string)}. {SITE.priceNotice}</p>
-          </>
-        ) : (
-          <p class="lead" style="margin-top: 0">No tenemos precio para mostrar. Miralo en Amazon y cargalo en la calculadora para ver cuánto sale puesto en tu casa.</p>
-        )}
-        <div class="actions" style="margin-top: var(--s3)">
-          <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">Ver en Amazon</a>
-          <a class="btn ghost" href={calcHref}>Calcular costo final</a>
+
+      <div class="buybox">
+        <div class="buy">
+          {p.price ? (
+            <div>
+              <span class="price num">{formatUsd(p.price.priceUsd as number)}</span>
+              <p class="fine">En {STORE_LABEL[p.store]}, consultado el {formatStamp(p.price.priceFetchedAt as string)}.</p>
+            </div>
+          ) : (
+            <p>Mirá el precio en {STORE_LABEL[p.store]} y cargalo abajo para ver el costo final en pesos.</p>
+          )}
+          <a class="btn lg" href={buy} target="_blank" rel="noopener noreferrer sponsored">
+            Ver en {STORE_LABEL[p.store]} <Icon name="arrow-up-right" size={18} />
+          </a>
+          <p class="fine">{SITE.disclosure}</p>
         </div>
-        <p class="stamp" style="margin-top: var(--s3)">{SITE.disclosure}</p>
+        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? null} title="¿Cuánto te sale traerlo?" />
       </div>
     </div>
-  </section>
+  </div>
+
+  {related.length > 0 && (
+    <section style="padding-top: 0">
+      <div class="wrap">
+        <div class="head"><h2>Más {p.category.toLowerCase()}</h2></div>
+        <div class="grid-products">
+          {related.map((r) => <ProductCard product={r} />)}
+        </div>
+      </div>
+    </section>
+  )}
 </Base>

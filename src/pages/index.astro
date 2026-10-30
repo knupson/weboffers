@@ -1,104 +1,102 @@
 ---
 import Base from "../layouts/Base.astro";
-import Calculator from "../components/Calculator.tsx";
-import ProductCard from "../components/ProductCard.astro";
+import Catalog from "../components/Catalog.astro";
+import Icon from "../components/Icon.astro";
+import { amazonDealsUrl, amazonSearchUrl, SEARCHES, STORE_LABEL } from "../config";
 import { loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
-const featured = products.filter((p) => p.verified).slice(0, 6);
+const shown = products.filter((p) => p.verified);
 const ars = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
 const mep = offers.rates ? ars(offers.rates.mep) : "...";
 const tarjeta = offers.rates ? ars(offers.rates.tarjeta) : "...";
-
-const signs = [
-  ["#calculadora", "Calculadora", "cuánto sale puesto en tu casa"],
-  ["/productos/", "Productos", "hardware con ASIN revisado"],
-  ["/guia/", "Cómo funciona", "la franquicia, paso a paso"],
-  ["/legal/afiliados/", "Afiliación", "cómo se financia el sitio"],
-];
 ---
 
 <Base>
-  <div class="wrap hero" id="top">
-    <div class="grid">
-      <div class="intro">
-        <span class="sector">Sector A · Courier a Argentina</span>
-        <h1>Franquicia<br />400</h1>
-        <p class="lead">
-          Cargás el precio y el envío de Amazon. La calculadora te da el total con IVA y el dólar del día, y te dice si pasás los USD 400.
-        </p>
+  <div class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <h1>Hardware de Amazon, con la cuenta hecha para Argentina.</h1>
+        <p class="lead">Elegí el producto, mirá cuánto te sale puesto en tu casa y comprá directo en Amazon.</p>
+        <form class="search" action="/buscar/" method="get" target="_blank" role="search">
+          <Icon name="magnifying-glass" size={18} />
+          <input name="q" type="search" placeholder="Buscá en Amazon: monitor, SSD, mouse..." aria-label="Qué querés buscar en Amazon" required />
+          <select name="tienda" aria-label="Tienda">
+            <option value="US">Amazon.com</option>
+            <option value="ES">Amazon.es</option>
+          </select>
+          <button class="btn" type="submit">Buscar</button>
+        </form>
       </div>
-      <nav class="signs" aria-label="Accesos">
-        {signs.map(([href, label, sub]) => (
-          <a class="sign" href={href}>
-            <span>{label}<small>{sub}</small></span>
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="3" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
-          </a>
-        ))}
-      </nav>
-    </div>
-    <div class="plates">
-      <div><span class="k">Franquicia por envío (USD FOB)</span><span class="v" data-count>400</span></div>
-      <div><span class="k">Envíos por año y persona</span><span class="v" data-count>5</span></div>
-      <div><span class="k">Dólar MEP</span><span class="v" data-rate="mep">{mep}</span></div>
-      <div><span class="k">Dólar tarjeta</span><span class="v" data-rate="tarjeta">{tarjeta}</span></div>
+      <aside class="today" aria-label="Datos del día">
+        <div class="pair">
+          <div><span class="k">Dólar MEP</span><span class="v num" data-rate="mep">{mep}</span></div>
+          <div><span class="k">Dólar tarjeta</span><span class="v num" data-rate="tarjeta">{tarjeta}</span></div>
+        </div>
+        <div class="rule">
+          <Icon name="check-circle" size={20} />
+          <p>Hasta <b>USD 400</b> por envío no pagás derechos de importación. Sólo IVA y el envío.</p>
+        </div>
+      </aside>
     </div>
   </div>
 
-  <section id="calculadora">
+  <section id="productos" style="padding-top: 40px">
     <div class="wrap">
-      <div data-reveal style="margin-bottom: var(--s4)">
-        <span class="sector">Sector B</span>
-        <h2>La cuenta</h2>
+      <div class="head">
+        <h2>Productos que entran en la franquicia</h2>
       </div>
-      <Calculator client:load buildRates={offers.rates} />
+      <Catalog products={shown} />
     </div>
   </section>
 
-  <section class="alt">
-    <div class="wrap grid">
-      <div class="side" data-reveal>
-        <span class="sector">Sector C</span>
-        <h2>Qué se paga</h2>
-        <p class="intro">La norma, resumida. El detalle está en la guía.</p>
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <h2>¿Buscás otra cosa?</h2>
+        <p>Búsquedas armadas en Amazon, ya filtradas para lo que conviene traer.</p>
       </div>
-      <div class="main steps">
-        <div data-reveal>
-          <span class="n">01</span>
-          <h3>Hasta USD 400</h3>
-          <p>Sin derechos de importación ni tasa de estadística. Pagás el IVA y el envío.</p>
-        </div>
-        <div data-reveal>
-          <span class="n">02</span>
-          <h3>Si te pasás</h3>
-          <p>Sólo el excedente paga derechos y tasa de estadística. Los primeros USD 400 siguen exentos.</p>
-        </div>
-        <div data-reveal>
-          <span class="n">03</span>
-          <h3>Cinco envíos</h3>
-          <p>El cupo es por persona y por año. Conviene juntar compras en un solo envío cuando se puede.</p>
-        </div>
-        <div data-reveal>
-          <span class="n">04</span>
-          <h3>IVA</h3>
-          <p>Calculamos con 21%. La alícuota correcta depende de cada producto y todavía no la confirmamos, por eso la podés cambiar.</p>
-        </div>
+      <div class="searches">
+        {SEARCHES.map((s) => (
+          <a href={amazonSearchUrl(s.query, s.store)} target="_blank" rel="noopener noreferrer sponsored">
+            <span class="ico-box"><Icon name={s.icon} size={20} /></span>
+            <span class="label">{s.label}<span class="where" style="display:block">{STORE_LABEL[s.store]}</span></span>
+            <Icon name="arrow-up-right" size={18} class="go" />
+          </a>
+        ))}
+      </div>
+      <div class="deals">
+        <a class="btn ghost" href={amazonDealsUrl("US")} target="_blank" rel="noopener noreferrer sponsored">Ofertas del día en Amazon.com</a>
+        <a class="btn ghost" href={amazonDealsUrl("ES")} target="_blank" rel="noopener noreferrer sponsored">Ofertas del día en Amazon.es</a>
       </div>
     </div>
   </section>
 
-  {featured.length > 0 && (
-    <section>
-      <div class="wrap grid">
-        <div class="side" data-reveal>
-          <span class="sector">Sector D</span>
-          <h2>Para mirar</h2>
-          <p class="intro">Productos que entran en la franquicia. El precio miralo en Amazon y cargalo arriba.</p>
-        </div>
-        <div class="main projects">
-          {featured.map((p) => <ProductCard product={p} />)}
-        </div>
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <h2>Cómo sacamos el costo final</h2>
+        <p>Si el producto pasa los USD 400, sólo el excedente suma derechos y tasa de estadística.</p>
       </div>
-    </section>
-  )}
+      <div class="equation">
+        <div class="term"><b>Producto</b><span>El precio en Amazon</span></div>
+        <div class="op" aria-hidden="true">+</div>
+        <div class="term"><b>Envío</b><span>Lo ves al pagar</span></div>
+        <div class="op" aria-hidden="true">+</div>
+        <div class="term"><b>IVA</b><span>21% sobre todo lo anterior</span></div>
+        <div class="op" aria-hidden="true">=</div>
+        <div class="term total"><b>Puesto en tu casa</b><span>En pesos al MEP y al dólar tarjeta</span></div>
+      </div>
+      <div class="facts">
+        <div><span class="num">USD 400</span><span>por envío sin derechos</span></div>
+        <div><span class="num">5</span><span>envíos por año y por persona</span></div>
+        <div><span class="num">USD 3.000</span><span>tope por envío por courier</span></div>
+        <div><span class="num">50 kg</span><span>de peso máximo por envío</span></div>
+      </div>
+      <p style="margin-top: 28px; display: flex; gap: 20px; flex-wrap: wrap">
+        <a class="link" href="/calculadora/">Hacer la cuenta con tu producto <Icon name="arrow-right" size={16} /></a>
+        <a class="link" href="/guia/">Leer la guía <Icon name="arrow-right" size={16} /></a>
+      </p>
+    </div>
+  </section>
 </Base>

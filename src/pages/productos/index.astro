@@ -1,26 +1,23 @@
 ---
 import Base from "../../layouts/Base.astro";
-import ProductCard from "../../components/ProductCard.astro";
+import Catalog from "../../components/Catalog.astro";
 import { loadProducts } from "../../lib/data";
 
 const { products } = await loadProducts();
 const shown = products.filter((p) => p.verified);
 ---
 
-<Base title="Productos" description="Hardware que entra en la franquicia de USD 400, con link a Amazon y calculadora de costo final.">
-  <div class="wrap hero">
-    <span class="sector">Sector D · Productos</span>
+<Base title="Productos" description="Hardware de Amazon que entra en la franquicia de USD 400, con el costo final para Argentina.">
+  <div class="wrap page-head">
     <h1>Productos</h1>
-    <p class="lead">Una lista corta. Cada ficha lleva a Amazon y a la calculadora.</p>
+    <p class="lead">Hardware que entra en la franquicia de USD 400. Entrá a cada uno para ver cuánto te sale puesto en tu casa.</p>
   </div>
-  <section>
+  <section style="padding-top: 24px">
     <div class="wrap">
       {shown.length === 0 ? (
-        <p class="lead">Todavía no hay productos revisados. Mientras tanto la <a href="/#calculadora">calculadora</a> funciona con cualquier precio.</p>
+        <p class="lead">Todavía no hay productos revisados. Mientras tanto la <a class="link" href="/calculadora/">calculadora</a> funciona con cualquier precio.</p>
       ) : (
-        <div class="projects three">
-          {shown.map((p) => <ProductCard product={p} />)}
-        </div>
+        <Catalog products={shown} />
       )}
     </div>
   </section>

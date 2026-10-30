@@ -1,0 +1,44 @@
+---
+import ProductCard from "./ProductCard.astro";
+import Icon from "./Icon.astro";
+import type { CatalogEntry, OfferItem } from "../lib/data";
+
+interface Props {
+  products: Array<CatalogEntry & { price: OfferItem | null; offer?: OfferItem }>;
+}
+
+const { products } = Astro.props;
+const counts = new Map<string, number>();
+for (const p of products) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
+const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+---
+
+<div data-catalog>
+  <div class="chips" role="group" aria-label="Filtrar por categoría">
+    <button class="chip" type="button" data-filter="" aria-pressed="true">Todo<span class="count">{products.length}</span></button>
+    {categories.map(([c, n]) => (
+      <button class="chip" type="button" data-filter={c} aria-pressed="false">{c}<span class="count">{n}</span></button>
+    ))}
+  </div>
+  <p class="disclose">
+    <Icon name="tag" size={16} />
+    Son links de afiliado: si comprás, Amazon nos paga una comisión. A vos te sale lo mismo.
+  </p>
+  <div class="grid-products">
+    {products.map((p) => <ProductCard product={p} />)}
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-catalog]").forEach((root) => {
+    const chips = root.querySelectorAll<HTMLButtonElement>("[data-filter]");
+    const cards = root.querySelectorAll<HTMLElement>(".card");
+    chips.forEach((chip) =>
+      chip.addEventListener("click", () => {
+        const f = chip.dataset.filter;
+        chips.forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
+        cards.forEach((card) => (card.hidden = !!f && card.dataset.category !== f));
+      })
+    );
+  });
+</script>

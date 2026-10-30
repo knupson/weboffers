@@ -1,0 +1,25 @@
+---
+import Base from "../layouts/Base.astro";
+import { amazonSearchUrl } from "../config";
+
+// Plantillas con el tag ya puesto; el script sólo cambia el término.
+const bases = { US: amazonSearchUrl("", "US"), ES: amazonSearchUrl("", "ES") };
+---
+
+<Base title="Buscando en Amazon" description="Redirección a la búsqueda de Amazon.">
+  <meta name="robots" content="noindex" slot="head" />
+  <div class="wrap page-head">
+    <h1>Te llevamos a Amazon...</h1>
+    <p class="lead" id="msg">Si no pasa nada, volvé a la <a href="/">portada</a> y probá de nuevo.</p>
+  </div>
+  <script is:inline define:vars={{ bases }}>
+    const params = new URLSearchParams(location.search);
+    const q = (params.get("q") || "").trim();
+    const store = params.get("tienda") === "ES" ? "ES" : "US";
+    if (q) {
+      const url = new URL(bases[store]);
+      url.searchParams.set("k", q);
+      location.replace(url.toString());
+    }
+  </script>
+</Base>
