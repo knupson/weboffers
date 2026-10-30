@@ -5,7 +5,7 @@ export const SITE = {
   url: "https://ofertas.knunet.com",
   parent: { name: "KnuNet", url: "https://knunet.com" },
   description:
-    "Calculá cuánto te sale realmente traer hardware de Amazon a Argentina por courier: franquicia de USD 400, IVA y dólar del día.",
+    "Tecnología, cocina y hogar de Amazon con lo que te sale de verdad puesto en Argentina: franquicia de USD 400, IVA y dólar del día.",
   disclosure:
     "En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.",
   priceNotice:
