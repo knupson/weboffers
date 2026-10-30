@@ -435,6 +435,17 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .afuera { margin-top: 32px; padding: 24px; border-radius: var(--r-placa); background: var(--placa); box-shadow: inset 0 0 0 1.5px var(--linea); display: grid; gap: 12px; }
 .afuera h2 { font-size: clamp(24px, 2.4vw, 34px); }
 .tiendas { display: flex; flex-wrap: wrap; gap: 10px; }
+/* Mercado Libre en vivo (/api/buscar): reusa .afuera y .btn.ml; sólo agrega la lista. */
+.ml-estado { color: var(--crema-2); }
+.ml-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ml-item { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: var(--r-campo); background: var(--placa-2); }
+.ml-nombre { flex: 1 1 240px; min-width: 0; font-weight: 600; color: var(--crema); text-wrap: balance; }
+.ml-precio { font-family: var(--letra); font-size: 22px; line-height: 1.1; color: var(--amarillo); }
+.ml-item .btn { margin-left: auto; }
+.ml-nota { color: var(--crema-2); font-size: 15px; }
+@media (max-width: 640px) {
+  .ml-item .btn { width: 100%; margin-left: 0; }
+}
 @media (max-width: 640px) {
   .placa-hero:has(.pasos) { aspect-ratio: auto; border-radius: var(--r-placa); background: var(--placa); box-shadow: inset 0 0 0 2px var(--amarillo), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--rojo); padding: 22px; }
   .placa-hero:has(.pasos) > img { display: none; }

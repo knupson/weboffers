@@ -9,6 +9,7 @@ import signal
 import time
 
 import creators_api
+import ml_prices
 import publish
 import rates
 import telegram
@@ -48,6 +49,16 @@ def run_once():
         telegram.maybe_post(catalog, resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")))
     except Exception as exc:
         print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
+    try:
+        ml_prices.maybe_refresh(
+            catalog,
+            resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json")),
+            resolve_path(os.environ.get("AMAZON_TOTALS_PATH", "/app/amazon-totals.json")),
+            (current_rates or {}).get("mep"),
+            datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        print(f"Falló la actualización de precios de Mercado Libre ({type(exc).__name__}).", flush=True)
     return payload
 
 

@@ -8,6 +8,7 @@ dist/
 .DS_Store
 Thumbs.db
 worker/output/
+data/ml-prices.json
 .pytest_cache/
 __pycache__/
 .astro/
@@ -23,3 +24,4 @@ worker/.pytest_tmp/
 
 # Claude Code (permisos locales)
 .claude/settings.local.json
+worker/amazon-totals.json

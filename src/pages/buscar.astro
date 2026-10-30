@@ -36,6 +36,13 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
         ))}
       </div>
 
+      <div class="afuera" id="ml-vivo" hidden>
+        <h2 class="letra">En Mercado Libre ahora</h2>
+        <p class="ml-estado" id="ml-estado" aria-live="polite">Buscando en Mercado Libre…</p>
+        <ul class="ml-lista" id="ml-lista"></ul>
+        <p class="ml-nota">Para saber si conviene traerlo, pegá el precio de Amazon en la <a class="link" href="/calculadora/">calculadora</a>.</p>
+      </div>
+
       <div class="afuera" id="afuera" hidden>
         <h2 class="letra">Seguí buscando en las tiendas</h2>
         <p>Si no está en nuestra lista, compará vos: mirá el precio en Mercado Libre y pegá el de Amazon en la <a class="link" href="/calculadora/">calculadora</a> para ver cuánto te sale puesto en tu casa.</p>
@@ -60,7 +67,7 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
       if (ok) n++;
     });
     const resumen = document.getElementById("resumen");
-    resumen.textContent = !q ? "Escribí qué producto buscás." : n ? `Tenemos ${n} ${n === 1 ? "producto comparado" : "productos comparados"} para "${q}".` : `No tenemos "${q}" comparado todavía.`;
+    resumen.textContent = !q ? "Escribí qué producto buscás." : n ? "Tenemos " + n + " " + (n === 1 ? "producto comparado" : "productos comparados") + ' para "' + q + '".' : 'No tenemos "' + q + '" comparado todavía.';
     if (q) {
       document.getElementById("afuera").hidden = false;
       const a = new URL(amazonBase);
@@ -71,6 +78,59 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
       m.searchParams.set("matt_word", ml.word);
       m.searchParams.set("matt_tool", ml.tool);
       document.getElementById("ir-ml").href = mlOficial[q.toLowerCase()] || m.toString();
+      // Con pocos resultados en el catálogo, se busca en vivo en Mercado Libre.
+      if (n < 3) buscarEnMercadoLibre(q);
+    }
+
+    // Mercado Libre en vivo: si falla o no trae nada, se oculta la sección y queda el bloque "Seguí buscando".
+    function buscarEnMercadoLibre(texto) {
+      const seccion = document.getElementById("ml-vivo");
+      const estado = document.getElementById("ml-estado");
+      const lista = document.getElementById("ml-lista");
+      const pesos = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+      seccion.hidden = false;
+      estado.hidden = false;
+      estado.textContent = "Buscando en Mercado Libre…";
+      lista.replaceChildren();
+      fetch("/api/buscar?q=" + encodeURIComponent(texto))
+        .then((res) => {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        })
+        .then((data) => {
+          const results = (data && Array.isArray(data.results) ? data.results : []).filter(
+            (r) => r && typeof r.name === "string" && typeof r.price === "number" && Number.isFinite(r.price) && typeof r.url === "string" && r.url.startsWith("https://www.mercadolibre.com.ar/"),
+          );
+          if (!results.length) {
+            seccion.hidden = true;
+            return;
+          }
+          for (const r of results) {
+            const li = document.createElement("li");
+            li.className = "ml-item";
+            const nombre = document.createElement("span");
+            nombre.className = "ml-nombre";
+            nombre.textContent = r.name;
+            const precio = document.createElement("span");
+            precio.className = "ml-precio num";
+            precio.textContent = pesos.format(r.price);
+            const boton = document.createElement("a");
+            boton.className = "btn ml";
+            boton.href = r.url;
+            boton.target = "_blank";
+            boton.rel = "noopener noreferrer sponsored";
+            boton.dataset.umamiEvent = "mercadolibre";
+            boton.dataset.umamiEventOrigen = "busqueda-vivo";
+            boton.textContent = "Ver en Mercado Libre";
+            li.append(nombre, precio, boton);
+            lista.append(li);
+          }
+          estado.hidden = true;
+        })
+        .catch(() => {
+          seccion.hidden = true;
+          lista.replaceChildren();
+        });
     }
   </script>
 </Base>

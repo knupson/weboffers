@@ -82,8 +82,49 @@ function readJson<T>(rel: string): T | null {
   }
 }
 
+/** Precio diario de Mercado Libre por slug (data/ml-prices.json). Lo escribe el proceso del worker. */
+export interface MlPriceItem {
+  price: number;
+  checked: string;
+  verdict: "amazon" | "ml";
+  verdictReason: "precio" | "sinAmazon";
+}
+
+export interface MlPrices {
+  generatedAt: string;
+  /** Fecha (AAAA-MM-DD) de la corrida. */
+  date: string;
+  items: Record<string, MlPriceItem>;
+}
+
+const VERDICTS: readonly string[] = ["amazon", "ml"];
+const VERDICT_REASONS: readonly string[] = ["precio", "sinAmazon"];
+
+/**
+ * Pisa el precio de Mercado Libre del día sobre cada entrada del catálogo que ya tiene `ml`.
+ * Sin archivo o sin item para el slug, la entrada sigue igual. No muta el catálogo original.
+ */
+export function mergeMlPrices(catalog: CatalogEntry[], prices: MlPrices | null): CatalogEntry[] {
+  if (!prices) return catalog;
+  const items = prices.items ?? {};
+  return catalog.map((entry) => {
+    if (!entry.ml || !Object.prototype.hasOwnProperty.call(items, entry.slug)) return entry;
+    const item = items[entry.slug];
+    if (!item || !Number.isFinite(item.price)) return entry;
+    return {
+      ...entry,
+      ml: { ...entry.ml, price: item.price, checked: item.checked ?? entry.ml.checked },
+      verdict: VERDICTS.includes(item.verdict) ? (item.verdict as CatalogEntry["verdict"]) : entry.verdict,
+      verdictReason: VERDICT_REASONS.includes(item.verdictReason)
+        ? (item.verdictReason as CatalogEntry["verdictReason"])
+        : entry.verdictReason,
+    };
+  });
+}
+
 export function loadCatalog(): CatalogEntry[] {
-  return readJson<CatalogEntry[]>("data/catalog.json") ?? [];
+  const catalog = readJson<CatalogEntry[]>("data/catalog.json") ?? [];
+  return mergeMlPrices(catalog, readJson<MlPrices>("data/ml-prices.json"));
 }
 
 /** El build puede traer offers.json desde una URL (R2) o desde el archivo local. */

@@ -12,6 +12,7 @@ Dominio: https://ofertas.knunet.com
 | Catálogo | `data/catalog.json` | Lista blanca de ASIN curada a mano |
 | Ofertas | `data/offers.json` o `OFFERS_URL` | Salida del worker: dólar y precios con fecha |
 | Worker | `worker/` | Consulta Amazon (Creators API) y dolarapi, publica `offers.json` y dispara el rebuild |
+| Worker del sitio | `src/worker/` | Entrada de Cloudflare Workers: sirve los estáticos y la ruta `/api/buscar` (Mercado Libre en vivo). No es el worker Python de `worker/` |
 | Contrato | `docs/SPEC.md` | Esquemas y reglas de la calculadora |
 
 ## Reglas de datos
@@ -32,6 +33,26 @@ npm test           # vitest: calculadora y dólar
 npm run build      # genera dist/
 npx wrangler deploy
 ```
+
+## Worker del sitio: secretos y `/api/buscar`
+
+El Worker (`src/worker/index.ts`, compilado por wrangler) atiende sólo `/api/*`; el resto lo sirven los assets de `dist/` como antes.
+
+Secretos (los carga el operador, nunca van en el repo):
+
+```bash
+npx wrangler secret put ML_CLIENT_ID
+npx wrangler secret put ML_CLIENT_SECRET
+```
+
+Son las credenciales de la aplicación de Mercado Libre (`client_credentials`). Sin ellas la ruta responde 502 y la página de búsqueda muestra sólo las tiendas.
+
+`GET /api/buscar?q=...`:
+
+- `q` tiene que tener entre 2 y 80 caracteres; si no, 400.
+- Pide un token de aplicación (se reutiliza hasta vencer), busca hasta 6 productos y toma el precio nuevo más bajo de cada uno. Los productos sin precio se descartan.
+- Responde `{"q": "...", "results": [{"id", "name", "price", "url"}]}`. El `url` lleva los parámetros de afiliado. No se devuelven imágenes de Mercado Libre.
+- Cache de 1 hora (Cache API) por `q` normalizada. Los errores de Mercado Libre no se cachean y responden 502 `{"error": "..."}`.
 
 ## Variables
 

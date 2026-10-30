@@ -20,6 +20,10 @@ def local_temp_files(tmp_path, monkeypatch):
                  "CF_DEPLOY_HOOK_URL"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("OUTPUT_PATH", str(tmp_path / "offers.json"))
+    monkeypatch.setenv("ML_PRICES_PATH", str(tmp_path / "ml-prices.json"))
+    monkeypatch.setenv("AMAZON_TOTALS_PATH", str(tmp_path / "amazon-totals.json"))
+    monkeypatch.delenv("ML_CLIENT_ID", raising=False)
+    monkeypatch.delenv("ML_CLIENT_SECRET", raising=False)
 
 
 def test_offline_output_matches_spec(tmp_path, monkeypatch, capsys):
