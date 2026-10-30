@@ -2,7 +2,7 @@
 import Base from "../layouts/Base.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Icon from "../components/Icon.astro";
-import { amazonSearchUrl, ML_AFFILIATE } from "../config";
+import { amazonSearchUrl, ML_AFFILIATE, SEARCHES } from "../config";
 import { loadProducts } from "../lib/data";
 
 const { products } = await loadProducts();
@@ -10,6 +10,8 @@ const shown = products.filter((p) => p.verified);
 // Texto en el que se busca: sin tildes y en minúsculas, igual que la consulta.
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const amazonBase = amazonSearchUrl("", "US");
+// Búsquedas sugeridas con link oficial de afiliado de Mercado Libre.
+const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.term, s.ml]));
 ---
 
 <Base title="Buscar y comparar" description="Buscá un producto y te decimos si conviene traerlo de Amazon o comprarlo en Mercado Libre.">
@@ -28,7 +30,7 @@ const amazonBase = amazonSearchUrl("", "US");
     <div class="wrap">
       <div class="grid-products" id="resultados">
         {shown.map((p) => (
-          <div class="hit" hidden data-q={norm(`${p.name} ${p.brand} ${p.category} ${p.slug.replace(/-/g, " ")}`)}>
+          <div class="hit" hidden data-q={norm(`${p.name} ${p.brand} ${p.category} ${p.summary} ${p.slug.replace(/-/g, " ")}`)}>
             <ProductCard product={p} />
           </div>
         ))}
@@ -45,7 +47,7 @@ const amazonBase = amazonSearchUrl("", "US");
     </div>
   </section>
 
-  <script is:inline define:vars={{ amazonBase, ml: ML_AFFILIATE }}>
+  <script is:inline define:vars={{ amazonBase, ml: ML_AFFILIATE, mlOficial }}>
     const q = (new URLSearchParams(location.search).get("q") || "").trim();
     const input = document.querySelector('input[name="q"]');
     if (input) input.value = q;
@@ -64,10 +66,11 @@ const amazonBase = amazonSearchUrl("", "US");
       const a = new URL(amazonBase);
       a.searchParams.set("k", q);
       document.getElementById("ir-amazon").href = a.toString();
+      // Las búsquedas sugeridas tienen link oficial; para el resto, la etiqueta de afiliado va en la URL.
       const m = new URL("https://listado.mercadolibre.com.ar/" + encodeURIComponent(q.replace(/\s+/g, "-")));
       m.searchParams.set("matt_word", ml.word);
       m.searchParams.set("matt_tool", ml.tool);
-      document.getElementById("ir-ml").href = m.toString();
+      document.getElementById("ir-ml").href = mlOficial[q.toLowerCase()] || m.toString();
     }
   </script>
 </Base>

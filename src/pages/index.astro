@@ -80,7 +80,7 @@ const cats = [
       </div>
       <div class="pizarra">
         {SEARCHES.map((s) => (
-          <a href={`/buscar/?q=${encodeURIComponent(s.query)}`} data-umami-event="busqueda-armada" data-umami-event-producto={s.query}>
+          <a href={`/buscar/?q=${encodeURIComponent(s.term)}`} data-umami-event="busqueda-armada" data-umami-event-producto={s.term}>
             <img src={s.art ?? CATEGORY_ART[s.category]} alt="" loading="lazy" width="900" height="658" />
             <span class="label">{s.label}<span class="where">Amazon y Mercado Libre</span></span>
             <Icon name="arrow-right" size={18} class="go" />

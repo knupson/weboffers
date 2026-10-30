@@ -73,15 +73,16 @@ export const PRODUCT_ART: Record<string, string> = {
 export const artFor = (p: { slug: string; category: string }) => PRODUCT_ART[p.slug] ?? CATEGORY_ART[p.category] ?? "/art/cat-perifericos.webp";
 
 // Búsquedas curadas: llevan a Amazon con el tag aunque el producto no esté en el catálogo.
-export const SEARCHES: Array<{ label: string; query: string; store: Store; category: string; art?: string }> = [
-  { label: "SSD NVMe de 2 TB", query: "nvme ssd 2tb pcie 4.0", store: "US", category: "Almacenamiento" },
-  { label: "Procesadores AMD Ryzen", query: "amd ryzen processor", store: "US", category: "Componentes" },
-  { label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", category: "Audio" },
-  { label: "Relojes Garmin", query: "garmin smartwatch", store: "US", category: "Relojes" },
-  { label: "Cámaras de acción", query: "action camera 4k", store: "US", category: "Cámaras" },
-  { label: "Lectores de libros Kobo", query: "kobo ereader", store: "US", category: "Tablets y lectores" },
-  { label: "Mouse inalámbricos premium", query: "logitech mx master", store: "US", category: "Periféricos", art: "/art/cat-mouse.webp" },
-  { label: "Routers Wi-Fi 7", query: "wifi 7 router", store: "US", category: "Redes" },
+// term: lo que se busca en nuestro catálogo. ml: link de afiliado oficial (generador de Mercado Libre) a esa búsqueda.
+export const SEARCHES: Array<{ label: string; query: string; store: Store; category: string; art?: string; ml?: string; term: string }> = [
+  { term: "ssd", label: "SSD NVMe de 2 TB", query: "nvme ssd 2tb pcie 4.0", store: "US", category: "Almacenamiento", ml: "https://meli.la/1YNptPJ" },
+  { term: "ryzen", label: "Procesadores AMD Ryzen", query: "amd ryzen processor", store: "US", category: "Componentes", ml: "https://meli.la/1ZnvKXh" },
+  { term: "auriculares", label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", category: "Audio", ml: "https://meli.la/1UsPwMm" },
+  { term: "garmin", label: "Relojes Garmin", query: "garmin smartwatch", store: "US", category: "Relojes", ml: "https://meli.la/2cxStP1" },
+  { term: "cámara", label: "Cámaras de acción", query: "action camera 4k", store: "US", category: "Cámaras", ml: "https://meli.la/1Q632PA" },
+  { term: "kobo", label: "Lectores de libros Kobo", query: "kobo ereader", store: "US", category: "Tablets y lectores", ml: "https://meli.la/1b92rDR" },
+  { term: "mouse", label: "Mouse inalámbricos premium", query: "logitech mx master", store: "US", category: "Periféricos", art: "/art/cat-mouse.webp", ml: "https://meli.la/2MgDFB5" },
+  { term: "router", label: "Routers Wi-Fi 7", query: "wifi 7 router", store: "US", category: "Redes", ml: "https://meli.la/1uK1xhZ" },
 ];
 
 export function amazonDealsUrl(store: Store): string {
