@@ -20,10 +20,8 @@ CLAUDE = r"Abrí Claude Code en E:\Repositorios\Personal\weboffers, con tu Chrom
 
 # Avisos de una sola vez (AAAA-MM-DD → texto).
 PUNTUALES = {
-    "2026-10-31": "🔎 Franquicia 400: mirá si ya entran clicks en Mercado Libre → mercadolibre.com.ar/afiliados → Métricas.",
+    "2026-10-31": "🔎 Franquicia 400: 1) Abrí ofertas.knunet.com: el Sony WF-1000XM5 tiene que decir $400.000 (si no, falló la publicación automática de las 7:30; avisame). 2) Mirá si entran clicks en mercadolibre.com.ar/afiliados → Métricas.",
     "2026-11-01": f"🎬 Franquicia 400: toca el primer Reel de Instagram (sin publicaciones la cuenta no aparece en búsquedas).\n{CLAUDE} «armá el Reel de Instagram».",
-    "2026-11-04": "🛠️ Franquicia 400: creá la app de desarrollador de Mercado Libre (5 min) para precios automáticos y buscador en vivo.\n"
-                  f"{CLAUDE} «guiame para crear la app de Mercado Libre».",
     "2026-11-07": f"📣 Franquicia 400: ya hay una semana de datos. Decidí si probamos publicidad (USD 30–50).\n{CLAUDE} «informe de la semana y propuesta de publicidad».",
 }
 
