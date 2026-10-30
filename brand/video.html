@@ -1,0 +1,80 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:Ultra;src:url(ultra.woff2)}
+@font-face{font-family:"Archivo Variable";src:url(archivo.woff2);font-weight:100 900}
+:root{--esmalte:#141210;--crema:#f4efe4;--crema2:#cfc6b6;--rojo:#d7262b;--amarillo:#f2c230;--verde:#5cc489;--celeste:#6ec6f0}
+html,body{margin:0;width:1080px;height:1920px;background:var(--esmalte);overflow:hidden;color:var(--crema);font-family:"Archivo Variable"}
+.placa{position:absolute;left:40px;right:40px;top:500px;height:740px;background:url(placa.webp) center/100% 100% no-repeat}
+.brand{position:absolute;top:150px;left:0;right:0;text-align:center;font-family:Ultra;font-size:72px;color:var(--amarillo);text-shadow:.05em .05em 0 var(--rojo),.09em .09em 0 #0b0a09}
+.site{position:absolute;bottom:150px;left:0;right:0;text-align:center;font-family:Ultra;font-size:52px;color:var(--celeste)}
+.scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;opacity:0;transform:translateY(40px);transition:opacity .5s cubic-bezier(.23,1,.32,1),transform .5s cubic-bezier(.23,1,.32,1)}
+.scene.on{opacity:1;transform:none}
+.letra{font-family:Ultra;color:var(--amarillo);text-shadow:.05em .05em 0 var(--rojo),.09em .09em 0 #0b0a09;line-height:1.05;margin:0}
+.t{font-size:96px;padding:0 70px}
+.big{font-size:150px}
+.mid{font-size:76px}
+.k{font-size:44px;font-weight:600;color:var(--crema2);margin:24px 0 8px}
+.v{font-family:Ultra;font-size:110px;color:var(--crema);margin:0}
+.ok{font-size:44px;font-weight:700;color:var(--verde);margin-top:30px}
+.no{font-size:44px;font-weight:700;color:#ff8a7a;margin-top:30px}
+.rows{font-size:48px;font-weight:600;line-height:1.7;width:860px}
+.rows div{display:flex;justify-content:space-between}
+.rows .tot{border-top:3px solid var(--amarillo);margin-top:10px;padding-top:10px;color:var(--amarillo)}
+.inner{position:absolute;left:250px;right:250px;top:680px;height:380px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.foot{position:absolute;left:90px;right:90px;top:1290px;text-align:center;font-size:36px;line-height:1.4;color:var(--crema2);font-weight:600}
+.url{font-family:Ultra;font-size:70px;color:var(--celeste);margin-top:30px}
+.pill{display:inline-block;background:var(--rojo);color:#fff;font-family:Ultra;font-size:58px;padding:22px 44px;border-radius:16px;box-shadow:inset 0 0 0 4px var(--rojo),inset 0 0 0 7px var(--crema);margin-top:40px}
+</style></head><body>
+<div class="brand">Franquicia 400</div><div id="stage"></div><div class="site">ofertas.knunet.com</div>
+<script>
+const MEP = 1566.6, FECHA = "30/10/2026", ENVIO = 35, EURUSD = 1721.0637 / 1560;
+const ars = (n) => "$ " + Math.round(n).toLocaleString("es-AR");
+const usd = (n) => "USD " + n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const total = (fob, env) => { const ex = Math.max(0, fob - 400); const base = fob + env + ex * 0.35 + ex * 0.03; return base * 1.21; };
+const foot = `Dólar MEP del ${FECHA}: ${ars(MEP)}. Ejemplo orientativo.`;
+const end = `<div class="scene"><p class="letra t">Hacé tu cuenta<br>con tu producto</p><p class="pill">ofertas.knunet.com</p><p class="k" style="margin-top:60px">Precio, envío, IVA y dólar del día</p></div>`;
+
+const V = {
+  "1": [
+    [2600, `<div class="scene"><p class="letra t">¿Cuánto te sale traer algo de Amazon?</p><p class="k">Con la franquicia de USD 400</p></div>`],
+    ...[100, 200, 300, 400].map((p) => [2600, `<div class="scene"><div class="placa"></div><div class="inner"><p class="k" style="margin:0">Si en Amazon sale</p><p class="v" style="font-size:92px">USD ${p}</p><p class="k">te sale puesto en tu casa</p><p class="letra mid">${ars(total(p, ENVIO) * MEP)}</p><p class="ok" style="font-size:36px;margin-top:14px">Sin derechos de importación</p></div><p class="foot">Con USD ${ENVIO} de envío e IVA 21%. ${foot}</p></div>`]),
+    [3200, end],
+  ],
+  "2": [
+    [2600, `<div class="scene"><p class="letra t">¿Qué pasa si te pasás de USD 400?</p></div>`],
+    [3000, `<div class="scene"><p class="k">Ejemplo: producto</p><p class="v">USD 500</p><p class="k">+ USD 40 de envío</p><p class="no">Te pasás por USD 100</p></div>`],
+    [4200, `<div class="scene"><div class="rows">
+      <div><span>Producto</span><span>${usd(500)}</span></div>
+      <div><span>Envío</span><span>${usd(40)}</span></div>
+      <div><span>Derechos</span><span>${usd(35)}</span></div>
+      <div><span>Tasa de estadística</span><span>${usd(3)}</span></div>
+      <div><span>IVA 21%</span><span>${usd(578 * 0.21)}</span></div>
+      <div class="tot"><span>Total</span><span>${usd(total(500, 40))}</span></div></div>
+      <p class="k">Derechos (35%) y tasa (3%) sólo sobre<br>los USD 100 que te pasás.</p></div>`],
+    [3000, `<div class="scene"><div class="placa"></div><div class="inner"><p class="k">Puesto en tu casa</p><p class="letra mid">${ars(total(500, 40) * MEP)}</p><p class="k">al dólar MEP</p></div><p class="foot">${foot}</p></div>`],
+    [3200, end],
+  ],
+  "3": [
+    [2600, `<div class="scene"><p class="letra t">¿Conviene comprar en Amazon España?</p></div>`],
+    [3200, `<div class="scene"><p class="letra mid">1. Cobra en euros</p><p class="k">Lo pasamos a dólares:</p><p class="v" style="font-size:90px">1 EUR = USD ${EURUSD.toFixed(2).replace(".", ",")}</p><p class="k">euro oficial ÷ dólar oficial</p></div>`],
+    [3200, `<div class="scene"><p class="letra mid">2. Trae 220 V</p><p class="k">Ideal para cafeteras, freidoras<br>y todo lo que tiene motor o resistencia</p><img src="cat-cocina.webp" style="width:760px;border-radius:24px;margin-top:40px"></div>`],
+    [3000, `<div class="scene"><p class="letra mid">3. Enchufe europeo</p><p class="k">Viene con ficha Schuko:<br>necesitás un adaptador</p></div>`],
+    [3000, `<div class="scene"><p class="letra mid">Misma franquicia</p><p class="k">USD 400 por envío sin derechos.<br>Pagás IVA y envío.</p></div>`],
+    [3200, end],
+  ],
+};
+
+const scenes = V[new URLSearchParams(location.search).get("v") || "1"];
+const stage = document.getElementById("stage");
+window.TOTAL_MS = scenes.reduce((a, [d]) => a + d, 0);
+(async () => {
+  await document.fonts.ready;
+  for (const [dur, html] of scenes) {
+    stage.innerHTML = html;
+    const el = stage.firstElementChild;
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("on")));
+    await new Promise((r) => setTimeout(r, dur));
+  }
+  window.DONE = true;
+})();
+</script>
+</body></html>

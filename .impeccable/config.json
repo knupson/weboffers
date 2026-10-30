@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "u",
+        "createdAt": "2026-10-30T16:08:29.928Z",
+        "reason": "Claude: 'U' es el alias local de Ultra (fuente de DESIGN.md) en las plantillas de rasters de brand/"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "arial",
+        "createdAt": "2026-10-30T16:08:30.191Z",
+        "reason": "Claude: Arial sólo como fallback del texto chico en plantillas de rasters de brand/, no en la UI"
+      }
+    ]
+  }
+}
