@@ -1,0 +1,111 @@
+---
+import Base from "../layouts/Base.astro";
+import Calculator from "../components/Calculator.tsx";
+import ProductCard from "../components/ProductCard.astro";
+import { loadProducts } from "../lib/data";
+
+const { products, offers } = await loadProducts();
+const featured = products.filter((p) => p.verified).slice(0, 3);
+---
+
+<Base>
+  <section class="wrap hero">
+    <p class="eyebrow">Courier a Argentina, franquicia de USD 400</p>
+    <h1>Cuánto te sale realmente traerlo de Amazon.</h1>
+    <p class="lede">
+      Cargás el precio y el envío, y te mostramos el total con impuestos y el dólar del día. Sin registrarte.
+    </p>
+  </section>
+
+  <section id="calculadora" class="wrap calc-section">
+    <Calculator client:load buildRates={offers.rates} />
+  </section>
+
+  <section class="band">
+    <div class="wrap section how">
+      <h2>Qué se paga y qué no</h2>
+      <div class="cols">
+        <div>
+          <h3>Hasta USD 400 de FOB</h3>
+          <p>No pagás derechos de importación ni tasa de estadística. Pagás IVA y el envío.</p>
+        </div>
+        <div>
+          <h3>Si te pasás</h3>
+          <p>Sólo el excedente paga derechos y tasa de estadística. Los primeros USD 400 siguen exentos.</p>
+        </div>
+        <div>
+          <h3>Cinco envíos por año</h3>
+          <p>El cupo es por persona. Conviene juntar compras en un solo envío cuando se pueda.</p>
+        </div>
+      </div>
+      <a href="/guia/" class="more">Leer cómo funciona completo</a>
+    </div>
+  </section>
+
+  {featured.length > 0 && (
+    <section class="wrap section">
+      <div class="head">
+        <h2>Productos para mirar</h2>
+        <a href="/productos/">Ver todos</a>
+      </div>
+      <div class="grid">
+        {featured.map((p, i) => <ProductCard product={p} index={i} />)}
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .hero {
+    padding-block: clamp(56px, 9vw, 112px) 40px;
+    display: grid;
+    gap: 20px;
+    max-width: 880px;
+    margin-inline: 0;
+  }
+  @media (min-width: 1184px) {
+    .hero {
+      margin-inline: auto;
+      max-width: 1120px;
+    }
+    .hero > * {
+      max-width: 760px;
+    }
+  }
+  .calc-section {
+    padding-bottom: clamp(56px, 9vw, 112px);
+  }
+  .how {
+    display: grid;
+    gap: 32px;
+  }
+  .cols {
+    display: grid;
+    gap: 32px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 760px) {
+    .cols {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .cols p {
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .more {
+    width: max-content;
+  }
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+</style>

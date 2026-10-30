@@ -1,0 +1,16 @@
+services:
+  weboffers-worker:
+    build: .
+    restart: unless-stopped
+    environment:
+      CHECK_INTERVAL_SECONDS: ${CHECK_INTERVAL_SECONDS:-3600}
+      CATALOG_PATH: /app/data/catalog.json
+      OUTPUT_PATH: /app/output/offers.json
+      CREATORS_CLIENT_ID: ${CREATORS_CLIENT_ID:-}
+      CREATORS_CLIENT_SECRET: ${CREATORS_CLIENT_SECRET:-}
+      CREATORS_PARTNER_TAG_US: ${CREATORS_PARTNER_TAG_US:-}
+      CREATORS_PARTNER_TAG_ES: ${CREATORS_PARTNER_TAG_ES:-}
+      CF_DEPLOY_HOOK_URL: ${CF_DEPLOY_HOOK_URL:-}
+    volumes:
+      - ../data:/app/data:ro
+      - ./output:/app/output

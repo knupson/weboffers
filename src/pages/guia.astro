@@ -1,0 +1,105 @@
+---
+import Base from "../layouts/Base.astro";
+
+const steps = [
+  {
+    title: "Tené lista tu cuenta en ARCA",
+    body: "Para recibir compras del exterior por courier necesitás CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico. Chequealo antes de comprar, no cuando llega la caja.",
+  },
+  {
+    title: "Elegí la tienda según el producto",
+    body: "Casi todo lo electrónico tiene fuente multivoltaje y funciona con 220 V. En electrodomésticos con motor o resistencia conviene Amazon España, que despacha equipos de 220 V. Fijate la tensión en la ficha antes de pagar.",
+  },
+  {
+    title: "Armá la cuenta con la calculadora",
+    body: "Cargá el precio del producto, el envío que te muestra Amazon al pagar y la alícuota de IVA. Te devuelve el total en dólares y en pesos al MEP y a la cotización tarjeta.",
+  },
+  {
+    title: "Pagá y esperá al courier",
+    body: "Amazon cobra los impuestos de importación al comprar. El courier te entrega en el domicilio. Si el cálculo definitivo da distinto, Amazon lo ajusta según sus condiciones vigentes, que conviene leer en su sitio.",
+  },
+];
+---
+
+<Base title="Cómo funciona" description="La franquicia de USD 400, qué impuestos se pagan y cómo estimar el costo final de una compra por courier a Argentina.">
+  <section class="wrap narrow section">
+    <h1>Cómo funciona</h1>
+    <p class="lede" style="margin-top: 16px">
+      El régimen de courier te deja traer compras personales sin pagar derechos de importación hasta cierto valor. Esto es lo que dice la norma y cómo lo usa la calculadora.
+    </p>
+
+    <div class="rules">
+      <h2>Qué dice la norma</h2>
+      <ul>
+        <li>Hasta <strong>USD 400 de valor FOB</strong> por envío, y hasta 5 envíos por año y por persona, no pagás derechos de importación ni tasa de estadística (Decreto 1065/2024).</li>
+        <li>El excedente sobre USD 400 no entra en la franquicia y paga derechos y tasa de estadística.</li>
+        <li>El resto de los tributos, entre ellos el IVA, sigue el régimen general de importación (RG ARCA 5608/2024).</li>
+        <li>El tope por envío del régimen courier es de USD 3.000 de FOB.</li>
+      </ul>
+      <p class="note">
+        La alícuota de IVA depende de la posición arancelaria del producto. No la pudimos confirmar en las normas del régimen courier, por eso la calculadora arranca en 21% y te deja cambiarla.
+      </p>
+    </div>
+
+    <ol class="steps">
+      {steps.map((s, i) => (
+        <li>
+          <span class="mono n">{String(i + 1).padStart(2, "0")}</span>
+          <div>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+</Base>
+
+<style>
+  .rules {
+    margin-top: 56px;
+    display: grid;
+    gap: 16px;
+  }
+  .rules ul {
+    margin: 0;
+    padding-left: 20px;
+    display: grid;
+    gap: 10px;
+    max-width: var(--measure);
+  }
+  .note {
+    background: var(--yellow-bg);
+    color: var(--yellow-ink);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    font-size: 0.9375rem;
+    max-width: var(--measure);
+  }
+  .steps {
+    list-style: none;
+    margin: 64px 0 0;
+    padding: 0;
+    display: grid;
+  }
+  .steps li {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 16px;
+    padding-block: 28px;
+    border-top: 1px solid var(--line);
+  }
+  .steps li:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .n {
+    color: var(--muted);
+    font-size: 0.875rem;
+    padding-top: 2px;
+  }
+  .steps p {
+    color: var(--muted);
+    margin-top: 6px;
+    max-width: var(--measure);
+  }
+</style>

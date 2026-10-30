@@ -1,0 +1,154 @@
+---
+import "../styles/global.css";
+import { SITE } from "../config";
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+}
+
+const { title, description = SITE.description, path = Astro.url.pathname } = Astro.props;
+const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name}: cuánto te sale traer hardware a Argentina`;
+const canonical = new URL(path, SITE.url).toString();
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#fbfbfa" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={`${SITE.url}/og.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap top-row">
+        <a href="/" class="brand" aria-label={`${SITE.name}, inicio`}>
+          <span class="serif brand-name">{SITE.name}</span>
+        </a>
+        <nav aria-label="Principal">
+          <a href="/#calculadora">Calculadora</a>
+          <a href="/productos/">Productos</a>
+          <a href="/guia/">Cómo funciona</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot-grid">
+        <div>
+          <p class="serif foot-brand">{SITE.name}</p>
+          <p class="foot-note">{SITE.disclosure}</p>
+          <p class="foot-note">{SITE.priceNotice}</p>
+        </div>
+        <nav aria-label="Legal">
+          <a href="/legal/afiliados/">Afiliación con Amazon</a>
+          <a href="/legal/privacidad/">Privacidad</a>
+          <a href="/legal/cookies/">Cookies</a>
+          <a href="/legal/terminos/">Términos del simulador</a>
+          <a href={SITE.parent.url} rel="noopener">Un proyecto de {SITE.parent.name}</a>
+        </nav>
+      </div>
+      <div class="wrap foot-base">
+        <span>© {year} {SITE.name}</span>
+        <span>Dólar: dolarapi.com. Normativa: Decreto 1065/2024 y RG ARCA 5608/2024.</span>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgb(251 251 250 / 0.88);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 60px;
+  }
+  .brand {
+    text-decoration: none;
+  }
+  .brand-name {
+    font-size: 1.35rem;
+  }
+  .top nav {
+    display: flex;
+    gap: clamp(12px, 3vw, 28px);
+    font-size: 0.9375rem;
+  }
+  .top nav a {
+    text-decoration: none;
+    color: var(--muted);
+    transition: color 150ms var(--ease-out);
+  }
+  .top nav a:hover {
+    color: var(--ink);
+  }
+  .foot {
+    border-top: 1px solid var(--line);
+    background: var(--band);
+    padding-top: 48px;
+  }
+  .foot-grid {
+    display: grid;
+    gap: 32px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 760px) {
+    .foot-grid {
+      grid-template-columns: 1.4fr 1fr;
+    }
+  }
+  .foot-brand {
+    font-size: 1.4rem;
+    margin-bottom: 12px;
+  }
+  .foot-note {
+    font-size: 0.875rem;
+    color: var(--muted);
+    max-width: 56ch;
+    margin-bottom: 8px;
+  }
+  .foot nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.9375rem;
+  }
+  .foot-base {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding-block: 32px;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+</style>

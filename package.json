@@ -3,31 +3,27 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "description": "Cazador, Comparador y Calculadora de Ofertas de Amazon Sub-$400 USD (Courier Argentina) para Marketing de Afiliados",
+  "description": "Calculadora de costo final para comprar en Amazon y traer a Argentina por courier (franquicia de USD 400)",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@fontsource/barlow": "^5.3.0",
-    "@fontsource/barlow-condensed": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.3.0",
-    "@fontsource/saira-stencil-one": "^5.3.0",
-    "@phosphor-icons/react": "^2.1.10",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
+    "@astrojs/check": "^0.9.12",
     "sharp": "^0.35.5",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.5"
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^6.1.1",
+    "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "astro": "^7.4.4",
+    "preact": "^11.1.0"
   }
 }

@@ -1,0 +1,115 @@
+---
+import { amazonUrl } from "../config";
+import { formatUsd, formatStamp } from "../lib/format";
+import type { CatalogEntry, OfferItem } from "../lib/data";
+
+interface Props {
+  product: CatalogEntry & { price: OfferItem | null; offer?: OfferItem };
+  index?: number;
+}
+
+const { product: p, index = 0 } = Astro.props;
+const image = p.offer?.imageUrl ?? null;
+const calcHref = p.price ? `/?fob=${p.price.priceUsd}#calculadora` : "/#calculadora";
+---
+
+<article class="card item rise" style={`--i:${index}`}>
+  <a href={`/productos/${p.slug}/`} class="plate" aria-label={`Ficha de ${p.name}`}>
+    {image ? (
+      <img src={image} alt={p.name} loading="lazy" width="240" height="240" referrerpolicy="no-referrer" />
+    ) : (
+      <span class="mono noimg">{p.brand}</span>
+    )}
+  </a>
+  <div class="body">
+    <div class="meta">
+      <span class="tag blue">{p.category}</span>
+      <span class="tag">{p.store === "ES" ? "Amazon.es" : "Amazon.com"}</span>
+    </div>
+    <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
+    <p class="sum">{p.summary}</p>
+    <div class="price">
+      {p.price ? (
+        <>
+          <strong class="mono">{formatUsd(p.price.priceUsd as number)}</strong>
+          <span class="stamp">consultado el {formatStamp(p.price.priceFetchedAt as string)}</span>
+        </>
+      ) : (
+        <span class="stamp">Precio: miralo en Amazon</span>
+      )}
+    </div>
+    <div class="actions">
+      <a class="btn" href={amazonUrl(p.asin, p.store)} target="_blank" rel="noopener noreferrer sponsored">Ver en Amazon</a>
+      <a class="btn ghost" href={calcHref}>Calcular</a>
+    </div>
+  </div>
+</article>
+
+<style>
+  .item {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color 200ms var(--ease-out);
+  }
+  .item:hover {
+    border-color: var(--line-strong);
+  }
+  .plate {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    padding: 20px;
+  }
+  .plate img {
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .noimg {
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  .body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+  }
+  .meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  h3 a {
+    text-decoration: none;
+  }
+  h3 a:hover {
+    text-decoration: underline;
+  }
+  .sum {
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+  .price {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .price strong {
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+  .stamp {
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+</style>

@@ -1,0 +1,54 @@
+---
+import Base from "../../layouts/Base.astro";
+import { LEGAL, type LegalId } from "../../content/legal";
+
+export function getStaticPaths() {
+  return Object.keys(LEGAL).map((doc) => ({ params: { doc } }));
+}
+
+const { doc } = Astro.params;
+const entry = LEGAL[doc as LegalId];
+---
+
+<Base title={entry.title} description={entry.summary}>
+  <article class="wrap narrow section">
+    <p class="eyebrow">Actualizado el {entry.updated}</p>
+    <h1 style="margin-top: 12px">{entry.title}</h1>
+    <p class="lede" style="margin-top: 16px">{entry.summary}</p>
+
+    {entry.sections.map((s) => (
+      <section class="block">
+        <h2>{s.heading}</h2>
+        {s.body.map((p) => <p>{p}</p>)}
+        {s.bullets && (
+          <ul>
+            {s.bullets.map((b) => <li>{b}</li>)}
+          </ul>
+        )}
+      </section>
+    ))}
+  </article>
+</Base>
+
+<style>
+  .block {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 14px;
+  }
+  .block h2 {
+    font-size: 1.5rem;
+  }
+  .block p,
+  .block li {
+    max-width: var(--measure);
+  }
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    display: grid;
+    gap: 10px;
+  }
+</style>
