@@ -1,6 +1,6 @@
 ---
-import "@fontsource-variable/geist";
-import "@fontsource-variable/geist-mono";
+import "@fontsource/ultra";
+import "@fontsource-variable/archivo";
 import "../styles/global.css";
 import { SITE } from "../config";
 import { loadOffers } from "../lib/data";
@@ -15,7 +15,9 @@ const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name}: hardware de
 const canonical = new URL(Astro.url.pathname, SITE.url).toString();
 const path = Astro.url.pathname;
 
-const { rates } = await loadOffers();
+const { rates, items } = await loadOffers();
+const hasPrices = items.some((i) => i.priceUsd != null);
+const stamp = rates ? new Date(rates.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" }) : "";
 const mep = rates ? `$${Math.round(rates.mep).toLocaleString("es-AR")}` : "...";
 
 const nav = [
@@ -32,11 +34,10 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#f3f4f6" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0d0f12" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#141210" />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta property="og:type" content="website" />
@@ -53,19 +54,13 @@ const nav = [
     <a class="skip" href="#main">Saltar al contenido</a>
     <header class="top">
       <div class="wrap">
-        <a class="logo" href="/" aria-label={`${SITE.name}, inicio`}>
-          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <rect width="32" height="32" rx="9" fill="var(--accent)" />
-            <path d="M16 7.5v11.5M10.5 14l5.5 5.5 5.5-5.5M9 24.5h14" stroke="var(--on-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <span>{SITE.name}</span>
-        </a>
+        <a class="logo letra" href="/" aria-label={`${SITE.name}, inicio`}>{SITE.name}</a>
         <nav aria-label="Secciones">
           {nav.map(([href, label]) => (
-            <a href={href} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
+            <a href={href} class={href === "/guia/" ? "hide-sm" : undefined} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
           ))}
         </nav>
-        <span class="rate-pill">MEP <b class="num" data-rate="mep">{mep}</b></span>
+        <span class="rate-pill">MEP <b class="num" data-rate="mep">{mep}</b> <small data-rate-time>{stamp}</small></span>
       </div>
     </header>
 
@@ -75,9 +70,11 @@ const nav = [
 
     <footer>
       <div class="wrap">
+        <div class="filete-h" aria-hidden="true"></div>
+        <div>
         <div>
           <p>{SITE.disclosure}</p>
-          <p>{SITE.priceNotice}</p>
+          {hasPrices && <p>{SITE.priceNotice}</p>}
         </div>
         <nav aria-label="Legales">
           <a href="/legal/afiliados/">Afiliación con Amazon</a>
@@ -86,6 +83,7 @@ const nav = [
           <a href="/legal/terminos/">Términos</a>
           <a href={SITE.parent.url} rel="noopener">Un proyecto de KnuNet</a>
         </nav>
+        </div>
       </div>
     </footer>
 
@@ -98,6 +96,9 @@ const nav = [
           const key = el.dataset.rate as "mep" | "tarjeta";
           el.textContent = `$${Math.round(r[key]).toLocaleString("es-AR")}`;
         });
+        const hora = new Date(r.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
+        document.querySelectorAll<HTMLElement>("[data-rate-time]").forEach((el) => (el.textContent = hora));
+        document.querySelectorAll<HTMLElement>("[data-rate-when]").forEach((el) => (el.textContent = `de las ${hora}`));
       });
     </script>
   </body>

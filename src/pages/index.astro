@@ -1,26 +1,33 @@
 ---
 import Base from "../layouts/Base.astro";
 import Catalog from "../components/Catalog.astro";
+import QuickCalc from "../components/QuickCalc.tsx";
 import Icon from "../components/Icon.astro";
-import { amazonDealsUrl, amazonSearchUrl, SEARCHES, STORE_LABEL } from "../config";
+import { amazonDealsUrl, amazonSearchUrl, CATEGORY_ART, SEARCHES, STORE_LABEL } from "../config";
 import { loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
 const shown = products.filter((p) => p.verified);
-const ars = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
-const mep = offers.rates ? ars(offers.rates.mep) : "...";
-const tarjeta = offers.rates ? ars(offers.rates.tarjeta) : "...";
+const stamp = offers.rates ? `de las ${new Date(offers.rates.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" })}` : "de hoy";
+
+// Categorías con productos van al catálogo; las demás, directo a una búsqueda en Amazon.
+const withProducts = [...new Set(shown.map((p) => p.category))];
+const cats = [
+  ...withProducts.map((c) => ({ name: c, href: `/productos/?categoria=${encodeURIComponent(c)}`, sub: ((n) => `${n} ${n === 1 ? "elegido" : "elegidos"}`)(shown.filter((p) => p.category === c).length), external: false })),
+  { name: "Cocina", href: amazonSearchUrl("cafetera espresso", "ES"), sub: "220 V en Amazon.es", external: true },
+  { name: "Hogar", href: amazonSearchUrl("robot aspirador", "ES"), sub: "220 V en Amazon.es", external: true },
+];
 ---
 
 <Base>
   <div class="hero">
     <div class="wrap hero-grid">
       <div>
-        <h1>Hardware de Amazon, con la cuenta hecha para Argentina.</h1>
+        <h1 class="letra">¿Conviene<br />traerlo?</h1>
         <p class="lead">Elegí el producto, mirá cuánto te sale puesto en tu casa y comprá directo en Amazon.</p>
         <form class="search" action="/buscar/" method="get" target="_blank" role="search">
           <Icon name="magnifying-glass" size={18} />
-          <input name="q" type="search" placeholder="Buscá en Amazon: monitor, SSD, mouse..." aria-label="Qué querés buscar en Amazon" required />
+          <input name="q" type="search" placeholder="Buscá en Amazon: monitor, cafetera..." aria-label="Qué querés buscar en Amazon" required />
           <select name="tienda" aria-label="Tienda">
             <option value="US">Amazon.com</option>
             <option value="ES">Amazon.es</option>
@@ -28,39 +35,50 @@ const tarjeta = offers.rates ? ars(offers.rates.tarjeta) : "...";
           <button class="btn" type="submit">Buscar</button>
         </form>
       </div>
-      <aside class="today" aria-label="Datos del día">
-        <div class="pair">
-          <div><span class="k">Dólar MEP</span><span class="v num" data-rate="mep">{mep}</span></div>
-          <div><span class="k">Dólar tarjeta</span><span class="v num" data-rate="tarjeta">{tarjeta}</span></div>
+      <div>
+        <div class="placa-hero">
+          <img src="/art/placa-hero.webp" alt="" width="1600" height="1185" fetchpriority="high" />
+          <QuickCalc client:load mep={offers.rates?.mep ?? null} />
         </div>
-        <div class="rule">
-          <Icon name="check-circle" size={20} />
-          <p>Hasta <b>USD 400</b> por envío no pagás derechos de importación. Sólo IVA y el envío.</p>
-        </div>
-      </aside>
+        <p class="fine" style="text-align:center; margin-top: 8px">
+          Ejemplo con envío de USD 35 e IVA 21%, al dólar MEP <span data-rate-when>{stamp}</span>. <a class="link" href="/calculadora/">Hacé la cuenta exacta</a>
+        </p>
+      </div>
     </div>
   </div>
 
-  <section id="productos" style="padding-top: 40px">
+  <div class="wrap">
+    <nav class="cats" aria-label="Categorías">
+      {cats.map((c) => (
+        <a class="cat" href={c.href} {...(c.external ? { target: "_blank", rel: "noopener noreferrer sponsored" } : {})}>
+          <img src={CATEGORY_ART[c.name]} alt="" loading="lazy" width="900" height="658" />
+          <span>{c.name}<small>{c.sub}</small></span>
+        </a>
+      ))}
+    </nav>
+  </div>
+
+  <section id="productos" style="padding-top: 48px">
     <div class="wrap">
       <div class="head">
-        <h2>Productos que entran en la franquicia</h2>
+        <h2 class="letra">Lo que conviene traer</h2>
+        <p>Productos que entran en la franquicia de USD 400. Entrá a cada uno para ver el costo final en pesos.</p>
       </div>
       <Catalog products={shown} />
     </div>
   </section>
 
-  <section>
+  <section style="padding-top: 0">
     <div class="wrap">
       <div class="head">
-        <h2>¿Buscás otra cosa?</h2>
+        <h2 class="letra">¿Buscás otra cosa?</h2>
         <p>Búsquedas armadas en Amazon, ya filtradas para lo que conviene traer.</p>
       </div>
-      <div class="searches">
+      <div class="pizarra">
         {SEARCHES.map((s) => (
           <a href={amazonSearchUrl(s.query, s.store)} target="_blank" rel="noopener noreferrer sponsored">
-            <span class="ico-box"><Icon name={s.icon} size={20} /></span>
-            <span class="label">{s.label}<span class="where" style="display:block">{STORE_LABEL[s.store]}</span></span>
+            <img src={s.art ?? CATEGORY_ART[s.category]} alt="" loading="lazy" width="900" height="658" />
+            <span class="label">{s.label}<span class="where">{STORE_LABEL[s.store]}</span></span>
             <Icon name="arrow-up-right" size={18} class="go" />
           </a>
         ))}
@@ -72,31 +90,23 @@ const tarjeta = offers.rates ? ars(offers.rates.tarjeta) : "...";
     </div>
   </section>
 
-  <section>
+  <section style="padding-top: 0">
     <div class="wrap">
-      <div class="head">
-        <h2>Cómo sacamos el costo final</h2>
-        <p>Si el producto pasa los USD 400, sólo el excedente suma derechos y tasa de estadística.</p>
+      <div class="cuenta">
+        <h2 class="letra" style="text-align:center; margin-bottom: 24px">Cómo sacamos la cuenta</h2>
+        <p class="formula">Producto <span class="op">+</span> envío <span class="op">+</span> IVA <span class="op">=</span> <span class="res">puesto en tu casa</span></p>
+        <p class="nota">El IVA es 21% sobre producto y envío. Si el producto pasa los USD 400, sólo el excedente suma derechos y tasa de estadística. Te lo damos en pesos al MEP y al dólar tarjeta.</p>
+        <ul class="reglamento">
+          <li><b>USD 400</b><span>por envío sin derechos de importación</span></li>
+          <li><b>5 envíos</b><span>por año y por persona</span></li>
+          <li><b>USD 3.000</b><span>tope por envío por courier</span></li>
+          <li><b>50 kg</b><span>de peso máximo por envío</span></li>
+        </ul>
+        <p class="links">
+          <a class="link" href="/calculadora/">Hacer la cuenta con tu producto <Icon name="arrow-right" size={16} /></a>
+          <a class="link" href="/guia/">Leer la guía <Icon name="arrow-right" size={16} /></a>
+        </p>
       </div>
-      <div class="equation">
-        <div class="term"><b>Producto</b><span>El precio en Amazon</span></div>
-        <div class="op" aria-hidden="true">+</div>
-        <div class="term"><b>Envío</b><span>Lo ves al pagar</span></div>
-        <div class="op" aria-hidden="true">+</div>
-        <div class="term"><b>IVA</b><span>21% sobre todo lo anterior</span></div>
-        <div class="op" aria-hidden="true">=</div>
-        <div class="term total"><b>Puesto en tu casa</b><span>En pesos al MEP y al dólar tarjeta</span></div>
-      </div>
-      <div class="facts">
-        <div><span class="num">USD 400</span><span>por envío sin derechos</span></div>
-        <div><span class="num">5</span><span>envíos por año y por persona</span></div>
-        <div><span class="num">USD 3.000</span><span>tope por envío por courier</span></div>
-        <div><span class="num">50 kg</span><span>de peso máximo por envío</span></div>
-      </div>
-      <p style="margin-top: 28px; display: flex; gap: 20px; flex-wrap: wrap">
-        <a class="link" href="/calculadora/">Hacer la cuenta con tu producto <Icon name="arrow-right" size={16} /></a>
-        <a class="link" href="/guia/">Leer la guía <Icon name="arrow-right" size={16} /></a>
-      </p>
     </div>
   </section>
 </Base>

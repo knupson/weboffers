@@ -22,7 +22,7 @@ const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   </div>
   <p class="disclose">
     <Icon name="tag" size={16} />
-    Son links de afiliado: si comprás, Amazon nos paga una comisión. A vos te sale lo mismo.
+    Son links de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo. Las ilustraciones son de la categoría, no fotos del producto.
   </p>
   <div class="grid-products">
     {products.map((p) => <ProductCard product={p} />)}
@@ -33,12 +33,14 @@ const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   document.querySelectorAll<HTMLElement>("[data-catalog]").forEach((root) => {
     const chips = root.querySelectorAll<HTMLButtonElement>("[data-filter]");
     const cards = root.querySelectorAll<HTMLElement>(".card");
-    chips.forEach((chip) =>
-      chip.addEventListener("click", () => {
-        const f = chip.dataset.filter;
-        chips.forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
-        cards.forEach((card) => (card.hidden = !!f && card.dataset.category !== f));
-      })
-    );
+    const apply = (chip: HTMLButtonElement) => {
+      const f = chip.dataset.filter;
+      chips.forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
+      cards.forEach((card) => (card.hidden = !!f && card.dataset.category !== f));
+    };
+    chips.forEach((chip) => chip.addEventListener("click", () => apply(chip)));
+    const wanted = new URLSearchParams(location.search).get("categoria");
+    const match = [...chips].find((c) => c.dataset.filter === wanted);
+    if (match) apply(match);
   });
 </script>

@@ -3,7 +3,8 @@ import Base from "../../layouts/Base.astro";
 import Calculator from "../../components/Calculator.tsx";
 import ProductCard from "../../components/ProductCard.astro";
 import Icon from "../../components/Icon.astro";
-import { amazonUrl, CATEGORY_ICON, SITE, STORE_LABEL } from "../../config";
+import { amazonUrl, artFor, SITE, STORE_LABEL } from "../../config";
+import { brandLogo } from "../../lib/brands";
 import { formatUsd, formatStamp } from "../../lib/format";
 import { loadProducts } from "../../lib/data";
 
@@ -22,7 +23,8 @@ export async function getStaticPaths() {
 
 const { product: p, rates, related } = Astro.props;
 const buy = amazonUrl(p.asin, p.store);
-const image = p.price?.imageUrl ?? null;
+const photo = p.price?.imageUrl ?? null;
+const logo = brandLogo(p.brand);
 
 const specs: Array<[string, string]> = [
   ["Marca", p.brand],
@@ -40,8 +42,12 @@ const specs: Array<[string, string]> = [
     <div class="pdp">
       <div>
         <div class="media">
-          {image ? <img src={image} alt={p.name} /> : <Icon name={CATEGORY_ICON[p.category] ?? "package"} size={96} />}
+          {photo ? <img class="photo" src={photo} alt={p.name} /> : <img src={artFor(p)} alt="" width="900" height="658" />}
+          <span class="badge">
+            {logo ? <svg viewBox={logo.viewBox} style={logo.ratio === 1 ? "height:24px;aspect-ratio:1" : `aspect-ratio:${logo.ratio}`} role="img" aria-label={p.brand}><path d={logo.path} /></svg> : p.brand}
+          </span>
         </div>
+        {!photo && <p class="ilus">Ilustración de la categoría. La foto real del producto está en Amazon.</p>}
         <h1>{p.name}</h1>
         <p class="lead">{p.summary}</p>
         <dl class="specs">

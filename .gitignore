@@ -11,3 +11,11 @@ worker/output/
 .pytest_cache/
 __pycache__/
 .astro/
+
+# Artefactos de trabajo de impeccable
+.impeccable/tmp/
+.impeccable/review/
+.impeccable/questions/
+.impeccable/mocks/
+.impeccable/assets/
+.impeccable/build/

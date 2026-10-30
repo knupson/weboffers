@@ -33,16 +33,35 @@ export const CATEGORY_ICON: Record<string, string> = {
   Audio: "headphones",
 };
 
+// Ilustraciones propias por categoría (filete pintado con Gemini). Nunca son fotos del producto.
+export const CATEGORY_ART: Record<string, string> = {
+  Monitores: "/art/cat-monitores.webp",
+  "Mini PCs": "/art/cat-minipc.webp",
+  Almacenamiento: "/art/cat-almacenamiento.webp",
+  Periféricos: "/art/cat-perifericos.webp",
+  Audio: "/art/cat-audio.webp",
+  Cocina: "/art/cat-cocina.webp",
+  Hogar: "/art/cat-hogar.webp",
+};
+
+// Productos cuya categoría no los representa bien llevan su propia ilustración genérica.
+export const PRODUCT_ART: Record<string, string> = {
+  "8bitdo-ultimate-bluetooth-negro": "/art/cat-joystick.webp",
+  "logitech-mx-master-3s": "/art/cat-mouse.webp",
+};
+
+export const artFor = (p: { slug: string; category: string }) => PRODUCT_ART[p.slug] ?? CATEGORY_ART[p.category];
+
 // Búsquedas curadas: llevan a Amazon con el tag aunque el producto no esté en el catálogo.
-export const SEARCHES: Array<{ label: string; query: string; store: Store; icon: string }> = [
-  { label: "Monitores 1440p de 165 Hz o más", query: "1440p 165hz gaming monitor", store: "US", icon: "monitor" },
-  { label: "SSD NVMe de 2 TB", query: "nvme ssd 2tb pcie 4.0", store: "US", icon: "hard-drives" },
-  { label: "Mini PC con Ryzen", query: "mini pc ryzen 7", store: "US", icon: "cpu" },
-  { label: "Teclados mecánicos inalámbricos", query: "wireless mechanical keyboard", store: "US", icon: "keyboard" },
-  { label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", icon: "headphones" },
-  { label: "Joysticks para PC", query: "pc controller bluetooth", store: "US", icon: "game-controller" },
-  { label: "Cafeteras espresso de 220 V", query: "cafetera espresso", store: "ES", icon: "plug" },
-  { label: "Robots aspiradores de 220 V", query: "robot aspirador", store: "ES", icon: "plug" },
+export const SEARCHES: Array<{ label: string; query: string; store: Store; category: string; art?: string }> = [
+  { label: "Monitores 1440p de 165 Hz o más", query: "1440p 165hz gaming monitor", store: "US", category: "Monitores" },
+  { label: "SSD NVMe de 2 TB", query: "nvme ssd 2tb pcie 4.0", store: "US", category: "Almacenamiento" },
+  { label: "Mini PC con Ryzen", query: "mini pc ryzen 7", store: "US", category: "Mini PCs" },
+  { label: "Teclados mecánicos inalámbricos", query: "wireless mechanical keyboard", store: "US", category: "Periféricos" },
+  { label: "Auriculares con cancelación de ruido", query: "noise cancelling headphones", store: "US", category: "Audio" },
+  { label: "Cafeteras espresso de 220 V", query: "cafetera espresso", store: "ES", category: "Cocina" },
+  { label: "Robots aspiradores de 220 V", query: "robot aspirador", store: "ES", category: "Hogar" },
+  { label: "Freidoras de aire de 220 V", query: "freidora de aire", store: "ES", category: "Cocina", art: "/art/cat-freidora.webp" },
 ];
 
 export function amazonDealsUrl(store: Store): string {

@@ -1,0 +1,479 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T12:30:11.144Z",
+  "title": "Design System: Franquicia 400",
+  "extensions": {
+    "colorMeta": {
+      "esmalte": {
+        "role": "neutral",
+        "displayName": "Esmalte Negro",
+        "canonical": "#141210",
+        "tonalRamp": [
+          "oklch(15% 0.001 70)",
+          "oklch(25% 0.003 70)",
+          "oklch(35% 0.005 70)",
+          "oklch(48% 0.006 70)",
+          "oklch(60% 0.006 70)",
+          "oklch(72% 0.005 70)",
+          "oklch(84% 0.003 70)",
+          "oklch(95% 0.001 70)"
+        ]
+      },
+      "placa": {
+        "role": "neutral",
+        "displayName": "Placa",
+        "canonical": "#1d1a17",
+        "tonalRamp": [
+          "oklch(15% 0.001 70)",
+          "oklch(25% 0.003 70)",
+          "oklch(35% 0.005 70)",
+          "oklch(48% 0.006 70)",
+          "oklch(60% 0.006 70)",
+          "oklch(72% 0.005 70)",
+          "oklch(84% 0.003 70)",
+          "oklch(95% 0.001 70)"
+        ]
+      },
+      "placa-2": {
+        "role": "neutral",
+        "displayName": "Placa Honda",
+        "canonical": "#262220",
+        "tonalRamp": [
+          "oklch(15% 0.002 55)",
+          "oklch(25% 0.004 55)",
+          "oklch(35% 0.006 55)",
+          "oklch(48% 0.008 55)",
+          "oklch(60% 0.008 55)",
+          "oklch(72% 0.006 55)",
+          "oklch(84% 0.004 55)",
+          "oklch(95% 0.001 55)"
+        ]
+      },
+      "linea": {
+        "role": "neutral",
+        "displayName": "Línea",
+        "canonical": "#3a332d",
+        "tonalRamp": [
+          "oklch(15% 0.002 60)",
+          "oklch(25% 0.006 60)",
+          "oklch(35% 0.009 60)",
+          "oklch(48% 0.012 60)",
+          "oklch(60% 0.012 60)",
+          "oklch(72% 0.010 60)",
+          "oklch(84% 0.005 60)",
+          "oklch(95% 0.002 60)"
+        ]
+      },
+      "sombra": {
+        "role": "neutral",
+        "displayName": "Sombra de Letra",
+        "canonical": "#0b0a09",
+        "tonalRamp": [
+          "oklch(15% 0.001 70)",
+          "oklch(25% 0.002 70)",
+          "oklch(35% 0.003 70)",
+          "oklch(48% 0.004 70)",
+          "oklch(60% 0.004 70)",
+          "oklch(72% 0.003 70)",
+          "oklch(84% 0.002 70)",
+          "oklch(95% 0.001 70)"
+        ]
+      },
+      "crema": {
+        "role": "neutral",
+        "displayName": "Crema",
+        "canonical": "#f4efe4",
+        "tonalRamp": [
+          "oklch(15% 0.004 85)",
+          "oklch(25% 0.010 85)",
+          "oklch(35% 0.015 85)",
+          "oklch(48% 0.020 85)",
+          "oklch(60% 0.020 85)",
+          "oklch(72% 0.016 85)",
+          "oklch(84% 0.009 85)",
+          "oklch(95% 0.003 85)"
+        ]
+      },
+      "crema-2": {
+        "role": "neutral",
+        "displayName": "Crema Gastada",
+        "canonical": "#cfc6b6",
+        "tonalRamp": [
+          "oklch(15% 0.004 80)",
+          "oklch(25% 0.010 80)",
+          "oklch(35% 0.015 80)",
+          "oklch(48% 0.020 80)",
+          "oklch(60% 0.020 80)",
+          "oklch(72% 0.016 80)",
+          "oklch(84% 0.009 80)",
+          "oklch(95% 0.003 80)"
+        ]
+      },
+      "apagado": {
+        "role": "neutral",
+        "displayName": "Apagado",
+        "canonical": "#a39a8b",
+        "tonalRamp": [
+          "oklch(15% 0.004 80)",
+          "oklch(25% 0.010 80)",
+          "oklch(35% 0.015 80)",
+          "oklch(48% 0.020 80)",
+          "oklch(60% 0.020 80)",
+          "oklch(72% 0.016 80)",
+          "oklch(84% 0.009 80)",
+          "oklch(95% 0.003 80)"
+        ]
+      },
+      "rojo": {
+        "role": "primary",
+        "displayName": "Rojo Bermellón",
+        "canonical": "#d7262b",
+        "tonalRamp": [
+          "oklch(15% 0.042 27)",
+          "oklch(25% 0.102 27)",
+          "oklch(35% 0.162 27)",
+          "oklch(48% 0.210 27)",
+          "oklch(60% 0.210 27)",
+          "oklch(72% 0.168 27)",
+          "oklch(84% 0.096 27)",
+          "oklch(95% 0.030 27)"
+        ]
+      },
+      "rojo-hover": {
+        "role": "primary",
+        "displayName": "Rojo Encendido",
+        "canonical": "#e83a3f",
+        "tonalRamp": [
+          "oklch(15% 0.042 25)",
+          "oklch(25% 0.102 25)",
+          "oklch(35% 0.162 25)",
+          "oklch(48% 0.210 25)",
+          "oklch(60% 0.210 25)",
+          "oklch(72% 0.168 25)",
+          "oklch(84% 0.096 25)",
+          "oklch(95% 0.030 25)"
+        ]
+      },
+      "amarillo": {
+        "role": "secondary",
+        "displayName": "Amarillo Cromo",
+        "canonical": "#f2c230",
+        "tonalRamp": [
+          "oklch(15% 0.032 88)",
+          "oklch(25% 0.078 88)",
+          "oklch(35% 0.123 88)",
+          "oklch(48% 0.160 88)",
+          "oklch(60% 0.160 88)",
+          "oklch(72% 0.128 88)",
+          "oklch(84% 0.073 88)",
+          "oklch(95% 0.023 88)"
+        ]
+      },
+      "verde": {
+        "role": "tertiary",
+        "displayName": "Verde Esmeralda",
+        "canonical": "#1f8f4e",
+        "tonalRamp": [
+          "oklch(15% 0.026 152)",
+          "oklch(25% 0.063 152)",
+          "oklch(35% 0.100 152)",
+          "oklch(48% 0.130 152)",
+          "oklch(60% 0.130 152)",
+          "oklch(72% 0.104 152)",
+          "oklch(84% 0.059 152)",
+          "oklch(95% 0.019 152)"
+        ]
+      },
+      "verde-claro": {
+        "role": "tertiary",
+        "displayName": "Verde Hoja",
+        "canonical": "#5cc489",
+        "tonalRamp": [
+          "oklch(15% 0.024 155)",
+          "oklch(25% 0.058 155)",
+          "oklch(35% 0.093 155)",
+          "oklch(48% 0.120 155)",
+          "oklch(60% 0.120 155)",
+          "oklch(72% 0.096 155)",
+          "oklch(84% 0.055 155)",
+          "oklch(95% 0.017 155)"
+        ]
+      },
+      "celeste": {
+        "role": "tertiary",
+        "displayName": "Celeste Cielo",
+        "canonical": "#6ec6f0",
+        "tonalRamp": [
+          "oklch(15% 0.020 230)",
+          "oklch(25% 0.049 230)",
+          "oklch(35% 0.077 230)",
+          "oklch(48% 0.100 230)",
+          "oklch(60% 0.100 230)",
+          "oklch(72% 0.080 230)",
+          "oklch(84% 0.046 230)",
+          "oklch(95% 0.014 230)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Letra de filete, hero",
+        "purpose": "Sólo el título del hero, con sombreado 0.04em rojo y 0.08em sombra."
+      },
+      "headline": {
+        "displayName": "Letra de filete, sección",
+        "purpose": "Títulos de sección y de páginas internas."
+      },
+      "figure": {
+        "displayName": "Letra de filete, cifra",
+        "purpose": "Precios, totales, operadores, números de paso, reglamento y logo."
+      },
+      "title-page": {
+        "displayName": "Título de ficha",
+        "purpose": "Nombre del producto en la ficha, en grotesca."
+      },
+      "title": {
+        "displayName": "Título de tarjeta",
+        "purpose": "Nombre del producto en la tarjeta, recortado a dos líneas."
+      },
+      "lead": {
+        "displayName": "Bajada",
+        "purpose": "Bajada del hero (19px) y de cabeceras (17px)."
+      },
+      "body": {
+        "displayName": "Cuerpo",
+        "purpose": "Prosa en crema-2, máx. 68ch."
+      },
+      "label": {
+        "displayName": "Rótulo",
+        "purpose": "Chips, rótulos de campo, desglose, enlaces de tarjeta."
+      },
+      "fine": {
+        "displayName": "Letra chica",
+        "purpose": "Divulgación, aclaraciones y metadatos en apagado."
+      },
+      "button": {
+        "displayName": "Letra de botón",
+        "purpose": "Botón de compra rojo."
+      }
+    },
+    "shadows": [
+      {
+        "name": "borde-filete",
+        "value": "inset 0 0 0 2px var(--amarillo), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--rojo)",
+        "purpose": "Marco de tarjetas de producto, caja de compra y placa de la cuenta."
+      },
+      {
+        "name": "borde-pizarra",
+        "value": "inset 0 0 0 2px var(--celeste), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--amarillo)",
+        "purpose": "Marco de la pizarra de búsquedas curadas."
+      },
+      {
+        "name": "hilo",
+        "value": "inset 0 0 0 1.5px var(--linea)",
+        "purpose": "Borde fino de cartelitos, chips, campos, calculadora y pasos."
+      },
+      {
+        "name": "caida-placa",
+        "value": "0 14px 30px -18px rgb(0 0 0 / 0.8)",
+        "purpose": "Caída suave bajo la tarjeta de producto."
+      },
+      {
+        "name": "esmalte-boton",
+        "value": "inset 0 0 0 3px var(--rojo), inset 0 0 0 4.5px var(--crema), 0 6px 16px -8px rgb(215 38 43 / 0.6)",
+        "purpose": "Filete crema interior y brillo rojo del botón de compra."
+      },
+      {
+        "name": "anillos-cartel",
+        "value": "0 0 0 3px var(--esmalte), 0 0 0 5px var(--amarillo), 0 0 0 7px var(--esmalte), 0 0 0 9px var(--rojo)",
+        "purpose": "Anillos del cartel de búsqueda; el amarillo pasa a celeste en :focus-within."
+      },
+      {
+        "name": "sombreado-letra",
+        "value": "0.04em 0.04em 0 var(--rojo), 0.08em 0.08em 0 #0b0a09",
+        "purpose": "text-shadow de la letra de filete (0.05em / 0.09em en títulos de sección)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Única curva del sistema, para todas las transiciones de estado."
+      },
+      {
+        "name": "duration-press",
+        "value": "120ms",
+        "purpose": "Escala del botón al presionar y del pulgar de la cinta."
+      },
+      {
+        "name": "duration-state",
+        "value": "150ms",
+        "purpose": "Color, fondo e hilo en hover de botones, chips, nav y campos."
+      },
+      {
+        "name": "duration-lift",
+        "value": "180ms / 200ms",
+        "purpose": "Elevación de cartelitos (-2px) y tarjetas (-3px) en hover; anulada con prefers-reduced-motion."
+      },
+      {
+        "name": "duration-meter",
+        "value": "300ms",
+        "purpose": "Relleno del medidor de franquicia (scaleX)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xs",
+        "value": "480px"
+      },
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "960px"
+      },
+      {
+        "name": "xl",
+        "value": "1024px"
+      }
+    ],
+    "imagery": {
+      "cornerOrnaments": "/art/esquina-{tl,tr,bl,br}.webp con mix-blend-mode: lighten; --esq 64px (72px calculadora, 88px cuenta)",
+      "categoryArt": "/art/cat-*.webp, ilustración de filete por categoría (900x658); nunca representa un producto real",
+      "heroPlate": "/art/placa-hero.webp (1600x1185), centro vacío para la calculadora rápida",
+      "provenance": "cada raster pintado lleva un sidecar <archivo>.json con modelo, fecha, prompt y postproceso",
+      "icons": "Phosphor regular, SVG inline, fill currentColor"
+    }
+  },
+  "components": [
+    {
+      "name": "Botón de compra",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Cartelito esmaltado rojo para ir a Amazon o buscar.",
+      "html": "<a class=\"ds-btn\" href=\"#\">Ver en Amazon <svg width=\"16\" height=\"16\" viewBox=\"0 0 256 256\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M200 64v104a8 8 0 0 1-16 0V83.31L69.66 197.66a8 8 0 0 1-11.32-11.32L172.69 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8Z\"/></svg></a>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 20px;border-radius:var(--r-campo,10px);border:0;background:var(--rojo,#d7262b);color:#fff;font:400 16px/1 Ultra,'Rockwell Extra Bold',serif;letter-spacing:.01em;text-decoration:none;cursor:pointer;box-shadow:inset 0 0 0 3px #d7262b,inset 0 0 0 4.5px #f4efe4,0 6px 16px -8px rgb(215 38 43/.6);transition:background-color 150ms cubic-bezier(.23,1,.32,1),transform 120ms cubic-bezier(.23,1,.32,1)}.ds-btn:hover{background:var(--rojo-hover,#e83a3f)}.ds-btn:active{transform:scale(.97)}.ds-btn:focus-visible{outline:2px solid #f2c230;outline-offset:3px}"
+    },
+    {
+      "name": "Botón fantasma",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Salida secundaria, hilo fino sobre esmalte.",
+      "html": "<a class=\"ds-btn-ghost\" href=\"#\">Ofertas del día en Amazon.com</a>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;height:46px;padding:0 20px;border-radius:10px;background:transparent;color:#f4efe4;font:700 15px/1 'Archivo Variable',system-ui,sans-serif;text-decoration:none;box-shadow:inset 0 0 0 1.5px #3a332d;transition:background-color 150ms cubic-bezier(.23,1,.32,1),box-shadow 150ms cubic-bezier(.23,1,.32,1)}.ds-btn-ghost:hover{background:#262220;box-shadow:inset 0 0 0 1.5px #cfc6b6}.ds-btn-ghost:focus-visible{outline:2px solid #f2c230;outline-offset:3px}"
+    },
+    {
+      "name": "Chip de filtro",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filtro de categoría; activo en amarillo.",
+      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-chip\" aria-pressed=\"true\">Todo<span class=\"ds-count\">9</span></button><button class=\"ds-chip\" aria-pressed=\"false\">Monitores<span class=\"ds-count\">2</span></button></div>",
+      "css": ".ds-chip{height:38px;padding:0 14px;border-radius:10px;border:0;background:#1d1a17;color:#cfc6b6;box-shadow:inset 0 0 0 1.5px #3a332d;font:600 14px 'Archivo Variable',system-ui,sans-serif;cursor:pointer;transition:background-color 150ms cubic-bezier(.23,1,.32,1),color 150ms cubic-bezier(.23,1,.32,1),box-shadow 150ms cubic-bezier(.23,1,.32,1)}.ds-chip:hover{color:#f4efe4;box-shadow:inset 0 0 0 1.5px #cfc6b6}.ds-chip[aria-pressed=true]{background:#f2c230;color:#141210;box-shadow:none}.ds-chip:focus-visible{outline:2px solid #f2c230;outline-offset:3px}.ds-count{opacity:.65;margin-left:6px;font-size:12px}"
+    },
+    {
+      "name": "Campo de monto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo numérico de la calculadora con prefijo de moneda.",
+      "html": "<div class=\"ds-money\"><span>USD</span><input class=\"ds-in\" inputmode=\"decimal\" placeholder=\"0\" value=\"279\" aria-label=\"Precio\"></div>",
+      "css": ".ds-money{position:relative;max-width:280px}.ds-money span{position:absolute;left:14px;top:50%;transform:translateY(-50%);font:700 13px 'Archivo Variable',sans-serif;color:#a39a8b}.ds-in{width:100%;height:50px;padding:0 14px 0 54px;border:0;border-radius:10px;background:#141210;color:#f4efe4;font:600 18px 'Archivo Variable',sans-serif;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1.5px #3a332d;transition:box-shadow 150ms cubic-bezier(.23,1,.32,1)}.ds-in:hover{box-shadow:inset 0 0 0 1.5px #cfc6b6}.ds-in:focus{outline:none;box-shadow:inset 0 0 0 2px #f2c230}"
+    },
+    {
+      "name": "Cartel de búsqueda",
+      "kind": "input",
+      "refersTo": "search-cartel",
+      "description": "Buscador de Amazon como cartel crema con anillos de filete.",
+      "html": "<form class=\"ds-search\" onsubmit=\"return false\"><input placeholder=\"Buscá en Amazon: monitor, cafetera...\" aria-label=\"Buscar en Amazon\"><button class=\"ds-search-btn\">Buscar</button></form>",
+      "css": ".ds-search{display:flex;align-items:center;gap:8px;padding:8px;max-width:520px;background:#f4efe4;color:#141210;border-radius:14px;box-shadow:0 0 0 3px #141210,0 0 0 5px #f2c230,0 0 0 7px #141210,0 0 0 9px #d7262b}.ds-search:focus-within{box-shadow:0 0 0 3px #141210,0 0 0 5px #6ec6f0,0 0 0 7px #141210,0 0 0 9px #d7262b}.ds-search input{flex:1;min-width:0;height:44px;border:0;background:transparent;color:#141210;font:500 16px 'Archivo Variable',sans-serif;outline:none;padding-left:8px}.ds-search input::placeholder{color:#6b6257}.ds-search-btn{height:46px;padding:0 20px;border:0;border-radius:10px;background:#d7262b;color:#fff;font:400 15px/1 Ultra,serif;cursor:pointer;box-shadow:inset 0 0 0 3px #d7262b,inset 0 0 0 4.5px #f4efe4;transition:background-color 150ms cubic-bezier(.23,1,.32,1)}.ds-search-btn:hover{background:#e83a3f}.ds-search-btn:focus-visible{outline:2px solid #f2c230;outline-offset:3px}"
+    },
+    {
+      "name": "Navegación",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Header sticky con logo en letra de filete y pastilla del MEP.",
+      "html": "<header class=\"ds-top\"><a class=\"ds-logo\" href=\"#\">Franquicia 400</a><nav><a href=\"#\" aria-current=\"page\">Productos</a><a href=\"#\">Calculadora</a><a href=\"#\">Cómo funciona</a></nav><span class=\"ds-rate\">MEP <b>$1.569</b> <small>09:24</small></span></header>",
+      "css": ".ds-top{display:flex;align-items:center;gap:24px;height:68px;padding:0 24px;background:#141210}.ds-logo{font:400 22px Ultra,serif;color:#f2c230;text-decoration:none;text-shadow:.04em .04em 0 #d7262b,.08em .08em 0 #0b0a09}.ds-top nav{display:flex;gap:2px;margin-left:auto}.ds-top nav a{color:#cfc6b6;text-decoration:none;font:500 15px 'Archivo Variable',sans-serif;padding:8px 12px;border-radius:10px;transition:color 150ms cubic-bezier(.23,1,.32,1),background-color 150ms cubic-bezier(.23,1,.32,1)}.ds-top nav a:hover{color:#f4efe4;background:#1d1a17}.ds-top nav a[aria-current=page]{color:#f2c230}.ds-top nav a:focus-visible{outline:2px solid #f2c230;outline-offset:3px}.ds-rate{font:14px 'Archivo Variable',sans-serif;color:#cfc6b6;border:1px solid #3a332d;border-radius:10px;padding:6px 10px}.ds-rate b{color:#6ec6f0;font-weight:600;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Placa de producto",
+      "kind": "card",
+      "refersTo": "card-placa",
+      "description": "Tarjeta con borde de filete, chapitas de marca y tienda y botón de compra.",
+      "html": "<article class=\"ds-card\"><div class=\"ds-media\"><span class=\"ds-badge\">Logitech</span><span class=\"ds-store\">Amazon.com</span></div><div class=\"ds-body\"><h3>Logitech MX Master 3S Wireless Mouse</h3><p>Mouse inalámbrico con sensor de 8K DPI y scroll MagSpeed.</p></div><div class=\"ds-foot\"><a class=\"ds-buy\" href=\"#\">Ver en Amazon</a><a class=\"ds-costo\" href=\"#\">¿Cuánto me sale en pesos?</a></div></article>",
+      "css": ".ds-card{width:280px;display:flex;flex-direction:column;background:#1d1a17;color:#f4efe4;border-radius:18px;overflow:hidden;box-shadow:inset 0 0 0 2px #f2c230,inset 0 0 0 5px #1d1a17,inset 0 0 0 6px #d7262b,0 14px 30px -18px rgb(0 0 0/.8);transition:transform 200ms cubic-bezier(.23,1,.32,1);font-family:'Archivo Variable',sans-serif}.ds-card:hover{transform:translateY(-3px)}.ds-media{position:relative;margin:10px 10px 0;border-radius:10px;aspect-ratio:4/3;background:#000}.ds-badge{position:absolute;top:10px;left:10px;height:30px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:rgb(20 18 16/.86);font:700 13px sans-serif;box-shadow:inset 0 0 0 1px #3a332d}.ds-store{position:absolute;top:10px;right:10px;height:26px;padding:0 8px;display:inline-flex;align-items:center;border-radius:8px;background:#6ec6f0;color:#141210;font:700 12px sans-serif}.ds-body{padding:16px 18px 0;display:grid;gap:6px}.ds-body h3{margin:0;font:700 17px/1.3 'Archivo Variable',sans-serif}.ds-body p{margin:0;font-size:14px;color:#cfc6b6}.ds-foot{padding:16px 18px 18px;display:grid;gap:10px}.ds-buy{display:inline-flex;justify-content:center;align-items:center;height:46px;border-radius:10px;background:#d7262b;color:#fff;font:400 16px/1 Ultra,serif;text-decoration:none;box-shadow:inset 0 0 0 3px #d7262b,inset 0 0 0 4.5px #f4efe4;transition:background-color 150ms cubic-bezier(.23,1,.32,1)}.ds-buy:hover{background:#e83a3f}.ds-buy:focus-visible,.ds-costo:focus-visible{outline:2px solid #f2c230;outline-offset:3px}.ds-costo{justify-self:center;font-size:14px;font-weight:600;color:#f2c230;text-decoration:none}.ds-costo:hover{text-decoration:underline}"
+    },
+    {
+      "name": "Cinta de la franquicia",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Rango USD 0-600 con el borde de USD 400 marcado; verde antes, rojo después.",
+      "html": "<div class=\"ds-cinta\" style=\"--edge:66.67%\"><span class=\"ds-edge\">USD 400</span><input type=\"range\" min=\"0\" max=\"600\" value=\"279\" aria-label=\"Precio en Amazon\"></div>",
+      "css": ".ds-cinta{position:relative;padding-top:18px;width:320px}.ds-edge{position:absolute;top:0;left:var(--edge);transform:translateX(-50%);font:700 11px 'Archivo Variable',sans-serif;color:#f2c230;white-space:nowrap}.ds-cinta input{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer}.ds-cinta input::-webkit-slider-runnable-track{height:10px;border-radius:6px;background:linear-gradient(90deg,#1f8f4e 0 var(--edge),#f2c230 var(--edge) calc(var(--edge) + 4px),#6e1d1f calc(var(--edge) + 4px))}.ds-cinta input::-moz-range-track{height:10px;border-radius:6px;background:linear-gradient(90deg,#1f8f4e 0 var(--edge),#f2c230 var(--edge) calc(var(--edge) + 4px),#6e1d1f calc(var(--edge) + 4px))}.ds-cinta input::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-8px;border-radius:50%;background:#f4efe4;box-shadow:0 0 0 3px #f2c230,0 2px 8px rgb(0 0 0/.6);transition:transform 120ms cubic-bezier(.23,1,.32,1)}.ds-cinta input:active::-webkit-slider-thumb{transform:scale(1.12)}.ds-cinta input::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#f4efe4;box-shadow:0 0 0 3px #f2c230}.ds-cinta input:focus-visible{outline:2px solid #f2c230;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "La placa del colectivo",
+    "overview": "Franquicia 400 pinta cada oferta como la placa de un colectivo porteño: el dato que importa (cuánto sale puesto en tu casa) va enmarcado en filete y a la vista. El suelo es esmalte negro casi cálido; encima, placas apenas más claras con bordes dobles amarillo y rojo y volutas pintadas en las esquinas. La paleta de filete (rojo bermellón, amarillo cromo, verde esmeralda, celeste) aparece como pintura sobre el esmalte, nunca como fondo de página.\n\nLa tipografía sigue la lógica del cartel de comercio: los títulos y las cifras grandes van en letra de filete, una slab pesada amarilla con sombreado en capas rojo y negro; todo lo que se lee de corrido va en Archivo, grotesca de imprenta con cifras tabulares. La densidad es la de una vidriera ordenada: grilla de placas de producto, cartelitos de categoría en fila con scroll horizontal y una pizarra de búsquedas.\n\nLa imaginería es propia y pintada (plates de filete generadas con Gemini, cada una con su sidecar `.json` de procedencia). Nunca representa un producto real con IA: cuando haya foto de producto, viene de Amazon y se muestra sobre blanco, contenida dentro del marco. El sitio no se parece a knunet.com ni a blackseam.knunet.com, por pedido explícito de marca.",
+    "keyCharacteristics": [
+      "Esmalte negro como suelo, placas tonales encima, sin superficies claras salvo el cartel de búsqueda.",
+      "Bordes dobles amarillo y rojo hechos con `box-shadow: inset` anidado, más volutas pintadas en las cuatro esquinas.",
+      "Letra de filete (Ultra) con sombreado en capas para títulos, precios y totales; Archivo para todo lo demás.",
+      "Rojo reservado para la acción de compra y para el estado \"pasaste la franquicia\".",
+      "Cifras siempre tabulares; la hora del dato se imprime junto al dato."
+    ],
+    "rules": [
+      {
+        "name": "The Pintura sobre Esmalte Rule",
+        "body": "Las cuatro pinturas de filete se aplican como trazo, borde, letra o chapita sobre esmalte o placa. Ninguna cubre una sección entera; la única superficie pintada grande permitida es la placa de total en rojo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Rojo Compra Rule",
+        "body": "El rojo relleno significa \"comprá\" o \"te pasaste de USD 400\". No se usa para decorar ni para enlaces secundarios, que van en amarillo o como botón fantasma.",
+        "section": "colors"
+      },
+      {
+        "name": "The Verde-Rojo de la Cinta Rule",
+        "body": "Todo indicador del umbral de franquicia es verde hasta USD 400, marcado en amarillo en el borde exacto y rojo después. Mismo código en la cinta del hero, el medidor de la calculadora y los textos de estado.",
+        "section": "colors"
+      },
+      {
+        "name": "The Letra de Filete Rule",
+        "body": "Ultra se usa sólo para títulos, cifras y el botón de compra, siempre en amarillo (o crema) y, en títulos y totales, con su sombreado en capas rojo y negro desplazado en `em`. Nunca para párrafos, rótulos ni chips.",
+        "section": "typography"
+      },
+      {
+        "name": "The Cifra Tabular Rule",
+        "body": "Todo número que cambia (cotización, precio, total, desglose) lleva `font-variant-numeric: tabular-nums`. La hora de la cotización se imprime junto al valor.",
+        "section": "typography"
+      },
+      {
+        "name": "The Borde Pintado Rule",
+        "body": "Un marco se dibuja con `box-shadow: inset` anidado (filete, separación del color de la placa, filete), nunca con `border` doble ni con imágenes de marco. Las volutas de esquina van aparte, como capa `::before`.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** apoyar todo sobre `esmalte` y levantar contenedores con `placa` / `placa-2`, nunca con superficies claras (salvo el cartel de búsqueda y la foto de producto sobre blanco).",
+      "**Do** enmarcar las placas principales con el borde de filete inset (2px amarillo, 3px de placa, 1px rojo) y las volutas de esquina como capa `::before` con `mix-blend-mode: lighten`.",
+      "**Do** escribir títulos, precios y totales en Ultra amarillo con su sombreado en capas desplazado en `em`.",
+      "**Do** usar verde hasta USD 400, amarillo en el borde exacto y rojo después, en todo indicador de franquicia.",
+      "**Do** animar sólo `transform`, `color`, `background-color` y `box-shadow` con `--ease-out` en 120 a 300ms, y anular los desplazamientos con `prefers-reduced-motion`.",
+      "**Do** usar íconos Phosphor regular como SVG inline y logos de marca como SVG de un solo color.",
+      "**Do** guardar cada raster pintado con su sidecar `.json` de procedencia (modelo, fecha, prompt, postproceso)."
+    ],
+    "donts": [
+      "**Don't** generar con IA imágenes que representen un producto real; la ilustración de filete es de categoría y se aclara como tal.",
+      "**Don't** usar el rojo relleno fuera de la acción de compra, la placa de total o el estado de exceso.",
+      "**Don't** usar Ultra para párrafos, rótulos, chips o nombres de producto.",
+      "**Don't** dibujar marcos con `border` doble o con imágenes de marco completo; el marco es `box-shadow` inset y sólo las esquinas son pintura.",
+      "**Don't** parecerse a knunet.com ni a blackseam.knunet.com: nada de HUD ámbar, sectores ni placas técnicas."
+    ]
+  }
+}

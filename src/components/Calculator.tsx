@@ -65,7 +65,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
             <label for="c-fob">Precio del producto</label>
             <div class="money">
               <span>USD</span>
-              <input id="c-fob" class="in" inputMode="decimal" placeholder="279" value={fob} onInput={(e) => setFob(e.currentTarget.value)} />
+              <input id="c-fob" class="in" inputMode="decimal" value={fob} onInput={(e) => setFob(e.currentTarget.value)} />
             </div>
             <small>El precio que ves en Amazon, sin envío ni impuestos.</small>
           </div>
@@ -73,7 +73,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
             <label for="c-ship">Envío a Argentina</label>
             <div class="money">
               <span>USD</span>
-              <input id="c-ship" class="in" inputMode="decimal" placeholder="35" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
+              <input id="c-ship" class="in" inputMode="decimal" value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
             </div>
             <small>Amazon lo muestra en el carrito, antes de pagar.</small>
           </div>
@@ -103,7 +103,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
             <label for="c-local">Precio en Argentina (opcional)</label>
             <div class="money">
               <span>ARS</span>
-              <input id="c-local" class="in" inputMode="numeric" placeholder="890000" value={local} onInput={(e) => setLocal(e.currentTarget.value)} />
+              <input id="c-local" class="in" inputMode="numeric" value={local} onInput={(e) => setLocal(e.currentTarget.value)} />
             </div>
             <small>Cargalo para ver cuánto ahorrás.</small>
           </div>
@@ -113,7 +113,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
           <div>
             <p class="total-k">Te sale puesto en tu casa</p>
             <p class="total-v num">
-              {empty ? "$ -" : result.totalArsMep != null ? formatArs(result.totalArsMep) : formatUsd(result.totalUsd)}
+              {empty ? "Cargá el precio" : result.totalArsMep != null ? formatArs(result.totalArsMep) : formatUsd(result.totalUsd)}
             </p>
             <div class="alt-v">
               {rates ? (
@@ -131,7 +131,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
           </div>
 
           {empty ? (
-            <p class="fine">Cargá el precio del producto para ver el total.</p>
+            <p class="fine">Poné arriba el precio que ves en Amazon y acá aparece el total en pesos.</p>
           ) : (
             <>
               <div class={hasExcess ? "meter over" : "meter"}>
@@ -171,8 +171,8 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
           <p class="fine">
             {rates
               ? rates.live
-                ? `Dólar de dolarapi.com, ${formatStamp(rates.fetchedAt)}. `
-                : `Dólar guardado del ${formatStamp(rates.fetchedAt)}. `
+                ? `Dólar de dolarapi.com, ${formatStamp(rates.fetchedAt).replace(/\.$/, "")}. `
+                : `Dólar guardado del ${formatStamp(rates.fetchedAt).replace(/\.$/, "")}. `
               : ""}
             Estimación orientativa. Cupo: 5 envíos por año y por persona.
           </p>
