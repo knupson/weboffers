@@ -22,6 +22,8 @@ export interface CatalogEntry {
   listPrice?: ListPrice;
   /** Verificado en Amazon con dirección en Argentina: se puede comprar y enviar. */
   shipsToAr?: { freeShipping: boolean; checked: string };
+  /** Envío a Argentina relevado hoy (ART) por el worker: false = Amazon no lo envía, no se muestra. */
+  shipsToArToday?: boolean;
   /** Publicación más barata en Mercado Libre del mismo modelo, con link de afiliado. */
   ml?: { price: number; url: string; checked: string; catalogId?: string };
   /**
@@ -104,11 +106,20 @@ export interface MlPrices {
   items: Record<string, MlPriceItem>;
 }
 
+/** Relevamiento de envío a Argentina (servicio amazon-ar): vigente sólo si `checked` es hoy ART. */
+export interface AmazonArShipping {
+  ships: boolean;
+  /** Envío gratis a Argentina; null si no se pudo determinar. */
+  free: boolean | null;
+  checked: string;
+}
+
 /** Precio diario de Amazon por slug (data/amazon-prices.json). Lo escribe el worker; nunca se publica en USD/EUR. */
 export interface AmazonPriceItem {
-  amount: number;
-  currency: "USD" | "EUR";
-  checked: string;
+  amount?: number;
+  currency?: "USD" | "EUR";
+  checked?: string;
+  shipsToAr?: AmazonArShipping;
 }
 
 export interface AmazonPrices {
@@ -242,10 +253,13 @@ export function mergeAmazonPrices(
     let amazonArs: number | null = null;
     let amazonSource: "amazon" | null = null;
     let amazonChecked: string | null = null;
+    let shipsToAr = entry.shipsToAr;
+    let shipsToArToday: boolean | undefined;
+    const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
     if (mep && mep > 0) {
-      const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
       if (
         scraped &&
+        typeof scraped.amount === "number" &&
         Number.isFinite(scraped.amount) &&
         scraped.amount > 0 &&
         (scraped.currency === "USD" || scraped.currency === "EUR") &&
@@ -259,7 +273,13 @@ export function mergeAmazonPrices(
         }
       }
     }
-    const { verdict: compared } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr: entry.shipsToAr });
+    // El relevamiento de envío de hoy (ART) pisa el shipsToAr del catálogo.
+    const ar = scraped?.shipsToAr;
+    if (ar && isFreshAmazonDate(ar.checked, now)) {
+      shipsToAr = { freeShipping: ar.free === true, checked: ar.checked };
+      shipsToArToday = ar.ships === true;
+    }
+    const { verdict: compared } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr });
     // Sin envío confirmado no hay ganador: el catálogo no guarda veredicto.
     const verdict = compared === "sinEnvio" ? undefined : compared;
     const verdictReason: CatalogEntry["verdictReason"] = entry.asin ? "precio" : "sinAmazon";
@@ -268,6 +288,8 @@ export function mergeAmazonPrices(
       amazonArs,
       amazonSource,
       amazonChecked,
+      shipsToAr,
+      shipsToArToday,
       verdict,
       verdictReason,
     };
@@ -277,11 +299,16 @@ export function mergeAmazonPrices(
 /**
  * Un producto es comparable (y por lo tanto se muestra) únicamente si:
  *   - está verificado y tiene ASIN en Amazon,
+ *   - Amazon lo envía a Argentina según el relevamiento de hoy (shipsToArToday !== false),
  *   - tiene precio en Mercado Libre relevado hoy (fecha ART == hoy ART), y
  *   - tiene precio en Amazon relevado hoy (fecha ART == hoy ART) convertido a ARS.
  */
 export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now()): boolean {
   const today = artDate(now);
+  // Amazon no envía este producto a Argentina (relevado hoy): no hay comparación posible.
+  if (entry.shipsToArToday === false) {
+    return false;
+  }
   if (
     !entry.verified ||
     !entry.asin ||
@@ -307,6 +334,7 @@ export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | 
   const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
   return Boolean(
     scraped &&
+      typeof scraped.amount === "number" &&
       Number.isFinite(scraped.amount) &&
       scraped.amount > 0 &&
       isFreshAmazonDate(scraped.checked, now),

@@ -278,6 +278,55 @@ describe("mergeAmazonPrices & isComparable", () => {
   });
 });
 
+describe("shipsToAr relevado hoy (amazon-ar)", () => {
+  const entries: CatalogEntry[] = [
+    base({
+      slug: "envia",
+      shipsToAr: { freeShipping: false, checked: "2026-10-01" },
+      ml: { price: 500000, url: "https://meli.la/1", checked: "2026-10-31" },
+    }),
+    base({
+      slug: "no-envia",
+      shipsToAr: { freeShipping: true, checked: "2026-10-01" },
+      ml: { price: 500000, url: "https://meli.la/2", checked: "2026-10-31" },
+    }),
+    base({
+      slug: "relevado-ayer",
+      shipsToAr: { freeShipping: false, checked: "2026-10-01" },
+      ml: { price: 500000, url: "https://meli.la/3", checked: "2026-10-31" },
+    }),
+  ];
+  const amazonPrices: AmazonPrices = {
+    generatedAt: "2026-10-31T10:00:00Z",
+    date: "2026-10-31",
+    items: {
+      "envia": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: true, checked: "2026-10-31" } },
+      "no-envia": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: false, free: null, checked: "2026-10-31" } },
+      "relevado-ayer": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: true, checked: "2026-10-30" } },
+    },
+  };
+
+  it("mergeAmazonPrices pisa shipsToAr y setea shipsToArToday sólo si checked es hoy ART", () => {
+    const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
+    expect(merged[0].shipsToAr).toEqual({ freeShipping: true, checked: "2026-10-31" });
+    expect(merged[0].shipsToArToday).toBe(true);
+    expect(merged[1].shipsToAr).toEqual({ freeShipping: false, checked: "2026-10-31" });
+    expect(merged[1].shipsToArToday).toBe(false);
+    // Relevamiento de ayer: no pisa el shipsToAr del catálogo ni setea shipsToArToday.
+    expect(merged[2].shipsToAr).toEqual({ freeShipping: false, checked: "2026-10-01" });
+    expect(merged[2].shipsToArToday).toBeUndefined();
+  });
+
+  it("isComparable es false cuando shipsToArToday es false, aunque tenga los dos precios de hoy", () => {
+    const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
+    expect(isComparable(merged[0], null, NOW_OCT_31)).toBe(true);
+    expect(isComparable(merged[1], null, NOW_OCT_31)).toBe(false);
+    expect(isComparable(merged[2], null, NOW_OCT_31)).toBe(true);
+    expect(isComparable({ ...merged[0], shipsToArToday: false }, null, NOW_OCT_31)).toBe(false);
+    expect(isComparable({ ...merged[0], shipsToArToday: true }, null, NOW_OCT_31)).toBe(true);
+  });
+});
+
 describe("freshPrice, logIfFewProducts y resolvePricesDate", () => {
   it("freshPrice exige la misma fecha ART de hoy (sin ventana de 24h)", () => {
     const itemHoy = {
