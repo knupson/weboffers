@@ -17,13 +17,18 @@ services:
       ML_CLIENT_ID: ${ML_CLIENT_ID:-}
       ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
       ML_PRICES_PATH: /app/output/ml-prices.json
-      AMAZON_TOTALS_PATH: /app/amazon-totals.json
+      AMAZON_SCRAPER_URL: ${AMAZON_SCRAPER_URL:-http://weboffers-amazon-scraper:8000}
+      AMAZON_PRICES_PATH: /app/output/amazon-prices.json
     volumes:
       - ../data:/app/data:ro
       - ./output:/app/output
-      - ./amazon-totals.json:/app/amazon-totals.json:ro
       # Solo para correr tools/ml_catalog_map.py dentro del contenedor.
       - ../tools:/app/tools:ro
+
+  weboffers-amazon-scraper:
+    build: https://github.com/omkarcloud/amazon-scraper.git#8ffd4f976c705d009ec06d8e4e3e15fc77e35cee
+    restart: unless-stopped
+    mem_limit: 256m
 
   weboffers-deployer:
     build: ./deployer

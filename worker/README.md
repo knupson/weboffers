@@ -37,24 +37,47 @@ de consulta también cuentan. El hash previo se lee del archivo, incluso tras
 reiniciar. Si falla el hook, el ciclo informa el error y no reintenta el aviso
 hasta que cambie nuevamente el contenido.
 
+## Precios de Amazon (`weboffers-amazon-scraper`)
+
+Como todavía no tenemos acceso a la API oficial de Amazon, el servicio
+`weboffers-amazon-scraper` levanta en un contenedor aislado el scraper HTTP de
+`omkarcloud/amazon-scraper` fijado al commit
+`8ffd4f976c705d009ec06d8e4e3e15fc77e35cee`. Corre sin variables de entorno,
+sin secretos, sin volúmenes montados del host, sin puertos publicados al
+exterior y con límite de memoria de 256 MB; sólo el worker puede consultarlo en
+la red interna de Compose (`http://weboffers-amazon-scraper:8000`).
+
+Una vez por día, desde las 07:00 ART, `amazon_prices.py` consulta `/products/bulk`
+en tandas de hasta 10 ASINs para los productos verificados que tienen `asin` y
+bloque `ml`, y escribe `output/amazon-prices.json`. Si un producto falla, se
+conserva el precio anterior hasta 3 días. Si ningún producto responde bien, se
+registra `AMAZON_SCRAPER_FAIL` en los logs. Ese precio en USD/EUR nunca se
+muestra crudo en el sitio: sólo se usa para calcular el total estimado en ARS
+puesto en tu casa y el veredicto diario.
+
+Para reconstruir el servicio en la Raspberry Pi:
+
+```sh
+docker compose -p franquicia400 build --no-cache weboffers-amazon-scraper
+docker compose -p franquicia400 up -d weboffers-amazon-scraper
+```
+
 ## Precios de Mercado Libre y deployer
 
 `ml_prices.py` consulta la API de Mercado Libre con client_credentials. Una vez
-por día, desde las 07:00 ART, recalcula `output/ml-prices.json` para los productos
-verificados que tienen `ml.catalogId`. El veredicto pasa a `amazon` sólo si el
-total de Amazon en ARS (`totalUsd × MEP`) ahorra al menos 10% y el envío a
-Argentina es gratis; si no hay total de Amazon o falta el MEP, queda el veredicto
-del catálogo. Si una consulta falla, se conserva el valor anterior del archivo.
+por día, desde las 07:00 ART (después de `amazon_prices.py`), recalcula
+`output/ml-prices.json` para los productos verificados que tienen `ml.catalogId`.
+El total de Amazon en USD se calcula con la misma fórmula del sitio (envío,
+derechos e impuestos sobre el precio diario de `amazon-prices.json`, o sobre el
+`listPrice` oficial del catálogo como respaldo). El veredicto pasa a `amazon`
+sólo si el total en ARS (`totalUsd × MEP`) ahorra al menos 10% y el envío a
+Argentina es gratis; si no hay precio o falta el MEP, queda el veredicto del
+catálogo. Si una consulta de ML falla, se conserva el valor anterior del archivo.
 
 Variables (sin valores en el repo; van en `worker/.env` del Pi):
 `ML_CLIENT_ID`, `ML_CLIENT_SECRET` (worker) y `CLOUDFLARE_API_TOKEN`,
 `CLOUDFLARE_ACCOUNT_ID` (deployer). Sin ellas, el worker omite ML y el deployer
 registra `DEPLOY_OFF`.
-
-Totales de Amazon: crear a mano `worker/amazon-totals.json` con `{"slug": totalUsd}`
-(precio + cargos de importación en USD). Está en `.gitignore`; no lo commitees.
-Montarlo antes de levantar el stack, porque si no existe Docker crea un directorio
-en su lugar.
 
 Mapeo de catálogo (sólo lectura, escribe `output/ml-candidates.json` para revisar):
 
@@ -66,10 +89,12 @@ El `catalogId` elegido se copia a mano en `data/catalog.json` (`ml.catalogId`); 
 script no escribe el catálogo.
 
 El servicio `weboffers-deployer` corre a las 07:30 ART. Si `ml-prices.json` es de
-hoy y cambió, clona `main` de GitHub en el volumen `deployer-work`, copia el archivo
-a `data/ml-prices.json`, hace `npm ci`, `npm run build` y `npx wrangler deploy`.
+hoy y cambió (o cambió `amazon-prices.json`), clona `main` de GitHub en el volumen
+`deployer-work`, copia `ml-prices.json` y `amazon-prices.json` a `data/`, hace
+`npm ci`, `npm run build` y `npx wrangler deploy`.
 Logs: `DEPLOY_OK`, `DEPLOY_SKIP`, `DEPLOY_FAIL`, `DEPLOY_OFF`. Límite de memoria
 1.5 GB: el build de Astro en la Pi 4 puede ser justo; si falla por memoria, subir
 el límite o hacer el build en otra máquina.
 
-Despliegue manual desde Windows: `tools/deploy.sh` (baja el JSON del Pi, build y deploy).
+Despliegue manual desde Windows: `tools/deploy.sh` (baja `ml-prices.json` y
+`amazon-prices.json` del Pi, hace build y deploy).
