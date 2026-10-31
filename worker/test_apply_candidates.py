@@ -136,6 +136,8 @@ def test_dry_run_prints_changes_and_does_not_modify_catalog(tmp_path, capsys):
         ({"slug": "guion-final-"}, "formato kebab-case"),
         ({"slug": "con--doble-guion"}, "formato kebab-case"),
         ({"mlPrice": 0}, "mlPrice inválido"),
+        ({"store": "UK"}, "la tienda 'UK' no es válida"),
+        ({"store": "us"}, "la tienda 'us' no es válida"),
     ],
 )
 def test_validation_rejects_invalid_candidates_and_leaves_catalog_untouched(tmp_path, override, expected_msg):
@@ -161,3 +163,27 @@ def test_validation_rejects_duplicates_within_candidate_batch(tmp_path):
     c2_same_asin = make_candidate(slug="item-dos", asin="B000000001")
     with pytest.raises(ValueError, match="ASIN 'B000000001' está duplicado"):
         apply_candidates.apply_candidates(cat_path, [c1, c2_same_asin], today="2026-10-31")
+
+
+def test_validation_accepts_us_and_es_and_rejects_uk_store(tmp_path):
+    cat_path = write_temp_catalog(tmp_path)
+    before = cat_path.read_text(encoding="utf-8")
+
+    with pytest.raises(ValueError, match="la tienda 'UK' no es válida"):
+        apply_candidates.apply_candidates(
+            cat_path,
+            [make_candidate(store="UK")],
+            today="2026-10-31",
+        )
+    assert cat_path.read_text(encoding="utf-8") == before
+
+    added = apply_candidates.apply_candidates(
+        cat_path,
+        [
+            make_candidate(slug="item-us", asin="B000000011", store="US"),
+            make_candidate(slug="item-es", asin="B000000012", store="ES"),
+        ],
+        today="2026-10-31",
+    )
+    assert [entry["store"] for entry in added] == ["US", "ES"]
+

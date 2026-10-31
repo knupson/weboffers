@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ART = timezone(timedelta(hours=-3))
 KEBAB_CASE_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 AFFILIATE_QUERY = "matt_word=ale_benzoni&matt_tool=58527537"
+VALID_STORES = ("US", "ES")
 
 REQUIRED_STRING_FIELDS = (
     "asin",
@@ -113,6 +114,10 @@ def validate_and_build_entries(catalog, candidates, today=None):
 
         if not is_kebab_case(slug):
             raise ValueError(f"Candidato '{slug}': el slug debe estar en formato kebab-case (ej. 'mi-producto-1').")
+        if store not in VALID_STORES:
+            raise ValueError(
+                f"Candidato '{slug}': la tienda '{store}' no es válida (debe ser US o ES)."
+            )
         if slug in existing_slugs:
             raise ValueError(f"Candidato '{slug}': el slug ya existe en el catálogo.")
         if slug in seen_slugs:
