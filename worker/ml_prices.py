@@ -75,11 +75,20 @@ def fetch_items(catalog_id):
     return get_json(f"/products/{catalog_id}/items").get("results", [])
 
 
+def is_international(item):
+    """Compra internacional (CBT): vendedor de afuera, llega con aduana. No cuenta como precio en Argentina."""
+    tags = list(item.get("tags") or []) + list((item.get("shipping") or {}).get("tags") or [])
+    return any(isinstance(t, str) and t.startswith("cbt") for t in tags) \
+        or item.get("international_delivery_mode") not in (None, "none")
+
+
 def cheapest_new(results):
-    """(precio, item_id) de la publicación nueva más barata. Sin campo condition se acepta."""
+    """(precio, item_id) de la publicación nueva más barata vendida desde Argentina. Sin campo condition se acepta."""
     best = None
     for item in results:
         if not isinstance(item, dict) or item.get("condition") not in (None, "new"):
+            continue
+        if is_international(item):
             continue
         price = item.get("price")
         if isinstance(price, bool) or not isinstance(price, (int, float)):

@@ -247,3 +247,16 @@ def test_load_amazon_prices_accepts_only_today_checked(tmp_path, monkeypatch):
     assert items["ayer"]["verdict"] == "ml"
     assert items["ayer"]["verdictReason"] == "existing"
     assert "amazonSource" not in items["ayer"]
+
+
+def test_cheapest_new_skips_international_listings():
+    results = [
+        {"price": 47243, "condition": "new", "item_id": "MLA1", "tags": ["cbt_item"],
+         "shipping": {"tags": ["cbt_fulfillment"]}, "international_delivery_mode": "none"},
+        {"price": 50000, "condition": "new", "item_id": "MLA2", "shipping": {"tags": ["cbt_fulfillment"]}},
+        {"price": 60000, "condition": "new", "item_id": "MLA3", "international_delivery_mode": "intl"},
+        {"price": 70000, "condition": "new", "item_id": "MLA4", "tags": ["good_quality_picture"],
+         "shipping": {"tags": ["mandatory_free_shipping"]}, "international_delivery_mode": "none"},
+    ]
+    assert ml_prices.cheapest_new(results) == (70000, "MLA4")
+    assert ml_prices.cheapest_new(results[:3]) is None
