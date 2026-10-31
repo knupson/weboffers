@@ -431,7 +431,8 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .gana .cta, .btn .cta { display: inline-flex; align-items: center; gap: 8px; }
 .gana .cta { font: 400 16px/1.1 var(--letra); }
 /* El texto del botón va en una sola línea; el veredicto va arriba del botón, no adentro. */
-.cta-txt { white-space: nowrap; }
+.cta-txt { white-space: normal; text-wrap: balance; min-width: 0; }
+.card .gana, .card .fila-compra .btn { min-width: 0; max-width: 100%; }
 .card .gana, .card .fila-compra .btn { width: 100%; justify-content: center; text-align: center; }
 .card .gana { padding: 10px 12px; }
 .card .gana .cta { justify-content: center; font: 800 14px/1.2 var(--sans); }

@@ -65,12 +65,12 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
           <>
             <p class="veredicto" data-verdict-text hidden>Conviene{saving > 0 ? ` · ahorrás ~${formatArs(saving)}` : ""}</p>
             <a class="btn ghost sm" data-buy-link="ml" data-winner="ml" href={p.ml.url} {...ext} {...track("ml", "veredicto")}>
-              <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Mercado Libre</span><Icon name="arrow-up-right" size={16} /></span>
+              <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Mercado&nbsp;Libre</span><Icon name="arrow-up-right" size={16} /></span>
             </a>
           </>
         ) : (
           <a class="btn ghost sm" data-buy-link="ml" href={p.ml.url} {...ext} {...track("ml", "alternativa")}>
-            <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Mercado Libre</span><Icon name="arrow-up-right" size={16} /></span>
+            <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Mercado&nbsp;Libre</span><Icon name="arrow-up-right" size={16} /></span>
           </a>
         )}
       </div>
