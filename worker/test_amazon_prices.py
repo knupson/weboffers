@@ -57,10 +57,12 @@ def test_groups_by_store_and_chunks_by_bulk_max(tmp_path, monkeypatch):
     monkeypatch.setattr(amazon_prices.requests, "get", fake_get)
     out = tmp_path / "amazon-prices.json"
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
-    assert len(calls) == 3
-    assert calls[0][1]["country"] == "US" and len(calls[0][1]["products"].split(",")) == 10
-    assert calls[1][1]["country"] == "US" and len(calls[1][1]["products"].split(",")) == 2
-    assert calls[2][1]["country"] == "ES" and calls[2][1]["products"] == "B000000099"
+    n = amazon_prices.BULK_MAX
+    us_calls = -(-12 // n)  # 12 productos US en lotes de BULK_MAX
+    assert len(calls) == us_calls + 1
+    sizes = [len(c[1]["products"].split(",")) for c in calls if c[1]["country"] == "US"]
+    assert sizes == [n] * (12 // n) + ([12 % n] if 12 % n else [])
+    assert calls[-1][1]["country"] == "ES" and calls[-1][1]["products"] == "B000000099"
 
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["date"] == "2026-10-30"
