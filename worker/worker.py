@@ -8,6 +8,7 @@ from pathlib import Path
 import signal
 import time
 
+import amazon_prices
 import creators_api
 import ml_prices
 import publish
@@ -45,6 +46,11 @@ def run_once():
     output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
     changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
     print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
+    amazon_prices_path = resolve_path(os.environ.get("AMAZON_PRICES_PATH", "output/amazon-prices.json"))
+    try:
+        amazon_prices.maybe_refresh(catalog, amazon_prices_path, datetime.now(timezone.utc))
+    except Exception as exc:
+        print(f"Falló la actualización de precios de Amazon ({type(exc).__name__}).", flush=True)
     ml_prices_path = resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json"))
     try:
         ml_prices.maybe_refresh(

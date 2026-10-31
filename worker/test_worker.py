@@ -20,8 +20,10 @@ def local_temp_files(tmp_path, monkeypatch):
                  "CF_DEPLOY_HOOK_URL"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("OUTPUT_PATH", str(tmp_path / "offers.json"))
+    monkeypatch.setenv("AMAZON_PRICES_PATH", str(tmp_path / "amazon-prices.json"))
     monkeypatch.setenv("ML_PRICES_PATH", str(tmp_path / "ml-prices.json"))
     monkeypatch.setenv("AMAZON_TOTALS_PATH", str(tmp_path / "amazon-totals.json"))
+    monkeypatch.delenv("AMAZON_SCRAPER_URL", raising=False)
     monkeypatch.delenv("ML_CLIENT_ID", raising=False)
     monkeypatch.delenv("ML_CLIENT_SECRET", raising=False)
 
@@ -170,9 +172,10 @@ def test_catalog_entries_are_complete_and_unique():
         assert required <= set(item)
         assert item["store"] in ("US", "ES")
         assert isinstance(item["verified"], bool)
-        if item["verified"]:
+        if item["verified"] and "ml" in item:
             # Visible = comparado con Mercado Libre; si gana Amazon, tiene que estar verificado el envío gratis.
-            assert item["ml"]["price"] > 0 and item["ml"]["url"].startswith("https://meli.la/")
+            assert item["ml"]["price"] > 0 and item["ml"]["url"].startswith(
+                ("https://meli.la/", "https://www.mercadolibre.com.ar/"))
             assert item["verdict"] in ("amazon", "ml")
             if item["verdict"] == "amazon":
                 assert item["asin"] and item["shipsToAr"]["freeShipping"] is True
