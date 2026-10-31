@@ -200,7 +200,7 @@ describe("guarda de precios y estado inicial en HTML/CSS", () => {
       expect(subs.length).toBe(1);
       expect(subs[0]).toMatch(/\bhidden\b/);
 
-      const verdicts = content.match(/<span[^>]*data-verdict-text[^>]*>/g) ?? [];
+      const verdicts = content.match(/<(?:span|p)[^>]*data-verdict-text[^>]*>/g) ?? [];
       expect(verdicts.length).toBe(2);
       for (const tag of verdicts) {
         expect(tag).toMatch(/\bhidden\b/);

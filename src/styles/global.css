@@ -252,6 +252,9 @@ section { padding: 64px 0; }
 .badge svg { height: 16px; width: auto; fill: var(--crema); }
 .store { z-index: 3; position: absolute; top: 10px; right: 10px; height: 26px; padding: 0 8px; display: inline-flex; align-items: center; border-radius: 8px; background: var(--celeste); color: var(--esmalte); font: 700 12px var(--sans); }
 .card .body { padding: 16px 18px 0; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+/* Tarjeta centrada: título, resumen, precios, veredicto y botones (pedido del user, 31/10). */
+.card .body, .card .foot, .card .precio { text-align: center; }
+.card .precio { justify-items: center; }
 .card h3 { font: 700 17px/1.3 var(--sans); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card h3 a { text-decoration: none; }
 .card h3 a::after { content: ""; position: absolute; inset: 0; }
@@ -449,8 +452,7 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 /* Hero: cómo decidimos, pintado en la placa */
 .hero h1 { font-size: clamp(40px, 4.2vw, 64px); }
 .pasos { position: absolute; left: 29%; right: 29%; top: 29%; bottom: 27%; margin: 0; padding: 0; list-style: none; counter-reset: paso; display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.2vw, 14px); }
-.pasos li { counter-increment: paso; display: grid; grid-template-columns: 1.4em 1fr; column-gap: 10px; align-items: baseline; }
-.pasos li::before { content: counter(paso); grid-row: span 2; text-align: center; font-family: var(--letra); font-size: clamp(20px, 2.2vw, 32px); color: var(--rojo); line-height: 1; }
+.pasos li { display: grid; justify-items: center; text-align: center; gap: 2px; }
 .pasos b { font-family: var(--letra); font-weight: 400; font-size: clamp(14px, 1.45vw, 21px); color: var(--amarillo); line-height: 1.1; }
 .pasos span { font-size: clamp(11px, 1vw, 14px); line-height: 1.3; color: var(--crema-2); }
 
