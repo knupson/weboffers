@@ -53,9 +53,9 @@ function run(command, args, cwd) {
   });
 }
 
-async function readState() {
+async function readState(stateFile = STATE_FILE) {
   try {
-    return JSON.parse(await fs.readFile(STATE_FILE, 'utf8'));
+    return JSON.parse(await fs.readFile(stateFile, 'utf8'));
   } catch {
     return null;
   }
@@ -72,17 +72,23 @@ async function readOptionalJsonFile(filePath, label) {
   }
 }
 
-async function syncRepo() {
-  const hasRepo = await fs.access(path.join(WORK_DIR, '.git')).then(() => true, () => false);
+async function syncRepo(workDir = WORK_DIR, runImpl = run) {
+  const hasRepo = await fs.access(path.join(workDir, '.git')).then(() => true, () => false);
   if (hasRepo) {
-    await run('git', ['-C', WORK_DIR, 'fetch', '--depth', '1', 'origin', 'main'], WORK_DIR);
-    await run('git', ['-C', WORK_DIR, 'reset', '--hard', 'FETCH_HEAD'], WORK_DIR);
+    await runImpl('git', ['-C', workDir, 'fetch', '--depth', '1', 'origin', 'main'], workDir);
+    await runImpl('git', ['-C', workDir, 'reset', '--hard', 'FETCH_HEAD'], workDir);
   } else {
-    await run('git', ['clone', '--depth', '1', '--branch', 'main', REPO_URL, WORK_DIR], '/');
+    await runImpl('git', ['clone', '--depth', '1', '--branch', 'main', REPO_URL, workDir], '/');
   }
 }
 
-async function deployOnce(now = new Date()) {
+async function deployOnce(now = new Date(), opts = {}) {
+  const outputFile = opts.outputFile ?? OUTPUT_FILE;
+  const amazonOutputFile = opts.amazonOutputFile ?? AMAZON_OUTPUT_FILE;
+  const workDir = opts.workDir ?? WORK_DIR;
+  const stateFile = opts.stateFile ?? STATE_FILE;
+  const runImpl = opts.runImpl ?? run;
+
   const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
   if (!token || !accountId) {
@@ -91,7 +97,7 @@ async function deployOnce(now = new Date()) {
   }
   let raw;
   try {
-    raw = await fs.readFile(OUTPUT_FILE, 'utf8');
+    raw = await fs.readFile(outputFile, 'utf8');
   } catch {
     log('DEPLOY_SKIP no existe ml-prices.json todavía.');
     return 'skip';
@@ -108,26 +114,29 @@ async function deployOnce(now = new Date()) {
     log(`DEPLOY_SKIP ml-prices.json es de ${data.date}, hoy es ${today}.`);
     return 'skip';
   }
-  const amazonRaw = await readOptionalJsonFile(AMAZON_OUTPUT_FILE, 'amazon-prices.json');
+  const amazonRaw = await readOptionalJsonFile(amazonOutputFile, 'amazon-prices.json');
   const hashInput = amazonRaw ? `${raw}\n${amazonRaw}` : raw;
   const hash = createHash('sha256').update(hashInput).digest('hex');
-  const last = await readState();
+  const last = await readState(stateFile);
   if (last?.hash === hash) {
     log('DEPLOY_SKIP los precios no cambiaron desde el último despliegue.');
     return 'skip';
   }
   try {
-    await syncRepo();
-    await fs.mkdir(path.join(WORK_DIR, 'data'), { recursive: true });
-    await fs.writeFile(path.join(WORK_DIR, 'data', 'ml-prices.json'), raw);
+    await syncRepo(workDir, runImpl);
+    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await fs.writeFile(path.join(workDir, 'data', 'ml-prices.json'), raw);
+    const amazonDest = path.join(workDir, 'data', 'amazon-prices.json');
     if (amazonRaw) {
-      await fs.writeFile(path.join(WORK_DIR, 'data', 'amazon-prices.json'), amazonRaw);
+      await fs.writeFile(amazonDest, amazonRaw);
+    } else {
+      await fs.rm(amazonDest, { force: true });
     }
-    await run('npm', ['ci'], WORK_DIR);
-    await run('npm', ['run', 'build'], WORK_DIR);
-    await run('npx', ['--yes', 'wrangler', 'deploy'], WORK_DIR);
-    await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
-    await fs.writeFile(STATE_FILE, JSON.stringify({ hash, date: today, deployedAt: now.toISOString() }));
+    await runImpl('npm', ['ci'], workDir);
+    await runImpl('npm', ['run', 'build'], workDir);
+    await runImpl('npx', ['--yes', 'wrangler', 'deploy'], workDir);
+    await fs.mkdir(path.dirname(stateFile), { recursive: true });
+    await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, deployedAt: now.toISOString() }));
     log(`DEPLOY_OK publicado con precios del ${today}.`);
     return 'ok';
   } catch (error) {
