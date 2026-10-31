@@ -152,13 +152,22 @@ def test_verdict_from_scraped_amazon_price_and_fallback_to_official_and_es(tmp_p
     assert items["oficial-base"]["verdict"] == "ml"
     assert items["oficial-base"]["verdictReason"] == "precio"
     assert items["oficial-base"]["amazonSource"] == "oficial"
-    # Tienda ES sin tasa EUR->USD en worker: conserva el veredicto del catálogo
+    # Tienda ES sin tasa EUR->USD: conserva el veredicto del catálogo
     assert items["espana"]["verdict"] == "amazon"
     assert items["espana"]["verdictReason"] == "existing"
     assert "amazonSource" not in items["espana"]
     # Sin scrapeado ni listPrice: conserva el veredicto del catálogo
     assert items["sin-fuente"]["verdict"] == "ml"
     assert items["sin-fuente"]["verdictReason"] == "existing"
+
+    # Con tasa EUR/USD, los productos de España también calculan su veredicto (scrapeado EUR y listPrice EUR).
+    prices_es = tmp_path / "ml-prices-es.json"
+    ml_prices.maybe_refresh(catalog, prices_es, amazon_prices, MEP, AFTER_SEVEN, eur_usd=1.25)
+    items_es = json.loads(prices_es.read_text(encoding="utf-8"))["items"]
+    # 180 EUR * 1.25 = 225 USD -> 281.250 ARS (~280.000 ARS) vs 500.000 ARS -> gana amazon
+    assert items_es["espana"]["verdict"] == "amazon"
+    assert items_es["espana"]["verdictReason"] == "precio"
+    assert items_es["espana"]["amazonSource"] == "amazon"
 
 
 def test_runs_once_per_day_and_not_before_seven(tmp_path, monkeypatch):

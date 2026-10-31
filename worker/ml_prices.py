@@ -133,10 +133,23 @@ def estimate_from_amazon(usd, mep):
     return int(_js_round((calc_total + usd * AMAZON_EXTRA) * mep))
 
 
+def round_ars_10k(value):
+    """Redondea al múltiplo de 10.000 ARS más cercano, igual que roundArs10k en src/lib/data.ts."""
+    return int(_js_round(value / 10000.0) * 10000)
+
+
 def verdict_for(total_usd, mep, ml_price, free_shipping):
     """Amazon sólo gana si ahorra al menos 10% y el envío a Argentina es gratis."""
     # round evita que 0.9 se vea como 0.0999... en el borde del 10%.
     saving = round(1 - total_usd * mep / ml_price, 6)
+    return "amazon" if free_shipping is True and saving >= MIN_SAVING else "ml"
+
+
+def verdict_from_ars(ml_price, amazon_ars, free_shipping):
+    """Misma regla que comparePrices en src/lib/data.ts sobre el precio ML y el estimado ARS redondeado."""
+    if not _is_valid_amount(ml_price) or not _is_valid_amount(amazon_ars):
+        return "ml"
+    saving = round(1 - amazon_ars / ml_price, 6)
     return "amazon" if free_shipping is True and saving >= MIN_SAVING else "ml"
 
 
@@ -185,24 +198,48 @@ def load_amazon_prices(path, now=None):
     }
 
 
-def resolve_amazon_total(product, amazon_items):
-    """Devuelve (total_usd, source) desde amazon-prices.json o listPrice oficial. Omite ES sin tasa EUR->USD."""
-    if product.get("store") == "ES":
-        return None, None
+def _resolve_amazon_usd(product, amazon_items, eur_usd=None):
+    """Devuelve (usd, source, checked) desde amazon-prices.json vigente o listPrice oficial."""
     slug = product.get("slug")
     scraped = amazon_items.get(slug) if isinstance(amazon_items, dict) else None
-    if isinstance(scraped, dict) and scraped.get("currency") == "USD" and _is_valid_amount(scraped.get("amount")):
-        return amazon_total_usd(scraped["amount"]), "amazon"
+    if isinstance(scraped, dict) and _is_valid_amount(scraped.get("amount")):
+        currency = scraped.get("currency")
+        if currency == "USD":
+            return float(scraped["amount"]), "amazon", scraped.get("checked")
+        if currency == "EUR" and _is_valid_amount(eur_usd):
+            return float(scraped["amount"]) * float(eur_usd), "amazon", scraped.get("checked")
     lp = product.get("listPrice")
-    if isinstance(lp, dict) and lp.get("currency") == "USD":
+    if isinstance(lp, dict):
         sale = lp.get("sale")
         official = sale if _is_valid_amount(sale) else lp.get("amount")
         if _is_valid_amount(official):
-            return amazon_total_usd(official), "oficial"
-    return None, None
+            currency = lp.get("currency")
+            if currency == "USD":
+                return float(official), "oficial", lp.get("checked")
+            if currency == "EUR" and _is_valid_amount(eur_usd):
+                return float(official) * float(eur_usd), "oficial", lp.get("checked")
+    return None, None, None
 
 
-def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
+def resolve_amazon_total(product, amazon_items, eur_usd=None):
+    """Devuelve (total_usd, source) desde amazon-prices.json o listPrice oficial."""
+    usd, source, _ = _resolve_amazon_usd(product, amazon_items, eur_usd)
+    if usd is None:
+        return None, None
+    return amazon_total_usd(usd), source
+
+
+def estimate_amazon_ars(product, amazon_items, mep, eur_usd=None):
+    """Devuelve (amazon_ars, source, checked) redondeado a 10.000 ARS, igual que mergeAmazonPrices en TS."""
+    if not _is_valid_amount(mep):
+        return None, None, None
+    usd, source, checked = _resolve_amazon_usd(product, amazon_items, eur_usd)
+    if usd is None:
+        return None, None, None
+    return round_ars_10k(estimate_from_amazon(usd, mep)), source, checked
+
+
+def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None):
     """Recalcula precios y veredictos una vez por día desde las 07:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today = local.date().isoformat()
@@ -237,13 +274,13 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
             pause()
             continue
         price = int(round(price))
-        total, source = resolve_amazon_total(product, amazon_items)
-        if total is None or mep is None:
-            # Sin total de Amazon o sin MEP no hay cálculo: queda el veredicto del catálogo.
+        amazon_ars, source, _ = estimate_amazon_ars(product, amazon_items, mep, eur_usd)
+        if amazon_ars is None:
+            # Sin estimado de Amazon o sin cotización no hay cálculo: queda el veredicto del catálogo.
             verdict, reason = product.get("verdict"), "existing"
         else:
             free_shipping = (product.get("shipsToAr") or {}).get("freeShipping")
-            verdict, reason = verdict_for(total, mep, price, free_shipping), "precio"
+            verdict, reason = verdict_from_ars(price, amazon_ars, free_shipping), "precio"
         entry = {"price": price, "url": item_url(catalog_id, item_id), "checked": today,
                  "verdict": verdict, "verdictReason": reason}
         if source:
@@ -255,12 +292,13 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
     return True
 
 
-def merge(catalog, prices_path, amazon_prices_path=None, now=None):
-    """Catálogo con el precio y veredicto de Mercado Libre del día (igual que mergeMlPrices del sitio)."""
+def merge(catalog, prices_path, amazon_prices_path=None, mep=None, eur_usd=None, now=None):
+    """Catálogo con el precio de ML, estimado ARS de Amazon y veredicto recalculado (igual que el sitio)."""
     data = load_json(prices_path, None)
     items = data.get("items") if isinstance(data, dict) else None
     amazon_items = load_amazon_prices(amazon_prices_path, now) if amazon_prices_path else {}
-    if not isinstance(items, dict) and not amazon_items:
+    compute_estimates = mep is not None or amazon_prices_path is not None
+    if not isinstance(items, dict) and not amazon_items and not compute_estimates:
         return catalog
     items = items if isinstance(items, dict) else {}
     merged = []
@@ -274,8 +312,7 @@ def merge(catalog, prices_path, amazon_prices_path=None, now=None):
             and isinstance(price, (int, float))
             and math.isfinite(price)
         )
-        scraped = amazon_items.get(slug)
-        if not has_ml and not scraped:
+        if not has_ml and not compute_estimates:
             merged.append(product)
             continue
         out = {**product}
@@ -283,9 +320,18 @@ def merge(catalog, prices_path, amazon_prices_path=None, now=None):
             out["ml"] = {**product["ml"], "price": price}
             if item.get("verdict") in ("amazon", "ml"):
                 out["verdict"] = item["verdict"]
-            if item.get("amazonSource") in ("amazon", "oficial"):
+            if not compute_estimates and item.get("amazonSource") in ("amazon", "oficial"):
                 out["amazonSource"] = item["amazonSource"]
-        if scraped and "amazonSource" not in out:
-            out["amazonSource"] = "amazon"
+        if compute_estimates:
+            amazon_ars, source, checked = estimate_amazon_ars(out, amazon_items, mep, eur_usd)
+            out["amazonArs"] = amazon_ars
+            out["amazonSource"] = source
+            out["amazonChecked"] = checked
+            ml_price = (out.get("ml") or {}).get("price")
+            if _is_valid_amount(ml_price) and amazon_ars is not None:
+                free_shipping = (out.get("shipsToAr") or {}).get("freeShipping")
+                out["verdict"] = verdict_from_ars(ml_price, amazon_ars, free_shipping)
+            elif amazon_ars is None and mep is not None:
+                out["verdict"] = "ml"
         merged.append(out)
     return merged

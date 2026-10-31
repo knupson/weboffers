@@ -9,6 +9,8 @@ from pathlib import Path
 
 import requests
 
+import ml_prices
+
 
 SITE = "https://ofertas.knunet.com"
 ART = timezone(timedelta(hours=-3))
@@ -39,15 +41,8 @@ def _valid_number(value):
 
 
 def _has_amazon_estimate(product):
-    if product.get("amazonSource") in ("amazon", "oficial"):
-        return True
-    if _valid_number(product.get("amazonArs")):
-        return True
-    lp = product.get("listPrice")
-    if isinstance(lp, dict) and lp.get("currency") in ("USD", "EUR"):
-        sale = lp.get("sale")
-        return _valid_number(sale if _valid_number(sale) else lp.get("amount"))
-    return False
+    """Exige un estimado vigente en ARS calculado con las mismas condiciones que el sitio (`amazonArs`)."""
+    return _valid_number(product.get("amazonArs"))
 
 
 def is_comparable(product):
@@ -72,6 +67,16 @@ def pick(catalog, posted):
     return fresh[0] if fresh else None
 
 
+def _verdict_for_product(product):
+    ml = product.get("ml")
+    ml_price = ml.get("price") if isinstance(ml, dict) else None
+    amazon_ars = product.get("amazonArs")
+    if _valid_number(ml_price) and _valid_number(amazon_ars):
+        free_shipping = (product.get("shipsToAr") or {}).get("freeShipping")
+        return ml_prices.verdict_from_ars(ml_price, amazon_ars, free_shipping)
+    return product.get("verdict") if product.get("verdict") in ("amazon", "ml") else "ml"
+
+
 def caption(product):
     url = f"{SITE}/productos/{product['slug']}/?utm_source=telegram&utm_medium=canal&utm_campaign=producto-diario"
     ml = product.get("ml")
@@ -79,7 +84,7 @@ def caption(product):
     if ml:
         precio = f"${ml['price']:,.0f}".replace(",", ".")
         lines.append(f"En Argentina: <b>{precio}</b> en Mercado Libre.")
-        if product.get("verdict") == "amazon":
+        if _verdict_for_product(product) == "amazon":
             lines.append(f"Traerlo de {STORES.get(product['store'], 'Amazon')} sale bastante menos puesto en tu casa.")
         else:
             lines.append("Traerlo de Amazon no te ahorra: conviene comprarlo acá, llega en días.")

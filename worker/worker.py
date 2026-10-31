@@ -38,6 +38,8 @@ def run_once():
     for entry in catalog:
         grouped.setdefault(entry["store"], []).append(entry["asin"])
     current_rates = rates.get_rates()
+    eur_usd = rates.get_eur_usd(current_rates.get("oficial")) if current_rates else None
+    mep = (current_rates or {}).get("mep")
     items = []
     for store, asins in grouped.items():
         items.extend(creators_api.fetch_items(asins, store))
@@ -57,15 +59,25 @@ def run_once():
             catalog,
             ml_prices_path,
             amazon_prices_path,
-            (current_rates or {}).get("mep"),
+            mep,
             datetime.now(timezone.utc),
+            eur_usd=eur_usd,
         )
     except Exception as exc:
         print(f"Falló la actualización de precios de Mercado Libre ({type(exc).__name__}).", flush=True)
     # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
     try:
-        telegram.maybe_post(ml_prices.merge(catalog, ml_prices_path, amazon_prices_path),
-                            resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")))
+        telegram.maybe_post(
+            ml_prices.merge(
+                catalog,
+                ml_prices_path,
+                amazon_prices_path,
+                mep=mep,
+                eur_usd=eur_usd,
+                now=datetime.now(timezone.utc),
+            ),
+            resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")),
+        )
     except Exception as exc:
         print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
     return payload

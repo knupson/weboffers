@@ -130,6 +130,13 @@ def test_rates_mapping(monkeypatch):
         "bolsa", "tarjeta", "oficial"]
 
 
+def test_eur_usd_mapping(monkeypatch):
+    get = Mock(return_value=Mock(json=Mock(return_value={"venta": 1250}), raise_for_status=Mock()))
+    monkeypatch.setattr(requests, "get", get)
+    assert rates.get_eur_usd(1000) == 1.25
+    assert get.call_args.args[0].endswith("/cotizaciones/eur")
+
+
 @pytest.mark.parametrize("value", [None, "inválido", -1, float("nan"), True])
 def test_invalid_rates_return_none(value, monkeypatch):
     monkeypatch.setattr(requests, "get", Mock(return_value=Mock(json=lambda: {"venta": value})))

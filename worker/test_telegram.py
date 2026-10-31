@@ -8,18 +8,21 @@ import telegram
 
 CATALOG = [
     {"slug": "sin-foto", "asin": "B000000001", "name": "Sin foto", "summary": "Resumen", "store": "US",
-     "verified": True, "ml": {"price": 200000}, "listPrice": {"amount": 150, "currency": "USD"}},
+     "verified": True, "ml": {"price": 200000}, "amazonArs": 190000, "shipsToAr": {"freeShipping": True},
+     "listPrice": {"amount": 150, "currency": "USD"}},
     {"slug": "con-foto", "asin": "B000000002", "name": "Con <foto>", "summary": "Resumen & más", "store": "ES",
-     "verified": True, "verdict": "amazon", "image": "/products/con-foto.webp",
-     "ml": {"price": 300000}, "amazonSource": "amazon"},
+     "verified": True, "verdict": "ml", "image": "/products/con-foto.webp",
+     "ml": {"price": 300000}, "amazonArs": 230000, "shipsToAr": {"freeShipping": True}, "amazonSource": "amazon"},
+    {"slug": "solo-source-vencido", "asin": "B000000006", "name": "Source vencido", "summary": "X", "store": "US",
+     "verified": True, "ml": {"price": 300000}, "amazonSource": "amazon", "amazonArs": None},
     {"slug": "sin-ml", "asin": "B000000003", "name": "Sin ML", "summary": "X", "store": "US",
-     "verified": True, "listPrice": {"amount": 150, "currency": "USD"}},
+     "verified": True, "amazonArs": 190000, "listPrice": {"amount": 150, "currency": "USD"}},
     {"slug": "sin-estimado", "asin": "B000000004", "name": "Sin estimado", "summary": "X", "store": "US",
      "verified": True, "ml": {"price": 100000}},
     {"slug": "sin-asin", "asin": "", "name": "Sin ASIN", "summary": "X", "store": "US",
-     "verified": True, "ml": {"price": 100000}, "listPrice": {"amount": 150, "currency": "USD"}},
+     "verified": True, "ml": {"price": 100000}, "amazonArs": 190000, "listPrice": {"amount": 150, "currency": "USD"}},
     {"slug": "no-verificado", "asin": "B000000005", "name": "X", "summary": "X", "store": "US",
-     "verified": False, "ml": {"price": 100000}, "listPrice": {"amount": 150, "currency": "USD"}},
+     "verified": False, "ml": {"price": 100000}, "amazonArs": 190000, "listPrice": {"amount": 150, "currency": "USD"}},
 ]
 
 
@@ -64,3 +67,27 @@ def test_waits_until_noon_and_skips_non_comparable(tmp_path, monkeypatch):
 def test_does_nothing_without_credentials(tmp_path, monkeypatch):
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN")
     assert telegram.maybe_post(CATALOG, tmp_path / "s.json", noon_art()) is None
+
+
+def test_rejects_stale_amazon_source_after_amazon_price_expires(tmp_path):
+    import json
+    import ml_prices
+
+    catalog = [
+        {"slug": "vencido", "asin": "B000000009", "name": "Vencido", "summary": "X", "store": "US",
+         "verified": True, "ml": {"price": 300000}, "shipsToAr": {"freeShipping": True}},
+    ]
+    ml_file = tmp_path / "ml-prices.json"
+    # Actualización parcial de ML que conservó amazonSource="amazon" de un día previo
+    ml_file.write_text(json.dumps({"date": "2026-10-30", "items": {
+        "vencido": {"price": 290000, "verdict": "amazon", "amazonSource": "amazon"},
+    }}), encoding="utf-8")
+    amz_file = tmp_path / "amazon-prices.json"
+    amz_file.write_text(json.dumps({"date": "2026-10-30", "items": {
+        "vencido": {"amount": 150, "currency": "USD", "checked": "2026-10-20"},  # vencido (> 3 días)
+    }}), encoding="utf-8")
+
+    merged = ml_prices.merge(catalog, ml_file, amz_file, mep=1200.0, eur_usd=1.25, now=noon_art())
+    assert merged[0]["amazonArs"] is None
+    assert merged[0]["amazonSource"] is None
+    assert telegram.is_comparable(merged[0]) is False
