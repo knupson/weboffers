@@ -76,10 +76,10 @@ def fetch_bulk(base_url, asins, store):
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
 
 
-def fetch_ar_shipping(base_url, asins):
+def fetch_ar_shipping(base_url, asins, store):
     resp = requests.get(
         f"{base_url}/ar-shipping",
-        params={"asins": ",".join(asins)},
+        params={"asins": ",".join(asins), "store": store},
         timeout=TIMEOUT,
     )
     resp.raise_for_status()
@@ -91,35 +91,44 @@ def fetch_ar_shipping(base_url, asins):
 
 
 def refresh_ar_shipping(candidates, items, today):
-    """Consulta /ar-shipping en lotes de BULK_MAX y guarda shipsToAr por slug.
+    """Consulta /ar-shipping en lotes de BULK_MAX agrupados por tienda y guarda shipsToAr por slug.
 
-    Si falla el relevamiento de un producto no se guarda nada para él (queda
-    desconocido); nunca se reutiliza el valor de días anteriores.
+    Cada lote se pide con el `store` de sus productos (la misma tienda que da el precio).
+    Si falla el relevamiento de un producto no se guarda nada para él (queda desconocido);
+    nunca se reutiliza el valor de días anteriores. `shipsToAr` sólo se guarda cuando `ships`
+    es un booleano real: None u otro valor es desconocido, nunca "no envía".
     """
     base_url = ar_url()
     if not base_url:
         return
+    by_store = {}
+    for product in candidates:
+        by_store.setdefault(product["store"], []).append(product)
     first_call = True
-    for i in range(0, len(candidates), BULK_MAX):
-        chunk = candidates[i:i + BULK_MAX]
-        if not first_call:
-            pause()
-        first_call = False
-        try:
-            fetched = fetch_ar_shipping(base_url, [p["asin"] for p in chunk])
-        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-            print(f"Amazon AR: falló lote ({type(exc).__name__}); se omite.", flush=True)
-            continue
-        for product in chunk:
-            item = fetched.get(product["asin"])
-            if not isinstance(item, dict) or "error" in item:
+    for store, store_products in by_store.items():
+        for i in range(0, len(store_products), BULK_MAX):
+            chunk = store_products[i:i + BULK_MAX]
+            if not first_call:
+                pause()
+            first_call = False
+            try:
+                fetched = fetch_ar_shipping(base_url, [p["asin"] for p in chunk], store)
+            except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                print(f"Amazon AR: falló lote {store} ({type(exc).__name__}); se omite.", flush=True)
                 continue
-            free = item.get("free")
-            items.setdefault(product["slug"], {})["shipsToAr"] = {
-                "ships": item.get("ships") is True,
-                "free": free if isinstance(free, bool) else None,
-                "checked": today,
-            }
+            for product in chunk:
+                item = fetched.get(product["asin"])
+                if not isinstance(item, dict) or "error" in item:
+                    continue
+                ships = item.get("ships")
+                if not isinstance(ships, bool):
+                    continue  # desconocido: no se guarda nada para este slug
+                free = item.get("free")
+                items.setdefault(product["slug"], {})["shipsToAr"] = {
+                    "ships": ships,
+                    "free": free if isinstance(free, bool) else None,
+                    "checked": today,
+                }
 
 
 def maybe_refresh(catalog, prices_path, now):

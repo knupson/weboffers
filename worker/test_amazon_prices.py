@@ -202,6 +202,53 @@ def test_ar_error_or_missing_leaves_ships_unknown(tmp_path, monkeypatch):
     assert items["no-envia"]["shipsToAr"] == {"ships": False, "free": None, "checked": "2026-10-30"}
 
 
+def test_ar_calls_agrupadas_por_store_y_con_param_store(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
+    catalog = [
+        {"slug": "us-1", "asin": "B0US1", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "es-1", "asin": "B0ES1", "store": "ES", "verified": True, "ml": {"price": 1000}},
+        {"slug": "us-2", "asin": "B0US2", "store": "US", "verified": True, "ml": {"price": 1000}},
+    ]
+    calls = []
+
+    def fake_get(url, params=None, timeout=None):
+        calls.append((url, params))
+        if url.endswith("/ar-shipping"):
+            return ar_response([ar_item(a, True, True) for a in params["asins"].split(",")])
+        cur = "EUR" if params["country"] == "ES" else "USD"
+        return bulk_response([ok_item(a, 150.5, cur) for a in params["products"].split(",")])
+
+    monkeypatch.setattr(amazon_prices.requests, "get", fake_get)
+    out = tmp_path / "amazon-prices.json"
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+
+    ar_calls = [params for url, params in calls if url.endswith("/ar-shipping")]
+    # Cada lote /ar-shipping lleva el store de sus ASINs y los ASINs quedan agrupados por tienda.
+    por_store = {}
+    for params in ar_calls:
+        assert params["store"] in ("US", "ES")
+        por_store.setdefault(params["store"], []).extend(params["asins"].split(","))
+    assert por_store == {"US": ["B0US1", "B0US2"], "ES": ["B0ES1"]}
+
+    items = json.loads(out.read_text(encoding="utf-8"))["items"]
+    assert items["us-1"]["shipsToAr"] == {"ships": True, "free": True, "checked": "2026-10-30"}
+    assert items["es-1"]["shipsToAr"] == {"ships": True, "free": True, "checked": "2026-10-30"}
+
+
+@pytest.mark.parametrize("ships", [None, "si", 1, 0, [True]])
+def test_ar_ships_que_no_es_booleano_no_se_guarda(tmp_path, monkeypatch, ships):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    item = ar_item("B01", True, True)
+    item["ships"] = ships
+    monkeypatch.setattr(amazon_prices.requests, "get", fake_get_router(None, [item]))
+    out = tmp_path / "amazon-prices.json"
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    items = json.loads(out.read_text(encoding="utf-8"))["items"]
+    assert items["p"]["amount"] == 150.5
+    assert "shipsToAr" not in items["p"]  # desconocido: no se guarda nada
+
+
 def test_ar_chunk_failure_does_not_break_prices(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
