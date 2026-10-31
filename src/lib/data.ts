@@ -164,8 +164,41 @@ export function mergeMlPrices(catalog: CatalogEntry[], prices: MlPrices | null):
 }
 
 export const AMAZON_PRICE_MAX_AGE_DAYS = 3;
+export const MIN_AMAZON_SAVING = 0.10;
 const ART_OFFSET_MS = -3 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface PriceComparison {
+  verdict: "amazon" | "ml";
+  saving: number;
+}
+
+/**
+ * Calcula el veredicto ("amazon" | "ml") y el ahorro redondeado a 10.000 ARS a partir de los mismos dos
+ * montos mostrados en pantalla (`ml.price` y `amazonArs`). Amazon sólo gana si ahorra >= 10% y tiene envío gratis.
+ */
+export function comparePrices(
+  entry: Pick<CatalogEntry, "ml" | "amazonArs" | "shipsToAr">,
+): PriceComparison {
+  const mlPrice = entry.ml?.price;
+  const amazonArs = entry.amazonArs;
+  if (
+    typeof mlPrice !== "number" ||
+    !Number.isFinite(mlPrice) ||
+    mlPrice <= 0 ||
+    typeof amazonArs !== "number" ||
+    !Number.isFinite(amazonArs) ||
+    amazonArs <= 0
+  ) {
+    return { verdict: "ml", saving: 0 };
+  }
+  const savingRatio = Math.round((1 - amazonArs / mlPrice) * 1e6) / 1e6;
+  const verdict =
+    entry.shipsToAr?.freeShipping === true && savingRatio >= MIN_AMAZON_SAVING ? "amazon" : "ml";
+  const rawDiff = verdict === "amazon" ? mlPrice - amazonArs : amazonArs - mlPrice;
+  const saving = rawDiff >= 5000 ? roundArs10k(rawDiff) : 0;
+  return { verdict, saving };
+}
 
 /** Un precio diario de Amazon es vigente sólo si `checked` (AAAA-MM-DD) tiene a lo sumo 3 días en ART. */
 export function isFreshAmazonDate(checked: unknown, now = Date.now()): checked is string {
@@ -180,7 +213,7 @@ export function isFreshAmazonDate(checked: unknown, now = Date.now()): checked i
 
 /**
  * Calcula el estimado en ARS puesto en casa desde el precio diario de Amazon (o el oficial como respaldo),
- * redondeado a 10.000 ARS, junto con la fuente ("amazon" | "oficial") y la fecha.
+ * redondeado a 10.000 ARS, junto con la fuente ("amazon" | "oficial"), la fecha y el veredicto recalculado.
  */
 export function mergeAmazonPrices(
   catalog: CatalogEntry[],
@@ -191,6 +224,9 @@ export function mergeAmazonPrices(
 ): CatalogEntry[] {
   const items = prices?.items ?? {};
   return catalog.map((entry) => {
+    let amazonArs: number | null = null;
+    let amazonSource: "amazon" | "oficial" | null = null;
+    let amazonChecked: string | null = null;
     if (mep && mep > 0) {
       const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
       if (
@@ -202,31 +238,29 @@ export function mergeAmazonPrices(
       ) {
         const toUsd = scraped.currency === "EUR" ? eurUsd : 1;
         if (toUsd && toUsd > 0) {
-          return {
-            ...entry,
-            amazonArs: roundArs10k(estimateFromAmazon(scraped.amount * toUsd, mep)),
-            amazonSource: "amazon",
-            amazonChecked: scraped.checked,
-          };
+          amazonArs = roundArs10k(estimateFromAmazon(scraped.amount * toUsd, mep));
+          amazonSource = "amazon";
+          amazonChecked = scraped.checked;
         }
       }
-      if (entry.listPrice) {
+      if (amazonArs == null && entry.listPrice) {
         const est = estimateArs(entry.listPrice, mep, eurUsd);
         if (est != null && est > 0) {
-          return {
-            ...entry,
-            amazonArs: roundArs10k(est),
-            amazonSource: "oficial",
-            amazonChecked: entry.listPrice.checked,
-          };
+          amazonArs = roundArs10k(est);
+          amazonSource = "oficial";
+          amazonChecked = entry.listPrice.checked;
         }
       }
     }
+    const { verdict } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr: entry.shipsToAr });
+    const verdictReason: CatalogEntry["verdictReason"] = entry.asin ? "precio" : "sinAmazon";
     return {
       ...entry,
-      amazonArs: null,
-      amazonSource: null,
-      amazonChecked: null,
+      amazonArs,
+      amazonSource,
+      amazonChecked,
+      verdict,
+      verdictReason,
     };
   });
 }
@@ -260,17 +294,29 @@ export function loadAmazonPrices(): AmazonPrices | null {
   return readJson<AmazonPrices>("data/amazon-prices.json");
 }
 
+/** Calcula los slugs comparables aplicando exactamente la misma fusión y cotizaciones que las páginas. */
+export function getComparableSlugs(
+  catalog: CatalogEntry[],
+  mlPrices: MlPrices | null,
+  amazonPrices: AmazonPrices | null,
+  mep: number | null,
+  eurUsd: number | null,
+  now = Date.now(),
+): Set<string> {
+  const merged = mergeAmazonPrices(mergeMlPrices(catalog, mlPrices), amazonPrices, mep, eurUsd, now);
+  return new Set(merged.filter((p) => isComparable(p, null, now)).map((p) => p.slug));
+}
+
 /** Slugs comparables para filtrar el sitemap en astro.config.mjs. */
-export function loadComparableSlugs(): Set<string> {
-  const catalog = loadCatalog();
-  const amazonPrices = loadAmazonPrices();
-  return new Set(catalog.filter((p) => isComparable(p, amazonPrices)).map((p) => p.slug));
+export async function loadComparableSlugs(): Promise<Set<string>> {
+  const { products } = await loadProducts();
+  return new Set(products.filter((p) => isComparable(p)).map((p) => p.slug));
 }
 
 /** El build puede traer offers.json desde una URL (R2) o desde el archivo local. */
 export async function loadOffers(): Promise<Offers> {
   const empty: Offers = { generatedAt: null, mode: "offline", rates: null, items: [] };
-  const url = import.meta.env.OFFERS_URL;
+  const url = import.meta.env?.OFFERS_URL ?? process.env.OFFERS_URL;
   if (url) {
     try {
       const res = await fetch(url);

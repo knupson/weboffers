@@ -3,7 +3,7 @@ import Icon from "./Icon.astro";
 import { amazonUrl, artFor } from "../config";
 import { brandLogo } from "../lib/brands";
 import { formatArs } from "../lib/format";
-import { roundArs10k, type CatalogEntry, type OfferItem } from "../lib/data";
+import { comparePrices, type CatalogEntry, type OfferItem } from "../lib/data";
 
 interface Props {
   product: CatalogEntry & { price: OfferItem | null; offer?: OfferItem };
@@ -25,14 +25,7 @@ const amzSub =
     : amzFecha
       ? `puesto en tu casa, estimado al ${amzFecha}`
       : "puesto en tu casa, estimado";
-const verdict = p.verdict ?? "ml";
-const rawDiff =
-  p.ml && p.amazonArs
-    ? verdict === "amazon"
-      ? p.ml.price - p.amazonArs
-      : p.amazonArs - p.ml.price
-    : 0;
-const saving = rawDiff >= 5000 ? roundArs10k(rawDiff) : 0;
+const { verdict, saving } = comparePrices(p);
 const track = (tienda: string, origen: string) => ({
   "data-umami-event": tienda === "ml" ? "mercadolibre" : "amazon",
   "data-umami-event-tienda": tienda === "ml" ? "ML" : p.store,

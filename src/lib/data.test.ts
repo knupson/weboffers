@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  comparePrices,
+  getComparableSlugs,
   isComparable,
   mergeAmazonPrices,
   mergeMlPrices,
@@ -183,5 +185,67 @@ describe('mergeAmazonPrices & isComparable', () => {
     expect(merged[2]).toMatchObject({ amazonArs: null, amazonSource: null, amazonChecked: null });
     expect(isComparable(entries[2], amazonPrices, now)).toBe(false);
     expect(isComparable(entries[0], amazonPrices, now)).toBe(true);
+  });
+
+  it('recalcula el veredicto y el ahorro desde los mismos montos mostrados (comparePrices)', () => {
+    const now = Date.parse('2026-10-31T12:00:00-03:00');
+    const entries: CatalogEntry[] = [
+      // Caso 1: venía con verdict="amazon" pero el estimado en ARS supera al precio de ML -> debe pasar a "ml"
+      base({
+        slug: 'amazon-mas-caro',
+        verdict: 'amazon',
+        shipsToAr: { freeShipping: true, checked: '2026-10-01' },
+        ml: { price: 350000, url: 'https://meli.la/1', checked: '2026-10-31' },
+        listPrice: { amount: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-01' }, // -> 380.000 ARS
+      }),
+      // Caso 2: venía con verdict="ml" pero Amazon ahorra >= 10% con envío gratis -> debe pasar a "amazon"
+      base({
+        slug: 'amazon-gana',
+        verdict: 'ml',
+        shipsToAr: { freeShipping: true, checked: '2026-10-01' },
+        ml: { price: 500000, url: 'https://meli.la/2', checked: '2026-10-31' },
+        listPrice: { amount: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-01' }, // -> 380.000 ARS (ahorra 24%)
+      }),
+      // Caso 3: ahorra >= 10% pero sin envío gratis -> gana "ml"
+      base({
+        slug: 'sin-envio-gratis',
+        verdict: 'amazon',
+        shipsToAr: { freeShipping: false, checked: '2026-10-01' },
+        ml: { price: 500000, url: 'https://meli.la/3', checked: '2026-10-31' },
+        listPrice: { amount: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-01' },
+      }),
+    ];
+    const merged = mergeAmazonPrices(entries, null, 1200, 1.25, now);
+    expect(merged[0]).toMatchObject({ amazonArs: 380000, verdict: 'ml', verdictReason: 'precio' });
+    expect(comparePrices(merged[0])).toEqual({ verdict: 'ml', saving: 30000 });
+
+    expect(merged[1]).toMatchObject({ amazonArs: 380000, verdict: 'amazon', verdictReason: 'precio' });
+    expect(comparePrices(merged[1])).toEqual({ verdict: 'amazon', saving: 120000 });
+
+    expect(merged[2]).toMatchObject({ amazonArs: 380000, verdict: 'ml', verdictReason: 'precio' });
+    expect(comparePrices(merged[2])).toEqual({ verdict: 'ml', saving: 0 });
+  });
+
+  it('filtra slugs del sitemap con la misma comparación calculada (requiere MEP y EUR/USD)', () => {
+    const now = Date.parse('2026-10-31T12:00:00-03:00');
+    const entries: CatalogEntry[] = [
+      base({
+        slug: 'us-ok',
+        ml: { price: 500000, url: 'https://meli.la/1', checked: '2026-10-31' },
+        listPrice: { amount: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-01' },
+      }),
+      base({
+        slug: 'es-eur',
+        store: 'ES',
+        ml: { price: 500000, url: 'https://meli.la/2', checked: '2026-10-31' },
+        listPrice: { amount: 200, currency: 'EUR', source: 'https://x.test', checked: '2026-10-01' },
+      }),
+    ];
+    // Sin MEP ninguna ficha tiene amazonArs calculado -> ninguna va al sitemap
+    expect([...getComparableSlugs(entries, null, null, null, 1.25, now)]).toEqual([]);
+    // Con MEP pero sin EUR/USD, sólo entra la de USD (la de EUR sería noindex)
+    expect([...getComparableSlugs(entries, null, null, 1200, null, now)]).toEqual(['us-ok']);
+    // Con MEP y EUR/USD entran ambas
+    expect([...getComparableSlugs(entries, null, null, 1200, 1.25, now)]).toEqual(['us-ok', 'es-eur']);
   });
 });

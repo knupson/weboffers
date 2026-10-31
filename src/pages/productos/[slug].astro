@@ -6,7 +6,7 @@ import Icon from "../../components/Icon.astro";
 import { amazonUrl, artFor, SITE, STORE_LABEL } from "../../config";
 import { brandLogo } from "../../lib/brands";
 import { formatArs } from "../../lib/format";
-import { isComparable, loadProducts, roundArs10k } from "../../lib/data";
+import { comparePrices, isComparable, loadProducts } from "../../lib/data";
 
 export async function getStaticPaths() {
   const { products, offers } = await loadProducts();
@@ -35,14 +35,7 @@ const amzSub =
     : amzFecha
       ? `puesto en tu casa, estimado al ${amzFecha}`
       : "puesto en tu casa, estimado";
-const verdict = p.verdict ?? "ml";
-const rawDiff =
-  p.ml && p.amazonArs
-    ? verdict === "amazon"
-      ? p.ml.price - p.amazonArs
-      : p.amazonArs - p.ml.price
-    : 0;
-const saving = rawDiff >= 5000 ? roundArs10k(rawDiff) : 0;
+const { verdict, saving } = comparePrices(p);
 
 const specs: Array<[string, string]> = [
   ["Marca", p.brand],
