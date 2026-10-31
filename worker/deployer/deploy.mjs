@@ -28,9 +28,18 @@ function artDate(date) {
   return new Date(date.getTime() + ART_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-function nextRunAt(now) {
-  let target = Date.parse(`${artDate(now)}T${DEPLOY_AT_UTC}`);
-  if (target <= now.getTime()) target += ONE_DAY_MS;
+function startAt(now) {
+  return Date.parse(`${artDate(now)}T${DEPLOY_AT_UTC}`);
+}
+
+function nextRunAt(now, lastState) {
+  let target = startAt(now);
+  if (target <= now.getTime()) {
+    if (lastState !== undefined && lastState?.date !== artDate(now)) {
+      return now.getTime();
+    }
+    target += ONE_DAY_MS;
+  }
   return target;
 }
 
@@ -248,11 +257,34 @@ async function sleepUntil(timestamp) {
   }
 }
 
+async function runStartupIfPending(opts = {}) {
+  const nowFn = opts.nowFn ?? (() => new Date());
+  const stateFile = opts.stateFile ?? STATE_FILE;
+  const retryFn = opts.retryFn ?? deployWithRetry;
+  const now = nowFn();
+  if (now.getTime() < startAt(now)) {
+    return 'before-window';
+  }
+  const last = await readState(stateFile);
+  const today = artDate(now);
+  if (last?.date === today) {
+    log(`DEPLOY_SKIP ya existe despliegue del día (${today}) al iniciar.`);
+    return 'already-deployed';
+  }
+  log(`DEPLOY_INFO ventana pendiente del ${today} al iniciar; ejecutando despliegue.`);
+  return await retryFn(opts);
+}
+
 async function main() {
   const stop = () => { stopRequested = true; };
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);
   log('Deployer iniciado.');
+  try {
+    await runStartupIfPending();
+  } catch (error) {
+    log(`DEPLOY_FAIL ${redact(String(error.message))}`);
+  }
   while (!stopRequested) {
     const next = nextRunAt(new Date());
     log(`Próximo despliegue previsto: ${new Date(next).toISOString()}.`);
@@ -273,11 +305,13 @@ if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
 
 export {
   artDate,
+  startAt,
   nextRunAt,
   deadlineAt,
   hasBothTodayPrices,
   deployOnce,
   deployWithRetry,
+  runStartupIfPending,
   RETRY_INTERVAL_MS,
   DEADLINE_UTC,
 };

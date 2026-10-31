@@ -9,6 +9,7 @@ import {
   deployWithRetry,
   hasBothTodayPrices,
   nextRunAt,
+  runStartupIfPending,
   RETRY_INTERVAL_MS,
 } from './deploy.mjs';
 
@@ -196,5 +197,56 @@ describe('deployer', () => {
       runImpl: async () => '',
     });
     expect(day2Repeat).toBe('skip');
+  });
+
+  it('al iniciar después de las 07:30 ART ejecuta la ventana pendiente del día si no hubo despliegue hoy', async () => {
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    const workDir = path.join(tmpDir, 'work');
+    const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
+    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
+    await fs.mkdir(path.dirname(stateFile), { recursive: true });
+
+    // Antes de las 07:30 ART (06:30 ART = 09:30Z): todavía no empezó la ventana de hoy
+    const beforeRes = await runStartupIfPending({
+      stateFile,
+      nowFn: () => new Date('2026-10-30T09:30:00Z'),
+    });
+    expect(beforeRes).toBe('before-window');
+
+    // Estado previo: el último despliegue fue ayer (2026-10-29), y el contenedor arranca a las 08:30 ART (11:30Z)
+    await fs.writeFile(stateFile, JSON.stringify({ hash: 'h-ayer', date: '2026-10-29', deployedAt: '2026-10-29T14:00:00Z' }));
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1500 } } }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-29', items: {} })); // aún viejo a las 08:30 ART
+
+    let currentMs = Date.parse('2026-10-30T11:30:00Z'); // 08:30 ART
+    const sleeps: number[] = [];
+
+    const pendingRes = await runStartupIfPending({
+      outputFile,
+      amazonOutputFile,
+      workDir,
+      stateFile,
+      runImpl: async () => '',
+      nowFn: () => new Date(currentMs),
+      sleepFn: async (ms: number) => {
+        sleeps.push(ms);
+        currentMs += ms;
+        // A las 08:40 ART llega el archivo de Amazon de hoy
+        await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 120 } } }));
+      },
+    });
+
+    expect(pendingRes).toBe('ok');
+    expect(sleeps).toEqual([10 * 60e3]);
+    const savedState = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+    expect(savedState.date).toBe('2026-10-30');
+
+    // Si el contenedor se reinicia más tarde el mismo día (ej. 09:30 ART), detecta que hoy ya desplegó
+    const alreadyRes = await runStartupIfPending({
+      stateFile,
+      nowFn: () => new Date('2026-10-30T12:30:00Z'),
+    });
+    expect(alreadyRes).toBe('already-deployed');
   });
 });
