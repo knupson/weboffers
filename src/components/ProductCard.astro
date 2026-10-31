@@ -62,13 +62,15 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
           <small data-price-label hidden>{mlFecha ? `precio del ${mlFecha}` : ""}</small>
         </p>
         {verdict === "ml" ? (
-          <a class="btn ghost sm" data-buy-link="ml" data-winner="ml" href={p.ml.url} {...ext} {...track("ml", "veredicto")}>
-            <span class="v" data-verdict-text hidden>Mejor opción · mismo precio o menos, llega en días{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
-            <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
-          </a>
+          <>
+            <p class="veredicto" data-verdict-text hidden>Conviene{saving > 0 ? ` · ahorrás ~${formatArs(saving)}` : ""}</p>
+            <a class="btn ghost sm" data-buy-link="ml" data-winner="ml" href={p.ml.url} {...ext} {...track("ml", "veredicto")}>
+              <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Mercado Libre</span><Icon name="arrow-up-right" size={16} /></span>
+            </a>
+          </>
         ) : (
           <a class="btn ghost sm" data-buy-link="ml" href={p.ml.url} {...ext} {...track("ml", "alternativa")}>
-            <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
+            <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Mercado Libre</span><Icon name="arrow-up-right" size={16} /></span>
           </a>
         )}
       </div>
@@ -83,13 +85,15 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
           <small data-price-sub hidden>{amzSub}</small>
         </p>
         {verdict === "amazon" ? (
-          <a class="btn ghost sm" data-buy-link="amazon" data-winner="amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
-            <span class="v" data-verdict-text hidden>Mejor opción · sale bastante menos, aunque tarda más{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
-            <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
-          </a>
+          <>
+            <p class="veredicto" data-verdict-text hidden>Conviene{saving > 0 ? ` · ahorrás ~${formatArs(saving)}` : ""}</p>
+            <a class="btn ghost sm" data-buy-link="amazon" data-winner="amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
+              <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Amazon</span><Icon name="arrow-up-right" size={16} /></span>
+            </a>
+          </>
         ) : (
           <a class="btn ghost sm" data-buy-link="amazon" href={amazon} {...ext} {...track("amazon", "alternativa")}>
-            <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
+            <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en Amazon</span><Icon name="arrow-up-right" size={16} /></span>
           </a>
         )}
       </div>

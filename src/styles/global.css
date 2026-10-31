@@ -427,6 +427,15 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .gana .v { font: 700 13px var(--sans); opacity: .9; }
 .gana .cta, .btn .cta { display: inline-flex; align-items: center; gap: 8px; }
 .gana .cta { font: 400 16px/1.1 var(--letra); }
+/* El texto del botón va en una sola línea; el veredicto va arriba del botón, no adentro. */
+.cta-txt { white-space: nowrap; }
+.card .gana, .card .fila-compra .btn { width: 100%; justify-content: center; text-align: center; }
+.card .gana { padding: 10px 12px; }
+.card .gana .cta { justify-content: center; font: 800 14px/1.2 var(--sans); }
+.veredicto { margin: 0; font: 700 13px/1.3 var(--sans); }
+.veredicto[hidden] { display: none; }
+.fila-compra.ml .veredicto { color: var(--amarillo); }
+.fila-compra.amazon .veredicto { color: var(--verde-claro); }
 .gana.amazon { background: #187a42; color: #fff; box-shadow: inset 0 0 0 3px #187a42, inset 0 0 0 4.5px var(--crema); }
 .gana.ml { background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }
 .alt { position: relative; z-index: 1; justify-self: center; font-size: 13px; font-weight: 600; color: var(--crema-2); }
