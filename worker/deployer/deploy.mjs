@@ -233,7 +233,14 @@ async function deployWithRetry(opts = {}) {
     const deadline = deadlineAt(now);
     const check = await hasBothTodayPrices(now, opts);
     if (check.ready) {
-      return await deployFn(now, { ...opts, requireBothToday: true });
+      const res = await deployFn(now, { ...opts, requireBothToday: true });
+      if (res !== 'fail' || now.getTime() >= deadline) {
+        return res;
+      }
+      const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
+      log(`DEPLOY_WAIT el despliegue devolvió fail; próximo reintento en ${Math.round(waitMs / 60e3)} min.`);
+      await sleepFn(waitMs);
+      continue;
     }
     if (now.getTime() >= deadline) {
       log(`DEPLOY_INFO son las 11:00 ART o más (${check.reason}); se despliega igual.`);

@@ -249,4 +249,54 @@ describe('deployer', () => {
     });
     expect(alreadyRes).toBe('already-deployed');
   });
+
+  it('ante un fail transitorio reintenta cada 10 minutos hasta tener éxito, incluyendo el intento final de las 11:00 ART', async () => {
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 100 } } }));
+
+    // Arranca a las 10:40 ART (13:40Z); falla a las 10:40 y a las 10:50, y tiene éxito en el intento final de las 11:00 ART (14:00Z)
+    let currentMs = Date.parse('2026-10-30T13:40:00Z');
+    const sleeps: number[] = [];
+    const attempts: string[] = [];
+
+    const result = await deployWithRetry({
+      outputFile,
+      amazonOutputFile,
+      nowFn: () => new Date(currentMs),
+      sleepFn: async (ms: number) => {
+        sleeps.push(ms);
+        currentMs += ms;
+      },
+      deployFn: async (now: Date) => {
+        attempts.push(now.toISOString());
+        return attempts.length < 3 ? 'fail' : 'ok';
+      },
+    });
+
+    expect(result).toBe('ok');
+    expect(sleeps).toEqual([10 * 60e3, 10 * 60e3]);
+    expect(attempts).toEqual([
+      '2026-10-30T13:40:00.000Z',
+      '2026-10-30T13:50:00.000Z',
+      '2026-10-30T14:00:00.000Z',
+    ]);
+
+    // Si el intento de las 11:00 ART también devuelve fail, termina y devuelve fail sin entrar en loop infinito
+    let atDeadlineMs = Date.parse('2026-10-30T13:50:00Z');
+    const finalSleeps: number[] = [];
+    const finalResult = await deployWithRetry({
+      outputFile,
+      amazonOutputFile,
+      nowFn: () => new Date(atDeadlineMs),
+      sleepFn: async (ms: number) => {
+        finalSleeps.push(ms);
+        atDeadlineMs += ms;
+      },
+      deployFn: async () => 'fail',
+    });
+    expect(finalResult).toBe('fail');
+    expect(finalSleeps).toEqual([10 * 60e3]);
+  });
 });
