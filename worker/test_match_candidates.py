@@ -33,6 +33,7 @@ def api(monkeypatch):
     monkeypatch.setattr(match.ml_prices, "get_json", get)
     monkeypatch.setattr(match.ml_prices, "pause", Mock())
     monkeypatch.setattr(requests, "get", Mock(side_effect=AssertionError("No se permite red en tests")))
+    monkeypatch.setattr(requests.sessions.Session, "request", Mock(side_effect=AssertionError("No se permite red en tests")))
     return get
 
 
@@ -76,14 +77,14 @@ def test_variant_mini_doubtful(api):
     assert "variante" in result["doubtful"][0]["reason"]
 
 
-@pytest.mark.parametrize("price", [59000, 300001])
+@pytest.mark.parametrize("price", [59000, 600001])
 def test_bad_ratio(api, price):
     row = amazon()
     row["ml"][0]["minPrice"] = price
     assert match.match_products([row], 1000)["rejected"][0]["reason"] == "precio fuera de rango"
 
 
-@pytest.mark.parametrize("price", [60000, 300000])
+@pytest.mark.parametrize("price", [60000, 300000, 500000, 600000])
 def test_ratio_boundaries(api, price):
     row = amazon()
     row["ml"][0]["minPrice"] = price
@@ -284,3 +285,211 @@ def test_missing_capacity_is_doubtful(api):
 
 def test_brand_falls_back_to_first_word(api):
     assert match.match_products([amazon(brand="")], 1575)["accepted"][0]["brand"] == "Samsung"
+
+
+def cached_product(name, brand, model, **attrs):
+    """Formato reducido del caché real, sin atributos ajenos al caso."""
+    return {"name": name, "attributes": [{"id": key, "name": key, "value": value}
+            for key, value in {"BRAND": brand, "MODEL": model, **attrs}.items()]}
+
+
+def cached_match(title, ml, brand="Samsung", category="Data Storage"):
+    return match.match_products([amazon(amazonTitle=title, brand=brand, amazonCategory=category)],
+                                1575, products_cache={"MLA123": ml})
+
+
+def test_cache_complete_is_offline_and_does_not_mutate(api):
+    cache = {"MLA123": cached_product("Samsung T9 1TB", "Samsung", "T9", CAPACITY="1TB")}
+    before = json.dumps(cache)
+    assert match.match_products([amazon(amazonTitle="Samsung T9 1TB")], 1575, products_cache=cache)["accepted"]
+    assert json.dumps(cache) == before
+    api.assert_not_called()
+    match.ml_prices.pause.assert_not_called()
+
+
+def test_partial_cache_fetches_only_missing_once(api):
+    rows = [amazon(asin=f"B{i:09}") for i in range(3)]
+    rows[1]["ml"][0]["catalogId"] = "MLA789"
+    rows[2]["ml"][0]["catalogId"] = "MLA789"
+    assert len(match.match_products(rows, 1575, products_cache={"MLA123": product()})["accepted"]) == 3
+    api.assert_called_once_with("/products/MLA789")
+    match.ml_prices.pause.assert_called_once()
+
+
+def test_empty_cached_product_is_not_fetched_again(api):
+    assert match.match_products([amazon()], 1575, products_cache={"MLA123": {}})["doubtful"]
+    api.assert_not_called()
+
+
+@pytest.mark.parametrize("cache", [[], {"MLA123": None}, {"MLA123": []}])
+def test_invalid_products_cache(cache):
+    with pytest.raises(ValueError, match="caché"):
+        match.match_products([amazon()], 1575, products_cache=cache)
+
+
+def test_cli_products_cache_without_credentials(api, monkeypatch, tmp_path):
+    for key in ("ML_CLIENT_ID", "ML_CLIENT_SECRET"):
+        monkeypatch.delenv(key, raising=False)
+    source, cache, output = (tmp_path / name for name in ("source.json", "cache.json", "result.json"))
+    source.write_text(json.dumps([amazon()]), encoding="utf-8")
+    cache.write_text(json.dumps({"MLA123": product()}), encoding="utf-8")
+    monkeypatch.setattr(match.rates, "get_rates", Mock(side_effect=AssertionError("No consultar cotización")))
+    assert match.main(["--input", str(source), "--products-cache", str(cache), "--output", str(output), "--mep", "1575"]) == 0
+    assert json.loads(output.read_text(encoding="utf-8"))["summary"]["accepted"] == 1
+    api.assert_not_called()
+
+
+def test_cli_invalid_cache(api, tmp_path):
+    source, cache = tmp_path / "source.json", tmp_path / "cache.json"
+    source.write_text("[]", encoding="utf-8")
+    cache.write_text("[]", encoding="utf-8")
+    assert match.main(["--input", str(source), "--products-cache", str(cache), "--mep", "1575"]) == 1
+    api.assert_not_called()
+
+
+def test_import_without_network_or_credentials():
+    import os
+    import subprocess
+    script = "import socket; deny=lambda *a, **k: (_ for _ in ()).throw(AssertionError('Sin red')); socket.socket.connect=deny; socket.socket.connect_ex=deny; socket.getaddrinfo=deny; import match_candidates"
+    env = {key: value for key, value in os.environ.items() if key not in {"ML_CLIENT_ID", "ML_CLIENT_SECRET"}}
+    completed = subprocess.run([sys.executable, "-c", script], cwd=ROOT / "tools", env=env, capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+
+
+@pytest.mark.parametrize("left,right", [
+    ("Amazon", "Kindle"), ("Amazon", "Echo"), ("Amazon", "Fire"), ("Blink", "Amazon"),
+    ("Ring", "Amazon"), ("eero", "Amazon"), ("WD_BLACK", "Western Digital"),
+    ("HP", "Hewlett-Packard"), ("HP Inc.", "HP"), ("TP", "TP-Link"),
+    ("GL.iNet", "Gl. Inet"), ("Logitech G", "Logitech"), ("soundcore", "Anker"),
+])
+def test_real_brand_aliases(left, right):
+    # La equivalencia de marca nunca debe bastar para aceptar otro modelo.
+    assert match.brand_key(left) == match.brand_key(right)
+    ml = cached_product(f"{right} ZX200 1TB", right, "ZX200", CAPACITY="1TB")
+    assert cached_match(f"{left} ZX100 1TB", ml, left)["rejected"]
+
+
+@pytest.mark.parametrize("value,expected", [('27-inch', '27in'), ('16.1-inch', '16.1in'),
+    ('7”', '7in'), ("7''", '7in'), ('2000 MB/s 1TB', '1000gb')])
+def test_real_quantity_notation(value, expected):
+    assert match.normalize(value) == expected
+
+
+def test_cpu_supported_ram_and_cache_are_not_product_capacity():
+    ml = cached_product("Procesador AMD Ryzen 7 9800X3D AM5", "AMD", "Ryzen 7 9800X3D",
+                        MAX_RAM_MEMORY_SIZE_SUPPORTED="192 GB", CACHE="96 MB", TDP="120 W")
+    assert cached_match("AMD Ryzen 7 9800X3D 8-Core Desktop Processor", ml, "AMD", "Computer Components")["accepted"]
+
+
+def test_ssd_speed_is_not_capacity():
+    ml = cached_product("Samsung T9 Portable 1TB Negro", "Samsung", "T9", CAPACITY="1TB")
+    assert cached_match("Samsung T9 Portable SSD 1TB Up to 2,000 MB/s Black", ml)["accepted"]
+
+
+@pytest.mark.parametrize("title,ml_name,model", [
+    ("Razer Wolverine V2 Pro Wireless Black", "Razer Wolverine V2 Pro Wireless Negro", "Wolverine V2 Pro"),
+    ("8Bitdo Ultimate 2 Bluetooth Controller Black", "8bitdo Ultimate 2 Bluetooth Controller Black", "Otros"),
+    ("Beats Solo Buds Wireless Matte Black", "Beats Solo Buds Negro Mate", "Beats Solo Buds"),
+])
+def test_real_model_families(title, ml_name, model):
+    brand = title.split()[0]
+    assert cached_match(title, cached_product(ml_name, brand, model), brand, "Gaming")["accepted"]
+
+
+def test_compatibility_platform_is_not_model():
+    ml = cached_product("Scuf Omega Para PS5 Negro", "SCUF", "Omega")
+    assert not cached_match("SCUF Reflex PS5 Controller Black", ml, "SCUF", "Gaming")["accepted"]
+
+
+@pytest.mark.parametrize("title,name,model", [
+    ("TP-Link AX3000 Range Extender RE715X", "TP-Link AX3000 Router", "AX3000"),
+    ("TP-Link AX3000 Travel Router TL-WR3002X", "TP-Link TX50E AX3000 Adaptador", "TX50E"),
+    ("TP-Link Archer AX73 AX5400", "TP-Link Archer AX72 Pro AX5400", "Archer AX72 Pro"),
+])
+def test_network_speed_class_never_proves_model(title, name, model):
+    assert not cached_match(title, cached_product(name, "TP-Link", model), "TP", "Routers")["accepted"]
+
+
+def test_wired_hero_is_not_wireless_lightspeed():
+    ml = cached_product("Mouse Inalámbrico Logitech G502 Lightspeed Negro", "Logitech", "G502 Lightspeed")
+    assert cached_match("Logitech G502 Hero Wired Gaming Mouse Black", ml, "Logitech", "Periféricos")["rejected"][0]["reason"] == "conectividad distinta"
+
+
+@pytest.mark.parametrize("title,name,model", [
+    ("Razer BlackShark V2 X Black", "Razer BlackShark V2 Negro", "BlackShark V2"),
+    ("GameSir G7 Pro Wuchang Edition", "GameSir G7 Pro Shadow Ember", "G7 Pro"),
+    ("Apple AirPods Max 2 Midnight", "Apple AirPods Max Plateado", "AirPods Max"),
+    ("Turtle Beach Stealth 600 Headset White", "Turtle Beach Stealth 600 Gen 2 Blanco", "Stealth 600"),
+    ("Razer Wolverine V2", "Razer BlackShark V2", "BlackShark V2"),
+])
+def test_editions_generations_and_families_are_not_interchangeable(title, name, model):
+    brand = title.split()[0]
+    assert not cached_match(title, cached_product(name, brand, model), brand, "Gaming")["accepted"]
+
+
+@pytest.mark.parametrize("name", ["Libro: Echo Show", "Amazon Kindle User Guide", "Book: Samsung T9", "Samsung T9 Editorial Ejemplo"])
+def test_books_are_rejected_even_with_shared_model(name):
+    ml = cached_product(name, "Samsung", "T9")
+    assert "libro" in cached_match("Samsung T9", ml)["rejected"][0]["reason"]
+
+
+def test_headphone_jack_and_driver_size_are_not_capacity():
+    ml = cached_product("Razer Blackshark V2 X Xbox Licensed Negro", "Razer", "Blackshark V2 X")
+    assert cached_match("Razer BlackShark V2 X Xbox Headset Black 3.5mm Jack 50mm Drivers", ml, "Razer", "Gaming")["accepted"]
+
+
+def test_lens_mount_and_packaging_suffix():
+    ml = cached_product("Lente Sony FE 50mm F1.8 Negro", "Sony", "SEL50F18F")
+    assert cached_match("Sony FE 50mm F1.8 Lens SEL50F18F/2 Black", ml, "Sony", "Lenses")["accepted"]
+    assert "f1" not in match.model_tokens("F1.8")
+
+
+def test_marketing_words_do_not_create_variants():
+    ml = cached_product("JBL Go 5 Speaker Black", "JBL", "Go 5")
+    assert cached_match("JBL Go 5 Ultra-portable Speaker Black", ml, "JBL", "Audio")["accepted"]
+
+
+def test_blue_voice_is_not_headset_color():
+    ml = cached_product("Logitech G733 Lightspeed Negro", "Logitech", "G733")
+    assert cached_match("Logitech G733 Lightspeed Black | Blue VO!CE Mic", ml, "Logitech", "Gaming")["accepted"]
+
+
+@pytest.mark.parametrize("left,right", [("Gray", "Gris"), ("Silver", "Plateado"), ("Purple", "Violeta")])
+def test_translated_colors(left, right):
+    ml = cached_product(f"Samsung T9 1TB {right}", "Samsung", "T9")
+    assert cached_match(f"Samsung T9 1TB {left}", ml)["accepted"]
+
+
+def test_unconfirmed_color_stays_doubtful():
+    ml = cached_product("Samsung T9 1TB Blanco", "Samsung", "T9")
+    assert cached_match("Samsung T9 1TB", ml)["doubtful"]
+
+
+def test_best_rejected_candidate_is_auditable(api):
+    row = amazon()
+    row["ml"].append({**row["ml"][0], "catalogId": "MLA789", "minPrice": 10000})
+    api.side_effect = [product(BRAND="Bestoss"), product()]
+    rejected = match.match_products([row], 1575)["rejected"][0]
+    assert rejected["catalogId"] == "MLA789"
+    assert rejected["mlName"] == "Samsung 990 PRO 1TB"
+    assert rejected["mlBrand"] == "Samsung"
+    assert rejected["mlModel"] == "990 PRO"
+    assert rejected["reason"] == "precio fuera de rango"
+    assert len(rejected["candidates"]) == 2
+
+
+def test_bundle_after_description_is_not_lost():
+    ml = cached_product("Samsung T9 1TB", "Samsung", "T9")
+    assert cached_match("Samsung T9 1TB | Bundle with cable", ml)["doubtful"]
+
+
+def test_prefix_does_not_hide_a_different_model():
+    assert match.family_conflict({"sn850", "pc100"}, {"sn850x", "pc100"})
+    assert not match.family_conflict({"q2n4k"}, {"q2n4k", "q2n"})
+
+
+@pytest.mark.parametrize("devices,status", [("Xbox Series X, Computadoras", "doubtful"), ("PC, PlayStation 5", "accepted")])
+def test_catalog_platform_contradiction(devices, status):
+    ml = cached_product("Razer Wolverine V2 Pro Wireless Para PS5 Negro", "Razer", "Wolverine V2",
+                        COMPATIBLE_DEVICES=devices)
+    assert cached_match("Razer Wolverine V2 Pro Wireless PlayStation Controller Black", ml, "Razer", "Gaming")[status]
