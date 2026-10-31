@@ -62,6 +62,30 @@ docker compose -p franquicia400 build --no-cache weboffers-amazon-scraper
 docker compose -p franquicia400 up -d weboffers-amazon-scraper
 ```
 
+## Envío a Argentina (`weboffers-amazon-ar`)
+
+Amazon decide si envía un producto a Argentina según la ubicación del comprador,
+así que el servicio `weboffers-amazon-ar` (build propio en `./amazon-ar`) clona
+el mismo scraper fijado al commit `8ffd4f97...` y, al arrancar, reemplaza
+`amazon.fetch.set_location` para consultar "desde Argentina" (probeado en la Pi4:
+con esa location, `products.details(asin, "US")` devuelve `delivery` con texto a
+Argentina y precio numérico cuando envía, y `delivery` vacío con precio null
+cuando no). Expone sólo en la red interna de Compose
+`GET http://weboffers-amazon-ar:8001/ar-shipping?asins=A,B,C` (máx 5 ASINs), sin
+puertos publicados, sin volúmenes y con 256 MB de límite.
+
+Una vez por día, después de la consulta de precios, `amazon_prices.py` pide
+`/ar-shipping` en lotes de 5 (timeout 240 s, pausa 3 s) para los mismos productos
+y guarda en `amazon-prices.json` por slug `shipsToAr: {ships, free, checked}`.
+Si falla un producto no se guarda nada para él (queda desconocido) y nunca se
+reutilizan valores de días anteriores; con `AMAZON_AR_URL` vacío se omite el paso.
+
+En el sitio, `mergeAmazonPrices` usa ese relevamiento sólo si `checked` es hoy
+(ART): pisa `shipsToAr` con `{freeShipping, checked}` y setea `shipsToArToday`;
+`isComparable` devuelve false cuando `shipsToArToday === false`, así los
+productos que Amazon no envía a Argentina no se muestran (no hay comparación
+posible).
+
 ## Precios de Mercado Libre y deployer
 
 `ml_prices.py` consulta la API de Mercado Libre con client_credentials. Una vez
