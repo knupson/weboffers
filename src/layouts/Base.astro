@@ -124,30 +124,49 @@ const nav = [
             .map((p) => [p.type, p.value]),
         );
         const today = `${parts.year}-${parts.month}-${parts.day}`;
-        const bodyDate = document.body.dataset.pricesDate || "";
-        if (bodyDate !== today) {
-          const banner = document.querySelector("[data-stale-banner]");
-          if (banner) banner.hidden = false;
-        }
+        const bodyDate = document.body?.dataset?.pricesDate || "";
+        const banner = document.querySelector("[data-stale-banner]");
+        if (banner) banner.hidden = bodyDate === today;
+
         document.querySelectorAll("[data-checked]").forEach((block) => {
-          if (block.getAttribute("data-checked") === today) {
+          const isFresh = block.getAttribute("data-checked") === today;
+          if (isFresh) {
+            block.setAttribute("data-fresh", "true");
+          } else {
+            block.removeAttribute("data-fresh");
+          }
+          block
+            .querySelectorAll("[data-price-amount], [data-price-label], [data-price-sub], [data-verdict-text]")
+            .forEach((el) => {
+              el.hidden = !isFresh;
+            });
+          if (isFresh) {
             block.querySelectorAll("[data-price-label]").forEach((el) => {
               el.textContent = "precio de hoy";
             });
-            return;
           }
-          block.querySelectorAll("[data-price-amount], [data-price-label], [data-price-sub], [data-verdict-text]").forEach((el) => {
-            el.hidden = true;
-          });
           block.querySelectorAll("[data-price-stale]").forEach((el) => {
-            el.hidden = false;
+            el.hidden = isFresh;
           });
           block.querySelectorAll(".fila-compra").forEach((row) => {
-            row.classList.remove("ganadora", "ml", "amazon");
+            const winner = row.getAttribute("data-winner");
+            if (isFresh && (winner === "ml" || winner === "amazon")) {
+              row.classList.add("ganadora", winner);
+            } else {
+              row.classList.remove("ganadora", "ml", "amazon");
+            }
           });
           block.querySelectorAll("[data-buy-link]").forEach((link) => {
-            link.className = "btn ghost sm";
-            link.textContent = link.getAttribute("data-buy-link") === "ml" ? "Ver en Mercado Libre" : "Ver en Amazon";
+            const winner = link.getAttribute("data-winner");
+            link.className = isFresh && (winner === "ml" || winner === "amazon") ? `gana ${winner}` : "btn ghost sm";
+            const verbs = link.querySelectorAll("[data-buy-verb]");
+            if (verbs.length > 0) {
+              verbs.forEach((v) => {
+                v.textContent = isFresh ? "Comprar" : "Ver";
+              });
+            } else if (!isFresh) {
+              link.textContent = link.getAttribute("data-buy-link") === "ml" ? "Ver en Mercado Libre" : "Ver en Amazon";
+            }
           });
         });
       })();

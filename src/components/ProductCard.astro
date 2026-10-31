@@ -54,42 +54,42 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
   </div>
   <div class="foot" data-checked={checkedDate}>
     {p.ml && (
-      <div class={verdict === "ml" ? "fila-compra ganadora ml" : "fila-compra"}>
+      <div class="fila-compra" data-winner={verdict === "ml" ? "ml" : undefined}>
         <p class="precio">
           <span class="lab">Mercado Libre</span>
-          <span class="monto num" data-price-amount>{formatArs(p.ml.price)}</span>
-          <span class="precio-actualizando" data-price-stale hidden>Precio en actualización</span>
-          <small data-price-label>{mlFecha ? `precio del ${mlFecha}` : ""}</small>
+          <span class="monto num" data-price-amount hidden>{formatArs(p.ml.price)}</span>
+          <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
+          <small data-price-label hidden>{mlFecha ? `precio del ${mlFecha}` : ""}</small>
         </p>
         {verdict === "ml" ? (
-          <a class="gana ml" data-buy-link="ml" href={p.ml.url} {...ext} {...track("ml", "veredicto")}>
-            <span class="v" data-verdict-text>Mejor opción · mismo precio o menos, llega en días{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
-            <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
+          <a class="btn ghost sm" data-buy-link="ml" data-winner="ml" href={p.ml.url} {...ext} {...track("ml", "veredicto")}>
+            <span class="v" data-verdict-text hidden>Mejor opción · mismo precio o menos, llega en días{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
+            <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
           </a>
         ) : (
           <a class="btn ghost sm" data-buy-link="ml" href={p.ml.url} {...ext} {...track("ml", "alternativa")}>
-            Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} />
+            <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
           </a>
         )}
       </div>
     )}
 
     {p.amazonArs != null && amazon && (
-      <div class={verdict === "amazon" ? "fila-compra ganadora amazon" : "fila-compra"}>
+      <div class="fila-compra" data-winner={verdict === "amazon" ? "amazon" : undefined}>
         <p class="precio">
           <span class="lab">{amzLabel}</span>
-          <span class="monto num" data-price-amount>~{formatArs(p.amazonArs)}</span>
-          <span class="precio-actualizando" data-price-stale hidden>Precio en actualización</span>
-          <small data-price-sub>{amzSub}</small>
+          <span class="monto num" data-price-amount hidden>~{formatArs(p.amazonArs)}</span>
+          <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
+          <small data-price-sub hidden>{amzSub}</small>
         </p>
         {verdict === "amazon" ? (
-          <a class="gana amazon" data-buy-link="amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
-            <span class="v" data-verdict-text>Mejor opción · sale bastante menos, aunque tarda más{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
-            <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={16} /></span>
+          <a class="btn ghost sm" data-buy-link="amazon" data-winner="amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
+            <span class="v" data-verdict-text hidden>Mejor opción · sale bastante menos, aunque tarda más{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
+            <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
           </a>
         ) : (
           <a class="btn ghost sm" data-buy-link="amazon" href={amazon} {...ext} {...track("amazon", "alternativa")}>
-            Comprar en Amazon <Icon name="arrow-up-right" size={16} />
+            <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
           </a>
         )}
       </div>

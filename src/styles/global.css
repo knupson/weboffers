@@ -415,7 +415,9 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .precio { margin: 0; display: grid; gap: 1px; }
 .precio .lab { font-size: 12px; font-weight: 600; color: var(--apagado); }
 .precio .monto { font-family: var(--letra); font-size: 26px; line-height: 1.1; color: var(--amarillo); }
-.precio .monto[hidden], .precio small[hidden], .gana .v[hidden] { display: none; }
+.precio .monto[hidden], .precio small[hidden], .gana .v[hidden], .btn .v[hidden], [data-verdict-text][hidden] { display: none; }
+[data-checked]:not([data-fresh="true"]) :is([data-price-amount], [data-price-label], [data-price-sub], [data-verdict-text]) { display: none; }
+[data-checked][data-fresh="true"] [data-price-stale] { display: none; }
 .precio .precio-actualizando { font: 600 14px/1.3 var(--sans); color: var(--crema-2); }
 .precio .precio-actualizando[hidden] { display: none; }
 .precio small { font-size: 12px; color: var(--apagado); }
@@ -423,7 +425,8 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .gana:hover { filter: brightness(1.08); }
 .gana:active { transform: translateY(1px); }
 .gana .v { font: 700 13px var(--sans); opacity: .9; }
-.gana .cta { display: inline-flex; align-items: center; gap: 8px; font: 400 16px/1.1 var(--letra); }
+.gana .cta, .btn .cta { display: inline-flex; align-items: center; gap: 8px; }
+.gana .cta { font: 400 16px/1.1 var(--letra); }
 .gana.amazon { background: #187a42; color: #fff; box-shadow: inset 0 0 0 3px #187a42, inset 0 0 0 4.5px var(--crema); }
 .gana.ml { background: var(--amarillo); color: var(--esmalte); box-shadow: inset 0 0 0 3px var(--amarillo), inset 0 0 0 4.5px var(--esmalte); }
 .alt { position: relative; z-index: 1; justify-self: center; font-size: 13px; font-weight: 600; color: var(--crema-2); }
