@@ -180,8 +180,9 @@ async function deployOnce(now = new Date(), opts = {}) {
   const hashInput = [raw ?? '', amazonRaw ?? ''].join('\n');
   const hash = createHash('sha256').update(hashInput).digest('hex');
   const last = await readState(stateFile);
-  if (last?.hash === hash) {
-    log('DEPLOY_SKIP los precios no cambiaron desde el último despliegue.');
+  // Sólo omitir cuando coincidan tanto el hash como la fecha ART del último despliegue.
+  if (last?.hash === hash && last?.date === today) {
+    log('DEPLOY_SKIP los precios y la fecha no cambiaron desde el último despliegue.');
     return 'skip';
   }
   try {
