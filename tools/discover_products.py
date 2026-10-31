@@ -39,6 +39,19 @@ MAX_PRICE_USD = 2000.0
 
 SEED_DEPARTMENTS = ("electronics", "pc", "photo", "videogames", "wireless")
 
+# Con --all-departments: todos los departamentos raíz salvo los que no se comparan por modelo
+# (digitales, usados, comida, ropa, coleccionables). Pedido del user 2026-10-31: "traé de todo".
+EXCLUDED_DEPARTMENTS = (
+    "renewed", "apps", "audible", "books", "cds", "vinyl", "coins", "digital", "music",
+    "clothing", "shoes", "jewelry", "collectible", "gift card", "grocery", "gourmet",
+    "handmade", "kindle", "movies", "software", "unique finds",
+)
+
+
+def is_excluded_department(name):
+    low = (name or "").lower()
+    return any(word in low for word in EXCLUDED_DEPARTMENTS)
+
 TARGET_CATEGORY_KEYWORDS = (
     # computers & components
     "computer",
@@ -248,7 +261,7 @@ def fetch_bestseller_categories(parent_category="", base_url=None):
     return payload.get("categories") or []
 
 
-def discover_categories(base_url=None):
+def discover_categories(base_url=None, all_departments=False):
     """Descubre los IDs/paths de categorías tecnológicas relevantes en Amazon US."""
     discovered = []
     seen = set()
@@ -272,7 +285,9 @@ def discover_categories(base_url=None):
             continue
         if cat_id in SEED_DEPARTMENTS:
             seed_to_expand.append((cat_id, cat_name))
-        elif is_relevant_category(cat_name, cat_id):
+        if all_departments and not is_excluded_department(cat_name):
+            add_cat(cat_id, cat_name)
+        elif cat_id not in SEED_DEPARTMENTS and is_relevant_category(cat_name, cat_id):
             add_cat(cat_id, cat_name)
 
     for dept_id, dept_name in seed_to_expand:
@@ -575,16 +590,23 @@ def main(argv=None):
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
     parser.add_argument("--queries", nargs="*", default=[], help="Búsquedas extra en Amazon (/search)")
     parser.add_argument("--scraper-url", default=None)
+    parser.add_argument("--all-departments", action="store_true",
+                        help="Todos los departamentos de Amazon salvo los que no se comparan por modelo")
     args = parser.parse_args(argv)
 
     if not ml_prices.is_configured():
         print("Faltan ML_CLIENT_ID o ML_CLIENT_SECRET en el entorno.", flush=True)
         return 1
     ml_prices.get_token()
+    categories = (discover_categories(base_url=args.scraper_url, all_departments=True)
+                  if args.all_departments else None)
+    if categories is not None:
+        print(f"Categorías a recorrer: {len(categories)}", flush=True)
     discover_products(
         catalog_path=args.catalog,
         output_path=args.output,
         queries=args.queries,
+        categories=categories,
         base_url=args.scraper_url,
     )
     return 0

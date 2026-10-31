@@ -302,3 +302,11 @@ def test_discover_products_checkpoints_every_50_and_supports_queries(tmp_path, m
     assert "Progreso: 20/53 productos procesados." in out
     assert "Progreso: 40/53 productos procesados." in out
     assert "Checkpoint guardado" in out
+
+
+def test_excluded_departments():
+    import discover_products as d
+    assert d.is_excluded_department("Books") and d.is_excluded_department("Amazon Renewed")
+    assert d.is_excluded_department("Clothing, Shoes & Jewelry")
+    assert not d.is_excluded_department("Tools & Home Improvement")
+    assert not d.is_excluded_department("Sports & Outdoors")
