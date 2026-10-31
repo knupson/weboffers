@@ -1,5 +1,6 @@
 // Despliegue diario de Franquicia 400 a Cloudflare con los precios de Mercado Libre y Amazon.
-// Corre a las 07:30 ART. Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_FAIL / DEPLOY_OFF.
+// Corre desde las 07:30 ART esperando que ambos archivos de precios sean del día (reintenta cada 10 min hasta las 11:00 ART).
+// Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_WAIT / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -12,6 +13,8 @@ const WORK_DIR = '/work';
 const STATE_FILE = '/state/last-deploy.json';
 const ART_OFFSET_MS = -3 * 3600e3;   // Argentina no tiene horario de verano
 const DEPLOY_AT_UTC = '10:30:00Z';    // 07:30 ART
+const DEADLINE_UTC = '14:00:00Z';     // 11:00 ART
+const RETRY_INTERVAL_MS = 10 * 60e3;  // 10 minutos
 const ONE_DAY_MS = 86400e3;
 const MAX_SLEEP_MS = 60e3;
 
@@ -31,20 +34,32 @@ function nextRunAt(now) {
   return target;
 }
 
+function deadlineAt(now) {
+  return Date.parse(`${artDate(now)}T${DEADLINE_UTC}`);
+}
+
 function redact(text) {
   const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
   return token ? text.split(token).join('***') : text;
 }
 
 function run(command, args, cwd) {
+  const childEnv = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
   return new Promise((resolve, reject) => {
     execFile(command, args, {
       cwd,
       maxBuffer: 20 * 1024 * 1024,
-      env: { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' },
+      env: childEnv,
     }, (error, stdout, stderr) => {
+      const combined = `${stdout ?? ''}\n${stderr ?? ''}`;
+      for (const line of combined.split('\n')) {
+        if (line.includes('MENOS_DE_100')) {
+          log(`DEPLOY_ALERT ${line.trim()}`);
+        }
+      }
       if (error) {
-        const tail = redact(`${stderr}`.trim().split('\n').slice(-3).join(' | '));
+        const lines = combined.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+        const tail = redact(lines.slice(-3).join(' | '));
         reject(new Error(`${command} ${args.join(' ')} falló (código ${error.code ?? '?'}): ${tail}`));
       } else {
         resolve(stdout);
@@ -61,15 +76,50 @@ async function readState(stateFile = STATE_FILE) {
   }
 }
 
+async function readJsonWithDate(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const data = JSON.parse(raw);
+    return { ok: true, raw, data };
+  } catch (err) {
+    return { ok: false, missing: err?.code === 'ENOENT' };
+  }
+}
+
 async function readOptionalJsonFile(filePath, label) {
   try {
     const raw = await fs.readFile(filePath, 'utf8');
     JSON.parse(raw);
     return raw;
   } catch {
-    log(`DEPLOY_INFO sin ${label} válido; se continúa con el respaldo del catálogo.`);
+    log(`DEPLOY_INFO sin ${label} válido; se omite del directorio de build.`);
     return null;
   }
+}
+
+async function hasBothTodayPrices(now = new Date(), opts = {}) {
+  const outputFile = opts.outputFile ?? OUTPUT_FILE;
+  const amazonOutputFile = opts.amazonOutputFile ?? AMAZON_OUTPUT_FILE;
+  const today = artDate(now);
+  const ml = await readJsonWithDate(outputFile);
+  if (!ml.ok || ml.data?.date !== today) {
+    return {
+      ready: false,
+      reason: !ml.ok
+        ? 'ml-prices.json ausente o inválido'
+        : `ml-prices.json es de ${ml.data?.date} (hoy ${today})`,
+    };
+  }
+  const amz = await readJsonWithDate(amazonOutputFile);
+  if (!amz.ok || amz.data?.date !== today) {
+    return {
+      ready: false,
+      reason: !amz.ok
+        ? 'amazon-prices.json ausente o inválido'
+        : `amazon-prices.json es de ${amz.data?.date} (hoy ${today})`,
+    };
+  }
+  return { ready: true, mlRaw: ml.raw, amazonRaw: amz.raw };
 }
 
 async function syncRepo(workDir = WORK_DIR, runImpl = run) {
@@ -88,6 +138,7 @@ async function deployOnce(now = new Date(), opts = {}) {
   const workDir = opts.workDir ?? WORK_DIR;
   const stateFile = opts.stateFile ?? STATE_FILE;
   const runImpl = opts.runImpl ?? run;
+  const requireBothToday = opts.requireBothToday ?? (now.getTime() < deadlineAt(now));
 
   const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
@@ -95,27 +146,38 @@ async function deployOnce(now = new Date(), opts = {}) {
     log('DEPLOY_OFF faltan CLOUDFLARE_API_TOKEN o CLOUDFLARE_ACCOUNT_ID; no se despliega.');
     return 'off';
   }
-  let raw;
-  try {
-    raw = await fs.readFile(outputFile, 'utf8');
-  } catch {
-    log('DEPLOY_SKIP no existe ml-prices.json todavía.');
-    return 'skip';
-  }
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    log('DEPLOY_SKIP ml-prices.json no es JSON válido.');
-    return 'skip';
-  }
+
   const today = artDate(now);
-  if (data.date !== today) {
-    log(`DEPLOY_SKIP ml-prices.json es de ${data.date}, hoy es ${today}.`);
-    return 'skip';
+  let raw = null;
+  let amazonRaw = null;
+
+  if (requireBothToday) {
+    const ml = await readJsonWithDate(outputFile);
+    if (!ml.ok) {
+      log(ml.missing ? 'DEPLOY_SKIP no existe ml-prices.json todavía.' : 'DEPLOY_SKIP ml-prices.json no es JSON válido.');
+      return 'skip';
+    }
+    if (ml.data?.date !== today) {
+      log(`DEPLOY_SKIP ml-prices.json es de ${ml.data?.date}, hoy es ${today}.`);
+      return 'skip';
+    }
+    const amz = await readJsonWithDate(amazonOutputFile);
+    if (!amz.ok) {
+      log(amz.missing ? 'DEPLOY_SKIP no existe amazon-prices.json todavía.' : 'DEPLOY_SKIP amazon-prices.json no es JSON válido.');
+      return 'skip';
+    }
+    if (amz.data?.date !== today) {
+      log(`DEPLOY_SKIP amazon-prices.json es de ${amz.data?.date}, hoy es ${today}.`);
+      return 'skip';
+    }
+    raw = ml.raw;
+    amazonRaw = amz.raw;
+  } else {
+    raw = await readOptionalJsonFile(outputFile, 'ml-prices.json');
+    amazonRaw = await readOptionalJsonFile(amazonOutputFile, 'amazon-prices.json');
   }
-  const amazonRaw = await readOptionalJsonFile(amazonOutputFile, 'amazon-prices.json');
-  const hashInput = amazonRaw ? `${raw}\n${amazonRaw}` : raw;
+
+  const hashInput = [raw ?? '', amazonRaw ?? ''].join('\n');
   const hash = createHash('sha256').update(hashInput).digest('hex');
   const last = await readState(stateFile);
   if (last?.hash === hash) {
@@ -125,7 +187,12 @@ async function deployOnce(now = new Date(), opts = {}) {
   try {
     await syncRepo(workDir, runImpl);
     await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
-    await fs.writeFile(path.join(workDir, 'data', 'ml-prices.json'), raw);
+    const mlDest = path.join(workDir, 'data', 'ml-prices.json');
+    if (raw) {
+      await fs.writeFile(mlDest, raw);
+    } else {
+      await fs.rm(mlDest, { force: true });
+    }
     const amazonDest = path.join(workDir, 'data', 'amazon-prices.json');
     if (amazonRaw) {
       await fs.writeFile(amazonDest, amazonRaw);
@@ -145,6 +212,35 @@ async function deployOnce(now = new Date(), opts = {}) {
   }
 }
 
+async function deployWithRetry(opts = {}) {
+  const nowFn = opts.nowFn ?? (() => new Date());
+  const sleepFn = opts.sleepFn ?? sleepMs;
+  const deployFn = opts.deployFn ?? deployOnce;
+  const retryIntervalMs = opts.retryIntervalMs ?? RETRY_INTERVAL_MS;
+
+  while (!stopRequested) {
+    const now = nowFn();
+    const deadline = deadlineAt(now);
+    const check = await hasBothTodayPrices(now, opts);
+    if (check.ready) {
+      return await deployFn(now, { ...opts, requireBothToday: true });
+    }
+    if (now.getTime() >= deadline) {
+      log(`DEPLOY_INFO son las 11:00 ART o más (${check.reason}); se despliega igual.`);
+      return await deployFn(now, { ...opts, requireBothToday: false });
+    }
+    const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
+    log(`DEPLOY_WAIT esperando precios del día (${check.reason}); próximo chequeo en ${Math.round(waitMs / 60e3)} min.`);
+    await sleepFn(waitMs);
+  }
+  return 'stopped';
+}
+
+async function sleepMs(ms) {
+  const target = Date.now() + ms;
+  await sleepUntil(target);
+}
+
 async function sleepUntil(timestamp) {
   while (!stopRequested && Date.now() < timestamp) {
     await new Promise((resolve) => setTimeout(resolve, Math.min(MAX_SLEEP_MS, Math.max(0, timestamp - Date.now()))));
@@ -162,7 +258,7 @@ async function main() {
     await sleepUntil(next);
     if (stopRequested) break;
     try {
-      await deployOnce(new Date());
+      await deployWithRetry();
     } catch (error) {
       log(`DEPLOY_FAIL ${redact(String(error.message))}`);
     }
@@ -174,4 +270,13 @@ if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
   main();
 }
 
-export { artDate, nextRunAt, deployOnce };
+export {
+  artDate,
+  nextRunAt,
+  deadlineAt,
+  hasBothTodayPrices,
+  deployOnce,
+  deployWithRetry,
+  RETRY_INTERVAL_MS,
+  DEADLINE_UTC,
+};
