@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Store } from "../config";
-import { buildQuotes, estimateArs, estimateFromAmazon } from "./estimate";
+import { buildQuotes, estimateFromAmazon } from "./estimate";
 
 export interface CatalogEntry {
   asin: string;
@@ -18,12 +18,12 @@ export interface CatalogEntry {
   /** Foto oficial del fabricante, guardada en public/products. Nunca una imagen de Amazon. */
   image?: string;
   imageSource?: string;
-  /** Precio oficial del fabricante, con su fuente. Nunca un precio de Amazon. */
+  /** Precio oficial del fabricante, con su fuente (conservado en el catálogo, no se muestra). */
   listPrice?: ListPrice;
   /** Verificado en Amazon con dirección en Argentina: se puede comprar y enviar. */
   shipsToAr?: { freeShipping: boolean; checked: string };
   /** Publicación más barata en Mercado Libre del mismo modelo, con link de afiliado. */
-  ml?: { price: number; url: string; checked: string };
+  ml?: { price: number; url: string; checked: string; catalogId?: string };
   /**
    * Dónde conviene comprarlo, comparando el total real de Amazon (no publicado) con Mercado Libre.
    * Traerlo sólo conviene si ahorra 10% o más: a igual precio gana Mercado Libre (entrega en días,
@@ -36,8 +36,8 @@ export interface CatalogEntry {
   hot?: string;
   /** Total estimado puesto en casa en pesos al MEP, redondeado a 10.000 ARS. */
   amazonArs?: number | null;
-  /** Fuente del estimado de Amazon: precio diario scrapeado ("amazon") o precio oficial del fabricante ("oficial"). */
-  amazonSource?: "amazon" | "oficial" | null;
+  /** Fuente del estimado de Amazon: únicamente precio diario scrapeado ("amazon") o null. */
+  amazonSource?: "amazon" | null;
   /** Fecha (AAAA-MM-DD) del precio usado para el estimado de Amazon. */
   amazonChecked?: string | null;
 }
@@ -77,8 +77,6 @@ export interface Offers {
   items: OfferItem[];
 }
 
-export const PRICE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-
 const root = process.cwd();
 
 function readJson<T>(rel: string): T | null {
@@ -95,8 +93,8 @@ export interface MlPriceItem {
   /** Link de afiliado a la publicación de ese precio (la más barata del día). */
   url?: string;
   checked: string;
-  verdict: "amazon" | "ml";
-  verdictReason: "precio" | "sinAmazon";
+  verdict?: "amazon" | "ml";
+  verdictReason?: "precio" | "sinAmazon";
 }
 
 export interface MlPrices {
@@ -121,6 +119,22 @@ export interface AmazonPrices {
 
 const VERDICTS: readonly string[] = ["amazon", "ml"];
 const VERDICT_REASONS: readonly string[] = ["precio", "sinAmazon"];
+export const MIN_AMAZON_SAVING = 0.10;
+export const MIN_COMPARABLE_PRODUCTS = 100;
+const ART_OFFSET_MS = -3 * 60 * 60 * 1000;
+
+/** Devuelve la fecha AAAA-MM-DD en hora argentina (UTC-3). */
+export function artDate(now = Date.now()): string {
+  return new Date(now + ART_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** Un relevamiento es vigente sólo si su fecha `checked` (AAAA-MM-DD) coincide con el día de hoy en ART. */
+export function isFreshAmazonDate(checked: unknown, now = Date.now()): checked is string {
+  if (typeof checked !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(checked)) return false;
+  const checkedMs = Date.parse(`${checked}T00:00:00Z`);
+  if (!Number.isFinite(checkedMs) || new Date(checkedMs).toISOString().slice(0, 10) !== checked) return false;
+  return checked === artDate(now);
+}
 
 /** Sólo links https de mercadolibre.com.ar: el archivo viene del worker, no se confía a ciegas. */
 function isMlUrl(value: unknown): value is string {
@@ -137,36 +151,46 @@ function isMlUrl(value: unknown): value is string {
 export const roundArs10k = (n: number) => Math.round(n / 10000) * 10000;
 
 /**
- * Pisa el precio de Mercado Libre del día sobre cada entrada del catálogo que ya tiene `ml`.
- * Sin archivo o sin item para el slug, la entrada sigue igual. No muta el catálogo original.
+ * Cruza el catálogo con `data/ml-prices.json`. Sólo conserva el precio de Mercado Libre
+ * si fue relevado hoy (fecha ART); nunca muestra el `ml.price` del catálogo ni precios de días anteriores.
  */
-export function mergeMlPrices(catalog: CatalogEntry[], prices: MlPrices | null): CatalogEntry[] {
-  if (!prices) return catalog;
-  const items = prices.items ?? {};
+export function mergeMlPrices(
+  catalog: CatalogEntry[],
+  prices: MlPrices | null,
+  now = Date.now(),
+): CatalogEntry[] {
+  const items = prices?.items ?? {};
+  const today = artDate(now);
   return catalog.map((entry) => {
-    if (!entry.ml || !Object.prototype.hasOwnProperty.call(items, entry.slug)) return entry;
+    if (!entry.ml) return entry;
+    if (!prices || !Object.prototype.hasOwnProperty.call(items, entry.slug)) {
+      return { ...entry, ml: undefined };
+    }
     const item = items[entry.slug];
-    if (!item || !Number.isFinite(item.price)) return entry;
+    if (
+      !item ||
+      !Number.isFinite(item.price) ||
+      !(item.price > 0) ||
+      item.checked !== today
+    ) {
+      return { ...entry, ml: undefined };
+    }
     return {
       ...entry,
       ml: {
         ...entry.ml,
         price: item.price,
         url: isMlUrl(item.url) ? item.url : entry.ml.url,
-        checked: item.checked ?? entry.ml.checked,
+        checked: item.checked,
       },
-      verdict: VERDICTS.includes(item.verdict) ? (item.verdict as CatalogEntry["verdict"]) : entry.verdict,
-      verdictReason: VERDICT_REASONS.includes(item.verdictReason)
-        ? (item.verdictReason as CatalogEntry["verdictReason"])
-        : entry.verdictReason,
+      verdict: item.verdict && VERDICTS.includes(item.verdict) ? (item.verdict as CatalogEntry["verdict"]) : entry.verdict,
+      verdictReason:
+        item.verdictReason && VERDICT_REASONS.includes(item.verdictReason)
+          ? (item.verdictReason as CatalogEntry["verdictReason"])
+          : entry.verdictReason,
     };
   });
 }
-
-export const AMAZON_PRICE_MAX_AGE_DAYS = 3;
-export const MIN_AMAZON_SAVING = 0.10;
-const ART_OFFSET_MS = -3 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface PriceComparison {
   verdict: "amazon" | "ml";
@@ -200,20 +224,10 @@ export function comparePrices(
   return { verdict, saving };
 }
 
-/** Un precio diario de Amazon es vigente sólo si `checked` (AAAA-MM-DD) tiene a lo sumo 3 días en ART. */
-export function isFreshAmazonDate(checked: unknown, now = Date.now()): checked is string {
-  if (typeof checked !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(checked)) return false;
-  const checkedMs = Date.parse(`${checked}T00:00:00Z`);
-  if (!Number.isFinite(checkedMs) || new Date(checkedMs).toISOString().slice(0, 10) !== checked) return false;
-  const todayArtStr = new Date(now + ART_OFFSET_MS).toISOString().slice(0, 10);
-  const todayMs = Date.parse(`${todayArtStr}T00:00:00Z`);
-  const ageDays = Math.round((todayMs - checkedMs) / DAY_MS);
-  return ageDays >= 0 && ageDays <= AMAZON_PRICE_MAX_AGE_DAYS;
-}
-
 /**
- * Calcula el estimado en ARS puesto en casa desde el precio diario de Amazon (o el oficial como respaldo),
- * redondeado a 10.000 ARS, junto con la fuente ("amazon" | "oficial"), la fecha y el veredicto recalculado.
+ * Calcula el estimado en ARS puesto en casa únicamente desde el precio diario de Amazon relevado hoy (ART),
+ * redondeado a 10.000 ARS, junto con la fuente ("amazon" | null), la fecha y el veredicto recalculado.
+ * Nunca usa `listPrice` del fabricante ni precios de días anteriores.
  */
 export function mergeAmazonPrices(
   catalog: CatalogEntry[],
@@ -225,7 +239,7 @@ export function mergeAmazonPrices(
   const items = prices?.items ?? {};
   return catalog.map((entry) => {
     let amazonArs: number | null = null;
-    let amazonSource: "amazon" | "oficial" | null = null;
+    let amazonSource: "amazon" | null = null;
     let amazonChecked: string | null = null;
     if (mep && mep > 0) {
       const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
@@ -243,14 +257,6 @@ export function mergeAmazonPrices(
           amazonChecked = scraped.checked;
         }
       }
-      if (amazonArs == null && entry.listPrice) {
-        const est = estimateArs(entry.listPrice, mep, eurUsd);
-        if (est != null && est > 0) {
-          amazonArs = roundArs10k(est);
-          amazonSource = "oficial";
-          amazonChecked = entry.listPrice.checked;
-        }
-      }
     }
     const { verdict } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr: entry.shipsToAr });
     const verdictReason: CatalogEntry["verdictReason"] = entry.asin ? "precio" : "sinAmazon";
@@ -266,32 +272,80 @@ export function mergeAmazonPrices(
 }
 
 /**
- * Sólo se muestran productos con comparación completa: verificados, con ASIN en Amazon,
- * precio en Mercado Libre y estimado de Amazon (scrapeado o precio oficial).
+ * Un producto es comparable (y por lo tanto se muestra) únicamente si:
+ *   - está verificado y tiene ASIN en Amazon,
+ *   - tiene precio en Mercado Libre relevado hoy (fecha ART == hoy ART), y
+ *   - tiene precio en Amazon relevado hoy (fecha ART == hoy ART) convertido a ARS.
  */
 export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now()): boolean {
-  if (!entry.verified || !entry.asin || !entry.ml || !Number.isFinite(entry.ml.price) || !(entry.ml.price > 0)) {
+  const today = artDate(now);
+  if (
+    !entry.verified ||
+    !entry.asin ||
+    !entry.ml ||
+    !Number.isFinite(entry.ml.price) ||
+    !(entry.ml.price > 0) ||
+    entry.ml.checked !== today
+  ) {
     return false;
   }
   if ("amazonArs" in entry) {
-    return typeof entry.amazonArs === "number" && Number.isFinite(entry.amazonArs) && entry.amazonArs > 0;
+    return (
+      typeof entry.amazonArs === "number" &&
+      Number.isFinite(entry.amazonArs) &&
+      entry.amazonArs > 0 &&
+      entry.amazonSource === "amazon" &&
+      entry.amazonChecked === today
+    );
   }
   const items = amazonPrices?.items ?? {};
   const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
-  if (scraped && Number.isFinite(scraped.amount) && scraped.amount > 0 && isFreshAmazonDate(scraped.checked, now)) {
-    return true;
-  }
-  const official = entry.listPrice ? (entry.listPrice.sale ?? entry.listPrice.amount) : 0;
-  return Number.isFinite(official) && official > 0;
+  return Boolean(
+    scraped &&
+      Number.isFinite(scraped.amount) &&
+      scraped.amount > 0 &&
+      isFreshAmazonDate(scraped.checked, now),
+  );
 }
 
-export function loadCatalog(): CatalogEntry[] {
+export function loadMlPrices(): MlPrices | null {
+  return readJson<MlPrices>("data/ml-prices.json");
+}
+
+export function loadCatalog(now = Date.now()): CatalogEntry[] {
   const catalog = readJson<CatalogEntry[]>("data/catalog.json") ?? [];
-  return mergeMlPrices(catalog, readJson<MlPrices>("data/ml-prices.json"));
+  return mergeMlPrices(catalog, loadMlPrices(), now);
 }
 
 export function loadAmazonPrices(): AmazonPrices | null {
   return readJson<AmazonPrices>("data/amazon-prices.json");
+}
+
+/** Determina la fecha común de los archivos de precios del build para `<body data-prices-date>`. */
+export function resolvePricesDate(
+  mlPrices: MlPrices | null,
+  amazonPrices: AmazonPrices | null,
+): string {
+  const mlDate = mlPrices?.date ?? "";
+  const amzDate = amazonPrices?.date ?? "";
+  if (mlDate && amzDate && mlDate === amzDate) return mlDate;
+  return "";
+}
+
+export function loadPricesDate(): string {
+  return resolvePricesDate(loadMlPrices(), loadAmazonPrices());
+}
+
+/** Emite la alerta MENOS_DE_100 en stderr cuando hay menos de 100 productos comparables, sin fallar el build. */
+export function logIfFewProducts(
+  comparableCount: number,
+  logger: (msg: string) => void = console.error,
+): boolean {
+  if (comparableCount < MIN_COMPARABLE_PRODUCTS) {
+    logger(`MENOS_DE_100: ${comparableCount} productos comparables`);
+    return true;
+  }
+  return false;
 }
 
 /** Calcula los slugs comparables aplicando exactamente la misma fusión y cotizaciones que las páginas. */
@@ -303,7 +357,7 @@ export function getComparableSlugs(
   eurUsd: number | null,
   now = Date.now(),
 ): Set<string> {
-  const merged = mergeAmazonPrices(mergeMlPrices(catalog, mlPrices), amazonPrices, mep, eurUsd, now);
+  const merged = mergeAmazonPrices(mergeMlPrices(catalog, mlPrices, now), amazonPrices, mep, eurUsd, now);
   return new Set(merged.filter((p) => isComparable(p, null, now)).map((p) => p.slug));
 }
 
@@ -329,24 +383,34 @@ export async function loadOffers(): Promise<Offers> {
   return readJson<Offers>("data/offers.json") ?? empty;
 }
 
+/** Acepta datos de `offers.json` únicamente si fueron relevados en la misma fecha ART de hoy (sin ventana de 24h). */
 export function freshPrice(item: OfferItem | undefined, now = Date.now()): OfferItem | null {
   if (!item || item.priceUsd == null || !item.priceFetchedAt) return null;
-  const age = now - new Date(item.priceFetchedAt).getTime();
-  return Number.isFinite(age) && age >= 0 && age <= PRICE_MAX_AGE_MS ? item : null;
+  const fetchedMs = Date.parse(item.priceFetchedAt);
+  return Number.isFinite(fetchedMs) && artDate(fetchedMs) === artDate(now) ? item : null;
 }
 
-export async function loadProducts() {
+let loggedComparableAlert = false;
+
+export async function loadProducts(now = Date.now()) {
   const [catalog, offers, quotes] = await Promise.all([
-    Promise.resolve(loadCatalog()),
+    Promise.resolve(loadCatalog(now)),
     loadOffers(),
     buildQuotes(),
   ]);
   const mep = quotes.mep ?? offers.rates?.mep ?? null;
-  const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd);
+  const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd, now);
   const byKey = new Map(offers.items.map((i) => [`${i.store}:${i.asin}`, i]));
   const products = withAmazon.map((entry) => {
     const offer = byKey.get(`${entry.store}:${entry.asin}`);
-    return { ...entry, offer, price: freshPrice(offer) };
+    return { ...entry, offer, price: freshPrice(offer, now) };
   });
+
+  if (!loggedComparableAlert) {
+    loggedComparableAlert = true;
+    const comparableCount = products.filter((p) => isComparable(p, null, now)).length;
+    logIfFewProducts(comparableCount);
+  }
+
   return { products, offers };
 }
