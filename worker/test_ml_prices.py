@@ -54,10 +54,10 @@ def route_get(routes):
     return get
 
 
-def test_amazon_formula_matches_site_three_inputs():
-    # Mismos 3 valores que en src/lib/calc/calc.test.ts (<100 con envío 45, 100..400 sin envío, >400 con aranceles).
-    assert [ml_prices.amazon_total_usd(u) for u in (80, 250, 550)] == [154.45, 312.5, 756.47]
-    assert [ml_prices.estimate_from_amazon(u, 1200) for u in (80, 250, 550)] == [185340, 375000, 907764]
+def test_amazon_formula_matches_site_inputs_including_100_50_boundary():
+    # Mismos valores que en src/lib/calc/calc.test.ts (<100 con envío 45, caso borde 100.50 de IVA, 100..400, >400).
+    assert [ml_prices.amazon_total_usd(u) for u in (80, 100.5, 250, 550)] == [154.45, 125.63, 312.5, 756.47]
+    assert [ml_prices.estimate_from_amazon(u, 1200) for u in (80, 100.5, 250, 550)] == [185340, 150756, 375000, 907764]
 
 
 def test_verdict_amazon_needs_ten_percent_and_free_shipping():

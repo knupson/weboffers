@@ -117,7 +117,8 @@ def amazon_total_usd(usd, shipping_usd=None):
         shipping_usd = shipping_for(usd)
     excess = max(0.0, usd - 400.0)
     iva_base = usd + shipping_usd + excess * 0.35 + excess * 0.03
-    calc_total = _js_round(iva_base * 1.21 * 100) / 100
+    iva = iva_base * 0.21
+    calc_total = _js_round((iva_base + iva) * 100) / 100
     return _js_round((calc_total + usd * AMAZON_EXTRA) * 100) / 100
 
 
@@ -126,7 +127,8 @@ def estimate_from_amazon(usd, mep):
     shipping_usd = shipping_for(usd)
     excess = max(0.0, usd - 400.0)
     iva_base = usd + shipping_usd + excess * 0.35 + excess * 0.03
-    calc_total = _js_round(iva_base * 1.21 * 100) / 100
+    iva = iva_base * 0.21
+    calc_total = _js_round((iva_base + iva) * 100) / 100
     return int(_js_round((calc_total + usd * AMAZON_EXTRA) * mep))
 
 

@@ -87,8 +87,10 @@ describe('calculate', () => {
     expect(result.totalArsTarjeta).toBe(Math.round(total * 4 * 100) / 100);
   });
 
-  it('matches worker amazon_total_usd and estimate_from_amazon on the same 3 inputs', () => {
-    expect([80, 250, 550].map(amazonTotalUsd)).toEqual([154.45, 312.5, 756.47]);
-    expect([80, 250, 550].map((u) => estimateFromAmazon(u, 1200))).toEqual([185340, 375000, 907764]);
+  it('matches worker amazon_total_usd and estimate_from_amazon including 100.50 rounding boundary', () => {
+    expect([80, 100.5, 250, 550].map(amazonTotalUsd)).toEqual([154.45, 125.63, 312.5, 756.47]);
+    expect([80, 100.5, 250, 550].map((u) => estimateFromAmazon(u, 1200))).toEqual([
+      185340, 150756, 375000, 907764,
+    ]);
   });
 });
