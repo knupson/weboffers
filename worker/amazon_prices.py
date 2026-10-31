@@ -14,9 +14,10 @@ import publish
 
 ART = timezone(timedelta(hours=-3))
 START_HOUR = 7
-BULK_MAX = 10
+# En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
+BULK_MAX = 5
 MAX_AGE_DAYS = 3
-TIMEOUT = 60
+TIMEOUT = 240
 PAUSE_SECONDS = 3.0
 STORE_CURRENCY = {"US": "USD", "ES": "EUR"}
 
