@@ -20,7 +20,10 @@ export interface CatalogEntry {
   imageSource?: string;
   /** Precio oficial del fabricante, con su fuente (conservado en el catálogo, no se muestra). */
   listPrice?: ListPrice;
-  /** Verificado en Amazon con dirección en Argentina: se puede comprar y enviar. */
+  /**
+   * Verificado en Amazon con dirección en Argentina: se puede comprar y enviar.
+   * En el build sólo sobrevive si su `checked` es hoy (ART); sin relevamiento de hoy se descarta.
+   */
   shipsToAr?: { freeShipping: boolean; checked: string };
   /** Envío a Argentina relevado hoy (ART) por el worker: false = Amazon no lo envía, no se muestra. */
   shipsToArToday?: boolean;
@@ -275,9 +278,13 @@ export function mergeAmazonPrices(
     }
     // El relevamiento de envío de hoy (ART) pisa el shipsToAr del catálogo.
     const ar = scraped?.shipsToAr;
-    if (ar && isFreshAmazonDate(ar.checked, now)) {
+    if (ar && typeof ar.ships === "boolean" && isFreshAmazonDate(ar.checked, now)) {
       shipsToAr = { freeShipping: ar.free === true, checked: ar.checked };
       shipsToArToday = ar.ships === true;
+    } else if (!entry.shipsToAr || !isFreshAmazonDate(entry.shipsToAr.checked, now)) {
+      // Sin relevamiento de hoy no se sostiene la confirmación del catálogo: un freeShipping
+      // viejo nunca le da el veredicto a Amazon. shipsToArToday queda undefined (desconocido).
+      shipsToAr = undefined;
     }
     const { verdict: compared } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr });
     // Sin envío confirmado no hay ganador: el catálogo no guarda veredicto.

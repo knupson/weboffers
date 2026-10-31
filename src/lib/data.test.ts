@@ -227,9 +227,9 @@ describe("mergeAmazonPrices & isComparable", () => {
       generatedAt: "2026-10-31T10:00:00Z",
       date: "2026-10-31",
       items: {
-        "amazon-mas-caro": { amount: 250, currency: "USD", checked: "2026-10-31" },
-        "amazon-gana": { amount: 250, currency: "USD", checked: "2026-10-31" },
-        "sin-envio-gratis": { amount: 250, currency: "USD", checked: "2026-10-31" },
+        "amazon-mas-caro": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: true, checked: "2026-10-31" } },
+        "amazon-gana": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: true, checked: "2026-10-31" } },
+        "sin-envio-gratis": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: false, checked: "2026-10-31" } },
       },
     };
     const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
@@ -295,6 +295,11 @@ describe("shipsToAr relevado hoy (amazon-ar)", () => {
       shipsToAr: { freeShipping: false, checked: "2026-10-01" },
       ml: { price: 500000, url: "https://meli.la/3", checked: "2026-10-31" },
     }),
+    base({
+      slug: "catalogo-hoy",
+      shipsToAr: { freeShipping: true, checked: "2026-10-31" },
+      ml: { price: 500000, url: "https://meli.la/4", checked: "2026-10-31" },
+    }),
   ];
   const amazonPrices: AmazonPrices = {
     generatedAt: "2026-10-31T10:00:00Z",
@@ -303,6 +308,7 @@ describe("shipsToAr relevado hoy (amazon-ar)", () => {
       "envia": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: true, checked: "2026-10-31" } },
       "no-envia": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: false, free: null, checked: "2026-10-31" } },
       "relevado-ayer": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: true, free: true, checked: "2026-10-30" } },
+      "catalogo-hoy": { amount: 250, currency: "USD", checked: "2026-10-31" },
     },
   };
 
@@ -312,9 +318,12 @@ describe("shipsToAr relevado hoy (amazon-ar)", () => {
     expect(merged[0].shipsToArToday).toBe(true);
     expect(merged[1].shipsToAr).toEqual({ freeShipping: false, checked: "2026-10-31" });
     expect(merged[1].shipsToArToday).toBe(false);
-    // Relevamiento de ayer: no pisa el shipsToAr del catálogo ni setea shipsToArToday.
-    expect(merged[2].shipsToAr).toEqual({ freeShipping: false, checked: "2026-10-01" });
+    // Relevamiento de ayer + catálogo viejo: sin relevamiento de hoy se descarta el shipsToAr.
+    expect(merged[2].shipsToAr).toBeUndefined();
     expect(merged[2].shipsToArToday).toBeUndefined();
+    // Catálogo con checked de hoy y sin relevamiento: se conserva, pero shipsToArToday no se inventa.
+    expect(merged[3].shipsToAr).toEqual({ freeShipping: true, checked: "2026-10-31" });
+    expect(merged[3].shipsToArToday).toBeUndefined();
   });
 
   it("isComparable es false cuando shipsToArToday es false, aunque tenga los dos precios de hoy", () => {
@@ -324,6 +333,66 @@ describe("shipsToAr relevado hoy (amazon-ar)", () => {
     expect(isComparable(merged[2], null, NOW_OCT_31)).toBe(true);
     expect(isComparable({ ...merged[0], shipsToArToday: false }, null, NOW_OCT_31)).toBe(false);
     expect(isComparable({ ...merged[0], shipsToArToday: true }, null, NOW_OCT_31)).toBe(true);
+  });
+
+  it("sin shipsToAr de hoy se descarta el shipsToAr viejo del catálogo y Amazon no recibe el veredicto", () => {
+    const entries: CatalogEntry[] = [
+      base({
+        slug: "viejo-gratis",
+        shipsToAr: { freeShipping: true, checked: "2026-10-30" }, // viejo: ya no confirma nada
+        ml: { price: 500000, url: "https://meli.la/1", checked: "2026-10-31" },
+      }),
+    ];
+    const amazonPrices: AmazonPrices = {
+      generatedAt: "2026-10-31T10:00:00Z",
+      date: "2026-10-31",
+      items: { "viejo-gratis": { amount: 250, currency: "USD", checked: "2026-10-31" } }, // precio de hoy, sin shipsToAr
+    };
+    const [merged] = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
+    expect(merged.shipsToAr).toBeUndefined();
+    expect(merged.shipsToArToday).toBeUndefined();
+    // Amazon sale 380000 vs ML 500000 (más de 10% más barato) pero sin envío confirmado no hay ganador.
+    expect(merged.amazonArs).toBe(380000);
+    expect(merged.verdict).toBeUndefined();
+    expect(comparePrices(merged)).toEqual({ verdict: "sinEnvio", saving: 120000 });
+  });
+
+  it("shipsToAr del catálogo se conserva sólo si su checked es hoy ART (y da el veredicto)", () => {
+    const entries: CatalogEntry[] = [
+      base({
+        slug: "catalogo-hoy-gratis",
+        shipsToAr: { freeShipping: true, checked: "2026-10-31" },
+        ml: { price: 500000, url: "https://meli.la/1", checked: "2026-10-31" },
+      }),
+    ];
+    const amazonPrices: AmazonPrices = {
+      generatedAt: "2026-10-31T10:00:00Z",
+      date: "2026-10-31",
+      items: { "catalogo-hoy-gratis": { amount: 250, currency: "USD", checked: "2026-10-31" } },
+    };
+    const [merged] = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
+    expect(merged.shipsToAr).toEqual({ freeShipping: true, checked: "2026-10-31" });
+    expect(merged.shipsToArToday).toBeUndefined(); // desconocido: no se muestra ni se oculta
+    expect(merged.verdict).toBe("amazon"); // freeShipping vigente hoy + ahorro >= 10%
+  });
+
+  it("shipsToAr de hoy con ships inválido (no booleano) se trata como ausencia: se descarta el catálogo viejo", () => {
+    const entries: CatalogEntry[] = [
+      base({
+        slug: "ar-invalido",
+        shipsToAr: { freeShipping: true, checked: "2026-10-30" },
+        ml: { price: 500000, url: "https://meli.la/1", checked: "2026-10-31" },
+      }),
+    ];
+    const amazonPrices = {
+      generatedAt: "2026-10-31T10:00:00Z",
+      date: "2026-10-31",
+      items: { "ar-invalido": { amount: 250, currency: "USD", checked: "2026-10-31", shipsToAr: { ships: null, free: null, checked: "2026-10-31" } as never } },
+    } as AmazonPrices;
+    const [merged] = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
+    expect(merged.shipsToAr).toBeUndefined();
+    expect(merged.shipsToArToday).toBeUndefined();
+    expect(merged.verdict).toBeUndefined();
   });
 });
 
