@@ -91,7 +91,7 @@ def test_skips_without_catalog_id_and_unverified(tmp_path, monkeypatch):
     assert data["date"] == "2026-10-30"
 
 
-def test_keeps_previous_value_when_items_call_fails(tmp_path, monkeypatch):
+def test_omits_product_when_items_call_fails(tmp_path, monkeypatch):
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
     monkeypatch.setattr(ml_prices.requests, "get", route_get({
         "MLA111/items": requests.ConnectionError("caído"),
@@ -103,32 +103,28 @@ def test_keeps_previous_value_when_items_call_fails(tmp_path, monkeypatch):
     prices.write_text(json.dumps(previous), encoding="utf-8")
     assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
     items = json.loads(prices.read_text(encoding="utf-8"))["items"]
-    assert items["monitor"]["price"] == 480000
+    assert "monitor" not in items
     assert items["ssd"]["price"] == 700000
 
 
-def test_verdict_from_scraped_amazon_price_and_fallback_to_official_and_es(tmp_path, monkeypatch):
+def test_verdict_from_scraped_amazon_price_ignores_list_price_and_handles_es(tmp_path, monkeypatch):
     catalog = [
         {"slug": "scraped", "name": "Scraped", "store": "US", "verified": True, "verdict": "ml",
          "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True},
          "listPrice": {"amount": 400, "currency": "USD"}},
-        {"slug": "oficial-sale", "name": "Oficial Sale", "store": "US", "verified": True, "verdict": "ml",
+        {"slug": "solo-listprice", "name": "Solo ListPrice", "store": "US", "verified": True, "verdict": "ml",
          "ml": {"price": 500000, "catalogId": "MLA222"}, "shipsToAr": {"freeShipping": True},
          "listPrice": {"amount": 400, "sale": 250, "currency": "USD"}},
-        {"slug": "oficial-base", "name": "Oficial Base", "store": "US", "verified": True, "verdict": "amazon",
-         "ml": {"price": 320000, "catalogId": "MLA333"}, "shipsToAr": {"freeShipping": True},
-         "listPrice": {"amount": 250, "currency": "USD"}},
         {"slug": "espana", "name": "España", "store": "ES", "verified": True, "verdict": "amazon",
          "ml": {"price": 500000, "catalogId": "MLA444"}, "shipsToAr": {"freeShipping": True},
          "listPrice": {"amount": 200, "currency": "EUR"}},
-        {"slug": "sin-fuente", "name": "Sin fuente", "store": "US", "verified": True, "verdict": "ml",
+        {"slug": "sin-fuente", "name": "Sin fuente", "store": "US", "verified": True,
          "ml": {"price": 500000, "catalogId": "MLA555"}, "shipsToAr": {"freeShipping": True}},
     ]
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
     monkeypatch.setattr(ml_prices.requests, "get", route_get({
         "MLA111/items": items_response([{"price": 500000}]),
         "MLA222/items": items_response([{"price": 500000}]),
-        "MLA333/items": items_response([{"price": 320000}]),
         "MLA444/items": items_response([{"price": 500000}]),
         "MLA555/items": items_response([{"price": 500000}]),
     }))
@@ -140,27 +136,23 @@ def test_verdict_from_scraped_amazon_price_and_fallback_to_official_and_es(tmp_p
     prices = tmp_path / "ml-prices.json"
     ml_prices.maybe_refresh(catalog, prices, amazon_prices, MEP, AFTER_SEVEN)
     items = json.loads(prices.read_text(encoding="utf-8"))["items"]
-    # 250 USD -> total 312.50 USD -> 312.500 ARS vs 500.000 ARS (ahorro 37.5% >= 10%) -> gana amazon
+    # 250 USD -> total 312.50 USD -> 312.500 ARS (~310.000 ARS) vs 500.000 ARS -> gana amazon
     assert items["scraped"]["verdict"] == "amazon"
     assert items["scraped"]["verdictReason"] == "precio"
     assert items["scraped"]["amazonSource"] == "amazon"
-    # Sin scrapeado usa listPrice.sale = 250 USD -> total 312.50 USD -> gana amazon con fuente "oficial"
-    assert items["oficial-sale"]["verdict"] == "amazon"
-    assert items["oficial-sale"]["verdictReason"] == "precio"
-    assert items["oficial-sale"]["amazonSource"] == "oficial"
-    # 250 USD -> 312.500 ARS vs 320.000 ARS (ahorro 2.3% < 10%) -> gana ml
-    assert items["oficial-base"]["verdict"] == "ml"
-    assert items["oficial-base"]["verdictReason"] == "precio"
-    assert items["oficial-base"]["amazonSource"] == "oficial"
+    # Sin precio scrapeado del día, nunca usa listPrice
+    assert items["solo-listprice"]["verdict"] == "ml"
+    assert items["solo-listprice"]["verdictReason"] == "existing"
+    assert "amazonSource" not in items["solo-listprice"]
     # Tienda ES sin tasa EUR->USD: conserva el veredicto del catálogo
     assert items["espana"]["verdict"] == "amazon"
     assert items["espana"]["verdictReason"] == "existing"
     assert "amazonSource" not in items["espana"]
-    # Sin scrapeado ni listPrice: conserva el veredicto del catálogo
+    # Sin scrapeado ni veredicto en catálogo: cae a "ml"
     assert items["sin-fuente"]["verdict"] == "ml"
     assert items["sin-fuente"]["verdictReason"] == "existing"
 
-    # Con tasa EUR/USD, los productos de España también calculan su veredicto (scrapeado EUR y listPrice EUR).
+    # Con tasa EUR/USD, los productos de España calculan su veredicto desde el precio scrapeado del día.
     prices_es = tmp_path / "ml-prices-es.json"
     ml_prices.maybe_refresh(catalog, prices_es, amazon_prices, MEP, AFTER_SEVEN, eur_usd=1.25)
     items_es = json.loads(prices_es.read_text(encoding="utf-8"))["items"]
@@ -230,19 +222,19 @@ def test_merge_applies_daily_price_and_verdict(tmp_path):
     assert ml_prices.merge(CATALOG, tmp_path / "no-existe.json") is CATALOG
 
 
-def test_load_amazon_prices_discards_stale_checked_older_than_3_days(tmp_path, monkeypatch):
+def test_load_amazon_prices_accepts_only_today_checked(tmp_path, monkeypatch):
     amazon_prices = tmp_path / "amazon-prices.json"
     amazon_prices.write_text(json.dumps({"date": "2026-10-30", "items": {
-        "fresco": {"amount": 250, "currency": "USD", "checked": "2026-10-27"},   # exactamente 3 días
-        "vencido": {"amount": 250, "currency": "USD", "checked": "2026-10-26"},  # 4 días -> descartado
+        "hoy": {"amount": 250, "currency": "USD", "checked": "2026-10-30"},
+        "ayer": {"amount": 250, "currency": "USD", "checked": "2026-10-29"},
         "sin-fecha": {"amount": 250, "currency": "USD"},
     }}), encoding="utf-8")
     loaded = ml_prices.load_amazon_prices(amazon_prices, AFTER_SEVEN)
-    assert set(loaded) == {"fresco"}
+    assert set(loaded) == {"hoy"}
 
-    # En maybe_refresh un precio vencido (>3 días) no alimenta el veredicto: cae a listPrice o conserva el previo.
+    # En maybe_refresh un precio del día anterior no alimenta el veredicto.
     catalog = [
-        {"slug": "vencido", "name": "Vencido", "store": "US", "verified": True, "verdict": "ml",
+        {"slug": "ayer", "name": "Ayer", "store": "US", "verified": True, "verdict": "ml",
          "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True}},
     ]
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
@@ -252,6 +244,6 @@ def test_load_amazon_prices_discards_stale_checked_older_than_3_days(tmp_path, m
     prices = tmp_path / "ml-prices.json"
     ml_prices.maybe_refresh(catalog, prices, amazon_prices, MEP, AFTER_SEVEN)
     items = json.loads(prices.read_text(encoding="utf-8"))["items"]
-    assert items["vencido"]["verdict"] == "ml"
-    assert items["vencido"]["verdictReason"] == "existing"
-    assert "amazonSource" not in items["vencido"]
+    assert items["ayer"]["verdict"] == "ml"
+    assert items["ayer"]["verdictReason"] == "existing"
+    assert "amazonSource" not in items["ayer"]

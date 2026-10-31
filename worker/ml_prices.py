@@ -17,7 +17,6 @@ API_BASE_URL = "https://api.mercadolibre.com"
 SITE_ID = "MLA"
 ART = timezone(timedelta(hours=-3))
 START_HOUR = 7
-MAX_AMAZON_AGE_DAYS = 3
 MIN_SAVING = 0.10
 AMAZON_EXTRA = 0.04
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
@@ -173,13 +172,7 @@ def _today_art(now=None):
 
 
 def _is_fresh_checked(checked, today_date):
-    if not isinstance(checked, str):
-        return False
-    try:
-        age_days = (today_date - date.fromisoformat(checked)).days
-    except ValueError:
-        return False
-    return 0 <= age_days <= MAX_AMAZON_AGE_DAYS
+    return isinstance(checked, str) and checked == today_date.isoformat()
 
 
 def load_amazon_prices(path, now=None):
@@ -199,7 +192,7 @@ def load_amazon_prices(path, now=None):
 
 
 def _resolve_amazon_usd(product, amazon_items, eur_usd=None):
-    """Devuelve (usd, source, checked) desde amazon-prices.json vigente o listPrice oficial."""
+    """Devuelve (usd, source, checked) sólo desde amazon-prices.json del día."""
     slug = product.get("slug")
     scraped = amazon_items.get(slug) if isinstance(amazon_items, dict) else None
     if isinstance(scraped, dict) and _is_valid_amount(scraped.get("amount")):
@@ -208,21 +201,11 @@ def _resolve_amazon_usd(product, amazon_items, eur_usd=None):
             return float(scraped["amount"]), "amazon", scraped.get("checked")
         if currency == "EUR" and _is_valid_amount(eur_usd):
             return float(scraped["amount"]) * float(eur_usd), "amazon", scraped.get("checked")
-    lp = product.get("listPrice")
-    if isinstance(lp, dict):
-        sale = lp.get("sale")
-        official = sale if _is_valid_amount(sale) else lp.get("amount")
-        if _is_valid_amount(official):
-            currency = lp.get("currency")
-            if currency == "USD":
-                return float(official), "oficial", lp.get("checked")
-            if currency == "EUR" and _is_valid_amount(eur_usd):
-                return float(official) * float(eur_usd), "oficial", lp.get("checked")
     return None, None, None
 
 
 def resolve_amazon_total(product, amazon_items, eur_usd=None):
-    """Devuelve (total_usd, source) desde amazon-prices.json o listPrice oficial."""
+    """Devuelve (total_usd, source) desde amazon-prices.json del día."""
     usd, source, _ = _resolve_amazon_usd(product, amazon_items, eur_usd)
     if usd is None:
         return None, None
@@ -251,9 +234,6 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     if not is_configured():
         print("Mercado Libre: faltan ML_CLIENT_ID o ML_CLIENT_SECRET; se omite.", flush=True)
         return False
-    old_items = previous.get("items", {}) if isinstance(previous, dict) else {}
-    if not isinstance(old_items, dict):
-        old_items = {}
     amazon_items = load_amazon_prices(amazon_prices_path, local.date())
     items = {}
     for product in catalog:
@@ -268,16 +248,14 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
                 raise ValueError("sin publicaciones nuevas")
             price, item_id = best
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-            print(f"Mercado Libre: no se pudo consultar {slug} ({type(exc).__name__}); se conserva el valor anterior.", flush=True)
-            if slug in old_items:
-                items[slug] = old_items[slug]
+            print(f"Mercado Libre: no se pudo consultar {slug} ({type(exc).__name__}); se omite.", flush=True)
             pause()
             continue
         price = int(round(price))
         amazon_ars, source, _ = estimate_amazon_ars(product, amazon_items, mep, eur_usd)
         if amazon_ars is None:
-            # Sin estimado de Amazon o sin cotización no hay cálculo: queda el veredicto del catálogo.
-            verdict, reason = product.get("verdict"), "existing"
+            # Sin estimado de Amazon del día o sin cotización no hay cálculo: queda el veredicto del catálogo.
+            verdict, reason = product.get("verdict") or "ml", "existing"
         else:
             free_shipping = (product.get("shipsToAr") or {}).get("freeShipping")
             verdict, reason = verdict_from_ars(price, amazon_ars, free_shipping), "precio"
@@ -301,13 +279,19 @@ def merge(catalog, prices_path, amazon_prices_path=None, mep=None, eur_usd=None,
     if not isinstance(items, dict) and not amazon_items and not compute_estimates:
         return catalog
     items = items if isinstance(items, dict) else {}
+    today_date = _today_art(now) if now is not None else None
     merged = []
     for product in catalog:
         slug = product.get("slug")
         item = items.get(slug)
         price = item.get("price") if isinstance(item, dict) else None
+        checked = item.get("checked") if isinstance(item, dict) else None
+        if checked is None and isinstance(data, dict):
+            checked = data.get("date")
+        fresh_ml = True if today_date is None else _is_fresh_checked(checked, today_date)
         has_ml = (
             bool(product.get("ml"))
+            and fresh_ml
             and not isinstance(price, bool)
             and isinstance(price, (int, float))
             and math.isfinite(price)
@@ -318,15 +302,19 @@ def merge(catalog, prices_path, amazon_prices_path=None, mep=None, eur_usd=None,
         out = {**product}
         if has_ml:
             out["ml"] = {**product["ml"], "price": price}
+            if isinstance(checked, str):
+                out["ml"]["checked"] = checked
             if item.get("verdict") in ("amazon", "ml"):
                 out["verdict"] = item["verdict"]
-            if not compute_estimates and item.get("amazonSource") in ("amazon", "oficial"):
+            if not compute_estimates and item.get("amazonSource") == "amazon":
                 out["amazonSource"] = item["amazonSource"]
+        elif compute_estimates:
+            out["ml"] = None
         if compute_estimates:
-            amazon_ars, source, checked = estimate_amazon_ars(out, amazon_items, mep, eur_usd)
+            amazon_ars, source, amz_checked = estimate_amazon_ars(out, amazon_items, mep, eur_usd)
             out["amazonArs"] = amazon_ars
             out["amazonSource"] = source
-            out["amazonChecked"] = checked
+            out["amazonChecked"] = amz_checked
             ml_price = (out.get("ml") or {}).get("price")
             if _is_valid_amount(ml_price) and amazon_ars is not None:
                 free_shipping = (out.get("shipsToAr") or {}).get("freeShipping")

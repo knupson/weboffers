@@ -1,6 +1,6 @@
 """Precios diarios de Amazon vía el scraper interno en la red de Docker."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import math
 import os
@@ -16,7 +16,6 @@ ART = timezone(timedelta(hours=-3))
 START_HOUR = 7
 # En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
 BULK_MAX = 5
-MAX_AGE_DAYS = 3
 TIMEOUT = 240
 PAUSE_SECONDS = 3.0
 STORE_CURRENCY = {"US": "USD", "ES": "EUR"}
@@ -59,25 +58,6 @@ def valid_price(raw_item, store):
     return amount, expected_currency
 
 
-def keep_previous(prev_item, store, today_date):
-    """Conserva el precio previo si es válido y tiene a lo sumo 3 días de antigüedad."""
-    expected_currency = STORE_CURRENCY.get(store)
-    if not expected_currency or not isinstance(prev_item, dict):
-        return None
-    if prev_item.get("currency") != expected_currency or not is_valid_amount(prev_item.get("amount")):
-        return None
-    checked = prev_item.get("checked")
-    if not isinstance(checked, str):
-        return None
-    try:
-        age_days = (today_date - date.fromisoformat(checked)).days
-    except ValueError:
-        return None
-    if 0 <= age_days <= MAX_AGE_DAYS:
-        return {"amount": prev_item["amount"], "currency": expected_currency, "checked": checked}
-    return None
-
-
 def fetch_bulk(base_url, asins, store):
     resp = requests.get(
         f"{base_url}/products/bulk",
@@ -106,10 +86,6 @@ def maybe_refresh(catalog, prices_path, now):
     if not base_url:
         return False
 
-    old_items = previous.get("items", {}) if isinstance(previous, dict) else {}
-    if not isinstance(old_items, dict):
-        old_items = {}
-
     candidates = [
         p for p in catalog
         if p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY
@@ -121,7 +97,6 @@ def maybe_refresh(catalog, prices_path, now):
 
     items = {}
     ok = 0
-    kept = 0
     missing = 0
     first_call = True
 
@@ -134,7 +109,7 @@ def maybe_refresh(catalog, prices_path, now):
             try:
                 fetched = fetch_bulk(base_url, [p["asin"] for p in chunk], store)
             except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-                print(f"Amazon: falló lote {store} ({type(exc).__name__}); se intenta conservar previos.", flush=True)
+                print(f"Amazon: falló lote {store} ({type(exc).__name__}); se omite.", flush=True)
                 fetched = {}
 
             for product in chunk:
@@ -145,15 +120,10 @@ def maybe_refresh(catalog, prices_path, now):
                     items[slug] = {"amount": amount, "currency": currency, "checked": today}
                     ok += 1
                 else:
-                    retained = keep_previous(old_items.get(slug), store, today_date)
-                    if retained is not None:
-                        items[slug] = retained
-                        kept += 1
-                    else:
-                        missing += 1
+                    missing += 1
 
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
-    print(f"Amazon: precios actualizados, ok={ok}, previos={kept}, faltantes={missing}.", flush=True)
+    print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
     if candidates and ok == 0:
-        print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (previos={kept}, faltantes={missing}).", flush=True)
+        print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
     return True

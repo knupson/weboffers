@@ -86,27 +86,25 @@ def test_rejects_invalid_or_out_of_stock_items(bad_item):
     assert amazon_prices.valid_price(bad_item, "US") is None
 
 
-def test_keeps_previous_up_to_three_days_and_drops_older(tmp_path, monkeypatch, capsys):
+def test_does_not_keep_previous_when_scraper_fails(tmp_path, monkeypatch, capsys):
     catalog = [
-        {"slug": "fresco", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "ayer", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
         {"slug": "tres-dias", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "cuatro-dias", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}},
     ]
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({
         "generatedAt": "2026-10-29T10:00:00Z",
         "date": "2026-10-29",
         "items": {
+            "ayer": {"amount": 180, "currency": "USD", "checked": "2026-10-29"},
             "tres-dias": {"amount": 200, "currency": "USD", "checked": "2026-10-27"},
-            "cuatro-dias": {"amount": 300, "currency": "USD", "checked": "2026-10-26"},
         },
     }), encoding="utf-8")
 
     monkeypatch.setattr(amazon_prices.requests, "get", Mock(side_effect=requests.ConnectionError("caído")))
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
     items = json.loads(out.read_text(encoding="utf-8"))["items"]
-    assert set(items) == {"tres-dias"}
-    assert items["tres-dias"]["amount"] == 200
+    assert items == {}
     stdout = capsys.readouterr().out
     assert "AMAZON_SCRAPER_FAIL" in stdout
 
