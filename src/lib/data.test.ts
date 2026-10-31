@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { mergeMlPrices, type CatalogEntry, type MlPrices } from './data';
+import {
+  isComparable,
+  mergeAmazonPrices,
+  mergeMlPrices,
+  roundArs10k,
+  type AmazonPrices,
+  type CatalogEntry,
+  type MlPrices,
+} from './data';
 
 const base = (over: Partial<CatalogEntry>): CatalogEntry => ({
   asin: 'B000000000', store: 'US', slug: 'producto', name: 'Producto', brand: 'Marca',
@@ -76,5 +84,68 @@ describe('mergeMlPrices', () => {
     expect(m.ml?.price).toBe(200);
     expect(m.verdict).toBe('amazon');
     expect(m.verdictReason).toBe('precio');
+  });
+});
+
+describe('mergeAmazonPrices & isComparable', () => {
+  it('redondea a múltiplos de 10.000 ARS', () => {
+    expect(roundArs10k(585000)).toBe(590000);
+    expect(roundArs10k(584999)).toBe(580000);
+  });
+
+  it('usa precio scrapeado en USD o EUR y cae a listPrice oficial cuando falta', () => {
+    const entries: CatalogEntry[] = [
+      base({
+        slug: 'scraped-usd',
+        ml: { price: 500000, url: 'https://meli.la/1', checked: '2026-10-30' },
+        listPrice: { amount: 400, currency: 'USD', source: 'https://x.test', checked: '2026-10-01' },
+      }),
+      base({
+        slug: 'scraped-eur',
+        store: 'ES',
+        ml: { price: 500000, url: 'https://meli.la/2', checked: '2026-10-30' },
+      }),
+      base({
+        slug: 'fallback-oficial',
+        ml: { price: 500000, url: 'https://meli.la/3', checked: '2026-10-30' },
+        listPrice: { amount: 300, sale: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-15' },
+      }),
+      base({
+        slug: 'sin-fuente',
+        ml: { price: 500000, url: 'https://meli.la/4', checked: '2026-10-30' },
+      }),
+      base({
+        slug: 'sin-ml',
+        listPrice: { amount: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-15' },
+      }),
+      base({
+        slug: 'sin-asin',
+        asin: '',
+        ml: { price: 500000, url: 'https://meli.la/5', checked: '2026-10-30' },
+        listPrice: { amount: 250, currency: 'USD', source: 'https://x.test', checked: '2026-10-15' },
+      }),
+    ];
+    const amazonPrices: AmazonPrices = {
+      generatedAt: '2026-10-31T10:00:00Z',
+      date: '2026-10-31',
+      items: {
+        'scraped-usd': { amount: 250, currency: 'USD', checked: '2026-10-31' },
+        'scraped-eur': { amount: 200, currency: 'EUR', checked: '2026-10-31' },
+      },
+    };
+    const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25);
+    // 250 USD @ 1200 MEP -> 375.000 -> redondeado a 10.000 = 380.000
+    expect(merged[0]).toMatchObject({ amazonArs: 380000, amazonSource: 'amazon', amazonChecked: '2026-10-31' });
+    // 200 EUR * 1.25 = 250 USD @ 1200 MEP -> 380.000
+    expect(merged[1]).toMatchObject({ amazonArs: 380000, amazonSource: 'amazon', amazonChecked: '2026-10-31' });
+    // listPrice.sale = 250 USD @ 1200 MEP -> 380.000
+    expect(merged[2]).toMatchObject({ amazonArs: 380000, amazonSource: 'oficial', amazonChecked: '2026-10-15' });
+    expect(merged[3]).toMatchObject({ amazonArs: null, amazonSource: null, amazonChecked: null });
+
+    expect(merged.filter((p) => isComparable(p)).map((p) => p.slug)).toEqual([
+      'scraped-usd',
+      'scraped-eur',
+      'fallback-oficial',
+    ]);
   });
 });

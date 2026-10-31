@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Store } from "../config";
+import { buildQuotes, estimateArs, estimateFromAmazon } from "./estimate";
 
 export interface CatalogEntry {
   asin: string;
@@ -33,6 +34,12 @@ export interface CatalogEntry {
   verdictReason?: "precio" | "sinAmazon";
   /** Fecha (AAAA-MM-DD) en que entró a "Lo más vendido" de Mercado Libre. */
   hot?: string;
+  /** Total estimado puesto en casa en pesos al MEP, redondeado a 10.000 ARS. */
+  amazonArs?: number | null;
+  /** Fuente del estimado de Amazon: precio diario scrapeado ("amazon") o precio oficial del fabricante ("oficial"). */
+  amazonSource?: "amazon" | "oficial" | null;
+  /** Fecha (AAAA-MM-DD) del precio usado para el estimado de Amazon. */
+  amazonChecked?: string | null;
 }
 
 export interface ListPrice {
@@ -99,6 +106,19 @@ export interface MlPrices {
   items: Record<string, MlPriceItem>;
 }
 
+/** Precio diario de Amazon por slug (data/amazon-prices.json). Lo escribe el worker; nunca se publica en USD/EUR. */
+export interface AmazonPriceItem {
+  amount: number;
+  currency: "USD" | "EUR";
+  checked: string;
+}
+
+export interface AmazonPrices {
+  generatedAt: string;
+  date: string;
+  items: Record<string, AmazonPriceItem>;
+}
+
 const VERDICTS: readonly string[] = ["amazon", "ml"];
 const VERDICT_REASONS: readonly string[] = ["precio", "sinAmazon"];
 
@@ -112,6 +132,9 @@ function isMlUrl(value: unknown): value is string {
     return false;
   }
 }
+
+/** Redondea un monto en pesos al múltiplo de 10.000 ARS más cercano. */
+export const roundArs10k = (n: number) => Math.round(n / 10000) * 10000;
 
 /**
  * Pisa el precio de Mercado Libre del día sobre cada entrada del catálogo que ya tiene `ml`.
@@ -140,9 +163,89 @@ export function mergeMlPrices(catalog: CatalogEntry[], prices: MlPrices | null):
   });
 }
 
+/**
+ * Calcula el estimado en ARS puesto en casa desde el precio diario de Amazon (o el oficial como respaldo),
+ * redondeado a 10.000 ARS, junto con la fuente ("amazon" | "oficial") y la fecha.
+ */
+export function mergeAmazonPrices(
+  catalog: CatalogEntry[],
+  prices: AmazonPrices | null,
+  mep: number | null,
+  eurUsd: number | null,
+): CatalogEntry[] {
+  const items = prices?.items ?? {};
+  return catalog.map((entry) => {
+    if (mep && mep > 0) {
+      const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+      if (
+        scraped &&
+        Number.isFinite(scraped.amount) &&
+        scraped.amount > 0 &&
+        (scraped.currency === "USD" || scraped.currency === "EUR")
+      ) {
+        const toUsd = scraped.currency === "EUR" ? eurUsd : 1;
+        if (toUsd && toUsd > 0) {
+          return {
+            ...entry,
+            amazonArs: roundArs10k(estimateFromAmazon(scraped.amount * toUsd, mep)),
+            amazonSource: "amazon",
+            amazonChecked: scraped.checked,
+          };
+        }
+      }
+      if (entry.listPrice) {
+        const est = estimateArs(entry.listPrice, mep, eurUsd);
+        if (est != null && est > 0) {
+          return {
+            ...entry,
+            amazonArs: roundArs10k(est),
+            amazonSource: "oficial",
+            amazonChecked: entry.listPrice.checked,
+          };
+        }
+      }
+    }
+    return {
+      ...entry,
+      amazonArs: null,
+      amazonSource: null,
+      amazonChecked: null,
+    };
+  });
+}
+
+/**
+ * Sólo se muestran productos con comparación completa: verificados, con ASIN en Amazon,
+ * precio en Mercado Libre y estimado de Amazon (scrapeado o precio oficial).
+ */
+export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null): boolean {
+  if (!entry.verified || !entry.asin || !entry.ml || !Number.isFinite(entry.ml.price) || !(entry.ml.price > 0)) {
+    return false;
+  }
+  if ("amazonArs" in entry) {
+    return typeof entry.amazonArs === "number" && Number.isFinite(entry.amazonArs) && entry.amazonArs > 0;
+  }
+  const items = amazonPrices?.items ?? {};
+  const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+  if (scraped && Number.isFinite(scraped.amount) && scraped.amount > 0) return true;
+  const official = entry.listPrice ? (entry.listPrice.sale ?? entry.listPrice.amount) : 0;
+  return Number.isFinite(official) && official > 0;
+}
+
 export function loadCatalog(): CatalogEntry[] {
   const catalog = readJson<CatalogEntry[]>("data/catalog.json") ?? [];
   return mergeMlPrices(catalog, readJson<MlPrices>("data/ml-prices.json"));
+}
+
+export function loadAmazonPrices(): AmazonPrices | null {
+  return readJson<AmazonPrices>("data/amazon-prices.json");
+}
+
+/** Slugs comparables para filtrar el sitemap en astro.config.mjs. */
+export function loadComparableSlugs(): Set<string> {
+  const catalog = loadCatalog();
+  const amazonPrices = loadAmazonPrices();
+  return new Set(catalog.filter((p) => isComparable(p, amazonPrices)).map((p) => p.slug));
 }
 
 /** El build puede traer offers.json desde una URL (R2) o desde el archivo local. */
@@ -168,9 +271,15 @@ export function freshPrice(item: OfferItem | undefined, now = Date.now()): Offer
 }
 
 export async function loadProducts() {
-  const [catalog, offers] = await Promise.all([Promise.resolve(loadCatalog()), loadOffers()]);
+  const [catalog, offers, quotes] = await Promise.all([
+    Promise.resolve(loadCatalog()),
+    loadOffers(),
+    buildQuotes(),
+  ]);
+  const mep = quotes.mep ?? offers.rates?.mep ?? null;
+  const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd);
   const byKey = new Map(offers.items.map((i) => [`${i.store}:${i.asin}`, i]));
-  const products = catalog.map((entry) => {
+  const products = withAmazon.map((entry) => {
     const offer = byKey.get(`${entry.store}:${entry.asin}`);
     return { ...entry, offer, price: freshPrice(offer) };
   });

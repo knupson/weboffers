@@ -4,7 +4,7 @@ import ProductCard from "../../components/ProductCard.astro";
 import Icon from "../../components/Icon.astro";
 import { SITE } from "../../config";
 import { loadGuias, linkify } from "../../lib/guias";
-import { loadProducts } from "../../lib/data";
+import { isComparable, loadProducts } from "../../lib/data";
 
 export async function getStaticPaths() {
   const { products } = await loadProducts();
@@ -13,7 +13,7 @@ export async function getStaticPaths() {
     params: { slug: g.slug },
     props: {
       g,
-      related: g.related.map((s) => products.find((p) => p.slug === s && p.verified)).filter((p) => p != null),
+      related: g.related.map((s) => products.find((p) => p.slug === s && isComparable(p))).filter((p) => p != null),
       otras: guias.filter((o) => o.slug !== g.slug),
     },
   }));

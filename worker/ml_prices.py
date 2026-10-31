@@ -232,24 +232,37 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
     return True
 
 
-def merge(catalog, prices_path):
+def merge(catalog, prices_path, amazon_prices_path=None):
     """Catálogo con el precio y veredicto de Mercado Libre del día (igual que mergeMlPrices del sitio)."""
     data = load_json(prices_path, None)
     items = data.get("items") if isinstance(data, dict) else None
-    if not isinstance(items, dict):
+    amazon_items = load_amazon_prices(amazon_prices_path) if amazon_prices_path else {}
+    if not isinstance(items, dict) and not amazon_items:
         return catalog
+    items = items if isinstance(items, dict) else {}
     merged = []
     for product in catalog:
-        item = items.get(product.get("slug"))
+        slug = product.get("slug")
+        item = items.get(slug)
         price = item.get("price") if isinstance(item, dict) else None
-        if not product.get("ml") or isinstance(price, bool) or not isinstance(price, (int, float)) \
-                or not math.isfinite(price):
+        has_ml = (
+            bool(product.get("ml"))
+            and not isinstance(price, bool)
+            and isinstance(price, (int, float))
+            and math.isfinite(price)
+        )
+        scraped = amazon_items.get(slug)
+        if not has_ml and not scraped:
             merged.append(product)
             continue
-        product = {**product, "ml": {**product["ml"], "price": price}}
-        if item.get("verdict") in ("amazon", "ml"):
-            product["verdict"] = item["verdict"]
-        if item.get("amazonSource") in ("amazon", "oficial"):
-            product["amazonSource"] = item["amazonSource"]
-        merged.append(product)
+        out = {**product}
+        if has_ml:
+            out["ml"] = {**product["ml"], "price": price}
+            if item.get("verdict") in ("amazon", "ml"):
+                out["verdict"] = item["verdict"]
+            if item.get("amazonSource") in ("amazon", "oficial"):
+                out["amazonSource"] = item["amazonSource"]
+        if scraped and "amazonSource" not in out:
+            out["amazonSource"] = "amazon"
+        merged.append(out)
     return merged

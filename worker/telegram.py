@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 import html
 import json
+import math
 import os
 from pathlib import Path
 
@@ -33,9 +34,39 @@ def save_state(path, state):
     path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _valid_number(value):
+    return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) and value > 0
+
+
+def _has_amazon_estimate(product):
+    if product.get("amazonSource") in ("amazon", "oficial"):
+        return True
+    if _valid_number(product.get("amazonArs")):
+        return True
+    lp = product.get("listPrice")
+    if isinstance(lp, dict) and lp.get("currency") in ("USD", "EUR"):
+        sale = lp.get("sale")
+        return _valid_number(sale if _valid_number(sale) else lp.get("amount"))
+    return False
+
+
+def is_comparable(product):
+    """Misma regla que isComparable en src/lib/data.ts: verificado, con ASIN, precio en ML y estimado de Amazon."""
+    asin = product.get("asin")
+    ml = product.get("ml")
+    return bool(
+        product.get("verified") is True
+        and isinstance(asin, str)
+        and asin.strip()
+        and isinstance(ml, dict)
+        and _valid_number(ml.get("price"))
+        and _has_amazon_estimate(product)
+    )
+
+
 def pick(catalog, posted):
-    """El próximo producto verificado que no salió todavía; con foto primero. Al agotarse, vuelve a empezar."""
-    candidates = [p for p in catalog if p.get("verified")]
+    """El próximo producto comparable que no salió todavía; con foto primero. Al agotarse, vuelve a empezar."""
+    candidates = [p for p in catalog if is_comparable(p)]
     fresh = [p for p in candidates if p["slug"] not in posted] or candidates
     fresh.sort(key=lambda p: p.get("image") is None)
     return fresh[0] if fresh else None

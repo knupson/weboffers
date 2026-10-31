@@ -1,10 +1,10 @@
 ---
 import Base from "../../layouts/Base.astro";
 import Catalog from "../../components/Catalog.astro";
-import { loadProducts } from "../../lib/data";
+import { isComparable, loadProducts } from "../../lib/data";
 
 const { products } = await loadProducts();
-const shown = products.filter((p) => p.verified);
+const shown = products.filter((p) => isComparable(p));
 ---
 
 <Base title="Productos" description="Hardware de Amazon que entra en la franquicia de USD 400, con el costo final para Argentina.">

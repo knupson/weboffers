@@ -5,10 +5,10 @@ import ProductCard from "../components/ProductCard.astro";
 import QuickCalc from "../components/QuickCalc.tsx";
 import Icon from "../components/Icon.astro";
 import { CATEGORY_ART, SEARCHES, SITE, SOCIAL } from "../config";
-import { loadProducts } from "../lib/data";
+import { isComparable, loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
-const shown = products.filter((p) => p.verified);
+const shown = products.filter((p) => isComparable(p));
 // Lo más vendido de Mercado Libre va en su sección; el resto, en el catálogo de abajo.
 const hot = shown.filter((p) => p.hot);
 const rest = shown.filter((p) => !p.hot);

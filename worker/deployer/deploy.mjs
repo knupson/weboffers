@@ -1,4 +1,4 @@
-// Despliegue diario de Franquicia 400 a Cloudflare con los precios de Mercado Libre.
+// Despliegue diario de Franquicia 400 a Cloudflare con los precios de Mercado Libre y Amazon.
 // Corre a las 07:30 ART. Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -7,6 +7,7 @@ import path from 'node:path';
 
 const REPO_URL = 'https://github.com/knupson/weboffers.git';
 const OUTPUT_FILE = '/app/output/ml-prices.json';
+const AMAZON_OUTPUT_FILE = '/app/output/amazon-prices.json';
 const WORK_DIR = '/work';
 const STATE_FILE = '/state/last-deploy.json';
 const ART_OFFSET_MS = -3 * 3600e3;   // Argentina no tiene horario de verano
@@ -60,6 +61,17 @@ async function readState() {
   }
 }
 
+async function readOptionalJsonFile(filePath, label) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    JSON.parse(raw);
+    return raw;
+  } catch {
+    log(`DEPLOY_INFO sin ${label} válido; se continúa con el respaldo del catálogo.`);
+    return null;
+  }
+}
+
 async function syncRepo() {
   const hasRepo = await fs.access(path.join(WORK_DIR, '.git')).then(() => true, () => false);
   if (hasRepo) {
@@ -96,16 +108,21 @@ async function deployOnce(now = new Date()) {
     log(`DEPLOY_SKIP ml-prices.json es de ${data.date}, hoy es ${today}.`);
     return 'skip';
   }
-  const hash = createHash('sha256').update(raw).digest('hex');
+  const amazonRaw = await readOptionalJsonFile(AMAZON_OUTPUT_FILE, 'amazon-prices.json');
+  const hashInput = amazonRaw ? `${raw}\n${amazonRaw}` : raw;
+  const hash = createHash('sha256').update(hashInput).digest('hex');
   const last = await readState();
   if (last?.hash === hash) {
-    log('DEPLOY_SKIP ml-prices.json no cambió desde el último despliegue.');
+    log('DEPLOY_SKIP los precios no cambiaron desde el último despliegue.');
     return 'skip';
   }
   try {
     await syncRepo();
     await fs.mkdir(path.join(WORK_DIR, 'data'), { recursive: true });
     await fs.writeFile(path.join(WORK_DIR, 'data', 'ml-prices.json'), raw);
+    if (amazonRaw) {
+      await fs.writeFile(path.join(WORK_DIR, 'data', 'amazon-prices.json'), amazonRaw);
+    }
     await run('npm', ['ci'], WORK_DIR);
     await run('npm', ['run', 'build'], WORK_DIR);
     await run('npx', ['--yes', 'wrangler', 'deploy'], WORK_DIR);

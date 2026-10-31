@@ -1,25 +1,38 @@
 ---
 import Icon from "./Icon.astro";
-import { amazonUrl, artFor, STORE_LABEL } from "../config";
+import { amazonUrl, artFor } from "../config";
 import { brandLogo } from "../lib/brands";
-import { formatArs, formatUsd, formatStamp } from "../lib/format";
-import type { CatalogEntry, OfferItem } from "../lib/data";
+import { formatArs } from "../lib/format";
+import { roundArs10k, type CatalogEntry, type OfferItem } from "../lib/data";
 
 interface Props {
   product: CatalogEntry & { price: OfferItem | null; offer?: OfferItem };
 }
 
-// Una sola tarjeta para todo el catálogo: precio en pesos, veredicto y el botón de compra que conviene.
-// El detalle (precio de lista, calculadora, desglose) vive en la ficha.
+// Dos filas en pesos con el mismo peso visual: Mercado Libre y el estimado de Amazon puesto en casa,
+// cada una con su propio botón de compra. Nunca se muestra el precio en USD/EUR de Amazon.
 const { product: p } = Astro.props;
 const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
 const free = p.shipsToAr?.freeShipping === true;
-// Sin ASIN: Amazon no lo envía a Argentina o no tiene el mismo modelo, así que no hay link a Amazon.
 const amazon = p.asin ? amazonUrl(p.asin, p.store) : null;
-const sinAmazon = !amazon || p.verdictReason === "sinAmazon";
-const fecha = p.ml?.checked.split("-").reverse().slice(0, 2).join("/");
-const verdict = p.ml ? p.verdict ?? "ml" : null;
+const mlFecha = p.ml?.checked.split("-").reverse().slice(0, 2).join("/");
+const amzFecha = p.amazonChecked?.split("-").reverse().slice(0, 2).join("/");
+const amzLabel = p.store === "ES" ? "Traerlo de España" : "Traerlo de EE.UU.";
+const amzSub =
+  p.amazonSource === "oficial"
+    ? `puesto en tu casa, estimado con el precio oficial de ${p.brand}`
+    : amzFecha
+      ? `puesto en tu casa, estimado al ${amzFecha}`
+      : "puesto en tu casa, estimado";
+const verdict = p.verdict ?? "ml";
+const rawDiff =
+  p.ml && p.amazonArs
+    ? verdict === "amazon"
+      ? p.ml.price - p.amazonArs
+      : p.amazonArs - p.ml.price
+    : 0;
+const saving = rawDiff >= 5000 ? roundArs10k(rawDiff) : 0;
 const track = (tienda: string, origen: string) => ({
   "data-umami-event": tienda === "ml" ? "mercadolibre" : "amazon",
   "data-umami-event-tienda": tienda === "ml" ? "ML" : p.store,
@@ -46,41 +59,44 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
     <p class="sum">{p.summary}</p>
   </div>
   <div class="foot">
-    {p.price && (
-      <p class="precio">
-        <span class="lab">En {STORE_LABEL[p.store]}</span>
-        <span class="monto num">{formatUsd(p.price.priceUsd as number)}</span>
-        <small>al {formatStamp(p.price.priceFetchedAt as string)}</small>
-      </p>
-    )}
     {p.ml && (
-      <p class="precio">
-        <span class="lab">En Argentina</span>
-        <span class="monto num">{formatArs(p.ml.price)}</span>
-        <small>Mercado Libre, {fecha}</small>
-      </p>
+      <div class={verdict === "ml" ? "fila-compra ganadora ml" : "fila-compra"}>
+        <p class="precio">
+          <span class="lab">Mercado Libre</span>
+          <span class="monto num">{formatArs(p.ml.price)}</span>
+          <small>{mlFecha ? `precio de hoy, ${mlFecha}` : "precio de hoy"}</small>
+        </p>
+        {verdict === "ml" ? (
+          <a class="gana ml" href={p.ml.url} {...ext} {...track("ml", "veredicto")}>
+            <span class="v">Mejor opción · mismo precio o menos, llega en días{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
+            <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
+          </a>
+        ) : (
+          <a class="btn ghost sm" href={p.ml.url} {...ext} {...track("ml", "alternativa")}>
+            Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} />
+          </a>
+        )}
+      </div>
     )}
 
-    {verdict === "amazon" && (
-      <>
-        <a class="gana amazon" href={amazon!} {...ext} {...track("amazon", "veredicto")}>
-          <span class="v">Mejor opción · sale bastante menos, aunque tarda más</span>
-          <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={16} /></span>
-        </a>
-        <a class="alt" href={p.ml!.url} {...ext} {...track("ml", "alternativa")}>o verlo en Mercado Libre</a>
-      </>
-    )}
-    {verdict === "ml" && (
-      <>
-        <a class="gana ml" href={p.ml!.url} {...ext} {...track("ml", "veredicto")}>
-          <span class="v">{sinAmazon ? "Mejor opción · Amazon no lo envía a Argentina" : "Mejor opción · mismo precio o menos, llega en días"}</span>
-          <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
-        </a>
-        {!sinAmazon && <a class="alt" href={amazon!} {...ext} {...track("amazon", "alternativa")}>o verlo en Amazon</a>}
-      </>
-    )}
-    {!verdict && (
-      <a class="btn" href={amazon ?? "#"} {...ext} {...track("amazon", "tarjeta")}>Ver precio en Amazon <Icon name="arrow-up-right" size={16} /></a>
+    {p.amazonArs != null && amazon && (
+      <div class={verdict === "amazon" ? "fila-compra ganadora amazon" : "fila-compra"}>
+        <p class="precio">
+          <span class="lab">{amzLabel}</span>
+          <span class="monto num">~{formatArs(p.amazonArs)}</span>
+          <small>{amzSub}</small>
+        </p>
+        {verdict === "amazon" ? (
+          <a class="gana amazon" href={amazon} {...ext} {...track("amazon", "veredicto")}>
+            <span class="v">Mejor opción · sale bastante menos, aunque tarda más{saving > 0 ? ` · Ahorrás ~${formatArs(saving)}` : ""}</span>
+            <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={16} /></span>
+          </a>
+        ) : (
+          <a class="btn ghost sm" href={amazon} {...ext} {...track("amazon", "alternativa")}>
+            Comprar en Amazon <Icon name="arrow-up-right" size={16} />
+          </a>
+        )}
+      </div>
     )}
 
     <a class="costo" href={`/productos/${p.slug}/`}>Ver la cuenta completa</a>

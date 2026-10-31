@@ -6,26 +6,43 @@ import Icon from "../../components/Icon.astro";
 import { amazonUrl, artFor, SITE, STORE_LABEL } from "../../config";
 import { brandLogo } from "../../lib/brands";
 import { formatArs } from "../../lib/format";
-import { loadProducts } from "../../lib/data";
+import { isComparable, loadProducts, roundArs10k } from "../../lib/data";
 
 export async function getStaticPaths() {
   const { products, offers } = await loadProducts();
-  const shown = products.filter((p) => p.verified);
-  return shown.map((product) => ({
+  const comparable = products.filter((p) => isComparable(p));
+  return products.map((product) => ({
     params: { slug: product.slug },
     props: {
       product,
+      comparable: isComparable(product),
       rates: offers.rates,
-      related: shown.filter((o) => o.slug !== product.slug && o.category === product.category).slice(0, 3),
+      related: comparable.filter((o) => o.slug !== product.slug && o.category === product.category).slice(0, 3),
     },
   }));
 }
 
-const { product: p, rates, related } = Astro.props;
+const { product: p, comparable, rates, related } = Astro.props;
 const buy = p.asin ? amazonUrl(p.asin, p.store) : null;
-const sinAmazon = !buy || p.verdictReason === "sinAmazon";
 const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
+const mlFecha = p.ml?.checked.split("-").reverse().slice(0, 2).join("/");
+const amzFecha = p.amazonChecked?.split("-").reverse().slice(0, 2).join("/");
+const amzLabel = p.store === "ES" ? "Traerlo de España" : "Traerlo de EE.UU.";
+const amzSub =
+  p.amazonSource === "oficial"
+    ? `puesto en tu casa, estimado con el precio oficial de ${p.brand}`
+    : amzFecha
+      ? `puesto en tu casa, estimado al ${amzFecha}`
+      : "puesto en tu casa, estimado";
+const verdict = p.verdict ?? "ml";
+const rawDiff =
+  p.ml && p.amazonArs
+    ? verdict === "amazon"
+      ? p.ml.price - p.amazonArs
+      : p.amazonArs - p.ml.price
+    : 0;
+const saving = rawDiff >= 5000 ? roundArs10k(rawDiff) : 0;
 
 const specs: Array<[string, string]> = [
   ["Marca", p.brand],
@@ -35,104 +52,131 @@ const specs: Array<[string, string]> = [
 ];
 ---
 
-<Base
-  title={`${p.name}: precio en Argentina, ¿Amazon o Mercado Libre?`}
-  description={p.ml ? `${p.name} en Argentina: ${formatArs(p.ml.price)} en Mercado Libre. ${(p.verdict ?? "ml") === "amazon" ? "Traerlo de Amazon sale bastante menos puesto en tu casa." : "Traerlo de Amazon no te ahorra: conviene comprarlo acá."} ${p.summary}` : `${p.summary} Calculá cuánto te sale traerlo de Amazon puesto en tu casa.`}
-  jsonLd={[
-    {
-      "@type": "Product",
-      name: p.name,
-      brand: { "@type": "Brand", name: p.brand },
-      description: p.summary,
-      category: p.category,
-      ...(p.asin ? { sku: p.asin } : {}),
-      ...(p.image ? { image: `${SITE.url}${p.image}` } : {}),
-      ...(p.ml
-        ? { offers: { "@type": "Offer", price: p.ml.price, priceCurrency: "ARS", availability: "https://schema.org/InStock", itemCondition: "https://schema.org/NewCondition", url: `${SITE.url}/productos/${p.slug}/`, priceValidUntil: p.ml.checked.replace(/^(\d{4})/, (y) => String(Number(y) + 1)) } }
-        : {}),
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Productos", item: `${SITE.url}/productos/` },
-        { "@type": "ListItem", position: 2, name: p.name, item: `${SITE.url}/productos/${p.slug}/` },
-      ],
-    },
-  ]}
->
-  <div class="wrap">
-    <nav class="crumbs" aria-label="Ubicación">
-      <a href="/productos/">Productos</a><span aria-hidden="true">/</span><span>{p.category}</span>
-    </nav>
-    <div class="pdp">
-      <div>
-        <div class="media">
-          {photo ? <img class="photo" src={photo} alt={p.name} /> : <img src={artFor(p)} alt="" width="900" height="658" />}
-          <span class="badge">
-            {logo ? <svg viewBox={logo.viewBox} style={logo.ratio === 1 ? "height:24px;aspect-ratio:1" : `aspect-ratio:${logo.ratio}`} role="img" aria-label={p.brand}><path d={logo.path} /></svg> : p.brand}
-          </span>
+{!comparable ? (
+  <html lang="es-AR">
+    <head>
+      <meta charset="utf-8" />
+      <title>Redirigiendo a Productos…</title>
+      <meta name="robots" content="noindex" />
+      <link rel="canonical" href={`${SITE.url}/productos/`} />
+      <meta http-equiv="refresh" content="0;url=/productos/" />
+    </head>
+    <body>
+      <p><a href="/productos/">Ir a Productos</a></p>
+    </body>
+  </html>
+) : (
+  <Base
+    title={`${p.name}: precio en Argentina, ¿Amazon o Mercado Libre?`}
+    description={`${p.name} en Argentina: ${formatArs(p.ml!.price)} en Mercado Libre vs ~${formatArs(p.amazonArs!)} trayéndolo de Amazon puesto en tu casa. ${verdict === "amazon" ? "Traerlo de Amazon sale bastante menos puesto en tu casa." : "Traerlo de Amazon no te ahorra: conviene comprarlo acá."} ${p.summary}`}
+    jsonLd={[
+      {
+        "@type": "Product",
+        name: p.name,
+        brand: { "@type": "Brand", name: p.brand },
+        description: p.summary,
+        category: p.category,
+        ...(p.asin ? { sku: p.asin } : {}),
+        ...(p.image ? { image: `${SITE.url}${p.image}` } : {}),
+        ...(p.ml
+          ? { offers: { "@type": "Offer", price: p.ml.price, priceCurrency: "ARS", availability: "https://schema.org/InStock", itemCondition: "https://schema.org/NewCondition", url: `${SITE.url}/productos/${p.slug}/`, priceValidUntil: p.ml.checked.replace(/^(\d{4})/, (y) => String(Number(y) + 1)) } }
+          : {}),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Productos", item: `${SITE.url}/productos/` },
+          { "@type": "ListItem", position: 2, name: p.name, item: `${SITE.url}/productos/${p.slug}/` },
+        ],
+      },
+    ]}
+  >
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Ubicación">
+        <a href="/productos/">Productos</a><span aria-hidden="true">/</span><span>{p.category}</span>
+      </nav>
+      <div class="pdp">
+        <div>
+          <div class="media">
+            {photo ? <img class="photo" src={photo} alt={p.name} /> : <img src={artFor(p)} alt="" width="900" height="658" />}
+            <span class="badge">
+              {logo ? <svg viewBox={logo.viewBox} style={logo.ratio === 1 ? "height:24px;aspect-ratio:1" : `aspect-ratio:${logo.ratio}`} role="img" aria-label={p.brand}><path d={logo.path} /></svg> : p.brand}
+            </span>
+          </div>
+          {photo ? (
+            !p.price?.imageUrl && p.imageSource && <p class="ilus">Foto: <a href={p.imageSource} rel="noopener nofollow" target="_blank">{p.brand}</a></p>
+          ) : (
+            <p class="ilus">Ilustración de la categoría. La foto real del producto está en Amazon.</p>
+          )}
+          <h1>{p.name}</h1>
+          <p class="lead">{p.summary}</p>
+          <dl class="specs">
+            {specs.map(([k, v]) => (
+              <div><dt>{k}</dt><dd>{v}</dd></div>
+            ))}
+          </dl>
         </div>
-        {photo ? (
-          !p.price?.imageUrl && p.imageSource && <p class="ilus">Foto: <a href={p.imageSource} rel="noopener nofollow" target="_blank">{p.brand}</a></p>
-        ) : (
-          <p class="ilus">Ilustración de la categoría. La foto real del producto está en Amazon.</p>
-        )}
-        <h1>{p.name}</h1>
-        <p class="lead">{p.summary}</p>
-        <dl class="specs">
-          {specs.map(([k, v]) => (
-            <div><dt>{k}</dt><dd>{v}</dd></div>
-          ))}
-        </dl>
-      </div>
 
-      <div class="buybox">
-        <div class="buy">
-          {p.ml && (
-            <p class="precio">
-              <span class="lab">En Argentina</span>
-              <span class="monto num">{formatArs(p.ml.price)}</span>
-              <small>Mercado Libre, consultado el {p.ml.checked.split("-").reverse().join("/")}</small>
-            </p>
-          )}
-          {p.verdict === "amazon" && p.ml && (
-            <>
-              <a class="gana amazon" href={buy!} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
-                <span class="v">Mejor opción: Amazon. Puesto en tu casa sale bastante menos, aunque tarda más.</span>
-                <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={18} /></span>
-              </a>
-              <a class="alt" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o verlo en Mercado Libre</a>
-            </>
-          )}
-          {(p.verdict ?? "ml") === "ml" && p.ml && (
-            <>
-              <a class="gana ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
-                <span class="v">{sinAmazon ? "Mejor opción: Mercado Libre. Amazon no lo envía a Argentina con el mismo modelo." : "Mejor opción: Mercado Libre. Mismo precio o menos, llega en días, sin aduana y con garantía local."}</span>
-                <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={18} /></span>
-              </a>
-              {!sinAmazon && <a class="alt" href={buy!} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">o verlo en Amazon</a>}
-            </>
-          )}
-          {!p.ml && buy && (
-            <a class="btn lg" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha">Ver en {STORE_LABEL[p.store]} <Icon name="arrow-up-right" size={18} /></a>
-          )}
-          <p class="fine">Comparamos el total que cobra Amazon con envío e impuestos contra el precio nuevo más barato del mismo modelo en Mercado Libre. Para tu cuenta exacta, pegá abajo el precio de Amazon de hoy. {SITE.disclosure}</p>
-        </div>
-        <div id="calculadora" style="scroll-margin-top: 96px">
-        <Calculator client:visible buildRates={rates} initialFob={p.price?.priceUsd ?? null} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={buy ? { url: buy, store: p.store, slug: p.slug } : undefined} />
+        <div class="buybox">
+          <div class="buy">
+            {p.ml && (
+              <div class={verdict === "ml" ? "fila-compra ganadora ml" : "fila-compra"}>
+                <p class="precio">
+                  <span class="lab">Mercado Libre</span>
+                  <span class="monto num">{formatArs(p.ml.price)}</span>
+                  <small>{mlFecha ? `precio de hoy, ${mlFecha}` : "precio de hoy"}</small>
+                </p>
+                {verdict === "ml" ? (
+                  <a class="gana ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-tienda="ML" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
+                    <span class="v">Mejor opción: Mercado Libre. Mismo precio o menos, llega en días, sin aduana y con garantía local.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
+                    <span class="cta">Comprar en Mercado Libre <Icon name="arrow-up-right" size={18} /></span>
+                  </a>
+                ) : (
+                  <a class="btn ghost sm" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-tienda="ML" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">
+                    Comprar en Mercado Libre <Icon name="arrow-up-right" size={16} />
+                  </a>
+                )}
+              </div>
+            )}
+
+            {p.amazonArs != null && buy && (
+              <div class={verdict === "amazon" ? "fila-compra ganadora amazon" : "fila-compra"}>
+                <p class="precio">
+                  <span class="lab">{amzLabel}</span>
+                  <span class="monto num">~{formatArs(p.amazonArs)}</span>
+                  <small>{amzSub}</small>
+                </p>
+                {verdict === "amazon" ? (
+                  <a class="gana amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
+                    <span class="v">Mejor opción: Amazon. Puesto en tu casa sale bastante menos, aunque tarda más.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
+                    <span class="cta">Comprar en Amazon <Icon name="arrow-up-right" size={18} /></span>
+                  </a>
+                ) : (
+                  <a class="btn ghost sm" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">
+                    Comprar en Amazon <Icon name="arrow-up-right" size={16} />
+                  </a>
+                )}
+              </div>
+            )}
+
+            <p class="fine">Comparamos el total que cobra Amazon con envío e impuestos contra el precio nuevo más barato del mismo modelo en Mercado Libre. Para tu cuenta exacta, pegá abajo el precio de Amazon de hoy. {SITE.disclosure}</p>
+          </div>
+          <div id="calculadora" style="scroll-margin-top: 96px">
+            <Calculator client:visible buildRates={rates} initialFob={null} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={buy ? { url: buy, store: p.store, slug: p.slug } : undefined} />
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  {related.length > 0 && (
-    <section style="padding-top: 0">
-      <div class="wrap">
-        <div class="head"><h2>Más {p.category.toLowerCase()}</h2></div>
-        <div class="grid-products">
-          {related.map((r) => <ProductCard product={r} />)}
+    {related.length > 0 && (
+      <section style="padding-top: 0">
+        <div class="wrap">
+          <div class="head"><h2>Más {p.category.toLowerCase()}</h2></div>
+          <div class="grid-products">
+            {related.map((r) => <ProductCard product={r} />)}
+          </div>
         </div>
-      </div>
-    </section>
-  )}
-</Base>
+      </section>
+    )}
+  </Base>
+)}

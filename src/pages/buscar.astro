@@ -3,10 +3,10 @@ import Base from "../layouts/Base.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Icon from "../components/Icon.astro";
 import { amazonSearchUrl, ML_AFFILIATE, SEARCHES } from "../config";
-import { loadProducts } from "../lib/data";
+import { isComparable, loadProducts } from "../lib/data";
 
 const { products } = await loadProducts();
-const shown = products.filter((p) => p.verified);
+const shown = products.filter((p) => isComparable(p));
 // Texto en el que se busca: sin tildes y en minúsculas, igual que la consulta.
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const amazonBase = amazonSearchUrl("", "US");

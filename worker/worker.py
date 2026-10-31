@@ -64,7 +64,7 @@ def run_once():
         print(f"Falló la actualización de precios de Mercado Libre ({type(exc).__name__}).", flush=True)
     # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
     try:
-        telegram.maybe_post(ml_prices.merge(catalog, ml_prices_path),
+        telegram.maybe_post(ml_prices.merge(catalog, ml_prices_path, amazon_prices_path),
                             resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")))
     except Exception as exc:
         print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
