@@ -83,18 +83,20 @@ def test_texto_de_no_envio_explicito_da_ships_false(frase):
 ])
 def test_texto_de_availability_tambien_cuenta(availability):
     details = {"price": None, "availability": availability, "delivery": {"text": None, "options": [], "location": "Argentina"}}
-    out = parse_delivery(details, located=False)
+    out = parse_delivery(details, located=True)
     if isinstance(availability, dict) and "text" not in availability:
-        assert out["ships"] is None  # sin texto de envío, sin sesión confirmada: desconocido
+        assert out["ships"] is None  # sin texto usable: desconocido
     else:
         assert out["ships"] is False
+    # El negativo explícito sólo vale con la ubicación confirmada en Argentina.
+    assert parse_delivery(details, located=False)["ships"] is None
 
 
 def test_negativo_vacio_solo_si_sesion_confirmada_en_ar():
-    # Mismos datos, con y sin confirmación de ubicación: False sólo si located=True.
+    # Página sin oferta ni texto explícito: ambiguo, desconocido aunque la ubicación sea AR (31/10).
     details = {"price": None, "delivery": {"text": None, "options": [], "location": "Argentina"}}
     out = parse_delivery(details, located=True)
-    assert out["ships"] is False
+    assert out["ships"] is None
     assert out["free"] is None
     assert out["text"] is None
     assert out["price"] is None
@@ -266,7 +268,8 @@ def test_handler_pasa_store_a_fetch_details(monkeypatch):
 
 
 def test_handler_pasa_sesion_confirmada_a_parse_delivery(monkeypatch):
-    detalles = {"price": None, "delivery": {"text": None, "options": [], "location": "Argentina"}}
+    detalles = {"price": None, "availability": {"text": "This item cannot be shipped to your selected delivery location."},
+                "delivery": {"text": None, "options": [], "location": "Argentina"}}
     fake = lambda asin, store="US": detalles  # noqa: E731
 
     cap = _handler("/ar-shipping?asins=B01", monkeypatch, fake, located=True)

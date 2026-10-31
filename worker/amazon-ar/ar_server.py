@@ -67,15 +67,13 @@ def parse_delivery(details, located=False):
 
     ships = None
     textos = " ".join([text, _texto_de(details.get("availability"))]).lower()
-    if any(patron in textos for patron in NO_SHIP_PATTERNS):
+    if located and any(patron in textos for patron in NO_SHIP_PATTERNS):
         # Negativo explícito de Amazon ("does not ship to Argentina" etc.): no se envía,
         # aunque el texto mencione Argentina.
         ships = False
     elif "Argentina" in text and amount_ok:
         ships = True
-    elif located and "Argentina" in location and not text.strip() and not options and amount is None:
-        # Sesión confirmada en AR y la página no ofrece ningún envío: negativo confiable.
-        ships = False
+    # Sin oferta ni texto explícito (31/10: joystick Xbox, HyperX Cloud III) es ambiguo: queda desconocido.
 
     free = None
     if ships is True:
