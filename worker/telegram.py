@@ -42,7 +42,7 @@ def pick(catalog, posted):
 
 
 def caption(product):
-    url = f"{SITE}/productos/{product['slug']}/?utm_source=telegram"
+    url = f"{SITE}/productos/{product['slug']}/?utm_source=telegram&utm_medium=canal&utm_campaign=producto-diario"
     ml = product.get("ml")
     lines = [f"<b>{html.escape(product['name'])}</b>", html.escape(product["summary"]), ""]
     if ml:
