@@ -29,7 +29,7 @@ PUNTUALES = {
 def mensaje(hoy):
     partes = []
     if hoy.weekday() == 0:
-        lunes = f"🛒 Franquicia 400: rutina de los lunes (≈15 min).\n{CLAUDE} «rutina de los lunes»."
+        lunes = f"🛒 Franquicia 400: rutina de los lunes (≈15 min).\n{CLAUDE} «rutina de los lunes» y «informe de la semana» (Umami → decisiones de la semana)."
         if hoy.day <= 7:
             lunes += "\n📊 Primer lunes del mes: pedile también «informe del mes» (Umami y comisiones)."
         partes.append(lunes)
