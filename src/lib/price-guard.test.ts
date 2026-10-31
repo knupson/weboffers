@@ -266,4 +266,72 @@ describe("guarda de precios y estado inicial en HTML/CSS", () => {
     expect(domStale.mlLink.className).toBe("btn ghost sm");
     expect(domStale.mlVerb.textContent).toBe("Ver");
   });
+
+  it("reevalúa al cruzar la medianoche ART con la pestaña abierta, en visibilitychange y en pageshow", () => {
+    const script = extractInlineGuardScript();
+    const runGuard = new Function("document", "window", script);
+
+    // 1) Abre la pestaña a las 23:59:50 ART del 2026-10-31 (02:59:50Z del 2026-11-01)
+    vi.setSystemTime(new Date("2026-11-01T02:59:50.000Z"));
+    const dom = buildGuardDom("2026-10-31");
+    runGuard(dom.doc, dom.win);
+
+    expect(dom.banner.hidden).toBe(true);
+    expect(dom.mlAmount.hidden).toBe(false);
+    expect(dom.mlLabel.textContent).toBe("precio de hoy");
+    expect(dom.verdictText.hidden).toBe(false);
+    expect(dom.mlStale.hidden).toBe(true);
+    expect(dom.mlRow.classList.contains("ganadora")).toBe(true);
+    expect(dom.mlLink.className).toBe("gana ml");
+    expect(dom.mlVerb.textContent).toBe("Comprar");
+
+    // Avanza 9 segundos (23:59:59 ART): todavía es 2026-10-31
+    vi.advanceTimersByTime(9_000);
+    expect(dom.mlAmount.hidden).toBe(false);
+    expect(dom.banner.hidden).toBe(true);
+
+    // Cruza medianoche ART (avanza 1.1s más -> 00:00:00.100 ART del 2026-11-01)
+    vi.advanceTimersByTime(1_100);
+    expect(dom.banner.hidden).toBe(false);
+    expect(dom.block.getAttribute("data-fresh")).toBeNull();
+    expect(dom.mlAmount.hidden).toBe(true);
+    expect(dom.amzAmount.hidden).toBe(true);
+    expect(dom.mlLabel.hidden).toBe(true);
+    expect(dom.amzSub.hidden).toBe(true);
+    expect(dom.verdictText.hidden).toBe(true);
+    expect(dom.mlStale.hidden).toBe(false);
+    expect(dom.amzStale.hidden).toBe(false);
+    expect(dom.mlRow.classList.contains("ganadora")).toBe(false);
+    expect(dom.mlLink.className).toBe("btn ghost sm");
+    expect(dom.mlVerb.textContent).toBe("Ver");
+
+    // 2) Si el dispositivo estuvo suspendido y vuelve la visibilidad otro día (visibilitychange)
+    vi.setSystemTime(new Date("2026-10-31T20:00:00Z"));
+    const domVis = buildGuardDom("2026-10-31");
+    runGuard(domVis.doc, domVis.win);
+    expect(domVis.mlAmount.hidden).toBe(false);
+
+    // El reloj del sistema salta al día siguiente sin disparar el timer y la pestaña recupera visibilidad
+    vi.setSystemTime(new Date("2026-11-01T12:00:00Z"));
+    domVis.doc.dispatchEvent("visibilitychange");
+    expect(domVis.banner.hidden).toBe(false);
+    expect(domVis.mlAmount.hidden).toBe(true);
+    expect(domVis.verdictText.hidden).toBe(true);
+    expect(domVis.mlStale.hidden).toBe(false);
+    expect(domVis.mlLink.className).toBe("btn ghost sm");
+    expect(domVis.mlVerb.textContent).toBe("Ver");
+
+    // 3) Si vuelve desde bfcache otro día (pageshow)
+    vi.setSystemTime(new Date("2026-10-31T20:00:00Z"));
+    const domPageShow = buildGuardDom("2026-10-31");
+    runGuard(domPageShow.doc, domPageShow.win);
+    expect(domPageShow.mlAmount.hidden).toBe(false);
+
+    vi.setSystemTime(new Date("2026-11-01T14:00:00Z"));
+    domPageShow.win.dispatchEvent("pageshow");
+    expect(domPageShow.banner.hidden).toBe(false);
+    expect(domPageShow.mlAmount.hidden).toBe(true);
+    expect(domPageShow.verdictText.hidden).toBe(true);
+    expect(domPageShow.mlStale.hidden).toBe(false);
+  });
 });
