@@ -62,6 +62,18 @@ export const CATEGORY_ART: Record<string, string> = {
   Componentes: "/art/cat-componentes.webp",
   Cámaras: "/art/cat-camaras.webp",
   Relojes: "/art/cat-relojes.webp",
+  Herramientas: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Deportes: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Juguetes: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Instrumentos: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Oficina: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Celulares: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Bebés: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Mascotas: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Belleza: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Auto: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Jardín: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Salud: "/art/cat-hogar.webp", // TODO: ilustración propia
 };
 
 // Productos cuya categoría no los representa bien llevan su propia ilustración genérica.

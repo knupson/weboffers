@@ -87,6 +87,10 @@ def validate_and_build_entries(catalog, candidates, today=None):
         for entry in catalog
         if isinstance(entry, dict) and isinstance(entry.get("category"), str) and entry["category"].strip()
     }
+    valid_categories.update({
+        "Herramientas", "Deportes", "Juguetes", "Instrumentos", "Oficina", "Celulares",
+        "Bebés", "Mascotas", "Belleza", "Auto", "Jardín", "Salud",
+    })
 
     seen_slugs = set()
     seen_asins = set()
