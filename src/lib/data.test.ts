@@ -45,6 +45,17 @@ describe('mergeMlPrices', () => {
     expect(out).toEqual(catalog);
   });
 
+  it('usa el link del día si es de mercadolibre.com.ar y si no deja el del catálogo', () => {
+    const url = 'https://www.mercadolibre.com.ar/p/MLA1?pdp_filters=item_id%3AMLA7&matt_word=ale_benzoni&matt_tool=58527537';
+    const item = prices.items['con-ml'];
+    const conUrl = mergeMlPrices(catalog, { ...prices, items: { 'con-ml': { ...item, url } } });
+    expect(conUrl[0].ml?.url).toBe(url);
+    for (const bad of ['https://evil.com/mercadolibre.com.ar', 'http://www.mercadolibre.com.ar/p/MLA1', 'javascript:alert(1)']) {
+      const out = mergeMlPrices(catalog, { ...prices, items: { 'con-ml': { ...item, url: bad } } });
+      expect(out[0].ml?.url).toBe('https://meli.la/abc');
+    }
+  });
+
   it('no muta el catálogo original', () => {
     const snapshot = JSON.parse(JSON.stringify(catalog));
     mergeMlPrices(catalog, prices);

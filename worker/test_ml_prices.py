@@ -142,3 +142,35 @@ def test_token_is_cached_until_expiry(monkeypatch):
     assert ml_prices.get_token() == "tok"
     assert ml_prices.get_token() == "tok"
     assert post.call_count == 1
+
+
+def test_link_points_to_the_cheapest_listing_with_affiliate(tmp_path, monkeypatch):
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", route_get({
+        "MLA111/items": items_response([
+            {"price": 449999, "condition": "new", "item_id": "MLA9"},
+            {"price": 400000, "condition": "new", "item_id": "MLA7"},
+            {"price": 300000, "condition": "used", "item_id": "MLA5"}]),
+        "MLA222/items": items_response([{"price": 700000, "item_id": "no-valido"}]),
+    }))
+    prices = tmp_path / "ml-prices.json"
+    ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, AFTER_SEVEN)
+    items = json.loads(prices.read_text(encoding="utf-8"))["items"]
+    assert items["monitor"]["price"] == 400000
+    assert items["monitor"]["url"] == ("https://www.mercadolibre.com.ar/p/MLA111?pdp_filters=item_id%3AMLA7"
+                                       "&matt_word=ale_benzoni&matt_tool=58527537")
+    # Sin item_id válido, la ficha del producto (lista todos los vendedores).
+    assert items["ssd"]["url"] == "https://www.mercadolibre.com.ar/p/MLA222?matt_word=ale_benzoni&matt_tool=58527537"
+
+
+def test_merge_applies_daily_price_and_verdict(tmp_path):
+    prices = tmp_path / "ml-prices.json"
+    prices.write_text(json.dumps({"date": "2026-10-31", "items": {
+        "monitor": {"price": 400000, "verdict": "amazon"},
+        "sin-id": {"price": "x", "verdict": "amazon"}}}), encoding="utf-8")
+    merged = {p["slug"]: p for p in ml_prices.merge(CATALOG, prices)}
+    assert merged["monitor"]["ml"]["price"] == 400000
+    assert merged["monitor"]["verdict"] == "amazon"
+    assert merged["sin-id"] == CATALOG[2]
+    assert CATALOG[0]["ml"]["price"] == 500000  # no muta
+    assert ml_prices.merge(CATALOG, tmp_path / "no-existe.json") is CATALOG

@@ -20,6 +20,8 @@ START_HOUR = 7
 MIN_SAVING = 0.10
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
 PAUSE_SECONDS = 0.3
+# Afiliados de Mercado Libre (públicos, van en cada link compartido). Igual que src/config.ts.
+AFFILIATE = {"matt_word": "ale_benzoni", "matt_tool": "58527537"}
 _token_cache = {"value": None, "expires_at": 0.0}
 
 
@@ -72,18 +74,32 @@ def fetch_items(catalog_id):
     return get_json(f"/products/{catalog_id}/items").get("results", [])
 
 
-def min_new_price(results):
-    """Mínimo precio de publicaciones nuevas. Sin campo condition se acepta."""
-    prices = []
+def cheapest_new(results):
+    """(precio, item_id) de la publicación nueva más barata. Sin campo condition se acepta."""
+    best = None
     for item in results:
         if not isinstance(item, dict) or item.get("condition") not in (None, "new"):
             continue
         price = item.get("price")
         if isinstance(price, bool) or not isinstance(price, (int, float)):
             continue
-        if math.isfinite(price) and price > 0:
-            prices.append(price)
-    return min(prices) if prices else None
+        if math.isfinite(price) and price > 0 and (best is None or price < best[0]):
+            item_id = item.get("item_id") or item.get("id")
+            best = (price, item_id if isinstance(item_id, str) and re.fullmatch(r"MLA\d+", item_id) else None)
+    return best
+
+
+def min_new_price(results):
+    best = cheapest_new(results)
+    return best[0] if best else None
+
+
+def item_url(catalog_id, item_id):
+    """Ficha del producto con esa publicación elegida y el código de afiliado."""
+    params = f"matt_word={AFFILIATE['matt_word']}&matt_tool={AFFILIATE['matt_tool']}"
+    if item_id:
+        params = f"pdp_filters=item_id%3A{item_id}&" + params
+    return f"https://www.mercadolibre.com.ar/p/{catalog_id}?{params}"
 
 
 def verdict_for(total_usd, mep, ml_price, free_shipping):
@@ -133,9 +149,10 @@ def maybe_refresh(catalog, prices_path, totals_path, mep, now):
             continue
         slug = product["slug"]
         try:
-            price = min_new_price(fetch_items(catalog_id))
-            if price is None:
+            best = cheapest_new(fetch_items(catalog_id))
+            if best is None:
                 raise ValueError("sin publicaciones nuevas")
+            price, item_id = best
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
             print(f"Mercado Libre: no se pudo consultar {slug} ({type(exc).__name__}); se conserva el valor anterior.", flush=True)
             if slug in old_items:
@@ -150,8 +167,29 @@ def maybe_refresh(catalog, prices_path, totals_path, mep, now):
         else:
             free_shipping = (product.get("shipsToAr") or {}).get("freeShipping")
             verdict, reason = verdict_for(total, mep, price, free_shipping), "precio"
-        items[slug] = {"price": price, "checked": today, "verdict": verdict, "verdictReason": reason}
+        items[slug] = {"price": price, "url": item_url(catalog_id, item_id), "checked": today,
+                       "verdict": verdict, "verdictReason": reason}
         pause()
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
     return True
+
+
+def merge(catalog, prices_path):
+    """Catálogo con el precio y veredicto de Mercado Libre del día (igual que mergeMlPrices del sitio)."""
+    data = load_json(prices_path, None)
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, dict):
+        return catalog
+    merged = []
+    for product in catalog:
+        item = items.get(product.get("slug"))
+        price = item.get("price") if isinstance(item, dict) else None
+        if not product.get("ml") or isinstance(price, bool) or not isinstance(price, (int, float))                 or not math.isfinite(price):
+            merged.append(product)
+            continue
+        product = {**product, "ml": {**product["ml"], "price": price}}
+        if item.get("verdict") in ("amazon", "ml"):
+            product["verdict"] = item["verdict"]
+        merged.append(product)
+    return merged

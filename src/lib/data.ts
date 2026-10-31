@@ -85,6 +85,8 @@ function readJson<T>(rel: string): T | null {
 /** Precio diario de Mercado Libre por slug (data/ml-prices.json). Lo escribe el proceso del worker. */
 export interface MlPriceItem {
   price: number;
+  /** Link de afiliado a la publicación de ese precio (la más barata del día). */
+  url?: string;
   checked: string;
   verdict: "amazon" | "ml";
   verdictReason: "precio" | "sinAmazon";
@@ -100,6 +102,17 @@ export interface MlPrices {
 const VERDICTS: readonly string[] = ["amazon", "ml"];
 const VERDICT_REASONS: readonly string[] = ["precio", "sinAmazon"];
 
+/** Sólo links https de mercadolibre.com.ar: el archivo viene del worker, no se confía a ciegas. */
+function isMlUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" && (u.hostname === "mercadolibre.com.ar" || u.hostname.endsWith(".mercadolibre.com.ar"));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Pisa el precio de Mercado Libre del día sobre cada entrada del catálogo que ya tiene `ml`.
  * Sin archivo o sin item para el slug, la entrada sigue igual. No muta el catálogo original.
@@ -113,7 +126,12 @@ export function mergeMlPrices(catalog: CatalogEntry[], prices: MlPrices | null):
     if (!item || !Number.isFinite(item.price)) return entry;
     return {
       ...entry,
-      ml: { ...entry.ml, price: item.price, checked: item.checked ?? entry.ml.checked },
+      ml: {
+        ...entry.ml,
+        price: item.price,
+        url: isMlUrl(item.url) ? item.url : entry.ml.url,
+        checked: item.checked ?? entry.ml.checked,
+      },
       verdict: VERDICTS.includes(item.verdict) ? (item.verdict as CatalogEntry["verdict"]) : entry.verdict,
       verdictReason: VERDICT_REASONS.includes(item.verdictReason)
         ? (item.verdictReason as CatalogEntry["verdictReason"])

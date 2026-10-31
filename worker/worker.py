@@ -45,20 +45,23 @@ def run_once():
     output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
     changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
     print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
-    try:
-        telegram.maybe_post(catalog, resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")))
-    except Exception as exc:
-        print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
+    ml_prices_path = resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json"))
     try:
         ml_prices.maybe_refresh(
             catalog,
-            resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json")),
+            ml_prices_path,
             resolve_path(os.environ.get("AMAZON_TOTALS_PATH", "/app/amazon-totals.json")),
             (current_rates or {}).get("mep"),
             datetime.now(timezone.utc),
         )
     except Exception as exc:
         print(f"Falló la actualización de precios de Mercado Libre ({type(exc).__name__}).", flush=True)
+    # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
+    try:
+        telegram.maybe_post(ml_prices.merge(catalog, ml_prices_path),
+                            resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")))
+    except Exception as exc:
+        print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
     return payload
 
 
