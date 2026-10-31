@@ -1,6 +1,6 @@
 """Precios de Mercado Libre y veredicto diario frente a Amazon."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import math
 import os
@@ -17,6 +17,7 @@ API_BASE_URL = "https://api.mercadolibre.com"
 SITE_ID = "MLA"
 ART = timezone(timedelta(hours=-3))
 START_HOUR = 7
+MAX_AMAZON_AGE_DAYS = 3
 MIN_SAVING = 0.10
 AMAZON_EXTRA = 0.04
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
@@ -150,17 +151,37 @@ def _is_valid_amount(value):
     return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) and value > 0
 
 
-def load_amazon_prices(path):
+def _today_art(now=None):
+    if isinstance(now, datetime):
+        return now.astimezone(ART).date()
+    if isinstance(now, date):
+        return now
+    return datetime.now(ART).date()
+
+
+def _is_fresh_checked(checked, today_date):
+    if not isinstance(checked, str):
+        return False
+    try:
+        age_days = (today_date - date.fromisoformat(checked)).days
+    except ValueError:
+        return False
+    return 0 <= age_days <= MAX_AMAZON_AGE_DAYS
+
+
+def load_amazon_prices(path, now=None):
     data = load_json(path, {})
     items = data.get("items") if isinstance(data, dict) else None
     if not isinstance(items, dict):
         return {}
+    today_date = _today_art(now)
     return {
         slug: entry
         for slug, entry in items.items()
         if isinstance(entry, dict)
         and entry.get("currency") in ("USD", "EUR")
         and _is_valid_amount(entry.get("amount"))
+        and _is_fresh_checked(entry.get("checked"), today_date)
     }
 
 
@@ -196,7 +217,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
     old_items = previous.get("items", {}) if isinstance(previous, dict) else {}
     if not isinstance(old_items, dict):
         old_items = {}
-    amazon_items = load_amazon_prices(amazon_prices_path)
+    amazon_items = load_amazon_prices(amazon_prices_path, local.date())
     items = {}
     for product in catalog:
         ml = product.get("ml") or {}
@@ -234,11 +255,11 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
     return True
 
 
-def merge(catalog, prices_path, amazon_prices_path=None):
+def merge(catalog, prices_path, amazon_prices_path=None, now=None):
     """Catálogo con el precio y veredicto de Mercado Libre del día (igual que mergeMlPrices del sitio)."""
     data = load_json(prices_path, None)
     items = data.get("items") if isinstance(data, dict) else None
-    amazon_items = load_amazon_prices(amazon_prices_path) if amazon_prices_path else {}
+    amazon_items = load_amazon_prices(amazon_prices_path, now) if amazon_prices_path else {}
     if not isinstance(items, dict) and not amazon_items:
         return catalog
     items = items if isinstance(items, dict) else {}

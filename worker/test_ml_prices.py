@@ -219,3 +219,30 @@ def test_merge_applies_daily_price_and_verdict(tmp_path):
     assert merged["sin-id"] == CATALOG[2]
     assert CATALOG[0]["ml"]["price"] == 500000  # no muta
     assert ml_prices.merge(CATALOG, tmp_path / "no-existe.json") is CATALOG
+
+
+def test_load_amazon_prices_discards_stale_checked_older_than_3_days(tmp_path, monkeypatch):
+    amazon_prices = tmp_path / "amazon-prices.json"
+    amazon_prices.write_text(json.dumps({"date": "2026-10-30", "items": {
+        "fresco": {"amount": 250, "currency": "USD", "checked": "2026-10-27"},   # exactamente 3 días
+        "vencido": {"amount": 250, "currency": "USD", "checked": "2026-10-26"},  # 4 días -> descartado
+        "sin-fecha": {"amount": 250, "currency": "USD"},
+    }}), encoding="utf-8")
+    loaded = ml_prices.load_amazon_prices(amazon_prices, AFTER_SEVEN)
+    assert set(loaded) == {"fresco"}
+
+    # En maybe_refresh un precio vencido (>3 días) no alimenta el veredicto: cae a listPrice o conserva el previo.
+    catalog = [
+        {"slug": "vencido", "name": "Vencido", "store": "US", "verified": True, "verdict": "ml",
+         "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True}},
+    ]
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", route_get({
+        "MLA111/items": items_response([{"price": 500000}]),
+    }))
+    prices = tmp_path / "ml-prices.json"
+    ml_prices.maybe_refresh(catalog, prices, amazon_prices, MEP, AFTER_SEVEN)
+    items = json.loads(prices.read_text(encoding="utf-8"))["items"]
+    assert items["vencido"]["verdict"] == "ml"
+    assert items["vencido"]["verdictReason"] == "existing"
+    assert "amazonSource" not in items["vencido"]

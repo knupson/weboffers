@@ -133,7 +133,8 @@ describe('mergeAmazonPrices & isComparable', () => {
         'scraped-eur': { amount: 200, currency: 'EUR', checked: '2026-10-31' },
       },
     };
-    const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25);
+    const now = Date.parse('2026-10-31T12:00:00-03:00');
+    const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, now);
     // 250 USD @ 1200 MEP -> 375.000 -> redondeado a 10.000 = 380.000
     expect(merged[0]).toMatchObject({ amazonArs: 380000, amazonSource: 'amazon', amazonChecked: '2026-10-31' });
     // 200 EUR * 1.25 = 250 USD @ 1200 MEP -> 380.000
@@ -147,5 +148,40 @@ describe('mergeAmazonPrices & isComparable', () => {
       'scraped-eur',
       'fallback-oficial',
     ]);
+  });
+
+  it('descarta precios scrapeados de Amazon con más de 3 días de antigüedad', () => {
+    const now = Date.parse('2026-10-31T12:00:00-03:00');
+    const entries: CatalogEntry[] = [
+      base({
+        slug: 'tres-dias',
+        ml: { price: 500000, url: 'https://meli.la/1', checked: '2026-10-31' },
+      }),
+      base({
+        slug: 'vencido-con-oficial',
+        ml: { price: 500000, url: 'https://meli.la/2', checked: '2026-10-31' },
+        listPrice: { amount: 400, currency: 'USD', source: 'https://x.test', checked: '2026-10-01' },
+      }),
+      base({
+        slug: 'vencido-sin-oficial',
+        ml: { price: 500000, url: 'https://meli.la/3', checked: '2026-10-31' },
+      }),
+    ];
+    const amazonPrices: AmazonPrices = {
+      generatedAt: '2026-10-31T10:00:00Z',
+      date: '2026-10-31',
+      items: {
+        'tres-dias': { amount: 250, currency: 'USD', checked: '2026-10-28' }, // 3 días -> válido
+        'vencido-con-oficial': { amount: 250, currency: 'USD', checked: '2026-10-27' }, // 4 días -> cae a oficial
+        'vencido-sin-oficial': { amount: 250, currency: 'USD', checked: '2026-10-27' }, // 4 días -> null
+      },
+    };
+    const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, now);
+    expect(merged[0]).toMatchObject({ amazonArs: 380000, amazonSource: 'amazon', amazonChecked: '2026-10-28' });
+    // 400 USD @ 1200 MEP -> 600.000 ARS desde listPrice oficial
+    expect(merged[1]).toMatchObject({ amazonArs: 600000, amazonSource: 'oficial', amazonChecked: '2026-10-01' });
+    expect(merged[2]).toMatchObject({ amazonArs: null, amazonSource: null, amazonChecked: null });
+    expect(isComparable(entries[2], amazonPrices, now)).toBe(false);
+    expect(isComparable(entries[0], amazonPrices, now)).toBe(true);
   });
 });
