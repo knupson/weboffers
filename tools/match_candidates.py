@@ -23,9 +23,16 @@ import publish  # noqa: E402
 import rates  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
-VARIANTS = set("mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
-UNIT_RE = re.compile(r'\b(\d+(?:[.,]\d+)?)\s*(tb|gb|mb|mah|mm|inches|inch|in|pulgadas|pulgada|w|\")(?=$|[^a-z])')
-ALIASES = {"wd": "western digital", "wd black": "western digital", "wdblack": "western digital"}
+VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
+UNIT_RE = re.compile(r'\b(\d+(?:[.,]\d+)?)\s*-?\s*(tb|gb|mb|mah|mm|inches|inch|in|pulgadas|pulgada|w|\")(?=$|[^a-z])')
+ALIASES = {"wd": "western digital", "wd black": "western digital", "wdblack": "western digital",
+           "hewlett packard": "hp", "hewlett packard hp": "hp", "hp inc": "hp",
+           "tp": "tp link", "tplink": "tp link", "gl inet": "glinet", "gl.inet": "glinet",
+           "logitech g": "logitech", "soundcore": "anker", "anker soundcore": "anker",
+           **{brand: "amazon" for brand in ("kindle", "echo", "fire", "blink", "ring", "eero")}}
+# Sólo atributos del producto, nunca memoria máxima soportada, velocidades ni accesorios.
+QUANTITY_ATTRS = {"CAPACITY", "STORAGE_CAPACITY", "INTERNAL_MEMORY", "RAM_MEMORY", "RAM",
+                  "SCREEN_SIZE", "DISPLAY_SIZE", "CASE_SIZE", "BATTERY_CAPACITY", "POWER"}
 # Primero las subcategorías; los departamentos ambiguos no alcanzan para decidir.
 CATEGORY_RULES = (
     ("Mini PCs", "mini pc|minipc|mini desktop"),
@@ -63,7 +70,10 @@ def ascii_text(value):
 
 
 def normalize(value):
-    text = ascii_text(value)
+    text = ascii_text(value).translate(str.maketrans({"”": '"', "“": '"', "″": '"'}))
+    text = re.sub(r"(?<=\d)''", '"', text)
+    # MB/s y GB/s describen transferencia, no almacenamiento.
+    text = re.sub(r"\b[\d.,]+\s*(?:mb|gb)\s*/\s*s\b", " ", text)
 
     def unit(match):
         amount, suffix = float(match[1].replace(",", ".")), match[2]
@@ -78,7 +88,8 @@ def normalize(value):
 
 
 def brand_key(value):
-    text = normalize(value)
+    text = normalize(value).replace(".", " ")
+    text = " ".join(text.split())
     return ALIASES.get(text, text)
 
 
@@ -102,14 +113,21 @@ def quantities(value):
 
 def model_tokens(value):
     text = ascii_text(value)
+    text = UNIT_RE.sub(" ", text)
     # Los prefijos de códigos también pueden venir separados por espacios.
     text = re.sub(r"\b(wf|wh|mz|rt|sn)\s+(?=[a-z0-9]*\d)", r"\1-", text)
     tokens = set()
     for raw in re.findall(r"[a-z0-9]+(?:[-_/][a-z0-9]+)*", text):
         token = re.sub(r"[-_/]", "", raw)
-        if len(token) < 3 or not re.search(r"[a-z]", token) or not re.search(r"\d", token):
+        # Sufijos de embalaje no cambian el código base.
+        if re.fullmatch(r"[a-z]+\d+[a-z0-9]+/[0-9]+", raw):
+            token = raw.split("/")[0]
+        if len(token) < 2 or not re.search(r"[a-z]", token) or not re.search(r"\d", token):
             continue
-        if quantities(raw) or re.fullmatch(r"(?:pcie|usb|ddr|wifi|wi-fi|bluetooth|bt|gen|m)\d+[a-z]*", token):
+        # Plataformas y especificaciones compartidas no prueban identidad.
+        if re.fullmatch(r"(?:ps[345]|4k|8k|\d+(?:mp|fps|ms|x|axis|eje)|f\d+|hdr\d+|\d+x\d+)", token):
+            continue
+        if quantities(raw) or re.fullmatch(r"(?:pcie|usb|ddr|wifi|wi-fi|bluetooth|bt|gen)\d+[a-z]*", token):
             continue
         if re.fullmatch(r"\d+(?:hz|khz|mhz|ghz|k|p|mbps|gbps)", token):
             continue
@@ -117,14 +135,24 @@ def model_tokens(value):
     # Familias numéricas (990 PRO) también identifican un modelo concreto.
     for number, edition in re.findall(r"\b(\d{3,4})\s+(pro|evo|plus|ultra|max|mini)\b", normalize(value)):
         tokens.add(number + edition)
+    # Familias comerciales con versión numérica; una marca sola no es modelo.
+    for family, version in re.findall(r"\b(ultimate|stealth|go|flip|quest|forerunner|pocket)\s+(\d+[a-z]?)\b", normalize(value)):
+        tokens.add(family + version)
+    for family, version in re.findall(r"\b(blackshark|wolverine|huntsman)\s+(v\d+)\b", normalize(value)):
+        tokens.discard(version)
+        tokens.add(family + version)
     return tokens
 
 
 def family_conflict(left, right):
+    shared = left & right
     for a in left:
         for b in right:
             pa, pb = re.match(r"([a-z]*)(\d+)", a), re.match(r"([a-z]*)(\d+)", b)
             if pa and pb and a != b:
+                # El código completo compartido puede abreviarse en el nombre ML.
+                if (a.startswith(b) and a in shared) or (b.startswith(a) and b in shared):
+                    continue
                 if pa[1] and pa[1] == pb[1]:
                     return True
                 if not pa[1] and not pb[1] and pa[2] == pb[2]:
@@ -133,12 +161,17 @@ def family_conflict(left, right):
 
 
 def variant_words(value):
-    words = normalize(value).split()
-    anchors = [i for i, word in enumerate(words) if re.search(r"\d", word) and not quantities(word)]
+    text = re.split(r"\b(?:for|para)\b|[|]", ascii_text(value), maxsplit=1)[0]
+    text = re.sub(r"\bultra[ -](?:portable|slim)\b|\bpro[ -]level\b", "", text)
+    words = normalize(text).split()
+    anchors = [i for i, word in enumerate(words) if model_tokens(word) or (word.isdigit() and len(word) <= 4)]
     found = {word for i, word in enumerate(words) if word in VARIANTS and any(abs(i - j) <= 3 for j in anchors)}
     # Estado y cantidad del paquete importan aunque estén lejos del modelo.
-    found.update(set(words) & {"kit", "bundle", "combo", "pack", "refurbished", "renewed", "reacondicionado", "usado"})
+    found.update(set(words) & {"hero", "lightspeed", "signature", "music", "paperwhite", "colorsoft", "scribe", "floodlight"})
+    found.update(set(normalize(value).split()) & {"kit", "bundle", "combo", "pack", "refurbished", "renewed", "reacondicionado", "usado"})
     found.update(re.findall(r"\b\d+ pack\b", normalize(value)))
+    if re.search(r"\b(?:lens|lente)\b", normalize(value)):
+        found.discard("fe")
     return found
 
 
@@ -149,6 +182,8 @@ def attributes(product):
         if not isinstance(attr, dict) or not isinstance(attr.get("id"), str):
             continue
         values = []
+        if isinstance(attr.get("value"), (str, int, float)):
+            values.append(str(attr["value"]))
         if isinstance(attr.get("value_name"), (str, int, float)):
             values.append(str(attr["value_name"]))
         structured = attr.get("value_struct")
@@ -179,17 +214,50 @@ def evaluate(amazon, candidate, product, mep):
     attrs = attributes(product)
     brand = amazon.get("brand") or (title.split()[0] if title.split() else "")
     model = " ".join(attrs.get(key, "") for key in ("MODEL", "ALPHANUMERIC_MODEL"))
-    ml_text = " ".join([name, *attrs.values()])
+    ml_text = " ".join([name, *(value for key, value in attrs.items() if key in QUANTITY_ATTRS)])
     a_models, b_models = model_tokens(title), model_tokens(model + " " + name)
     a_caps, b_caps = quantities(title), quantities(ml_text)
+    # En auriculares los mm suelen ser conectores y transductores, no variantes.
+    if re.search(r"\b(?:headset|headphones|earbuds)\b", normalize(title)):
+        a_caps.pop("mm", None)
+        b_caps.pop("mm", None)
+    a_models -= model_tokens(brand)
+    b_models -= model_tokens(attrs.get("BRAND", ""))
+    if brand_key(brand) in {"tp link", "asus", "netgear"}:
+        a_models = {token for token in a_models if not re.fullmatch(r"(?:axe?|be)\d{3,}", token)}
+        b_models = {token for token in b_models if not re.fullmatch(r"(?:axe?|be)\d{3,}", token)}
     shared = a_models & b_models
+    # Un modelo textual completo sirve si es específico y no contradice códigos.
+    textual = normalize(attrs.get("MODEL", ""))
+    generic_models = {"otros", "other", "generic", "generico", "wireless", "controller", "headphones", "headset", "tablet", "camera", "digital", "gaming"}
+    if (not shared and len(textual) >= 5 and textual not in generic_models
+            and not re.fullmatch(r"(?:axe?|be)\d{3,}", textual)
+            and re.search(r"\b" + re.escape(textual) + r"\b(?! \d)", normalize(title))
+            and not (a_models and b_models and not shared)):
+        shared.add(textual)
+
     evidence = {"brand": brand_key(brand) if brand_key(brand) == brand_key(attrs.get("BRAND")) else "",
                 "model": sorted(shared), "capacity": sorted(f"{n:g}{u}" for u in a_caps.keys() & b_caps.keys() for n in a_caps[u] & b_caps[u])}
     doubts = []
+    if re.search(r"\b(?:libro|book|manual|user guide|cookbook|editorial)\b", normalize(name)):
+        return "rejected", "libro o manual en lugar del producto", evidence
     if accessory(title) or accessory(name):
         return "rejected", "accesorio", evidence
     if brand and attrs.get("BRAND") and brand_key(brand) != brand_key(attrs["BRAND"]):
         return "rejected", "marca distinta", evidence
+    def connection(text):
+        words = set(normalize(text).split())
+        return {"wireless" if w in {"wireless", "inalambrico", "inalambricos"} else "wired"
+                for w in words & {"wireless", "inalambrico", "inalambricos", "wired", "cableado"}}
+    if connection(title) and connection(name) and connection(title).isdisjoint(connection(name)):
+        return "rejected", "conectividad distinta", evidence
+    def platforms(text):
+        text = normalize(text)
+        return {key for key, pattern in {"xbox": r"\bxbox\b", "playstation": r"\b(?:playstation|ps[345])\b",
+                                        "nintendo": r"\b(?:nintendo|switch)\b"}.items() if re.search(pattern, text)}
+    listed_platforms = platforms(attrs.get("COMPATIBLE_DEVICES", ""))
+    if listed_platforms and platforms(name) and listed_platforms.isdisjoint(platforms(name)):
+        doubts.append("plataforma contradictoria entre nombre y atributos")
     if not evidence["brand"]:
         doubts.append("marca ausente")
     for unit in a_caps.keys() & b_caps.keys():
@@ -197,17 +265,31 @@ def evaluate(amazon, candidate, product, mep):
             return "rejected", "capacidad o tamaño distinto", evidence
     if a_caps.keys() != b_caps.keys():
         doubts.append("capacidad o tamaño sin confirmar")
+    if re.search(r"\b(?:edition|edicion|anniversary)\b", normalize(title + " " + name)):
+        # Ediciones especiales requieren revisión aunque compartan el modelo base.
+        doubts.append("edición sin confirmar")
     if family_conflict(a_models, b_models):
         return "rejected", "modelo de otra familia o edición", evidence
     variants_differ = variant_words(title) != variant_words(name + " " + model + " " + attrs.get("LINE", ""))
     if a_models and b_models and not shared:
         return "rejected", "modelo distinto", evidence
-    if not a_models or not b_models:
+    if not shared and (not a_models or not b_models):
         doubts.append("modelo ausente")
+    if re.search(r"\b(?:headset|headphones|earbuds)\b", normalize(title)):
+        a_gen = re.findall(r"\bgen(?:eration)? (\d+)\b", normalize(title))
+        b_gen = re.findall(r"\bgen(?:eration)? (\d+)\b", normalize(name + " " + model))
+        if set(a_gen) != set(b_gen):
+            doubts.append("generación sin confirmar")
+    # Un número de versión adyacente al modelo textual no puede quedar implícito.
+    if textual and re.search(r"\b" + re.escape(textual) + r" \d+\b", normalize(title)) and not shared:
+        doubts.append("generación sin confirmar")
     if variants_differ:
         doubts.append("variante distinta")
-    colors = {"black": "negro", "white": "blanco", "blue": "azul", "red": "rojo", "green": "verde", "silver": "plata", "gold": "dorado", "pink": "rosa"}
+    colors = {"black": "negro", "white": "blanco", "blue": "azul", "red": "rojo", "green": "verde", "silver": "plata", "gold": "dorado", "pink": "rosa",
+              "gray": "gris", "grey": "gris", "purple": "violeta", "plateado": "plata",
+              "charcoal": "carbon", "midnight": "medianoche", "ash": "ceniza", "rose": "rosa"}
     def color_words(text):
+        text = re.sub(r"\bblue vo[! ]*ce\b", "", ascii_text(text))
         return {colors.get(word, word) for word in normalize(text).split() if word in colors or word in colors.values()}
     def without_brand(text, raw_brand):
         return normalize(text).replace(normalize(raw_brand), " ", 1) if raw_brand else normalize(text)
@@ -219,7 +301,7 @@ def evaluate(amazon, candidate, product, mep):
     if positive_number(price) and positive_number(usd):
         ratio = price / (usd * mep)
         evidence["priceRatio"] = ratio
-        if not 0.6 <= ratio <= 3.0:
+        if not 0.6 <= ratio <= 6.0:
             return "rejected", "precio fuera de rango", evidence
     else:
         doubts.append("precio ausente o inválido")
@@ -244,7 +326,7 @@ def unique_slug(brand, evidence, name, used):
     return slug
 
 
-def match_products(products, mep, catalog=()):
+def match_products(products, mep, catalog=(), products_cache=None):
     if not positive_number(mep):
         raise ValueError("MEP inválido; indicá --mep con un valor positivo.")
     if not isinstance(products, list):
@@ -252,7 +334,10 @@ def match_products(products, mep, catalog=()):
     result = {"generatedAt": datetime.now(timezone.utc).isoformat(), "mep": mep,
               "accepted": [], "doubtful": [], "rejected": []}
     used = {entry["slug"] for entry in catalog if isinstance(entry, dict) and isinstance(entry.get("slug"), str)}
-    cache = {}
+    if products_cache is not None and (not isinstance(products_cache, dict)
+            or any(not isinstance(value, dict) for value in products_cache.values())):
+        raise ValueError("El caché debe ser un diccionario de productos ML.")
+    cache = dict(products_cache or {})
     for index, amazon in enumerate(products, 1):
         if not isinstance(amazon, dict):
             result["rejected"].append({"reason": "producto inválido", "index": index})
@@ -279,11 +364,16 @@ def match_products(products, mep, catalog=()):
                     ml_prices.pause()
             product = cache[catalog_id]
             status, reason, evidence = evaluate(amazon, candidate, product, mep)
+            score = bool(evidence["brand"]) + 2 * bool(evidence["model"]) + bool(evidence["capacity"])
             if status == "rejected":
-                failures.append({"catalogId": catalog_id, "reason": reason})
+                attrs = attributes(product)
+                failures.append({"catalogId": catalog_id, "reason": reason, "evidence": evidence,
+                                 "mlName": product.get("name") or candidate.get("name") or "",
+                                 "mlBrand": attrs.get("BRAND", ""), "mlModel": attrs.get("MODEL", ""),
+                                 "mlPrice": candidate.get("minPrice") if positive_number(candidate.get("minPrice")) else None,
+                                 "score": score})
                 continue
             # La mejor duda es la que tiene más evidencia; los empates conservan el orden.
-            score = bool(evidence["brand"]) + 2 * bool(evidence["model"]) + bool(evidence["capacity"])
             if status == "accepted" or chosen is None or score > chosen[0]:
                 chosen = (score, status, reason, evidence, candidate, product)
             if status == "accepted":
@@ -296,14 +386,20 @@ def match_products(products, mep, catalog=()):
             row.update(catalogId=candidate["catalogId"], itemId=candidate.get("itemId") or "",
                        mlPrice=candidate.get("minPrice") if positive_number(candidate.get("minPrice")) else None, name=name, brand=brand,
                        category=category_for(amazon.get("amazonCategory")) or "", summary="",
-                       evidence=evidence, mlName=product.get("name") or candidate.get("name") or "")
+                       evidence=evidence, mlName=product.get("name") or candidate.get("name") or "",
+                       mlBrand=attributes(product).get("BRAND", ""), mlModel=attributes(product).get("MODEL", ""),
+                       amazonPriceUsd=amazon.get("amazonPriceUsd"))
             row["slug"] = unique_slug(brand, evidence, name, used)
             if reason:
                 row["reason"] = reason
             result[status].append(row)
         else:
-            result["rejected"].append({"asin": amazon.get("asin"), "amazonTitle": amazon.get("amazonTitle"),
-                                       "reason": failures[0]["reason"] if failures else "sin candidatos",
+            best = max(failures, key=lambda failure: failure.get("score", -1), default={})
+            result["rejected"].append({**{key: best.get(key, "") for key in
+                                        ("catalogId", "mlName", "mlBrand", "mlModel", "mlPrice", "evidence")},
+                                       "category": category_for(amazon.get("amazonCategory")) or "",
+                                       "asin": amazon.get("asin"), "amazonTitle": amazon.get("amazonTitle"),
+                                       "reason": best.get("reason", "sin candidatos"),
                                        "candidates": failures})
         if index % 50 == 0:
             print(f"Procesados {index}/{len(products)} productos", flush=True)
@@ -324,6 +420,7 @@ def main(argv=None):
     parser.add_argument("--input", default="/app/output/discovery-candidates.json", help="JSON de descubrimiento")
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help="JSON de resultados")
     parser.add_argument("--mep", type=float, help="Cotización MEP; por defecto se consulta la actual")
+    parser.add_argument("--products-cache", help="Detalles ML locales por catalogId; consulta la API sólo para los faltantes")
     parser.add_argument("--limit", type=int, help="Cantidad máxima de productos")
     args = parser.parse_args(argv)
     try:
@@ -339,7 +436,10 @@ def main(argv=None):
         if not isinstance(products, list):
             raise ValueError("La entrada debe ser una lista JSON.")
         catalog = json.loads(default_catalog_path().read_text(encoding="utf-8"))
-        result = match_products(products[:args.limit] if args.limit is not None else products, mep, catalog)
+        cache = json.loads(Path(args.products_cache).read_text(encoding="utf-8")) if args.products_cache else {}
+        if not isinstance(cache, dict) or any(not isinstance(value, dict) for value in cache.values()):
+            raise ValueError("El caché debe ser un diccionario de productos ML.")
+        result = match_products(products[:args.limit] if args.limit is not None else products, mep, catalog, cache)
         publish.write_atomic(args.output, result)
     except (OSError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr, flush=True)
