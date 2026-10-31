@@ -18,6 +18,7 @@ services:
       ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
       ML_PRICES_PATH: /app/output/ml-prices.json
       AMAZON_SCRAPER_URL: ${AMAZON_SCRAPER_URL:-http://weboffers-amazon-scraper:8000}
+      AMAZON_AR_URL: ${AMAZON_AR_URL:-http://weboffers-amazon-ar:8001}
       AMAZON_PRICES_PATH: /app/output/amazon-prices.json
     volumes:
       - ../data:/app/data:ro
@@ -27,6 +28,11 @@ services:
 
   weboffers-amazon-scraper:
     build: https://github.com/omkarcloud/amazon-scraper.git#8ffd4f976c705d009ec06d8e4e3e15fc77e35cee
+    restart: unless-stopped
+    mem_limit: 256m
+
+  weboffers-amazon-ar:
+    build: ./amazon-ar
     restart: unless-stopped
     mem_limit: 256m
 
