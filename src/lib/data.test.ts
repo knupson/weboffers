@@ -239,8 +239,9 @@ describe("mergeAmazonPrices & isComparable", () => {
     expect(merged[1]).toMatchObject({ amazonArs: 380000, verdict: "amazon", verdictReason: "precio" });
     expect(comparePrices(merged[1])).toEqual({ verdict: "amazon", saving: 120000 });
 
-    expect(merged[2]).toMatchObject({ amazonArs: 380000, verdict: "ml", verdictReason: "precio" });
-    expect(comparePrices(merged[2])).toEqual({ verdict: "ml", saving: 0 });
+    // Amazon sale menos pero sin envío gratis confirmado: no hay ganador (nunca "conviene" el más caro).
+    expect(merged[2]).toMatchObject({ amazonArs: 380000, verdict: undefined, verdictReason: "precio" });
+    expect(comparePrices(merged[2])).toEqual({ verdict: "sinEnvio", saving: 120000 });
   });
 
   it("filtra slugs del sitemap exigiendo ambos precios del día, MEP y EUR/USD", () => {

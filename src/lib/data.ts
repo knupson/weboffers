@@ -193,7 +193,8 @@ export function mergeMlPrices(
 }
 
 export interface PriceComparison {
-  verdict: "amazon" | "ml";
+  /** "sinEnvio": Amazon sale >=10% menos pero no está confirmado el envío a Argentina: no se resalta a ninguno. */
+  verdict: "amazon" | "ml" | "sinEnvio";
   saving: number;
 }
 
@@ -217,9 +218,9 @@ export function comparePrices(
     return { verdict: "ml", saving: 0 };
   }
   const savingRatio = Math.round((1 - amazonArs / mlPrice) * 1e6) / 1e6;
-  const verdict =
-    entry.shipsToAr?.freeShipping === true && savingRatio >= MIN_AMAZON_SAVING ? "amazon" : "ml";
-  const rawDiff = verdict === "amazon" ? mlPrice - amazonArs : amazonArs - mlPrice;
+  const verdict: PriceComparison["verdict"] =
+    savingRatio >= MIN_AMAZON_SAVING ? (entry.shipsToAr?.freeShipping === true ? "amazon" : "sinEnvio") : "ml";
+  const rawDiff = verdict === "ml" ? amazonArs - mlPrice : mlPrice - amazonArs;
   const saving = rawDiff >= 5000 ? roundArs10k(rawDiff) : 0;
   return { verdict, saving };
 }
@@ -258,7 +259,9 @@ export function mergeAmazonPrices(
         }
       }
     }
-    const { verdict } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr: entry.shipsToAr });
+    const { verdict: compared } = comparePrices({ ml: entry.ml, amazonArs, shipsToAr: entry.shipsToAr });
+    // Sin envío confirmado no hay ganador: el catálogo no guarda veredicto.
+    const verdict = compared === "sinEnvio" ? undefined : compared;
     const verdictReason: CatalogEntry["verdictReason"] = entry.asin ? "precio" : "sinAmazon";
     return {
       ...entry,

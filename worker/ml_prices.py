@@ -158,7 +158,10 @@ def verdict_from_ars(ml_price, amazon_ars, free_shipping):
     if not _is_valid_amount(ml_price) or not _is_valid_amount(amazon_ars):
         return "ml"
     saving = round(1 - amazon_ars / ml_price, 6)
-    return "amazon" if free_shipping is True and saving >= MIN_SAVING else "ml"
+    if saving < MIN_SAVING:
+        return "ml"
+    # Amazon sale menos pero sin envío confirmado a Argentina: no hay ganador.
+    return "amazon" if free_shipping is True else "sin_envio"
 
 
 def load_json(path, default):

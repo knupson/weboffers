@@ -84,6 +84,9 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
           <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
           <small data-price-sub hidden>{amzSub}</small>
         </p>
+        {verdict === "sinEnvio" && (
+          <p class="veredicto nota" data-verdict-text hidden>Sale menos, pero no confirmamos el envío a Argentina</p>
+        )}
         {verdict === "amazon" ? (
           <>
             <p class="veredicto" data-verdict-text hidden>Conviene{saving > 0 ? ` · ahorrás ~${formatArs(saving)}` : ""}</p>

@@ -201,7 +201,8 @@ describe("guarda de precios y estado inicial en HTML/CSS", () => {
       expect(subs[0]).toMatch(/\bhidden\b/);
 
       const verdicts = content.match(/<(?:span|p)[^>]*data-verdict-text[^>]*>/g) ?? [];
-      expect(verdicts.length).toBe(2);
+      // ganador en ML, ganador en Amazon y la nota de "sin envío confirmado"
+      expect(verdicts.length).toBe(3);
       for (const tag of verdicts) {
         expect(tag).toMatch(/\bhidden\b/);
       }

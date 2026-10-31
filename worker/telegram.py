@@ -85,8 +85,11 @@ def caption(product):
     if ml:
         precio = f"${ml['price']:,.0f}".replace(",", ".")
         lines.append(f"En Argentina: <b>{precio}</b> en Mercado Libre.")
-        if _verdict_for_product(product) == "amazon":
+        verdict = _verdict_for_product(product)
+        if verdict == "amazon":
             lines.append(f"Traerlo de {STORES.get(product['store'], 'Amazon')} sale bastante menos puesto en tu casa.")
+        elif verdict == "sin_envio":
+            lines.append("Traerlo de Amazon saldría menos, pero no confirmamos el envío a Argentina.")
         else:
             lines.append("Traerlo de Amazon no te ahorra: conviene comprarlo acá, llega en días.")
     else:

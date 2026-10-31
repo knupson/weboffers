@@ -260,3 +260,9 @@ def test_cheapest_new_skips_international_listings():
     ]
     assert ml_prices.cheapest_new(results) == (70000, "MLA4")
     assert ml_prices.cheapest_new(results[:3]) is None
+
+
+def test_verdict_without_confirmed_shipping_has_no_winner():
+    assert ml_prices.verdict_from_ars(2600000, 1680000, None) == "sin_envio"
+    assert ml_prices.verdict_from_ars(2600000, 1680000, True) == "amazon"
+    assert ml_prices.verdict_from_ars(300000, 310000, None) == "ml"

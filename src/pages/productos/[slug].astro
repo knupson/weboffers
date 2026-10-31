@@ -139,6 +139,9 @@ const specs: Array<[string, string]> = [
                   <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
                   <small data-price-sub hidden>{amzSub}</small>
                 </p>
+                {verdict === "sinEnvio" && (
+                  <p class="veredicto nota" data-verdict-text hidden>Traerlo sale menos, pero no confirmamos que Amazon lo envíe a Argentina. Revisá el envío en Amazon antes de comprar.</p>
+                )}
                 {verdict === "amazon" ? (
                   <a class="btn ghost sm" data-buy-link="amazon" data-winner="amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
                     <span class="v" data-verdict-text hidden>Mejor opción: Amazon. Puesto en tu casa sale bastante menos, aunque tarda más.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
