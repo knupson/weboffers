@@ -51,6 +51,7 @@ def is_comparable(product):
     ml = product.get("ml")
     return bool(
         product.get("verified") is True
+        and bool(product.get("image"))
         and isinstance(asin, str)
         and asin.strip()
         and isinstance(ml, dict)

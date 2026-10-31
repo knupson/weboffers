@@ -58,9 +58,9 @@ def test_waits_until_noon_and_skips_non_comparable(tmp_path, monkeypatch):
     monkeypatch.setattr(telegram.requests, "post", post)
     early = datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc)  # 9:00 en Argentina
     assert telegram.maybe_post(CATALOG, tmp_path / "s.json", early) is None
-    assert telegram.pick(CATALOG, ["con-foto"])["slug"] == "sin-foto"
-    assert telegram.pick(CATALOG, ["con-foto", "sin-foto"])["slug"] == "con-foto"
-    assert [p["slug"] for p in CATALOG if telegram.is_comparable(p)] == ["sin-foto", "con-foto"]
+    # Sin foto no se publica: el único comparable es con-foto y el ciclo vuelve a empezar con él.
+    assert telegram.pick(CATALOG, ["con-foto"])["slug"] == "con-foto"
+    assert [p["slug"] for p in CATALOG if telegram.is_comparable(p)] == ["con-foto"]
     post.assert_not_called()
 
 

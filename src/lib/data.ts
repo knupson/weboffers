@@ -282,6 +282,8 @@ export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | 
   if (
     !entry.verified ||
     !entry.asin ||
+    // Regla del user: producto sin foto no se publica.
+    !entry.image ||
     !entry.ml ||
     !Number.isFinite(entry.ml.price) ||
     !(entry.ml.price > 0) ||

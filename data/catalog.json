@@ -2637,7 +2637,9 @@
       "catalogId": "MLA43616596"
     },
     "verdict": "ml",
-    "verdictReason": "sinAmazon"
+    "verdictReason": "sinAmazon",
+    "image": "/products/amazon-kindle-paperwhite-2024.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_818005-MLA99365507326_112025-F.jpg"
   },
   {
     "asin": "",
@@ -2724,7 +2726,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA49225331?pdp_filters=item_id%3AMLA1693540641&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA49225331"
-    }
+    },
+    "image": "/products/samsung-microsd-express-256gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_903694-MLA99909156713_112025-F.jpg"
   },
   {
     "asin": "B0GFQ25QWY",
@@ -2740,7 +2744,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA72991152?pdp_filters=item_id%3AMLA2240490583&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA72991152"
-    }
+    },
+    "image": "/products/nintendo-joy-con-2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_992101-MLA111869061058_062026-F.jpg"
   },
   {
     "asin": "B00DMS0GTC",
@@ -2756,7 +2762,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA6006322?pdp_filters=item_id%3AMLA2205666745&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA6006322"
-    }
+    },
+    "image": "/products/canon-70d.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_636454-MLA99501538934_112025-F.jpg"
   },
   {
     "asin": "B07XBX32GR",
@@ -2772,7 +2780,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA30394915?pdp_filters=item_id%3AMLA1435554689&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA30394915"
-    }
+    },
+    "image": "/products/sony-sel50f18f-50mm.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_894032-MLA99469868316_112025-F.jpg"
   },
   {
     "asin": "B0DKFMSMYK",
@@ -2788,7 +2798,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA44455598?pdp_filters=item_id%3AMLA2244253973&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA44455598"
-    }
+    },
+    "image": "/products/amd-9800x3d.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_848971-MLA99564224828_122025-F.jpg"
   },
   {
     "asin": "B0CHFSWM2P",
@@ -2804,7 +2816,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA34018975?pdp_filters=item_id%3AMLA3964728628&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA34018975"
-    }
+    },
+    "image": "/products/samsung-t9-portable-ssd-1tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_751173-MLA99510962730_112025-F.jpg"
   },
   {
     "asin": "B0H41D4KFT",
@@ -2820,7 +2834,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA20892138?pdp_filters=item_id%3AMLA3512728410&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA20892138"
-    }
+    },
+    "image": "/products/amd-5800x3d.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_835734-MLA99434555460_112025-F.jpg"
   },
   {
     "asin": "B0CHHSFMRL",
@@ -2836,7 +2852,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA48826583?pdp_filters=item_id%3AMLA3263047264&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA48826583"
-    }
+    },
+    "image": "/products/sceptre-e275wfw100t-27in.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_700216-MLA83897529183_042025-F.jpg"
   },
   {
     "asin": "B0BPSGJN7T",
@@ -2852,7 +2870,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA28842379?pdp_filters=item_id%3AMLA3658599364&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA28842379"
-    }
+    },
+    "image": "/products/gl-inet-glmt3000.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_712655-MLA99952939879_112025-F.jpg"
   },
   {
     "asin": "B0D3J85SX4",
@@ -2868,7 +2888,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA64183529?pdp_filters=item_id%3AMLA2697598170&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA64183529"
-    }
+    },
+    "image": "/products/beats-beats-solo-buds.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_873714-MLA104546664005_012026-F.jpg"
   },
   {
     "asin": "B0GHYJ7BS9",
@@ -2884,7 +2906,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA70426434?pdp_filters=item_id%3AMLA3657481974&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA70426434"
-    }
+    },
+    "image": "/products/jbl-go5.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_861941-MLA111351003424_052026-F.jpg"
   },
   {
     "asin": "B0F194QFT2",
@@ -2900,7 +2924,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA53669406?pdp_filters=item_id%3AMLA1563124609&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA53669406"
-    }
+    },
+    "image": "/products/8bitdo-ultimate2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_996786-MLA99902909999_112025-F.jpg"
   },
   {
     "asin": "B0BQ1PDR4R",
@@ -2916,7 +2942,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA36201215?pdp_filters=item_id%3AMLA4128491958&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA36201215"
-    }
+    },
+    "image": "/products/razer-wolverinev2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_793645-MLU75994693685_042024-F.jpg"
   },
   {
     "asin": "B0CXGTGPZQ",
@@ -2932,7 +2960,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA44739662?pdp_filters=item_id%3AMLA1800901767&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA44739662"
-    }
+    },
+    "image": "/products/razer-blacksharkv2-2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_740094-MLA89572844640_082025-F.jpg"
   },
   {
     "asin": "B081415GCS",
@@ -2948,7 +2978,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA47626535?pdp_filters=item_id%3AMLA3799505524&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA47626535"
-    }
+    },
+    "image": "/products/logitech-g-g733.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_776520-MLA99510245876_112025-F.jpg"
   },
   {
     "asin": "B0GHP6916T",
@@ -2964,7 +2996,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA80799421?pdp_filters=item_id%3AMLA4133300408&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA80799421"
-    }
+    },
+    "image": "/products/scuf-omega.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_760093-MLA118351195106_102026-F.jpg"
   },
   {
     "asin": "B0CYWLSCFW",
@@ -2980,7 +3014,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA47335966?pdp_filters=item_id%3AMLA3459706188&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA47335966"
-    }
+    },
+    "image": "/products/turtle-beach-stealth500.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_923503-MLA83234739633_032025-F.jpg"
   },
   {
     "asin": "B0F1BXQNR5",
@@ -2996,7 +3032,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA59181161?pdp_filters=item_id%3AMLA3032275846&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA59181161"
-    }
+    },
+    "image": "/products/insignia-ns55f501na26-55in.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_654852-MLA94408068993_102025-F.jpg"
   },
   {
     "asin": "B0GV621HD7",
@@ -3012,7 +3050,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA44883517?pdp_filters=item_id%3AMLA1501405253&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA44883517"
-    }
+    },
+    "image": "/products/amazon-kindle-paperwhite-signature-edition.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_926555-MLA99968734147_112025-F.jpg"
   },
   {
     "asin": "B0FBC8ZWDH",
@@ -3028,7 +3068,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA44141274?pdp_filters=item_id%3AMLA2729075522&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA44141274"
-    }
+    },
+    "image": "/products/ring-chime.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_836721-MLU75110967573_032024-F.jpg"
   },
   {
     "asin": "B0F14N7HHH",
@@ -3044,7 +3086,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA44125870?pdp_filters=item_id%3AMLA3931155232&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA44125870"
-    }
+    },
+    "image": "/products/ring-battery-doorbell-2k-plus.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_899120-MLA99382945348_112025-F.jpg"
   },
   {
     "asin": "B09JZ5BG26",
@@ -3060,7 +3104,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA37589157?pdp_filters=item_id%3AMLA2479728650&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA37589157"
-    }
+    },
+    "image": "/products/ring-spotlight-cam-plus.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_879211-MLA99496515114_112025-F.jpg"
   },
   {
     "asin": "B0GV5WJH35",
@@ -3076,7 +3122,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA67632892?pdp_filters=item_id%3AMLA3541081890&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA67632892"
-    }
+    },
+    "image": "/products/amazon-kindle-colorsoft-signature-edition.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_783163-MLA110077782081_042026-F.jpg"
   },
   {
     "asin": "B08F6GPQQ7",
@@ -3092,7 +3140,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA22016795?pdp_filters=item_id%3AMLA2041099511&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA22016795"
-    }
+    },
+    "image": "/products/ring-floodlight-cam-wired-plus.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_639693-MLA98956023567_112025-F.jpg"
   },
   {
     "asin": "B0756BXDTX",
@@ -3108,7 +3158,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA26224542?pdp_filters=item_id%3AMLA1804774693&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA26224542"
-    }
+    },
+    "image": "/products/occer-12x25-compact-binoculars-adults.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_695917-MLA100018780429_122025-F.jpg"
   },
   {
     "asin": "B0C6N72X5Y",
@@ -3124,7 +3176,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA28102083?pdp_filters=item_id%3AMLA2293157928&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA28102083"
-    }
+    },
+    "image": "/products/vortex-triumph-hd-10x42-binoculars.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_881196-MLA95835633653_102025-F.jpg"
   },
   {
     "asin": "B07V3LB5DN",
@@ -3140,7 +3194,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA73975900?pdp_filters=item_id%3AMLA4032985898&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA73975900"
-    }
+    },
+    "image": "/products/vortex-crossfire-hd-10x42-binoculars.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_819730-MLA113416873237_062026-F.jpg"
   },
   {
     "asin": "B00161ZI4A",
@@ -3156,7 +3212,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA60332650?pdp_filters=item_id%3AMLA4037014196&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA60332650"
-    }
+    },
+    "image": "/products/vortex-optics-solo-monocular-10x36.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_953739-MLA95453316839_102025-F.jpg"
   },
   {
     "asin": "B00AMPJGMG",
@@ -3172,7 +3230,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA27551529?pdp_filters=item_id%3AMLA4056577336&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA27551529"
-    }
+    },
+    "image": "/products/bushnell-h2o.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_737780-MLU72086257994_102023-F.jpg"
   },
   {
     "asin": "B0DMR6P9X2",
@@ -3188,7 +3248,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA48525838?pdp_filters=item_id%3AMLA1908277083&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA48525838"
-    }
+    },
+    "image": "/products/pallipartners-pallipartners-4-3in.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_953262-MLA83807168123_042025-F.jpg"
   },
   {
     "asin": "B0B88T5RDY",
@@ -3204,7 +3266,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA29042319?pdp_filters=item_id%3AMLA1889896172&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA29042319"
-    }
+    },
+    "image": "/products/tp-3pack-6e-xe75.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_624459-MLA99434558114_112025-F.jpg"
   },
   {
     "asin": "B0FCSHJGGK",
@@ -3220,7 +3284,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA63119891?pdp_filters=item_id%3AMLA3866831790&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA63119891"
-    }
+    },
+    "image": "/products/dell-wd25.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_671742-MLA100696382436_122025-F.jpg"
   },
   {
     "asin": "B0DCHK3ZMW",
@@ -3236,7 +3302,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA47591416?pdp_filters=item_id%3AMLA1895851899&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA47591416"
-    }
+    },
+    "image": "/products/apple-70w-usb-c-power-adapter.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_741795-MLA95649002893_102025-F.jpg"
   },
   {
     "asin": "B09N72FMH5",
@@ -3252,7 +3320,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA36805306?pdp_filters=item_id%3AMLA4032844942&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA36805306"
-    }
+    },
+    "image": "/products/gl-inet-ac1200-glsft1200.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_941581-MLU77897414392_082024-F.jpg"
   },
   {
     "asin": "B0DZ75TN5F",
@@ -3268,7 +3338,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA75539410?pdp_filters=item_id%3AMLA1951922213&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA75539410"
-    }
+    },
+    "image": "/products/apple-a16-11in-128gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_674613-MLA114706499037_072026-F.jpg"
   },
   {
     "asin": "B0DD46HGC9",
@@ -3284,7 +3356,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA68444530?pdp_filters=item_id%3AMLA2162448773&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA68444530"
-    }
+    },
+    "image": "/products/omron-bronze-blood-pressure-monitor.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_685984-MLA110761818683_042026-F.jpg"
   },
   {
     "asin": "B0DR9ML5X9",
@@ -3300,7 +3374,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA79407331?pdp_filters=item_id%3AMLA4108361612&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA79407331"
-    }
+    },
+    "image": "/products/stanley-flip-straw.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_678506-MLA116265435530_092026-F.jpg"
   },
   {
     "asin": "B0HKYH5TF2",
@@ -3316,7 +3392,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA47982937?pdp_filters=item_id%3AMLA4066446594&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA47982937"
-    }
+    },
+    "image": "/products/hydrojug-hydrojug.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_830718-MLA83440644996_042025-F.jpg"
   },
   {
     "asin": "B0F1HX3WXX",
@@ -3332,7 +3410,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA51868977?pdp_filters=item_id%3AMLA2196265747&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA51868977"
-    }
+    },
+    "image": "/products/xbox-wireless-gaming-controller-carbon.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_644659-MLA95110687290_102025-F.jpg"
   },
   {
     "asin": "B0FY6Y9WZT",
@@ -3348,7 +3428,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA49514095?pdp_filters=item_id%3AMLA4040025006&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA49514095"
-    }
+    },
+    "image": "/products/playstation-dualsensetm-wireless-controller.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_765725-MLA84569798893_052025-F.jpg"
   },
   {
     "asin": "B086PKMZ21",
@@ -3364,7 +3446,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA57678428?pdp_filters=item_id%3AMLA2042391003&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA57678428"
-    }
+    },
+    "image": "/products/razer-blacksharkv2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_935278-MLA93287468157_092025-F.jpg"
   },
   {
     "asin": "B0H4P1YH4P",
@@ -3380,7 +3464,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA77752553?pdp_filters=item_id%3AMLA2237351169&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA77752553"
-    }
+    },
+    "image": "/products/nintendo-switchtm-sports-resort-nintendo.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_879077-MLA116444079883_082026-F.jpg"
   },
   {
     "asin": "B0C3BV19Q3",
@@ -3396,7 +3482,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA27673837?pdp_filters=item_id%3AMLA2088669213&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA27673837"
-    }
+    },
+    "image": "/products/hyperx-cloud-iii.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_891161-MLA99525271746_122025-F.jpg"
   },
   {
     "asin": "B0C7GW9F88",
@@ -3412,7 +3500,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA24473062?pdp_filters=item_id%3AMLA2148140504&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA24473062"
-    }
+    },
+    "image": "/products/gamesir-g7-2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_635451-MLA99932049021_112025-F.jpg"
   },
   {
     "asin": "B0HMKN3C41",
@@ -3428,7 +3518,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA77830229?pdp_filters=item_id%3AMLA3932530274&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA77830229"
-    }
+    },
+    "image": "/products/dji-pocket4.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_895112-MLA116488736363_082026-F.jpg"
   },
   {
     "asin": "B07K114TFB",
@@ -3444,7 +3536,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA15704989?pdp_filters=item_id%3AMLA2976217510&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA15704989"
-    }
+    },
+    "image": "/products/zoom-q2n4k.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_764602-MLA99938049917_112025-F.jpg"
   },
   {
     "asin": "B07524LHMT",
@@ -3460,7 +3554,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA8732155?pdp_filters=item_id%3AMLA3841112442&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA8732155"
-    }
+    },
+    "image": "/products/nikon-d850.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_893098-MLA99868867917_112025-F.jpg"
   },
   {
     "asin": "B01KURGS9E",
@@ -3476,7 +3572,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA6305722?pdp_filters=item_id%3AMLA933973238&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA6305722"
-    }
+    },
+    "image": "/products/canon-5d.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_808185-MLA99949876541_112025-F.jpg"
   },
   {
     "asin": "B0941C26MY",
@@ -3492,7 +3590,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA9461436?pdp_filters=item_id%3AMLA861898473&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA9461436"
-    }
+    },
+    "image": "/products/nikon-d7500-140mm.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_971073-MLA99457410106_112025-F.jpg"
   },
   {
     "asin": "B0FNWBQQ9Y",
@@ -3508,7 +3608,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA60928472?pdp_filters=item_id%3AMLA3502111772&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA60928472"
-    }
+    },
+    "image": "/products/viltrox-9mm-f2-8-e-aps-c.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_834446-MLA95599028464_102025-F.jpg"
   },
   {
     "asin": "B000A1SZ2Y",
@@ -3524,7 +3626,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA29177110?pdp_filters=item_id%3AMLA2245683475&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA29177110"
-    }
+    },
+    "image": "/products/raynox-dcr250.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_905359-MLU73564655529_122023-F.jpg"
   },
   {
     "asin": "B09G57BXZ4",
@@ -3540,7 +3644,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA46547069?pdp_filters=item_id%3AMLA1982314975&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA46547069"
-    }
+    },
+    "image": "/products/lente-nikon-nikkor-z-40-mm-f-2-se.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_977519-MLA82511903286_022025-F.jpg"
   },
   {
     "asin": "B0B8PDHRWY",
@@ -3556,7 +3662,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA77368561?pdp_filters=item_id%3AMLA2124028549&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA77368561"
-    }
+    },
+    "image": "/products/kodak-fz45.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_907155-MLA114834050670_082026-F.jpg"
   },
   {
     "asin": "B07ZRZLHH4",
@@ -3572,7 +3680,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA53676036?pdp_filters=item_id%3AMLA3684455358&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA53676036"
-    }
+    },
+    "image": "/products/kodak-wpz2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_858793-MLA89395906544_082025-F.jpg"
   },
   {
     "asin": "B0DY89Z83G",
@@ -3588,7 +3698,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA58479363?pdp_filters=item_id%3AMLA4058974404&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA58479363"
-    }
+    },
+    "image": "/products/kodak-c1-2-8in.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_784699-MLA116949431726_092026-F.jpg"
   },
   {
     "asin": "B07H289S7C",
@@ -3604,7 +3716,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA27856288?pdp_filters=item_id%3AMLA2184868725&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA27856288"
-    }
+    },
+    "image": "/products/seagate-barracuda-8tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_938025-MLA99955285615_112025-F.jpg"
   },
   {
     "asin": "B0F1GFD44G",
@@ -3620,7 +3734,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA48367491?pdp_filters=item_id%3AMLA4009507032&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA48367491"
-    }
+    },
+    "image": "/products/dell-s2725qc.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_984786-MLA83473962364_042025-F.jpg"
   },
   {
     "asin": "B0FHXY7VZ5",
@@ -3636,7 +3752,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA62507823?pdp_filters=item_id%3AMLA2597148520&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA62507823"
-    }
+    },
+    "image": "/products/lg-27u411ab-27in.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_689313-MLA98928827904_112025-F.jpg"
   },
   {
     "asin": "B0CLQ4954G",
@@ -3652,7 +3770,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA36961100?pdp_filters=item_id%3AMLA2765853102&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA36961100"
-    }
+    },
+    "image": "/products/tp-re615x.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_604526-MLU76407176919_052024-F.jpg"
   },
   {
     "asin": "B0CP7S3117",
@@ -3668,7 +3788,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA38696370?pdp_filters=item_id%3AMLA2838233538&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA38696370"
-    }
+    },
+    "image": "/products/gl-inet-glmt6000.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_720959-MLA80401785524_112024-F.jpg"
   },
   {
     "asin": "B08QTXNWZ1",
@@ -3684,7 +3806,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA18371309?pdp_filters=item_id%3AMLA1889202420&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA18371309"
-    }
+    },
+    "image": "/products/tp-er605.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_710702-MLA99918198067_112025-F.jpg"
   },
   {
     "asin": "B0DHWBS9G6",
@@ -3700,7 +3824,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA51483135?pdp_filters=item_id%3AMLA2472188404&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA51483135"
-    }
+    },
+    "image": "/products/asus-rtbe58u.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_956282-MLA95668963799_102025-F.jpg"
   },
   {
     "asin": "B0GF1J99S4",
@@ -3716,7 +3842,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA78721833?pdp_filters=item_id%3AMLA2200159253&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA78721833"
-    }
+    },
+    "image": "/products/gl-inet-glmt3600be.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_600720-MLA115547878422_082026-F.jpg"
   },
   {
     "asin": "B0FVXMHHRP",
@@ -3732,7 +3860,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA64090053?pdp_filters=item_id%3AMLA1651741365&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA64090053"
-    }
+    },
+    "image": "/products/samsung-a11-128gb-6gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_821775-MLA117959819522_102026-F.jpg"
   },
   {
     "asin": "B0HHF1HH16",
@@ -3748,7 +3878,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA66896036?pdp_filters=item_id%3AMLA2169503737&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA66896036"
-    }
+    },
+    "image": "/products/tcl-a1-12-2in-128gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_747785-MLA108306035842_032026-F.jpg"
   },
   {
     "asin": "B0FNWCYLZN",
@@ -3764,7 +3896,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA62143826?pdp_filters=item_id%3AMLA4036998918&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA62143826"
-    }
+    },
+    "image": "/products/soundcore-50h-ip55-p31i.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_947126-MLA97841609828_112025-F.jpg"
   },
   {
     "asin": "B0D2XRXNGY",
@@ -3780,7 +3914,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA44787399?pdp_filters=item_id%3AMLA1677349113&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA44787399"
-    }
+    },
+    "image": "/products/soundcore-36h-ip55-v20i.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_913759-MLA82458055461_022025-F.jpg"
   },
   {
     "asin": "B0GHY4PR3N",
@@ -3796,7 +3932,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA66794511?pdp_filters=item_id%3AMLA3684395698&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA66794511"
-    }
+    },
+    "image": "/products/jbl-530bt.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_773174-MLA104207851985_012026-F.jpg"
   },
   {
     "asin": "B095T14D4S",
@@ -3812,7 +3950,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA61618482?pdp_filters=item_id%3AMLA2152673815&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA61618482"
-    }
+    },
+    "image": "/products/raycon-everyday-bluetooth-wireless-earbuds.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_886907-MLA99985741805_112025-F.jpg"
   },
   {
     "asin": "B0CCZ26B5V",
@@ -3828,7 +3968,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA66582635?pdp_filters=item_id%3AMLA3060436740&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA66582635"
-    }
+    },
+    "image": "/products/bose-quietcomfort-headphones.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_862183-MLA107898596360_032026-F.jpg"
   },
   {
     "asin": "B09Z16XWH9",
@@ -3844,6 +3986,8 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA36687276?pdp_filters=item_id%3AMLA3283634400&matt_word=ale_benzoni&matt_tool=58527537",
       "checked": "2026-10-31",
       "catalogId": "MLA36687276"
-    }
+    },
+    "image": "/products/pokemon-go-plus-plus.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_763344-MLU76043424044_052024-F.jpg"
   }
 ]

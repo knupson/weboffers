@@ -17,6 +17,7 @@ import {
 } from "./data";
 
 const base = (over: Partial<CatalogEntry>): CatalogEntry => ({
+  image: "/products/producto.webp",
   asin: "B000000000",
   store: "US",
   slug: "producto",
@@ -319,5 +320,14 @@ describe("freshPrice, logIfFewProducts y resolvePricesDate", () => {
       ),
     ).toBe("");
     expect(resolvePricesDate(null, null)).toBe("");
+  });
+});
+
+describe("regla de foto", () => {
+  it("un producto sin foto no es comparable aunque tenga los dos precios de hoy", () => {
+    const now = Date.parse("2026-10-31T15:00:00-03:00");
+    const conTodo = base({ verified: true, ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>);
+    expect(isComparable(conTodo, null, now)).toBe(true);
+    expect(isComparable({ ...conTodo, image: undefined }, null, now)).toBe(false);
   });
 });
