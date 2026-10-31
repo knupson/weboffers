@@ -56,7 +56,7 @@ def run_once():
         ml_prices.maybe_refresh(
             catalog,
             ml_prices_path,
-            resolve_path(os.environ.get("AMAZON_TOTALS_PATH", "/app/amazon-totals.json")),
+            amazon_prices_path,
             (current_rates or {}).get("mep"),
             datetime.now(timezone.utc),
         )

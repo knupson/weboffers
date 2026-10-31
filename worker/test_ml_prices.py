@@ -9,13 +9,13 @@ import ml_prices
 
 
 CATALOG = [
-    {"slug": "monitor", "name": "Monitor", "verified": True, "verdict": "ml",
+    {"slug": "monitor", "name": "Monitor", "store": "US", "verified": True, "verdict": "ml",
      "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True}},
-    {"slug": "ssd", "name": "SSD", "verified": True, "verdict": "amazon",
+    {"slug": "ssd", "name": "SSD", "store": "US", "verified": True, "verdict": "amazon",
      "ml": {"price": 600000, "catalogId": "MLA222"}, "shipsToAr": {"freeShipping": True}},
-    {"slug": "sin-id", "name": "Sin id", "verified": True, "verdict": "ml",
+    {"slug": "sin-id", "name": "Sin id", "store": "US", "verified": True, "verdict": "ml",
      "ml": {"price": 100000}},
-    {"slug": "no-verificado", "name": "X", "verified": False, "verdict": "ml",
+    {"slug": "no-verificado", "name": "X", "store": "US", "verified": False, "verdict": "ml",
      "ml": {"price": 1, "catalogId": "MLA333"}},
 ]
 # Ahorro exacto de 10%: 900 USD * 1000 ARS / 1.000.000 ARS.
@@ -54,6 +54,12 @@ def route_get(routes):
     return get
 
 
+def test_amazon_formula_matches_site_three_inputs():
+    # Mismos 3 valores que en src/lib/calc/calc.test.ts (<100 con envío 45, 100..400 sin envío, >400 con aranceles).
+    assert [ml_prices.amazon_total_usd(u) for u in (80, 250, 550)] == [154.45, 312.5, 756.47]
+    assert [ml_prices.estimate_from_amazon(u, 1200) for u in (80, 250, 550)] == [185340, 375000, 907764]
+
+
 def test_verdict_amazon_needs_ten_percent_and_free_shipping():
     assert ml_prices.verdict_for(900, MEP, 1000000, True) == "amazon"  # exactamente 10%
     assert ml_prices.verdict_for(901, MEP, 1000000, True) == "ml"      # 9.9%
@@ -78,7 +84,7 @@ def test_skips_without_catalog_id_and_unverified(tmp_path, monkeypatch):
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
     monkeypatch.setattr(ml_prices.requests, "get", get)
     prices = tmp_path / "ml-prices.json"
-    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, AFTER_SEVEN) is True
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
     assert get.call_count == 2
     data = json.loads(prices.read_text(encoding="utf-8"))
     assert set(data["items"]) == {"monitor", "ssd"}
@@ -95,26 +101,64 @@ def test_keeps_previous_value_when_items_call_fails(tmp_path, monkeypatch):
     previous = {"generatedAt": "2026-10-29T10:00:00+00:00", "date": "2026-10-29", "items": {
         "monitor": {"price": 480000, "checked": "2026-10-29", "verdict": "ml", "verdictReason": "precio"}}}
     prices.write_text(json.dumps(previous), encoding="utf-8")
-    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, AFTER_SEVEN) is True
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
     items = json.loads(prices.read_text(encoding="utf-8"))["items"]
     assert items["monitor"]["price"] == 480000
     assert items["ssd"]["price"] == 700000
 
 
-def test_keeps_catalog_verdict_without_amazon_total(tmp_path, monkeypatch):
+def test_verdict_from_scraped_amazon_price_and_fallback_to_official_and_es(tmp_path, monkeypatch):
+    catalog = [
+        {"slug": "scraped", "name": "Scraped", "store": "US", "verified": True, "verdict": "ml",
+         "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True},
+         "listPrice": {"amount": 400, "currency": "USD"}},
+        {"slug": "oficial-sale", "name": "Oficial Sale", "store": "US", "verified": True, "verdict": "ml",
+         "ml": {"price": 500000, "catalogId": "MLA222"}, "shipsToAr": {"freeShipping": True},
+         "listPrice": {"amount": 400, "sale": 250, "currency": "USD"}},
+        {"slug": "oficial-base", "name": "Oficial Base", "store": "US", "verified": True, "verdict": "amazon",
+         "ml": {"price": 320000, "catalogId": "MLA333"}, "shipsToAr": {"freeShipping": True},
+         "listPrice": {"amount": 250, "currency": "USD"}},
+        {"slug": "espana", "name": "España", "store": "ES", "verified": True, "verdict": "amazon",
+         "ml": {"price": 500000, "catalogId": "MLA444"}, "shipsToAr": {"freeShipping": True},
+         "listPrice": {"amount": 200, "currency": "EUR"}},
+        {"slug": "sin-fuente", "name": "Sin fuente", "store": "US", "verified": True, "verdict": "ml",
+         "ml": {"price": 500000, "catalogId": "MLA555"}, "shipsToAr": {"freeShipping": True}},
+    ]
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
     monkeypatch.setattr(ml_prices.requests, "get", route_get({
-        "MLA111/items": items_response([{"price": 450000}]),
-        "MLA222/items": items_response([{"price": 700000}]),
+        "MLA111/items": items_response([{"price": 500000}]),
+        "MLA222/items": items_response([{"price": 500000}]),
+        "MLA333/items": items_response([{"price": 320000}]),
+        "MLA444/items": items_response([{"price": 500000}]),
+        "MLA555/items": items_response([{"price": 500000}]),
     }))
-    totals = tmp_path / "t.json"
-    totals.write_text(json.dumps({"ssd": 100}), encoding="utf-8")  # sólo ssd tiene total
+    amazon_prices = tmp_path / "amazon-prices.json"
+    amazon_prices.write_text(json.dumps({"date": "2026-10-30", "items": {
+        "scraped": {"amount": 250, "currency": "USD", "checked": "2026-10-30"},
+        "espana": {"amount": 180, "currency": "EUR", "checked": "2026-10-30"},
+    }}), encoding="utf-8")
     prices = tmp_path / "ml-prices.json"
-    ml_prices.maybe_refresh(CATALOG, prices, totals, MEP, AFTER_SEVEN)
+    ml_prices.maybe_refresh(catalog, prices, amazon_prices, MEP, AFTER_SEVEN)
     items = json.loads(prices.read_text(encoding="utf-8"))["items"]
-    assert items["monitor"]["verdict"] == "ml" and items["monitor"]["verdictReason"] == "existing"
-    assert items["ssd"]["verdictReason"] == "precio"
-    assert items["ssd"]["verdict"] == "amazon"  # 100*1000 = 100k frente a 700k: ahorro ~86%
+    # 250 USD -> total 312.50 USD -> 312.500 ARS vs 500.000 ARS (ahorro 37.5% >= 10%) -> gana amazon
+    assert items["scraped"]["verdict"] == "amazon"
+    assert items["scraped"]["verdictReason"] == "precio"
+    assert items["scraped"]["amazonSource"] == "amazon"
+    # Sin scrapeado usa listPrice.sale = 250 USD -> total 312.50 USD -> gana amazon con fuente "oficial"
+    assert items["oficial-sale"]["verdict"] == "amazon"
+    assert items["oficial-sale"]["verdictReason"] == "precio"
+    assert items["oficial-sale"]["amazonSource"] == "oficial"
+    # 250 USD -> 312.500 ARS vs 320.000 ARS (ahorro 2.3% < 10%) -> gana ml
+    assert items["oficial-base"]["verdict"] == "ml"
+    assert items["oficial-base"]["verdictReason"] == "precio"
+    assert items["oficial-base"]["amazonSource"] == "oficial"
+    # Tienda ES sin tasa EUR->USD en worker: conserva el veredicto del catálogo
+    assert items["espana"]["verdict"] == "amazon"
+    assert items["espana"]["verdictReason"] == "existing"
+    assert "amazonSource" not in items["espana"]
+    # Sin scrapeado ni listPrice: conserva el veredicto del catálogo
+    assert items["sin-fuente"]["verdict"] == "ml"
+    assert items["sin-fuente"]["verdictReason"] == "existing"
 
 
 def test_runs_once_per_day_and_not_before_seven(tmp_path, monkeypatch):
@@ -123,16 +167,16 @@ def test_runs_once_per_day_and_not_before_seven(tmp_path, monkeypatch):
     prices = tmp_path / "ml-prices.json"
     early = datetime(2026, 10, 30, 10, 0, tzinfo=timezone.utc)  # 07:00 ART -> ya corre
     before = datetime(2026, 10, 30, 9, 30, tzinfo=timezone.utc)  # 06:30 ART
-    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, before) is False
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, before) is False
     prices.write_text(json.dumps({"date": "2026-10-30", "items": {}}), encoding="utf-8")
-    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, early) is False
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, early) is False
     get.assert_not_called()
 
 
 def test_without_credentials_nothing_is_written(tmp_path, monkeypatch):
     monkeypatch.delenv("ML_CLIENT_ID")
     prices = tmp_path / "ml-prices.json"
-    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, AFTER_SEVEN) is False
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is False
     assert not prices.exists()
 
 
@@ -154,7 +198,7 @@ def test_link_points_to_the_cheapest_listing_with_affiliate(tmp_path, monkeypatc
         "MLA222/items": items_response([{"price": 700000, "item_id": "no-valido"}]),
     }))
     prices = tmp_path / "ml-prices.json"
-    ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "t.json", MEP, AFTER_SEVEN)
+    ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
     items = json.loads(prices.read_text(encoding="utf-8"))["items"]
     assert items["monitor"]["price"] == 400000
     assert items["monitor"]["url"] == ("https://www.mercadolibre.com.ar/p/MLA111?pdp_filters=item_id%3AMLA7"
@@ -166,11 +210,12 @@ def test_link_points_to_the_cheapest_listing_with_affiliate(tmp_path, monkeypatc
 def test_merge_applies_daily_price_and_verdict(tmp_path):
     prices = tmp_path / "ml-prices.json"
     prices.write_text(json.dumps({"date": "2026-10-31", "items": {
-        "monitor": {"price": 400000, "verdict": "amazon"},
+        "monitor": {"price": 400000, "verdict": "amazon", "amazonSource": "amazon"},
         "sin-id": {"price": "x", "verdict": "amazon"}}}), encoding="utf-8")
     merged = {p["slug"]: p for p in ml_prices.merge(CATALOG, prices)}
     assert merged["monitor"]["ml"]["price"] == 400000
     assert merged["monitor"]["verdict"] == "amazon"
+    assert merged["monitor"]["amazonSource"] == "amazon"
     assert merged["sin-id"] == CATALOG[2]
     assert CATALOG[0]["ml"]["price"] == 500000  # no muta
     assert ml_prices.merge(CATALOG, tmp_path / "no-existe.json") is CATALOG

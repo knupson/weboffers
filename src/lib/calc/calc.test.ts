@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { amazonTotalUsd, estimateFromAmazon } from '../estimate';
 import { calculate, type Rates } from './index';
 
 const rates: Rates = { mep: 1200, tarjeta: 1500, oficial: 1000 };
@@ -84,5 +85,10 @@ describe('calculate', () => {
     expect(result.totalUsd).toBe(Math.round(total * 100) / 100);
     expect(result.totalArsMep).toBe(Math.round(total * 3 * 100) / 100);
     expect(result.totalArsTarjeta).toBe(Math.round(total * 4 * 100) / 100);
+  });
+
+  it('matches worker amazon_total_usd and estimate_from_amazon on the same 3 inputs', () => {
+    expect([80, 250, 550].map(amazonTotalUsd)).toEqual([154.45, 312.5, 756.47]);
+    expect([80, 250, 550].map((u) => estimateFromAmazon(u, 1200))).toEqual([185340, 375000, 907764]);
   });
 });

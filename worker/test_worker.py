@@ -22,7 +22,7 @@ def local_temp_files(tmp_path, monkeypatch):
     monkeypatch.setenv("OUTPUT_PATH", str(tmp_path / "offers.json"))
     monkeypatch.setenv("AMAZON_PRICES_PATH", str(tmp_path / "amazon-prices.json"))
     monkeypatch.setenv("ML_PRICES_PATH", str(tmp_path / "ml-prices.json"))
-    monkeypatch.setenv("AMAZON_TOTALS_PATH", str(tmp_path / "amazon-totals.json"))
+    monkeypatch.setenv("ML_PRICES_PATH", str(tmp_path / "ml-prices.json"))
     monkeypatch.delenv("AMAZON_SCRAPER_URL", raising=False)
     monkeypatch.delenv("ML_CLIENT_ID", raising=False)
     monkeypatch.delenv("ML_CLIENT_SECRET", raising=False)

@@ -18,6 +18,7 @@ SITE_ID = "MLA"
 ART = timezone(timedelta(hours=-3))
 START_HOUR = 7
 MIN_SAVING = 0.10
+AMAZON_EXTRA = 0.04
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
 PAUSE_SECONDS = 0.3
 # Afiliados de Mercado Libre (públicos, van en cada link compartido). Igual que src/config.ts.
@@ -102,6 +103,33 @@ def item_url(catalog_id, item_id):
     return f"https://www.mercadolibre.com.ar/p/{catalog_id}?{params}"
 
 
+def _js_round(value):
+    return math.floor(value + 0.5)
+
+
+def shipping_for(usd):
+    return 0 if usd >= 100 else 45
+
+
+def amazon_total_usd(usd, shipping_usd=None):
+    """Costo total en USD puesto en casa (impuestos + envío + 4% de Amazon), igual que el sitio."""
+    if shipping_usd is None:
+        shipping_usd = shipping_for(usd)
+    excess = max(0.0, usd - 400.0)
+    iva_base = usd + shipping_usd + excess * 0.35 + excess * 0.03
+    calc_total = _js_round(iva_base * 1.21 * 100) / 100
+    return _js_round((calc_total + usd * AMAZON_EXTRA) * 100) / 100
+
+
+def estimate_from_amazon(usd, mep):
+    """Total en ARS al MEP con la misma fórmula que estimateFromAmazon en src/lib/estimate.ts."""
+    shipping_usd = shipping_for(usd)
+    excess = max(0.0, usd - 400.0)
+    iva_base = usd + shipping_usd + excess * 0.35 + excess * 0.03
+    calc_total = _js_round(iva_base * 1.21 * 100) / 100
+    return int(_js_round((calc_total + usd * AMAZON_EXTRA) * mep))
+
+
 def verdict_for(total_usd, mep, ml_price, free_shipping):
     """Amazon sólo gana si ahorra al menos 10% y el envío a Argentina es gratis."""
     # round evita que 0.9 se vea como 0.0999... en el borde del 10%.
@@ -116,16 +144,42 @@ def load_json(path, default):
         return default
 
 
-def load_totals(path):
-    totals = load_json(path, {})
-    if not isinstance(totals, dict):
+def _is_valid_amount(value):
+    return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) and value > 0
+
+
+def load_amazon_prices(path):
+    data = load_json(path, {})
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, dict):
         return {}
-    return {slug: value for slug, value in totals.items()
-            if isinstance(value, (int, float)) and not isinstance(value, bool)
-            and math.isfinite(value) and value > 0}
+    return {
+        slug: entry
+        for slug, entry in items.items()
+        if isinstance(entry, dict)
+        and entry.get("currency") in ("USD", "EUR")
+        and _is_valid_amount(entry.get("amount"))
+    }
 
 
-def maybe_refresh(catalog, prices_path, totals_path, mep, now):
+def resolve_amazon_total(product, amazon_items):
+    """Devuelve (total_usd, source) desde amazon-prices.json o listPrice oficial. Omite ES sin tasa EUR->USD."""
+    if product.get("store") == "ES":
+        return None, None
+    slug = product.get("slug")
+    scraped = amazon_items.get(slug) if isinstance(amazon_items, dict) else None
+    if isinstance(scraped, dict) and scraped.get("currency") == "USD" and _is_valid_amount(scraped.get("amount")):
+        return amazon_total_usd(scraped["amount"]), "amazon"
+    lp = product.get("listPrice")
+    if isinstance(lp, dict) and lp.get("currency") == "USD":
+        sale = lp.get("sale")
+        official = sale if _is_valid_amount(sale) else lp.get("amount")
+        if _is_valid_amount(official):
+            return amazon_total_usd(official), "oficial"
+    return None, None
+
+
+def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now):
     """Recalcula precios y veredictos una vez por día desde las 07:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today = local.date().isoformat()
@@ -140,7 +194,7 @@ def maybe_refresh(catalog, prices_path, totals_path, mep, now):
     old_items = previous.get("items", {}) if isinstance(previous, dict) else {}
     if not isinstance(old_items, dict):
         old_items = {}
-    totals = load_totals(totals_path)
+    amazon_items = load_amazon_prices(amazon_prices_path)
     items = {}
     for product in catalog:
         ml = product.get("ml") or {}
@@ -160,15 +214,18 @@ def maybe_refresh(catalog, prices_path, totals_path, mep, now):
             pause()
             continue
         price = int(round(price))
-        total = totals.get(slug)
+        total, source = resolve_amazon_total(product, amazon_items)
         if total is None or mep is None:
             # Sin total de Amazon o sin MEP no hay cálculo: queda el veredicto del catálogo.
             verdict, reason = product.get("verdict"), "existing"
         else:
             free_shipping = (product.get("shipsToAr") or {}).get("freeShipping")
             verdict, reason = verdict_for(total, mep, price, free_shipping), "precio"
-        items[slug] = {"price": price, "url": item_url(catalog_id, item_id), "checked": today,
-                       "verdict": verdict, "verdictReason": reason}
+        entry = {"price": price, "url": item_url(catalog_id, item_id), "checked": today,
+                 "verdict": verdict, "verdictReason": reason}
+        if source:
+            entry["amazonSource"] = source
+        items[slug] = entry
         pause()
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
@@ -185,11 +242,14 @@ def merge(catalog, prices_path):
     for product in catalog:
         item = items.get(product.get("slug"))
         price = item.get("price") if isinstance(item, dict) else None
-        if not product.get("ml") or isinstance(price, bool) or not isinstance(price, (int, float))                 or not math.isfinite(price):
+        if not product.get("ml") or isinstance(price, bool) or not isinstance(price, (int, float)) \
+                or not math.isfinite(price):
             merged.append(product)
             continue
         product = {**product, "ml": {**product["ml"], "price": price}}
         if item.get("verdict") in ("amazon", "ml"):
             product["verdict"] = item["verdict"]
+        if item.get("amazonSource") in ("amazon", "oficial"):
+            product["amazonSource"] = item["amazonSource"]
         merged.append(product)
     return merged
