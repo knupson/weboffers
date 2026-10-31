@@ -25,6 +25,10 @@ def scraper_url():
     return os.environ.get("AMAZON_SCRAPER_URL", "").strip().rstrip("/")
 
 
+def ar_url():
+    return os.environ.get("AMAZON_AR_URL", "").strip().rstrip("/")
+
+
 def pause():
     if PAUSE_SECONDS > 0:
         time.sleep(PAUSE_SECONDS)
@@ -70,6 +74,52 @@ def fetch_bulk(base_url, asins, store):
     if not isinstance(products, list):
         raise ValueError("respuesta sin lista de productos")
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
+
+
+def fetch_ar_shipping(base_url, asins):
+    resp = requests.get(
+        f"{base_url}/ar-shipping",
+        params={"asins": ",".join(asins)},
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    products = data.get("products") if isinstance(data, dict) else None
+    if not isinstance(products, list):
+        raise ValueError("respuesta sin lista de productos")
+    return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
+
+
+def refresh_ar_shipping(candidates, items, today):
+    """Consulta /ar-shipping en lotes de BULK_MAX y guarda shipsToAr por slug.
+
+    Si falla el relevamiento de un producto no se guarda nada para él (queda
+    desconocido); nunca se reutiliza el valor de días anteriores.
+    """
+    base_url = ar_url()
+    if not base_url:
+        return
+    first_call = True
+    for i in range(0, len(candidates), BULK_MAX):
+        chunk = candidates[i:i + BULK_MAX]
+        if not first_call:
+            pause()
+        first_call = False
+        try:
+            fetched = fetch_ar_shipping(base_url, [p["asin"] for p in chunk])
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            print(f"Amazon AR: falló lote ({type(exc).__name__}); se omite.", flush=True)
+            continue
+        for product in chunk:
+            item = fetched.get(product["asin"])
+            if not isinstance(item, dict) or "error" in item:
+                continue
+            free = item.get("free")
+            items.setdefault(product["slug"], {})["shipsToAr"] = {
+                "ships": item.get("ships") is True,
+                "free": free if isinstance(free, bool) else None,
+                "checked": today,
+            }
 
 
 def maybe_refresh(catalog, prices_path, now):
@@ -121,6 +171,8 @@ def maybe_refresh(catalog, prices_path, now):
                     ok += 1
                 else:
                     missing += 1
+
+    refresh_ar_shipping(candidates, items, today)
 
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
