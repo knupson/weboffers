@@ -17,6 +17,10 @@ API_BASE_URL = "https://api.mercadolibre.com"
 SITE_ID = "MLA"
 ART = timezone(timedelta(hours=-3))
 START_HOUR = 6
+# Días de oferta especial (ej. CyberMonday): a la 13:00 ART se refrescan los precios de ML una vez más.
+# Amazon no se vuelve a releer: se reutiliza el amazon-prices.json del día tal cual.
+EXTRA_REFRESH_DATES = {"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-27", "2026-11-30"}
+EXTRA_REFRESH_HOUR = 13
 MIN_SAVING = 0.10
 AMAZON_EXTRA = 0.04
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
@@ -187,6 +191,23 @@ def _is_fresh_checked(checked, today_date):
     return isinstance(checked, str) and checked == today_date.isoformat()
 
 
+def _slot_id(date_str, hour):
+    return f"{date_str}T{hour:02d}"
+
+
+def _done_slot(previous):
+    """Slot ya ejecutado según el archivo guardado. Sin clave "slot" vale el slot de la mañana de su "date"."""
+    if not isinstance(previous, dict):
+        return None
+    slot = previous.get("slot")
+    if isinstance(slot, str):
+        return slot
+    date_value = previous.get("date")
+    if isinstance(date_value, str):
+        return _slot_id(date_value, START_HOUR)
+    return None
+
+
 def load_amazon_prices(path, now=None):
     data = load_json(path, {})
     items = data.get("items") if isinstance(data, dict) else None
@@ -235,14 +256,21 @@ def estimate_amazon_ars(product, amazon_items, mep, eur_usd=None):
 
 
 def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None):
-    """Recalcula precios y veredictos una vez por día desde las 06:00 ART. Devuelve True si corrió."""
+    """Recalcula precios y veredictos una vez por día desde las 06:00 ART y, en los días de
+    EXTRA_REFRESH_DATES, una vez más desde las 13:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today = local.date().isoformat()
     if local.hour < START_HOUR:
         return False
+    extra_slot = _slot_id(today, EXTRA_REFRESH_HOUR) if today in EXTRA_REFRESH_DATES else None
     previous = load_json(prices_path, None)
-    if isinstance(previous, dict) and previous.get("date") == today:
+    done_slot = _done_slot(previous) if isinstance(previous, dict) and previous.get("date") == today else None
+    if extra_slot is not None and local.hour >= EXTRA_REFRESH_HOUR and done_slot != extra_slot:
+        slot = extra_slot
+    elif done_slot is not None:
         return False
+    else:
+        slot = _slot_id(today, START_HOUR)
     if not is_configured():
         print("Mercado Libre: faltan ML_CLIENT_ID o ML_CLIENT_SECRET; se omite.", flush=True)
         return False
@@ -277,7 +305,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
             entry["amazonSource"] = source
         items[slug] = entry
         pause()
-    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
+    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
     return True
 
