@@ -32,11 +32,11 @@ describe('deployer', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('calcula 07:30 ART como inicio, 11:00 ART como tope y 10 min de reintento', () => {
-    const now = new Date('2026-10-30T10:30:00Z'); // 07:30 ART del 2026-10-30
+  it('calcula 07:00 ART como inicio, 11:00 ART como tope y 10 min de reintento', () => {
+    const now = new Date('2026-10-30T10:00:00Z'); // 07:00 ART del 2026-10-30
     expect(artDate(now)).toBe('2026-10-30');
     expect(deadlineAt(now)).toBe(Date.parse('2026-10-30T14:00:00Z')); // 11:00 ART
-    expect(nextRunAt(new Date('2026-10-30T10:00:00Z'))).toBe(Date.parse('2026-10-30T10:30:00Z'));
+    expect(nextRunAt(new Date('2026-10-30T09:30:00Z'))).toBe(Date.parse('2026-10-30T10:00:00Z'));
     expect(RETRY_INTERVAL_MS).toBe(10 * 60e3);
   });
 
@@ -47,7 +47,7 @@ describe('deployer', () => {
     const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
     await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
 
-    const now = new Date('2026-10-30T10:30:00Z'); // 07:30 ART
+    const now = new Date('2026-10-30T10:00:00Z'); // 07:00 ART
 
     // Falta ml-prices.json -> skip
     expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('skip');

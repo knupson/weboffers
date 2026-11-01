@@ -95,7 +95,9 @@ def main():
             run_once()
         except Exception as exc:
             print(f"Falló el ciclo de actualización ({type(exc).__name__}).", flush=True)
-        deadline = time.monotonic() + interval
+        # Despierta al minuto 1 de cada hora (o antes si el intervalo es menor) para que Telegram y los precios salgan en horario.
+        to_next_hour = 3600 - time.time() % 3600 + 60
+        deadline = time.monotonic() + min(interval, to_next_hour)
         while not stop_requested and time.monotonic() < deadline:
             time.sleep(min(0.25, max(0, deadline - time.monotonic())))
     print("Worker detenido.", flush=True)

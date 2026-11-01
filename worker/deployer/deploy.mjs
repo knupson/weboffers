@@ -1,5 +1,5 @@
 // Despliegue diario de Franquicia 400 a Cloudflare con los precios de Mercado Libre y Amazon.
-// Corre desde las 07:30 ART esperando que ambos archivos de precios sean del día (reintenta cada 10 min hasta las 11:00 ART).
+// Corre desde las 07:00 ART esperando que ambos archivos de precios sean del día (reintenta cada 10 min hasta las 11:00 ART).
 // Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_WAIT / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -12,7 +12,7 @@ const AMAZON_OUTPUT_FILE = '/app/output/amazon-prices.json';
 const WORK_DIR = '/work';
 const STATE_FILE = '/state/last-deploy.json';
 const ART_OFFSET_MS = -3 * 3600e3;   // Argentina no tiene horario de verano
-const DEPLOY_AT_UTC = '10:30:00Z';    // 07:30 ART
+const DEPLOY_AT_UTC = '10:00:00Z';    // 07:00 ART
 const DEADLINE_UTC = '14:00:00Z';     // 11:00 ART
 const RETRY_INTERVAL_MS = 10 * 60e3;  // 10 minutos
 const ONE_DAY_MS = 86400e3;

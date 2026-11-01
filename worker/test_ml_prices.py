@@ -162,12 +162,12 @@ def test_verdict_from_scraped_amazon_price_ignores_list_price_and_handles_es(tmp
     assert items_es["espana"]["amazonSource"] == "amazon"
 
 
-def test_runs_once_per_day_and_not_before_seven(tmp_path, monkeypatch):
+def test_runs_once_per_day_and_not_before_six(tmp_path, monkeypatch):
     get = Mock(side_effect=AssertionError("no debe consultar"))
     monkeypatch.setattr(ml_prices.requests, "get", get)
     prices = tmp_path / "ml-prices.json"
     early = datetime(2026, 10, 30, 10, 0, tzinfo=timezone.utc)  # 07:00 ART -> ya corre
-    before = datetime(2026, 10, 30, 9, 30, tzinfo=timezone.utc)  # 06:30 ART
+    before = datetime(2026, 10, 30, 8, 30, tzinfo=timezone.utc)  # 05:30 ART
     assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, before) is False
     prices.write_text(json.dumps({"date": "2026-10-30", "items": {}}), encoding="utf-8")
     assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, early) is False

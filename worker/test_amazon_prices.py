@@ -110,13 +110,13 @@ def test_does_not_keep_previous_when_scraper_fails(tmp_path, monkeypatch, capsys
     assert "AMAZON_SCRAPER_FAIL" in stdout
 
 
-def test_skips_before_seven_or_already_updated_or_without_url(tmp_path, monkeypatch):
+def test_skips_before_six_or_already_updated_or_without_url(tmp_path, monkeypatch):
     get = Mock(side_effect=AssertionError("no debe llamar al scraper"))
     monkeypatch.setattr(amazon_prices.requests, "get", get)
     out = tmp_path / "amazon-prices.json"
     catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
 
-    before = datetime(2026, 10, 30, 9, 59, tzinfo=timezone.utc)  # 06:59 ART
+    before = datetime(2026, 10, 30, 8, 59, tzinfo=timezone.utc)  # 05:59 ART
     assert amazon_prices.maybe_refresh(catalog, out, before) is False
 
     monkeypatch.setenv("AMAZON_SCRAPER_URL", "   ")

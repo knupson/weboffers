@@ -91,3 +91,17 @@ def test_rejects_stale_amazon_source_after_amazon_price_expires(tmp_path):
     assert merged[0]["amazonArs"] is None
     assert merged[0]["amazonSource"] is None
     assert telegram.is_comparable(merged[0]) is False
+
+
+def test_posts_again_at_20_and_respects_old_state(tmp_path, monkeypatch):
+    import json
+    post = Mock()
+    post.return_value.raise_for_status = Mock()
+    monkeypatch.setattr(telegram.requests, "post", post)
+    state = tmp_path / "s.json"
+    state.write_text(json.dumps({"lastDate": "2026-10-30", "posted": []}), encoding="utf-8")
+    assert telegram.maybe_post(CATALOG, state, noon_art()) is None  # el de las 12 ya salió (estado viejo)
+    night = datetime(2026, 10, 30, 23, 5, tzinfo=timezone.utc)  # 20:05 en Argentina
+    assert telegram.maybe_post(CATALOG, state, night) == "con-foto"
+    assert telegram.maybe_post(CATALOG, state, night) is None
+    assert post.call_count == 1

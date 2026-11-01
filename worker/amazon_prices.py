@@ -13,7 +13,7 @@ import publish
 
 
 ART = timezone(timedelta(hours=-3))
-START_HOUR = 7
+START_HOUR = 6
 # En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
 BULK_MAX = 5
 TIMEOUT = 240
@@ -132,7 +132,7 @@ def refresh_ar_shipping(candidates, items, today):
 
 
 def maybe_refresh(catalog, prices_path, now):
-    """Consulta precios de Amazon una vez por día desde las 07:00 ART. Devuelve True si corrió."""
+    """Consulta precios de Amazon una vez por día desde las 06:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today_date = local.date()
     today = today_date.isoformat()

@@ -16,7 +16,7 @@ import publish
 API_BASE_URL = "https://api.mercadolibre.com"
 SITE_ID = "MLA"
 ART = timezone(timedelta(hours=-3))
-START_HOUR = 7
+START_HOUR = 6
 MIN_SAVING = 0.10
 AMAZON_EXTRA = 0.04
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
@@ -235,7 +235,7 @@ def estimate_amazon_ars(product, amazon_items, mep, eur_usd=None):
 
 
 def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None):
-    """Recalcula precios y veredictos una vez por día desde las 07:00 ART. Devuelve True si corrió."""
+    """Recalcula precios y veredictos una vez por día desde las 06:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today = local.date().isoformat()
     if local.hour < START_HOUR:

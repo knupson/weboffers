@@ -14,7 +14,7 @@ import ml_prices
 
 SITE = "https://ofertas.knunet.com"
 ART = timezone(timedelta(hours=-3))
-POST_HOUR = 12
+POST_HOURS = (12, 20)
 STORES = {"US": "Amazon.com", "ES": "Amazon.es"}
 DISCLOSURE = "Links de afiliado: si comprás, Amazon o Mercado Libre nos pagan una comisión y a vos te sale lo mismo."
 
@@ -113,19 +113,26 @@ def send(product):
 
 
 def maybe_post(catalog, state_path, now=None):
-    """Publica un producto por día, a partir de las 12 de Argentina. Devuelve el slug publicado o None."""
+    """Publica un producto en cada horario de POST_HOURS (Argentina). Devuelve el slug publicado o None."""
     if not is_configured():
         return None
     now = (now or datetime.now(timezone.utc)).astimezone(ART)
     today = now.date().isoformat()
+    slots = [h for h in POST_HOURS if now.hour >= h]
+    if not slots:
+        return None
+    slot = f"{today}T{slots[-1]:02d}"
     state = load_state(state_path)
-    if state.get("lastDate") == today or now.hour < POST_HOUR:
+    # Estado viejo (sólo lastDate): el turno de las 12 de ese día ya salió.
+    last = state.get("lastSlot") or (f"{state['lastDate']}T{POST_HOURS[0]:02d}" if state.get("lastDate") else "")
+    if last >= slot:
         return None
     product = pick(catalog, state.get("posted", []))
     if product is None:
         return None
     send(product)
     state["lastDate"] = today
+    state["lastSlot"] = slot
     state["posted"] = (state.get("posted", []) + [product["slug"]])[-200:]
     save_state(state_path, state)
     print(f"Telegram: publicado {product['slug']}.", flush=True)
