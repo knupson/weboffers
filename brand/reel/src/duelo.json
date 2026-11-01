@@ -1,0 +1,135 @@
+{
+  "voz": [
+    4.008,
+    7.2,
+    2.832,
+    8.4,
+    5.664,
+    4.848
+  ],
+  "audio": [
+    "f0.mp3",
+    "f1.mp3",
+    "f2.mp3",
+    "f3.mp3",
+    "f4.mp3",
+    "f5.mp3"
+  ],
+  "subs": [
+    [],
+    [
+      [
+        0.05,
+        "Skullcandy Crusher ANC 2"
+      ],
+      [
+        1.3,
+        "$ 869.099 en Mercado Libre"
+      ],
+      [
+        3.9,
+        "Traídos de Amazon…"
+      ],
+      [
+        5.0,
+        "unos $ 350.000"
+      ]
+    ],
+    [],
+    [
+      [
+        0.05,
+        "Joystick GameSir G7 SE"
+      ],
+      [
+        1.4,
+        "$ 96.952 en Mercado Libre"
+      ],
+      [
+        3.85,
+        "De Amazon: $ 170.000"
+      ],
+      [
+        6.45,
+        "El envío se come todo"
+      ]
+    ],
+    [],
+    []
+  ],
+  "duelos": [
+    {
+      "img": "skullcandy-crusher-anc-2.webp",
+      "nombre": "Skullcandy Crusher ANC 2",
+      "ml": 869099,
+      "az": 350000,
+      "mlAt": [
+        1.3,
+        2.9
+      ],
+      "azAt": [
+        5.0,
+        6.3
+      ],
+      "gana": "amazon",
+      "ganaAt": 6.5,
+      "nota": "Te ahorrás ~$ 520.000"
+    },
+    {
+      "img": "gamesir-g7-2.webp",
+      "nombre": "Joystick GameSir G7 SE",
+      "ml": 96952,
+      "az": 170000,
+      "mlAt": [
+        1.4,
+        2.8
+      ],
+      "azAt": [
+        4.7,
+        5.7
+      ],
+      "gana": "ml",
+      "ganaAt": 6.45,
+      "nota": "El envío se come la diferencia"
+    }
+  ],
+  "hookImage": "skullcandy-crusher-anc-2.webp",
+  "cantidad": 97,
+  "textos": {
+    "marca": "Franquicia 400",
+    "gancho": [
+      "PAGÁS",
+      "MÁS DEL",
+      "DOBLE"
+    ],
+    "ganchoSub": "si los comprás en Mercado Libre",
+    "giro": [
+      "PERO OJO",
+      "NO SIEMPRE",
+      "GANA AMAZON"
+    ],
+    "regla": "LA REGLA",
+    "tarjetas": [
+      {
+        "titulo": "MENOS DE USD 100",
+        "sub": "Comprá en Mercado Libre: el envío desde EE.UU. te mata."
+      },
+      {
+        "titulo": "MÁS DE USD 100",
+        "sub": "Compará: Amazon manda gratis y puede salir mucho menos."
+      }
+    ],
+    "cierre": [
+      "Comparamos",
+      "productos",
+      "con los precios de hoy",
+      "ofertas.knunet.com",
+      "☝ LINK EN LA BIO"
+    ],
+    "ml": "Mercado Libre",
+    "amazon": "Amazon (EE.UU.)",
+    "selloMl": "GANA\nMERCADO\nLIBRE",
+    "selloAmazon": "GANA\nAMAZON",
+    "pie": "Precios del 01/11/2026 · Amazon: estimado con envío e impuestos"
+  }
+}
