@@ -266,3 +266,70 @@ def test_verdict_without_confirmed_shipping_has_no_winner():
     assert ml_prices.verdict_from_ars(2600000, 1680000, None) == "sin_envio"
     assert ml_prices.verdict_from_ars(2600000, 1680000, True) == "amazon"
     assert ml_prices.verdict_from_ars(300000, 310000, None) == "ml"
+
+
+# 2026-11-02 es día extra (EXTRA_REFRESH_DATES); 2026-10-30 es día normal.
+EXTRA_MORNING = datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc)    # 06:00 ART
+EXTRA_NOON = datetime(2026, 11, 2, 15, 30, tzinfo=timezone.utc)     # 12:30 ART
+EXTRA_13 = datetime(2026, 11, 2, 16, 0, tzinfo=timezone.utc)        # 13:00 ART
+EXTRA_14 = datetime(2026, 11, 2, 17, 0, tzinfo=timezone.utc)        # 14:00 ART
+NORMAL_13 = datetime(2026, 10, 30, 16, 0, tzinfo=timezone.utc)      # 13:00 ART día normal
+
+
+def mock_ml_get(monkeypatch):
+    get = Mock(side_effect=route_get({
+        "MLA111/items": items_response([{"price": 450000}]),
+        "MLA222/items": items_response([{"price": 700000}]),
+    }))
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    return get
+
+
+def test_extra_slot_runs_once_on_extra_date_after_13_art(tmp_path, monkeypatch):
+    get = mock_ml_get(monkeypatch)
+    prices = tmp_path / "ml-prices.json"
+    amazon = tmp_path / "amazon-prices.json"
+    amazon.write_text(json.dumps({"date": "2026-11-02", "items": {}}), encoding="utf-8")
+    amazon_before = amazon.read_text(encoding="utf-8")
+    # Mañana: corre y firma slot T06
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, EXTRA_MORNING) is True
+    data = json.loads(prices.read_text(encoding="utf-8"))
+    assert data["date"] == "2026-11-02"
+    assert data["slot"] == "2026-11-02T06"
+    # Antes de las 13:00 ART no corre de nuevo
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, EXTRA_NOON) is False
+    # A las 13:00 ART corre una vez más y firma slot T13
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, EXTRA_13) is True
+    assert json.loads(prices.read_text(encoding="utf-8"))["slot"] == "2026-11-02T13"
+    # Después de las 13:00 ART no corre más ese día
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, EXTRA_14) is False
+    assert get.call_count == 4  # 2 productos en la mañana + 2 en el slot extra
+    # Amazon se reutiliza tal cual: el archivo no se tocó
+    assert amazon.read_text(encoding="utf-8") == amazon_before
+
+
+def test_no_extra_slot_on_normal_date(tmp_path, monkeypatch):
+    mock_ml_get(monkeypatch)
+    prices = tmp_path / "ml-prices.json"
+    amazon = tmp_path / "amazon-prices.json"
+    # Mañana del día normal: corre y firma slot T06
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, AFTER_SEVEN) is True
+    assert json.loads(prices.read_text(encoding="utf-8"))["slot"] == "2026-10-30T06"
+    # A las 13:00 ART de un día normal no hay segundo refresh
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, NORMAL_13) is False
+
+
+def test_missing_slot_key_counts_as_morning_slot_of_its_date(tmp_path, monkeypatch):
+    mock_ml_get(monkeypatch)
+    amazon = tmp_path / "amazon-prices.json"
+    # Archivo viejo sin "slot" en día normal: ya se considera corrido el slot de la mañana
+    prices = tmp_path / "ml-prices.json"
+    prices.write_text(json.dumps({"date": "2026-10-30", "items": {}}), encoding="utf-8")
+    assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, NORMAL_13) is False
+    # El mismo caso en día extra a las 13:30 ART dispara el slot extra
+    prices_extra = tmp_path / "ml-prices-extra.json"
+    prices_extra.write_text(json.dumps({"date": "2026-11-02", "items": {}}), encoding="utf-8")
+    at_1330 = datetime(2026, 11, 2, 16, 30, tzinfo=timezone.utc)  # 13:30 ART
+    assert ml_prices.maybe_refresh(CATALOG, prices_extra, amazon, MEP, at_1330) is True
+    assert json.loads(prices_extra.read_text(encoding="utf-8"))["slot"] == "2026-11-02T13"
