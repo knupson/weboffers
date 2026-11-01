@@ -2,15 +2,14 @@
 """Recordatorios y controles de Franquicia 400 por WhatsApp (WAHA del pi4).
 
 Reusa la configuración de WAHA del servicio de avisos de soporte (su .env), igual que
-recordatorio_redes.py de Blackseam.
+recordatorio_redes.py de Blackseam. Mensajes lo más cortos posible: sólo la frase para Claude.
 
-Dos modos:
-- Sin argumentos (10:00): tareas del día según el calendario de publicaciones (Reel mar-jue,
-  carrusel los lunes, rutina de los lunes, fechas especiales) y avisos puntuales.
+Modos:
+- Sin argumentos (10:00): tareas del día según el calendario de publicaciones y avisos puntuales.
 - --control <sitio|telegram12|telegram20>: control automático; sólo escribe si algo falló.
   sitio = la portada tiene la fecha de hoy (deploy de las 7:00); telegramNN = el canal tiene
   la publicación de ese turno.
-- --prueba: manda un mensaje de prueba.
+- --prueba: manda el mensaje de hoy (o de mañana) como prueba.
 Cron (dockerhost, hora ART):
   0 10 * * *  recordatorio_franquicia.py
   30 7 * * *  recordatorio_franquicia.py --control sitio
@@ -29,20 +28,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = datetime.timezone(datetime.timedelta(hours=-3))
 
 CLAUDE = r"Abrí Claude Code en E:\Repositorios\Personal\weboffers, con tu Chrome personal abierto, y decile:"
-REEL = f"🎬 Franquicia 400: hoy toca Reel (sale 12:00 en YouTube y 19:00 en Instagram y Facebook, con los precios de hoy).\n{CLAUDE} «armá el Reel del día»."
-CARRUSEL = f"🗂️ Franquicia 400: hoy toca el carrusel de la semana y dejar programadas las historias.\n{CLAUDE} «armá el carrusel y las historias de la semana»."
 
-# Avisos de una sola vez (AAAA-MM-DD → texto). Calendario: claude.ai/artifact/MaxRa2pv8JYqNEeeykpQpr
-PUNTUALES = {
-    "2026-10-31": "🔎 Franquicia 400: 1) Abrí ofertas.knunet.com: el Sony WF-1000XM5 tiene que decir $400.000 (si no, falló la publicación automática de las 7:30; avisame). 2) Mirá si entran clicks en mercadolibre.com.ar/afiliados → Métricas.",
-    "2026-11-02": f"⚡ Franquicia 400: arranca el CyberMonday (2 al 4/11).\n{CLAUDE} «revisá que el sitio tenga los precios del Cyber».",
-    "2026-11-03": "✅ Franquicia 400: hoy no tenés que armar nada, el Reel 1 ya está programado. A las 19:05 abrí Instagram y fijate que se haya publicado; si no está, avisame.",
-    "2026-11-07": f"📣 Franquicia 400: ya hay una semana de datos. Decidí si probamos publicidad (USD 30–50).\n{CLAUDE} «informe de la semana y propuesta de publicidad».",
-    "2026-11-23": "🇦🇷 Franquicia 400: feriado. El carrusel de esta semana pasa a mañana.",
-    "2026-11-24": CARRUSEL,
-    "2026-11-27": f"🖤 Franquicia 400: Black Friday. Hoy hay Reel especial con los precios de hoy (12:00 y 19:00).\n{CLAUDE} «armá el Reel especial de Black Friday».",
-    "2026-11-30": f"💻 Franquicia 400: Cyber Monday de EE.UU., Reel especial de cierre del mes.\n{CLAUDE} «armá el Reel especial de Cyber Monday».",
-    "2026-12-01": f"🗓️ Franquicia 400: terminó el calendario de noviembre.\n{CLAUDE} «informe del mes y armá el calendario de diciembre».",
+# Frases extra por fecha (AAAA-MM-DD). Calendario: claude.ai/artifact/MaxRa2pv8JYqNEeeykpQpr
+FRASES = {
+    "2026-11-02": ["revisá que el sitio tenga los precios del Cyber"],
+    "2026-11-07": ["informe de la semana y propuesta de publicidad"],
+    "2026-11-24": ["armá el carrusel y las historias de la semana"],
+    "2026-11-27": ["armá el Reel especial de Black Friday"],
+    "2026-11-30": ["armá el Reel especial de Cyber Monday"],
+    "2026-12-01": ["informe del mes y armá el calendario de diciembre"],
+}
+# Avisos que no necesitan a Claude (una línea).
+NOTAS = {
+    "2026-11-03": "Franquicia 400: a las 19:05 fijate en Instagram que haya salido el Reel 1.",
 }
 SIN_REEL = {"2026-11-03"}  # el Reel 1 ya está programado
 SIN_CARRUSEL = {"2026-11-23"}  # feriado: pasa al 24
@@ -53,22 +51,28 @@ def leer_env():
     return dict(l.strip().split("=", 1) for l in open(os.path.join(HERE, ".env"), encoding="utf-8") if "=" in l and not l.startswith("#"))
 
 
+def pedir(frases):
+    citas = [f"«{f}»" for f in frases]
+    return f"{CLAUDE} " + (", ".join(citas[:-1]) + " y " + citas[-1] if len(citas) > 1 else citas[0]) + "."
+
+
 def mensaje(hoy):
-    partes = []
     iso = hoy.isoformat()
+    frases = []
     if hoy.weekday() == 0:
-        lunes = f"🛒 Franquicia 400: rutina de los lunes (≈15 min).\n{CLAUDE} «rutina de los lunes» y «informe de la semana» (Umami → decisiones de la semana)."
+        frases += ["rutina de los lunes", "informe de la semana"]
         if hoy.day <= 7:
-            lunes += "\n📊 Primer lunes del mes: pedile también «informe del mes» (Umami y comisiones)."
-        partes.append(lunes)
+            frases.append("informe del mes")
     if hoy <= CALENDARIO_HASTA:
         if hoy.weekday() == 0 and iso not in SIN_CARRUSEL:
-            partes.append(CARRUSEL)
+            frases.append("armá el carrusel y las historias de la semana")
         if hoy.weekday() in (1, 2, 3) and iso not in SIN_REEL:
-            partes.append(REEL)
-    if iso in PUNTUALES:
-        partes.append(PUNTUALES[iso])
-    return "\n\n".join(partes)
+            frases.append("armá el Reel del día")
+    frases += FRASES.get(iso, [])
+    partes = [pedir(frases)] if frases else []
+    if iso in NOTAS:
+        partes.append(NOTAS[iso])
+    return "\n".join(partes)
 
 
 def bajar(url):
@@ -82,10 +86,10 @@ def control(que, ahora, bajar=bajar):
     if que == "sitio":
         try:
             html = bajar("https://ofertas.knunet.com/")
-        except Exception as e:
-            return f"🚨 Franquicia 400: ofertas.knunet.com no responde ({getattr(e, 'code', type(e).__name__)}).\n{CLAUDE} «el sitio no responde, revisalo»."
+        except Exception:
+            return pedir(["el sitio no responde, revisalo"])
         if f'"{hoy}' not in html:
-            return f"⚠️ Franquicia 400: el sitio no tiene los precios de hoy (no salió el deploy de las 7:00).\n{CLAUDE} «el sitio no se actualizó hoy, revisá la pi4»."
+            return pedir(["el sitio no se actualizó hoy, revisá la pi4"])
         return ""
     if que in ("telegram12", "telegram20"):
         hora = int(que[-2:])
@@ -97,7 +101,7 @@ def control(que, ahora, bajar=bajar):
         fechas = [datetime.datetime.fromisoformat(f) for f in re.findall(r'<time[^>]*datetime="([^"]+)"', html)]
         if any(f >= desde for f in fechas):
             return ""
-        return f"⚠️ Franquicia 400: no salió la publicación de Telegram de las {hora}.\n{CLAUDE} «no salió el Telegram de las {hora}, revisá la pi4»."
+        return pedir([f"no salió el Telegram de las {hora}, revisá la pi4"])
     raise SystemExit(f"control desconocido: {que}")
 
 
@@ -127,8 +131,7 @@ def main():
         return
     texto = mensaje(hoy)
     if len(sys.argv) > 1 and sys.argv[1] == "--prueba":
-        texto = "🧪 Prueba de avisos de Franquicia 400. A las 10 llegan las tareas del día; los controles de las 7:30, 12:20 y 20:20 sólo escriben si algo falló.\n\n" + (
-            texto or mensaje(hoy + datetime.timedelta(days=1)))
+        texto = "Prueba Franquicia 400.\n" + (texto or mensaje(hoy + datetime.timedelta(days=1)))
     if not texto:
         print("FRANQUICIA_RECORDATORIO_NADA", hoy.isoformat())
         return
