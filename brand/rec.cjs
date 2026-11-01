@@ -1,10 +1,12 @@
 const { chromium } = require("C:/Users/KnuPwns/AppData/Local/npm-cache/_npx/13ab0715f9f30c2e/node_modules/playwright");
 const fs = require("fs");
-const out = "C:/Users/KnuPwns/AppData/Local/Temp/claude/E--Repositorios-Personal-weboffers/09a5136b-88b8-4117-9bfd-c55984dd71ba/scratchpad/redes/videos";
+// Uso: node rec.cjs <carpeta-videos> [versiones...]  (lee <carpeta>/../voz/duraciones.json)
+const out = process.argv[2];
+const versiones = process.argv.length > 3 ? process.argv.slice(3) : ["1", "2", "3"];
 (async () => {
   fs.mkdirSync(out, { recursive: true });
   const b = await chromium.launch();
-  for (const v of ["1", "2", "3"]) {
+  for (const v of versiones) {
     const ctx = await b.newContext({ viewport: { width: 1080, height: 1920 }, recordVideo: { dir: out, size: { width: 1080, height: 1920 } } });
     const p = await ctx.newPage();
     const d = JSON.parse(fs.readFileSync(out + "/../voz/duraciones.json", "utf8"))[v];

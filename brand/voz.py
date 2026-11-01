@@ -31,7 +31,15 @@ GUIONES = {
         "Y la franquicia es la misma: hasta cuatrocientos dólares sin derechos.",
         END,
     ],
+    "reel-1": [
+        "¿Amazon o Mercado Libre? Depende del producto. Mirá estos dos.",
+        "Los Skullcandy Crusher: en Mercado Libre, ochocientos sesenta y nueve mil. Traídos de Amazon, unos trescientos cincuenta mil. Gana Amazon.",
+        "El joystick GameSir: noventa y siete mil en Mercado Libre, y ciento setenta mil de Amazon. Gana Mercado Libre: el envío se come la diferencia.",
+        "Debajo de cien dólares, casi siempre conviene Mercado Libre. Arriba, vale la pena comparar.",
+        "Comparamos noventa y siete productos con los precios de hoy. Link en la bio.",
+    ],
 }
+SOLO = sys.argv[2:]  # versiones a generar (vacío = todas)
 PAUSA = 0.6  # segundos de aire después de cada frase
 
 
@@ -43,6 +51,8 @@ async def main():
     OUT.mkdir(parents=True, exist_ok=True)
     plan = {}
     for v, frases in GUIONES.items():
+        if SOLO and v not in SOLO:
+            continue
         ms, parts = [], []
         for i, texto in enumerate(frases):
             mp3 = OUT / f"v{v}-{i}.mp3"

@@ -1,0 +1,23 @@
+{
+  "name": "franquicia400-reel",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render Reel1 out/reel-1.mp4 --codec h264 --crf 18"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.535",
+    "@remotion/fonts": "^4.0.535",
+    "@remotion/google-fonts": "4.0.535",
+    "@remotion/layout-utils": "^4.0.535",
+    "@remotion/media": "4.0.535",
+    "@remotion/transitions": "4.0.535",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.535"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.0",
+    "typescript": "5.8.3"
+  }
+}

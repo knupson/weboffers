@@ -61,7 +61,22 @@ const V = {
     [3000, `<div class="scene"><p class="letra mid">Misma franquicia</p><p class="k">USD 400 por envío sin derechos.<br>Pagás IVA y envío.</p></div>`],
     [3200, end],
   ],
+  // Reel 1 (Instagram) — precios relevados el 01/11/2026 y verificados contra ML y Amazon ese día.
+  "reel-1": [
+    [2600, `<div class="scene"><p class="letra t">¿Amazon o Mercado Libre?</p><p class="k">Depende del producto. Mirá estos dos.</p></div>`],
+    [4200, duelo("skullcandy-crusher-anc-2", "Skullcandy Crusher ANC 2", 869099, 350000, "amazon", "Ahorrás ~$ 520.000")],
+    [4200, duelo("gamesir-g7-2", "Joystick GameSir G7 SE", 96952, 170000, "ml", "El envío se come la diferencia")],
+    [3400, `<div class="scene"><p class="letra mid">Debajo de USD 100</p><p class="k">el envío pesa mucho:<br>casi siempre conviene Mercado Libre</p><p class="letra mid" style="margin-top:50px">Arriba de USD 100</p><p class="k">Amazon manda gratis:<br>vale la pena comparar</p></div>`],
+    [3400, `<div class="scene"><p class="letra t">Comparamos 97 productos con precios de hoy</p><p class="pill">ofertas.knunet.com</p><p class="k" style="margin-top:60px">Link en la bio</p></div>`],
+  ],
 };
+function duelo(slug, nombre, ml, az, gana, nota) {
+  const fila = (lab, monto, win) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:24px;white-space:nowrap;padding:18px 28px;border-radius:18px;${win ? "background:rgba(92,196,137,.16);box-shadow:inset 0 0 0 4px var(--verde)" : "opacity:.7"}"><span>${lab}</span><span class="letra" style="font-size:64px;${win ? "" : "color:var(--crema);text-shadow:none"}">${monto}</span></div>`;
+  return `<div class="scene"><img src="../public/products/${slug}.webp" style="width:520px;height:520px;object-fit:contain;background:var(--crema);border-radius:28px;padding:20px;box-sizing:border-box"><p class="k" style="font-size:52px;color:var(--crema)">${nombre}</p>
+    <div class="rows" style="display:flex;flex-direction:column;gap:18px">${fila("Mercado Libre", ars(ml), gana === "ml")}${fila("Amazon (EE.UU.)", "~" + ars(az), gana === "amazon")}</div>
+    <p class="ok">Gana ${gana === "ml" ? "Mercado Libre" : "Amazon"} · ${nota}</p>
+    <p class="k" style="font-size:32px">Amazon: estimado puesto en casa, con envío e impuestos. Precios del 01/11/2026.</p></div>`;
+}
 
 const params = new URLSearchParams(location.search);
 const scenes = V[params.get("v") || "1"];
