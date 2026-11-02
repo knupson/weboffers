@@ -3994,7 +3994,9 @@
       "checked": "2026-11-02",
       "catalogId": "MLA19035706"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/kingston-a400-240gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_622444-MLA116994728816_102026-F.jpg"
   },
   {
     "asin": "B0BGQ8FB3G",
@@ -4011,7 +4013,9 @@
       "checked": "2026-11-02",
       "catalogId": "MLA21559786"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/msi-spatium-s270-240gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_708208-MLA109381497120_042026-F.jpg"
   },
   {
     "asin": "B0DS6LQL39",
@@ -4028,7 +4032,9 @@
       "checked": "2026-11-02",
       "catalogId": "MLA50912011"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/samsung-s30gd-24.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_918310-MLA99927876503_112025-F.jpg"
   },
   {
     "asin": "B0DS6JLPZW",
@@ -4045,7 +4051,9 @@
       "checked": "2026-11-02",
       "catalogId": "MLA50907992"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/samsung-s30gd-27.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_685774-MLA99523893106_122025-F.jpg"
   },
   {
     "asin": "B0DS54HLR5",
@@ -4062,7 +4070,9 @@
       "checked": "2026-11-02",
       "catalogId": "MLA68833827"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/xiaomi-monitor-a27qi.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_867676-MLA111041191241_042026-F.jpg"
   },
   {
     "asin": "B094WN6SY2",
@@ -4079,7 +4089,9 @@
       "checked": "2026-11-02",
       "catalogId": "MLA18010994"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/sony-dualsense-cosmic-red.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_984099-MLA99993479459_112025-F.jpg"
   },
   {
     "asin": "B0CQKLS4RP",
@@ -4096,6 +4108,8 @@
       "checked": "2026-11-02",
       "catalogId": "MLA33997846"
     },
-    "hot": "2026-11-02"
+    "hot": "2026-11-02",
+    "image": "/products/sony-dualsense-blanco.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_954223-MLA96146757619_102025-F.jpg"
   }
 ]
