@@ -295,3 +295,14 @@ def test_worker_runs_amazon_before_ml(tmp_path, monkeypatch):
     monkeypatch.setattr(ml_prices, "maybe_refresh", lambda *a, **kw: order.append("ml"))
     worker.run_once()
     assert order == ["amazon", "ml"]
+
+
+def test_plausible_descarta_precio_muy_bajo_contra_lista():
+    product = {"listPrice": {"amount": 459.99, "currency": "USD"}}
+    assert not amazon_prices.plausible((21.0, "USD"), product)
+    assert amazon_prices.plausible((378.0, "USD"), product)
+
+
+def test_plausible_sin_lista_o_otra_moneda_acepta():
+    assert amazon_prices.plausible((21.0, "USD"), {})
+    assert amazon_prices.plausible((21.0, "USD"), {"listPrice": {"amount": 459.99, "currency": "EUR"}})

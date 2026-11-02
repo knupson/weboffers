@@ -62,6 +62,18 @@ def valid_price(raw_item, store):
     return amount, expected_currency
 
 
+MIN_LIST_RATIO = 0.35
+
+
+def plausible(parsed, product):
+    """Descarta lecturas absurdas del scraper (ej. XM6 a USD 21 el 02/11): menos del 35% del precio de lista."""
+    amount, currency = parsed
+    lp = product.get("listPrice")
+    if not isinstance(lp, dict) or lp.get("currency") != currency or not is_valid_amount(lp.get("amount")):
+        return True
+    return amount >= MIN_LIST_RATIO * lp["amount"]
+
+
 def fetch_bulk(base_url, asins, store):
     resp = requests.get(
         f"{base_url}/products/bulk",
@@ -174,6 +186,9 @@ def maybe_refresh(catalog, prices_path, now):
             for product in chunk:
                 slug = product["slug"]
                 parsed = valid_price(fetched.get(product["asin"]), store)
+                if parsed is not None and not plausible(parsed, product):
+                    print(f"Amazon: precio descartado por inverosímil {slug} ({parsed[0]} {parsed[1]}).", flush=True)
+                    parsed = None
                 if parsed is not None:
                     amount, currency = parsed
                     items[slug] = {"amount": amount, "currency": currency, "checked": today}
