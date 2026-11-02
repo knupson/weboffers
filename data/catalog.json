@@ -2231,7 +2231,7 @@
     "category": "Periféricos",
     "summary": "Teclado mecánico TKL de 87 teclas con switches Outemu Blue, retroiluminación LED rainbow y cable USB.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/redragon-k552-kumara.webp",
     "imageSource": "https://redragonshop.com/products/redragon-kumara-k552",
     "ml": {
@@ -2252,7 +2252,6 @@
     "category": "Almacenamiento",
     "summary": "SSD M.2 2280 NVMe PCIe 4.0 x4 de 1 TB con lecturas de hasta 6.000 MB/s.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/kingston-nv3-1tb.webp",
     "imageSource": "https://www.kingston.com/en/ssd/nv3-nvme-pcie-ssd",
     "ml": {
@@ -2273,7 +2272,7 @@
     "category": "Almacenamiento",
     "summary": "SSD SATA III de 2,5 pulgadas y 480 GB con lecturas de hasta 500 MB/s.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/kingston-a400-480gb.webp",
     "imageSource": "https://www.kingston.com/en/ssd/a400-solid-state-drive",
     "ml": {
@@ -2294,7 +2293,7 @@
     "category": "Almacenamiento",
     "summary": "Disco duro portátil de 2 TB con USB 3.2 Gen 1 (compatible USB 2.0), formato 2,5 pulgadas y alimentación por USB.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/toshiba-canvio-basics-2tb.webp",
     "imageSource": "https://www.toshiba-storage.com/products/canvio-basics/",
     "shipsToAr": {
@@ -2319,7 +2318,6 @@
     "category": "Audio y video",
     "summary": "Auriculares on-ear Bluetooth con micrófono y hasta 50 horas de batería.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/sony-wh-ch520.webp",
     "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
     "ml": {
@@ -2340,7 +2338,7 @@
     "category": "Audio y video",
     "summary": "Reproductor de streaming HD con HDMI, Wi-Fi y control remoto por voz.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/roku-streaming-stick-2025.webp",
     "imageSource": "https://www.roku.com/es-ar/products/players/roku-streaming-stick",
     "ml": {
@@ -2361,7 +2359,6 @@
     "category": "Gaming",
     "summary": "Control inalámbrico para PS5 con gatillos adaptativos, respuesta háptica y micrófono integrado.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/sony-dualsense-negro.webp",
     "imageSource": "https://direct.playstation.com/en-us/buy-accessories/dualsense-wireless-controller-midnight-black-for-ps5-pc-mac-mobile",
     "ml": {
@@ -2382,7 +2379,6 @@
     "category": "Gaming",
     "summary": "Auriculares gamer inalámbricos con sonido 7.1 virtual, micrófono desmontable y conexión de 2,4 GHz y Bluetooth.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/redragon-h510-zeus-pro.webp",
     "imageSource": "https://redragonshop.com/products/h510-zeus-wireless-gaming-headset",
     "ml": {
@@ -2403,7 +2399,6 @@
     "category": "Periféricos",
     "summary": "Impresora de tanque de tinta con Wi-Fi, hasta 6.000 páginas a color y 12.000 en negro con las botellas incluidas.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/hp-smart-tank-210.webp",
     "imageSource": "https://www.hp.com/ec-es/products/printers/product-details/product-specifications/2101019181",
     "ml": {
@@ -2424,7 +2419,6 @@
     "category": "Audio y video",
     "summary": "Micrófonos inalámbricos con 2 transmisores, receptor y estuche de carga para grabar video o streaming.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/dji-mic-mini-2.webp",
     "imageSource": "https://www.dji.com/global/mic-mini-2",
     "ml": {
@@ -2445,7 +2439,6 @@
     "category": "Periféricos",
     "summary": "Impresora láser monocromática compacta con Wi-Fi, hasta 20 ppm y conexión USB.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/hp-laserjet-m111w.webp",
     "imageSource": "https://www.hp.com/ar-es/shop/impresora-hp-laserjet-m111w-7md68a.html",
     "ml": {
@@ -2466,7 +2459,7 @@
     "category": "Redes",
     "summary": "Antena satelital portátil con router Wi-Fi integrado, pensada para viajes y uso en movimiento; se alimenta por USB-C PD o 12-48 V.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/starlink-mini.webp",
     "imageSource": "https://starlink.com/support/article/61d2f65f-85b8-a5b2-9bad-b3c2f27379d6",
     "shipsToAr": {
@@ -2491,7 +2484,7 @@
     "category": "Redes",
     "summary": "Nodo mesh Wi-Fi 5 doble banda AC1900 con 3 puertos Gigabit; una unidad cubre hasta unos 190 m² y se amplía con más Deco.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/tp-link-deco-s7.webp",
     "imageSource": "https://www.tp-link.com/pe/home-networking/deco/deco-s7/",
     "ml": {
@@ -2512,7 +2505,7 @@
     "category": "Redes",
     "summary": "Repetidor Wi-Fi 6 doble banda AX1500 con puerto Gigabit y compatibilidad OneMesh; se enchufa directo a la pared.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/tp-link-re505x.webp",
     "imageSource": "https://www.tp-link.com/mx/home-networking/range-extender/re505x/",
     "ml": {
@@ -2533,7 +2526,7 @@
     "category": "Tablets y lectores",
     "summary": "Lector de libros con pantalla e-ink antirreflejo de 6\" y 300 ppi, luz frontal ajustable, 16 GB y USB-C.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/amazon-kindle-2024-16gb.webp",
     "imageSource": "https://www.aboutamazon.com/news/devices/new-kindle-color-scribe-paperwhite-entry",
     "ml": {
@@ -2554,7 +2547,7 @@
     "category": "Tablets y lectores",
     "summary": "Tablet de 8,7\" con 4 GB de RAM, 64 GB de almacenamiento, Wi-Fi y cuerpo metálico, pensada para uso diario y lectura.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/samsung-galaxy-tab-a11.webp",
     "imageSource": "https://www.samsung.com/latin/tablets/galaxy-tab-a/galaxy-tab-a11-gray-64gb-sm-x133nzaagto/buy/",
     "shipsToAr": {
@@ -2579,7 +2572,7 @@
     "category": "Tablets y lectores",
     "summary": "Tablet de 11\" con pantalla de 90 Hz, 8 GB de RAM, 256 GB de almacenamiento, cuatro parlantes y batería de 9.000 mAh.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/xiaomi-redmi-pad-2-256gb.webp",
     "imageSource": "https://www.mi.com/es/product/redmi-pad-2/",
     "shipsToAr": {
@@ -2604,7 +2597,7 @@
     "category": "Tablets y lectores",
     "summary": "Tablet de 11\" con pantalla de 90 Hz, 8 GB de RAM y 128 GB de almacenamiento, ideal para estudio y entretenimiento.",
     "verified": true,
-    "hot": "2026-10-30",
+    "hot": "2026-11-02",
     "image": "/products/lenovo-idea-tab-11.webp",
     "imageSource": "https://www.lenovo.com/ar/es/p/tablets/lenovo-tab-series/lenovo-idea-tab/len103l0028",
     "shipsToAr": {
@@ -2629,7 +2622,6 @@
     "category": "Tablets y lectores",
     "summary": "Lector con pantalla e-ink sin bordes de 7\" y 300 ppi, hasta 12 semanas de batería, 16 GB, resistente al agua IPX8.",
     "verified": false,
-    "hot": "2026-10-30",
     "ml": {
       "price": 312438,
       "url": "https://www.mercadolibre.com.ar/p/MLA43616596?pdp_filters=item_id%3AMLA2421154380&matt_word=ale_benzoni&matt_tool=58527537",
@@ -2650,7 +2642,6 @@
     "category": "Carga y energía",
     "summary": "Batería externa de 25.000 mAh con 165 W de salida, dos cables USB-C integrados (uno retráctil) y pantalla con datos en tiempo real.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/anker-laptop-power-bank-25k.webp",
     "imageSource": "https://www.anker.com/products/a1695-anker-power-bank-25000mah-165w",
     "ml": {
@@ -2671,7 +2662,6 @@
     "category": "Almacenamiento",
     "summary": "SSD M.2 2280 NVMe PCIe 4.0 x4 de 500 GB con lecturas de hasta 5.000 MB/s, económico y de bajo consumo.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/kingston-nv3-500gb.webp",
     "imageSource": "https://www.kingston.com/en/ssd/nv3-nvme-pcie-ssd",
     "shipsToAr": {
@@ -2696,7 +2686,6 @@
     "category": "Almacenamiento",
     "summary": "SSD SATA III de 2,5\" y 1 TB con lecturas de hasta 545 MB/s, pensado para renovar notebooks y PC de uso general.",
     "verified": true,
-    "hot": "2026-10-30",
     "image": "/products/wd-green-sata-1tb.webp",
     "imageSource": "https://www.sandisk.com/products/ssd/internal-ssd/wd-green-sata-internal-ssd-7mm",
     "shipsToAr": {
@@ -3989,5 +3978,124 @@
     },
     "image": "/products/pokemon-go-plus-plus.webp",
     "imageSource": "https://http2.mlstatic.com/D_NQ_NP_763344-MLU76043424044_052024-F.jpg"
+  },
+  {
+    "asin": "B01N5IB20Q",
+    "store": "US",
+    "slug": "kingston-a400-240gb",
+    "name": "Kingston A400 240GB SSD SATA",
+    "brand": "Kingston",
+    "category": "Almacenamiento",
+    "summary": "SSD SATA III de 2,5 pulgadas y 240 GB con lecturas de hasta 500 MB/s.",
+    "verified": true,
+    "ml": {
+      "price": 122420,
+      "url": "https://www.mercadolibre.com.ar/p/MLA19035706?pdp_filters=item_id%3AMLA4069611964&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA19035706"
+    },
+    "hot": "2026-11-02"
+  },
+  {
+    "asin": "B0BGQ8FB3G",
+    "store": "US",
+    "slug": "msi-spatium-s270-240gb",
+    "name": "MSI Spatium S270 240GB SSD SATA",
+    "brand": "MSI",
+    "category": "Almacenamiento",
+    "summary": "SSD SATA III de 2,5 pulgadas y 240 GB con memoria 3D NAND, para PC o notebook.",
+    "verified": true,
+    "ml": {
+      "price": 81128,
+      "url": "https://www.mercadolibre.com.ar/p/MLA21559786?pdp_filters=item_id%3AMLA1686966193&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA21559786"
+    },
+    "hot": "2026-11-02"
+  },
+  {
+    "asin": "B0DS6LQL39",
+    "store": "US",
+    "slug": "samsung-s30gd-24",
+    "name": "Samsung S3 S30GD 24\" FHD 100 Hz",
+    "brand": "Samsung",
+    "category": "Monitores",
+    "summary": "Monitor de 24 pulgadas Full HD con panel IPS y 100 Hz, con HDMI y D-Sub.",
+    "verified": true,
+    "ml": {
+      "price": 170345,
+      "url": "https://www.mercadolibre.com.ar/p/MLA50912011?pdp_filters=item_id%3AMLA2589229216&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA50912011"
+    },
+    "hot": "2026-11-02"
+  },
+  {
+    "asin": "B0DS6JLPZW",
+    "store": "US",
+    "slug": "samsung-s30gd-27",
+    "name": "Samsung S3 S30GD 27\" FHD 100 Hz",
+    "brand": "Samsung",
+    "category": "Monitores",
+    "summary": "Monitor de 27 pulgadas Full HD con panel IPS y 100 Hz, con HDMI y D-Sub.",
+    "verified": true,
+    "ml": {
+      "price": 206311,
+      "url": "https://www.mercadolibre.com.ar/p/MLA50907992?pdp_filters=item_id%3AMLA1506541447&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA50907992"
+    },
+    "hot": "2026-11-02"
+  },
+  {
+    "asin": "B0DS54HLR5",
+    "store": "US",
+    "slug": "xiaomi-monitor-a27qi",
+    "name": "Xiaomi Monitor A27Qi 27\" QHD",
+    "brand": "Xiaomi",
+    "category": "Monitores",
+    "summary": "Monitor de 27 pulgadas QHD (2560 x 1440) con panel IPS, 100 Hz y buena fidelidad de color.",
+    "verified": true,
+    "ml": {
+      "price": 299999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA68833827?pdp_filters=item_id%3AMLA1797426747&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA68833827"
+    },
+    "hot": "2026-11-02"
+  },
+  {
+    "asin": "B094WN6SY2",
+    "store": "US",
+    "slug": "sony-dualsense-cosmic-red",
+    "name": "Sony DualSense Cosmic Red",
+    "brand": "Sony",
+    "category": "Gaming",
+    "summary": "Joystick inalámbrico oficial de PS5 en rojo, con gatillos adaptativos y respuesta háptica.",
+    "verified": true,
+    "ml": {
+      "price": 114999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA18010994?pdp_filters=item_id%3AMLA1103367043&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA18010994"
+    },
+    "hot": "2026-11-02"
+  },
+  {
+    "asin": "B0CQKLS4RP",
+    "store": "US",
+    "slug": "sony-dualsense-blanco",
+    "name": "Sony DualSense blanco",
+    "brand": "Sony",
+    "category": "Gaming",
+    "summary": "Joystick inalámbrico oficial de PS5 en blanco, con gatillos adaptativos y respuesta háptica.",
+    "verified": true,
+    "ml": {
+      "price": 114999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA33997846?pdp_filters=item_id%3AMLA1727425947&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-02",
+      "catalogId": "MLA33997846"
+    },
+    "hot": "2026-11-02"
   }
 ]
