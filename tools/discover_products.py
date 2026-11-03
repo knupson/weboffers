@@ -34,8 +34,8 @@ TOP_PER_CATEGORY = 50
 CANDIDATES_PER_PRODUCT = 5
 PROGRESS_EVERY = 20
 CHECKPOINT_EVERY = 50
-MIN_PRICE_USD = 30.0
-MAX_PRICE_USD = 2000.0
+MIN_PRICE_USD = 100.0  # 03/11: el sitio es de USD 100-400 (franquicia + envio gratis); con 30 entraron 47 imposibles de publicar
+MAX_PRICE_USD = 400.0
 
 SEED_DEPARTMENTS = ("electronics", "pc", "photo", "videogames", "wireless")
 
