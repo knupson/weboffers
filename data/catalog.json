@@ -7,7 +7,7 @@
     "brand": "ASUS",
     "category": "Monitores",
     "summary": "Monitor gamer de 27 pulgadas con resolución 1440p, 180 Hz, panel Fast IPS de 1 ms y compatibilidad G-SYNC y FreeSync Premium.",
-    "verified": false,
+    "verified": true,
     "image": "/products/asus-tuf-gaming-vg27aq3a.webp",
     "imageSource": "https://www.asus.com/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
     "listPrice": {
@@ -15,6 +15,12 @@
       "currency": "USD",
       "source": "https://www.asus.com/us/displays-desktops/monitors/tuf-gaming/tuf-gaming-vg27aq3a/",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA2069878284",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2069878284?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 643595,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -43,7 +49,13 @@
     "brand": "Beelink",
     "category": "Mini PCs",
     "summary": "Mini PC con procesador Intel Alder Lake N100, 16 GB de RAM, SSD de 512 GB, doble salida HDMI 4K a 60 Hz, WiFi 6 y LAN de 2,5G.",
-    "verified": false
+    "verified": false,
+    "ml": {
+      "catalogId": "MLA2114757283",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2114757283?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 724825,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0BHJF2VRN",
@@ -144,6 +156,12 @@
       "currency": "USD",
       "source": "https://www.lg.com/us/monitors/lg-27up850k-w-4k-uhd-led-monitor",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA2064458047",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2064458047?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 939674,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -154,7 +172,13 @@
     "brand": "Samsung",
     "category": "Monitores",
     "summary": "Monitor curvo de 27 pulgadas con resolución WQHD (2560 x 1440), 144 Hz, 1 ms y compatibilidad con FreeSync Premium.",
-    "verified": false
+    "verified": false,
+    "ml": {
+      "catalogId": "MLA21012297",
+      "url": "https://www.mercadolibre.com.ar/p/MLA21012297?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 639999,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0874XN4D8",
@@ -164,7 +188,7 @@
     "brand": "Samsung",
     "category": "Almacenamiento",
     "summary": "SSD portátil de 1 TB con USB 3.2 Gen 2 y velocidades de lectura de hasta 1.050 MB/s.",
-    "verified": false,
+    "verified": true,
     "image": "/products/samsung-t7-portable-ssd-1tb.webp",
     "imageSource": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
     "listPrice": {
@@ -172,6 +196,12 @@
       "currency": "USD",
       "source": "https://www.samsung.com/us/memory-storage/portable-ssd/portable-ssd-t7-usb-3-2-1tb-gray-sku-mu-pc1t0t-am/",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA17332828",
+      "url": "https://www.mercadolibre.com.ar/p/MLA17332828?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 514591,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -182,7 +212,13 @@
     "brand": "Crucial",
     "category": "Almacenamiento",
     "summary": "SSD interno NVMe de 1 TB, PCIe 4.0, formato M.2 2280, con lectura de hasta 5.000 MB/s.",
-    "verified": false
+    "verified": false,
+    "ml": {
+      "catalogId": "MLA54098740",
+      "url": "https://www.mercadolibre.com.ar/p/MLA54098740?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 1066119,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0B2943QSJ",
@@ -192,7 +228,13 @@
     "brand": "Beelink",
     "category": "Mini PCs",
     "summary": "Mini PC con procesador AMD Ryzen 5 5560U de 6 núcleos y 12 hilos, hasta 4,0 GHz, 16 GB de RAM DDR4 y SSD NVMe de 1 TB.",
-    "verified": false
+    "verified": false,
+    "ml": {
+      "catalogId": "MLA2033036768",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2033036768?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 891543,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CFPJYX7P",
@@ -212,7 +254,13 @@
     "brand": "Amazon",
     "category": "Tablets y lectores",
     "summary": "Tablet de 10,1 pulgadas con pantalla Full HD, procesador octa-core, 3 GB de RAM, 32 GB de almacenamiento y ranura microSD.",
-    "verified": false
+    "verified": false,
+    "ml": {
+      "catalogId": "MLA2044349585",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2044349585?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 213406,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B09HM94VDS",
@@ -278,6 +326,12 @@
       "currency": "USD",
       "source": "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA19176887",
+      "url": "https://www.mercadolibre.com.ar/p/MLA19176887?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 594999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -317,7 +371,7 @@
     "brand": "Razer",
     "category": "Periféricos",
     "summary": "Mouse gamer con cable de 59 gramos, sensor óptico Focus Pro 30K y polling de hasta 8 kHz.",
-    "verified": false,
+    "verified": true,
     "image": "/products/razer-deathadder-v3-wired-negro.webp",
     "imageSource": "https://www.razer.com/gaming-mice/razer-deathadder-v3/RZ01-04640100-R3U1",
     "listPrice": {
@@ -325,6 +379,12 @@
       "currency": "USD",
       "source": "https://www.razer.com/gaming-mice/Razer-DeathAdder-V3/RZ01-04640100-R3U1",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA34239468",
+      "url": "https://www.mercadolibre.com.ar/p/MLA34239468?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 139999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -363,6 +423,12 @@
       "currency": "USD",
       "source": "https://www.xbox.com/en-US/accessories/controllers/xbox-wireless-controller",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA16268160",
+      "url": "https://www.mercadolibre.com.ar/p/MLA16268160?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 128445,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -405,7 +471,13 @@
     "summary": "Auriculares in-ear inalámbricos con cancelación activa de ruido, audio espacial y estuche de carga USB-C.",
     "verified": false,
     "image": "/products/apple-airpods-pro-2-usb-c.webp",
-    "imageSource": "https://support.apple.com/en-us/111851"
+    "imageSource": "https://support.apple.com/en-us/111851",
+    "ml": {
+      "catalogId": "MLA58578231",
+      "url": "https://www.mercadolibre.com.ar/p/MLA58578231?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 643899,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B09VPHVT2Z",
@@ -423,6 +495,12 @@
       "currency": "USD",
       "source": "https://www.anker.com/products/a1289",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA25830218",
+      "url": "https://www.mercadolibre.com.ar/p/MLA25830218?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 311491,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -435,7 +513,13 @@
     "summary": "Router Wi-Fi 6 de doble banda AX3000 con puertos Gigabit, puerto USB 3.0 y compatibilidad con EasyMesh.",
     "verified": false,
     "image": "/products/tp-link-archer-ax55.webp",
-    "imageSource": "https://www.tp-link.com/us/home-networking/wifi-router/archer-ax55/"
+    "imageSource": "https://www.tp-link.com/us/home-networking/wifi-router/archer-ax55/",
+    "ml": {
+      "catalogId": "MLA18910333",
+      "url": "https://www.mercadolibre.com.ar/p/MLA18910333?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 134899,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B085TFF7M1",
@@ -445,9 +529,15 @@
     "brand": "Logitech",
     "category": "Periféricos",
     "summary": "Webcam Full HD de 1080p a 30 fps con micrófono estéreo y enfoque automático.",
-    "verified": false,
+    "verified": true,
     "image": "/products/logitech-c920x-hd-pro-webcam.webp",
-    "imageSource": "https://www.logitech.com/en-gb/shop/p/c920-pro-hd-webcam"
+    "imageSource": "https://www.logitech.com/en-gb/shop/p/c920-pro-hd-webcam",
+    "ml": {
+      "catalogId": "MLA22913891",
+      "url": "https://www.mercadolibre.com.ar/p/MLA22913891?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 99671,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0BS1PRC4L",
@@ -457,7 +547,7 @@
     "brand": "Sony",
     "category": "Audio y video",
     "summary": "Auriculares on-ear inalámbricos con micrófono, conexión multipunto y diseño giratorio, en color negro.",
-    "verified": false,
+    "verified": true,
     "image": "/products/sony-wh-ch520-negro.webp",
     "imageSource": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
     "listPrice": {
@@ -466,6 +556,12 @@
       "currency": "USD",
       "source": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA23138487",
+      "url": "https://www.mercadolibre.com.ar/p/MLA23138487?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 82999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -476,7 +572,7 @@
     "brand": "De'Longhi",
     "category": "Cocina",
     "summary": "Cafetera espresso manual de bomba de 15 bar, de solo 15 cm de ancho, con vaporizador para leche; viene con enchufe europeo (Schuko), así que hace falta un adaptador.",
-    "verified": false,
+    "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/delonghi-dedica-style-ec685-bk.webp",
     "imageSource": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
@@ -485,6 +581,12 @@
       "currency": "EUR",
       "source": "https://www.delonghi.com/es-es/p/cafeteras-espresso-manuales-dedica-cafetera-manual-dedica-style-ec685.bk/EC685.BK+EX%3A4.html?pid=0132106272",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA25777634",
+      "url": "https://www.mercadolibre.com.ar/p/MLA25777634?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 771764,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -521,7 +623,7 @@
     "brand": "De'Longhi",
     "category": "Cocina",
     "summary": "Cafetera de cápsulas Nespresso Original de 19 bar y tanque de 0,7 L, con apagado automático; trae enchufe europeo (Schuko), así que se necesita un adaptador.",
-    "verified": false,
+    "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/nespresso-delonghi-inissia-en80-b.webp",
     "imageSource": "https://www.delonghi.com/es-es/p/inissia-en80.b-cafeteras-nespresso-inissia/EN80.B.html?pid=0132193902",
@@ -531,6 +633,12 @@
       "currency": "EUR",
       "source": "https://www.delonghi.com/es-es/c/cafe/cafeteras/cafeteras-de-capsulas/cafeteras-nespresso/inissia",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA15262367",
+      "url": "https://www.mercadolibre.com.ar/p/MLA15262367?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 185989,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -542,7 +650,13 @@
     "category": "Cocina",
     "summary": "Cafetera de cápsulas Nespresso Original, muy compacta, con bomba de 19 bar y tanque de 0,6 L; se entrega con enchufe europeo (Schuko) y hace falta adaptador.",
     "verified": false,
-    "voltage": "220-240 V, 50-60 Hz"
+    "voltage": "220-240 V, 50-60 Hz",
+    "ml": {
+      "catalogId": "MLA15261608",
+      "url": "https://www.mercadolibre.com.ar/p/MLA15261608?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 192859,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B07GJY9KH9",
@@ -596,7 +710,7 @@
     "brand": "Philips",
     "category": "Cocina",
     "summary": "Hervidor eléctrico de acero inoxidable de 1,7 L y hasta 2200 W, con base giratoria y apagado automático; trae enchufe europeo (Schuko) y requiere adaptador.",
-    "verified": false,
+    "verified": true,
     "voltage": "220-240 V, 50-60 Hz",
     "image": "/products/philips-hervidor-hd9350-90-1-7l.webp",
     "imageSource": "https://www.philips.es/c-p/HD9350_90R0/daily-collection-kettle",
@@ -605,6 +719,12 @@
       "currency": "EUR",
       "source": "https://www.philips.es/c-p/HD9350_90/daily-collection-hervidor",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA24601443",
+      "url": "https://www.mercadolibre.com.ar/p/MLA24601443?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 51603,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -615,7 +735,7 @@
     "brand": "Philips",
     "category": "Cuidado personal",
     "summary": "Secador de pelo de 2300 W con tecnología ThermoShield, difusor de volumen y boquillas de 9 y 11 mm; el enchufe es europeo (Schuko) y se necesita adaptador.",
-    "verified": false,
+    "verified": true,
     "voltage": "220-240 V",
     "image": "/products/philips-secador-serie-5000-bhd530-20.webp",
     "imageSource": "https://www.philips.es/c-p/BHD530_20/secador-de-pelo-serie-5000",
@@ -624,6 +744,12 @@
       "currency": "EUR",
       "source": "https://www.philips.es/tienda/ES_Loyaltyshop/cuidado-personal/cuidado-del-cabello/secador-de-pelo-serie-5000/p/BHD530_20",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA19050374",
+      "url": "https://www.mercadolibre.com.ar/p/MLA19050374?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 154999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -689,6 +815,12 @@
       "currency": "EUR",
       "source": "https://es.roborock.com/products/roborock-q7-m5",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA2097352700",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2097352700?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 701498,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -706,6 +838,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA45337103",
+      "url": "https://www.mercadolibre.com.ar/p/MLA45337103?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 1240099,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -983,6 +1121,12 @@
       "currency": "USD",
       "source": "https://www.garmin.com/en-US/p/1057989/",
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA29734063",
+      "url": "https://www.mercadolibre.com.ar/p/MLA29734063?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 519999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1103,6 +1247,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA67303398",
+      "url": "https://www.mercadolibre.com.ar/p/MLA67303398?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 668815,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1171,10 +1321,16 @@
     "brand": "ASRock",
     "category": "Componentes",
     "summary": "Placa de video Radeon RX 7600 con 8 GB de memoria y versión OC de fábrica para 1080p.",
-    "verified": false,
+    "verified": true,
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA2116296946",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2116296946?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 1036121,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1189,6 +1345,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA46446806",
+      "url": "https://www.mercadolibre.com.ar/p/MLA46446806?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 679999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1320,7 +1482,13 @@
       "freeShipping": true,
       "checked": "2026-10-30"
     },
-    "imageSource": "https://www.intel.com/content/www/us/en/newsroom/resources/press-kit-12th-gen-core-procesors.html"
+    "imageSource": "https://www.intel.com/content/www/us/en/newsroom/resources/press-kit-12th-gen-core-procesors.html",
+    "ml": {
+      "catalogId": "MLA18603107",
+      "url": "https://www.mercadolibre.com.ar/p/MLA18603107?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 1082879,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0FXGWKHND",
@@ -1499,6 +1667,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA66055599",
+      "url": "https://www.mercadolibre.com.ar/p/MLA66055599?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 293635,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1521,6 +1695,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA58012436",
+      "url": "https://www.mercadolibre.com.ar/p/MLA58012436?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 274499,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1543,6 +1723,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA49757554",
+      "url": "https://www.mercadolibre.com.ar/p/MLA49757554?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 410988,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1565,6 +1751,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA2061225070",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2061225070?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 329720,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -1955,6 +2147,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA66115287",
+      "url": "https://www.mercadolibre.com.ar/p/MLA66115287?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 389999,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -2038,6 +2236,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA30132068",
+      "url": "https://www.mercadolibre.com.ar/p/MLA30132068?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 866000,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -2107,6 +2311,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA65032501",
+      "url": "https://www.mercadolibre.com.ar/p/MLA65032501?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 432399,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -2160,6 +2370,12 @@
     "shipsToAr": {
       "freeShipping": true,
       "checked": "2026-10-30"
+    },
+    "ml": {
+      "catalogId": "MLA2116341883",
+      "url": "https://www.mercadolibre.com.ar/p/MLA2116341883?matt_word=ale_benzoni&matt_tool=58527537",
+      "price": 433124,
+      "checked": "2026-11-03"
     }
   },
   {
@@ -2264,7 +2480,7 @@
     "verdictReason": "precio"
   },
   {
-    "asin": "",
+    "asin": "B01N0TQPQB",
     "store": "US",
     "slug": "kingston-a400-480gb",
     "name": "Kingston A400 480GB SSD SATA",
