@@ -51,8 +51,15 @@ def valid_price(raw_item, store):
     if not expected_currency or not isinstance(raw_item, dict) or "error" in raw_item:
         return None
     availability = raw_item.get("availability")
-    if not isinstance(availability, dict) or availability.get("is_in_stock") is not True:
-        return None
+    if isinstance(availability, dict):
+        if availability.get("is_in_stock") is not True:
+            return None
+    else:
+        # El scraper a veces no lee la disponibilidad (null) aunque la página tenga precio y vendedor
+        # (MX Master 4 el 03/11: USD 118, en stock). Sin dato de stock, vale sólo si hay vendedor en la caja de compra.
+        seller = ((raw_item.get("buybox") or {}).get("seller") or {}).get("name") if isinstance(raw_item.get("buybox"), dict) else None
+        if not seller:
+            return None
     price = raw_item.get("price")
     if not isinstance(price, dict) or price.get("currency") != expected_currency:
         return None

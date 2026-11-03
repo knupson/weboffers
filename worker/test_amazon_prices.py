@@ -82,9 +82,19 @@ def test_groups_by_store_and_chunks_by_bulk_max(tmp_path, monkeypatch):
     {"asin": "B01", "price": {"amount": True, "currency": "USD"}, "availability": {"is_in_stock": True}},
     {"asin": "B01", "price": {"amount": float("nan"), "currency": "USD"}, "availability": {"is_in_stock": True}},
     {"asin": "B01", "price": None, "availability": {"is_in_stock": True}},
+    # Disponibilidad sin leer y sin vendedor en la caja de compra: no se puede asegurar que se pueda comprar.
+    {"asin": "B01", "price": {"amount": 100, "currency": "USD"}, "availability": None, "buybox": None},
+    {"asin": "B01", "price": {"amount": 100, "currency": "USD"}, "availability": None, "buybox": {"seller": None}},
 ])
 def test_rejects_invalid_or_out_of_stock_items(bad_item):
     assert amazon_prices.valid_price(bad_item, "US") is None
+
+
+def test_accepts_price_with_seller_when_availability_was_not_read():
+    # Caso real 03/11 (MX Master 4): el scraper trajo precio y vendedor pero availability=null.
+    item = {"asin": "B0FC5SJNQX", "price": {"amount": 118.0, "currency": "USD"}, "availability": None,
+            "buybox": {"seller": {"name": "Deal B"}}}
+    assert amazon_prices.valid_price(item, "US") == (118.0, "USD")
 
 
 def test_does_not_keep_previous_when_scraper_fails(tmp_path, monkeypatch, capsys):
