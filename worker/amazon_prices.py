@@ -16,6 +16,8 @@ ART = timezone(timedelta(hours=-3))
 START_HOUR = 6
 # En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
 BULK_MAX = 5
+AR_SHIPPING_WEEKDAY = 0  # lunes
+RETRY_AT = (6, 45)  # reintento de faltantes: después de la corrida de las 06:00 y antes del deploy de las 07:00
 TIMEOUT = 240
 PAUSE_SECONDS = 3.0
 STORE_CURRENCY = {"US": "USD", "ES": "EUR"}
@@ -158,19 +160,48 @@ def maybe_refresh(catalog, prices_path, now):
     if local.hour < START_HOUR:
         return False
     previous = load_json(prices_path, None)
-    if isinstance(previous, dict) and previous.get("date") == today:
-        return False
     base_url = scraper_url()
-    if not base_url:
-        return False
-
     candidates = [
         p for p in catalog
         if p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY
     ]
+    if isinstance(previous, dict) and previous.get("date") == today:
+        return retry_missing(previous, candidates, prices_path, local, base_url)
+    if not base_url:
+        return False
 
+    items, ok, missing = fetch_prices(base_url, candidates, today)
+
+    # El envío a Argentina se releva sólo los lunes (03/11): pedirlo a diario duplica las páginas a Amazon y
+    # la Pi4 quedó frenada (38 productos sin precio). El resto de la semana vale el envío verificado del catálogo.
+    if today_date.weekday() == AR_SHIPPING_WEEKDAY:
+        refresh_ar_shipping(candidates, items, today)
+
+    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
+    print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
+    if candidates and ok == 0:
+        print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
+    return True
+
+
+def retry_missing(previous, candidates, prices_path, local, base_url):
+    """Segunda pasada del día, una sola vez y sólo para los que quedaron sin precio, antes del deploy de las 07:00."""
+    if previous.get("retried") or not base_url or (local.hour, local.minute) < RETRY_AT:
+        return False
+    today = previous["date"]
+    items = dict(previous.get("items") or {})
+    pending = [p for p in candidates if p["slug"] not in items]
+    got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
+    items.update(got)
+    publish.write_atomic(prices_path, {**previous, "items": items, "retried": True})
+    print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
+    return True
+
+
+def fetch_prices(base_url, products, today):
+    """Pide precios en lotes por tienda. Devuelve (items, ok, missing); nunca reutiliza precios de otro día."""
     by_store = {}
-    for product in candidates:
+    for product in products:
         by_store.setdefault(product["store"], []).append(product)
 
     items = {}
@@ -202,11 +233,4 @@ def maybe_refresh(catalog, prices_path, now):
                     ok += 1
                 else:
                     missing += 1
-
-    refresh_ar_shipping(candidates, items, today)
-
-    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
-    print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
-    if candidates and ok == 0:
-        print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
-    return True
+    return items, ok, missing

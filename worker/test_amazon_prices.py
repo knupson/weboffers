@@ -133,7 +133,7 @@ def test_skips_before_six_or_already_updated_or_without_url(tmp_path, monkeypatc
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False
 
     monkeypatch.setenv("AMAZON_SCRAPER_URL", "http://scraper:8000")
-    out.write_text(json.dumps({"date": "2026-10-30", "items": {}}), encoding="utf-8")
+    out.write_text(json.dumps({"date": "2026-10-30", "items": {}, "retried": True}), encoding="utf-8")
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False
     get.assert_not_called()
 
@@ -161,6 +161,7 @@ def fake_get_router(bulk_items, ar_items):
 
 
 def test_stores_ships_to_ar_in_chunks_of_bulk_max(tmp_path, monkeypatch):
+    monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [
         {"slug": f"us-{i}", "asin": f"B0000000{i:02d}", "store": "US", "verified": True, "ml": {"price": 1000}}
@@ -192,6 +193,7 @@ def test_stores_ships_to_ar_in_chunks_of_bulk_max(tmp_path, monkeypatch):
 
 
 def test_ar_error_or_missing_leaves_ships_unknown(tmp_path, monkeypatch):
+    monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [
         {"slug": "ok", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
@@ -213,6 +215,7 @@ def test_ar_error_or_missing_leaves_ships_unknown(tmp_path, monkeypatch):
 
 
 def test_ar_calls_agrupadas_por_store_y_con_param_store(tmp_path, monkeypatch):
+    monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [
         {"slug": "us-1", "asin": "B0US1", "store": "US", "verified": True, "ml": {"price": 1000}},
@@ -260,6 +263,7 @@ def test_ar_ships_que_no_es_booleano_no_se_guarda(tmp_path, monkeypatch, ships):
 
 
 def test_ar_chunk_failure_does_not_break_prices(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
 
@@ -316,3 +320,42 @@ def test_plausible_descarta_precio_muy_bajo_contra_lista():
 def test_plausible_sin_lista_o_otra_moneda_acepta():
     assert amazon_prices.plausible((21.0, "USD"), {})
     assert amazon_prices.plausible((21.0, "USD"), {"listPrice": {"amount": 459.99, "currency": "EUR"}})
+
+
+def test_ar_shipping_only_on_its_weekday(tmp_path, monkeypatch):
+    # 30/10/2026 es viernes: con el relevamiento en lunes no se consulta /ar-shipping.
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
+    monkeypatch.setattr(amazon_prices, "ar_url", lambda: "http://ar")
+    monkeypatch.setattr(amazon_prices, "pause", lambda: None)
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", lambda base, asins, store: {"B01": {"asin": "B01", "price": {"amount": 150.5, "currency": "USD"}, "availability": {"is_in_stock": True}}})
+    def no_llamar(*a, **k):
+        raise AssertionError("no debería consultar el envío fuera del día de relevamiento")
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", no_llamar)
+    assert AFTER_SEVEN.weekday() != amazon_prices.AR_SHIPPING_WEEKDAY
+    assert amazon_prices.maybe_refresh(catalog, tmp_path / "amazon-prices.json", AFTER_SEVEN) is True
+
+
+def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
+    catalog = [
+        {"slug": "ya", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "falta", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
+    ]
+    out = tmp_path / "amazon-prices.json"
+    out.write_text(json.dumps({"date": "2026-10-30", "items": {"ya": {"amount": 10, "currency": "USD", "checked": "2026-10-30"}}}), encoding="utf-8")
+    monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
+    monkeypatch.setattr(amazon_prices, "pause", lambda: None)
+    pedidos = []
+    def fetch(base, asins, store):
+        pedidos.append(list(asins))
+        return {"B02": {"asin": "B02", "price": {"amount": 20.0, "currency": "USD"}, "availability": {"is_in_stock": True}}}
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
+    antes = datetime(2026, 10, 30, 9, 30, tzinfo=timezone.utc)  # 06:30 ART: todavía no
+    assert amazon_prices.maybe_refresh(catalog, out, antes) is False
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    assert pedidos == [["B02"]]  # sólo el faltante
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["retried"] is True
+    assert data["items"]["ya"]["amount"] == 10 and data["items"]["falta"] == {"amount": 20.0, "currency": "USD", "checked": "2026-10-30"}
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False  # una sola vez por día
+    assert pedidos == [["B02"]]
