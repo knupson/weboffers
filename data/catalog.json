@@ -2471,7 +2471,11 @@
       "catalogId": "MLA68812268"
     },
     "verdict": "ml",
-    "verdictReason": "precio"
+    "verdictReason": "precio",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B01N0TQPQB",
@@ -2537,7 +2541,11 @@
       "catalogId": "MLA47857275"
     },
     "verdict": "ml",
-    "verdictReason": "precio"
+    "verdictReason": "precio",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0DXXYS4BJ",
@@ -3017,7 +3025,11 @@
       "catalogId": "MLA34018975"
     },
     "image": "/products/samsung-t9-portable-ssd-1tb.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_751173-MLA99510962730_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_751173-MLA99510962730_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0H41D4KFT",
@@ -3035,7 +3047,11 @@
       "catalogId": "MLA20892138"
     },
     "image": "/products/amd-5800x3d.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_835734-MLA99434555460_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_835734-MLA99434555460_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CHHSFMRL",
@@ -3053,7 +3069,11 @@
       "catalogId": "MLA48826583"
     },
     "image": "/products/sceptre-e275wfw100t-27in.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_700216-MLA83897529183_042025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_700216-MLA83897529183_042025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0BPSGJN7T",
@@ -3071,7 +3091,11 @@
       "catalogId": "MLA28842379"
     },
     "image": "/products/gl-inet-glmt3000.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_712655-MLA99952939879_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_712655-MLA99952939879_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0D3J85SX4",
@@ -3125,7 +3149,11 @@
       "catalogId": "MLA53669406"
     },
     "image": "/products/8bitdo-ultimate2.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_996786-MLA99902909999_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_996786-MLA99902909999_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0BQ1PDR4R",
@@ -3143,7 +3171,11 @@
       "catalogId": "MLA36201215"
     },
     "image": "/products/razer-wolverinev2.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_793645-MLU75994693685_042024-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_793645-MLU75994693685_042024-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CXGTGPZQ",
@@ -3161,7 +3193,11 @@
       "catalogId": "MLA44739662"
     },
     "image": "/products/razer-blacksharkv2-2.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_740094-MLA89572844640_082025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_740094-MLA89572844640_082025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B081415GCS",
@@ -3197,7 +3233,11 @@
       "catalogId": "MLA80799421"
     },
     "image": "/products/scuf-omega.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_760093-MLA118351195106_102026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_760093-MLA118351195106_102026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CYWLSCFW",
@@ -3215,7 +3255,11 @@
       "catalogId": "MLA47335966"
     },
     "image": "/products/turtle-beach-stealth500.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_923503-MLA83234739633_032025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_923503-MLA83234739633_032025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0F1BXQNR5",
@@ -3359,7 +3403,11 @@
       "catalogId": "MLA26224542"
     },
     "image": "/products/occer-12x25-compact-binoculars-adults.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_695917-MLA100018780429_122025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_695917-MLA100018780429_122025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0C6N72X5Y",
@@ -3377,7 +3425,11 @@
       "catalogId": "MLA28102083"
     },
     "image": "/products/vortex-triumph-hd-10x42-binoculars.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_881196-MLA95835633653_102025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_881196-MLA95835633653_102025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B07V3LB5DN",
@@ -3395,7 +3447,11 @@
       "catalogId": "MLA73975900"
     },
     "image": "/products/vortex-crossfire-hd-10x42-binoculars.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_819730-MLA113416873237_062026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_819730-MLA113416873237_062026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B00161ZI4A",
@@ -3413,7 +3469,11 @@
       "catalogId": "MLA60332650"
     },
     "image": "/products/vortex-optics-solo-monocular-10x36.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_953739-MLA95453316839_102025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_953739-MLA95453316839_102025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B00AMPJGMG",
@@ -3449,7 +3509,11 @@
       "catalogId": "MLA48525838"
     },
     "image": "/products/pallipartners-pallipartners-4-3in.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_953262-MLA83807168123_042025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_953262-MLA83807168123_042025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0B88T5RDY",
@@ -3467,7 +3531,11 @@
       "catalogId": "MLA29042319"
     },
     "image": "/products/tp-3pack-6e-xe75.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_624459-MLA99434558114_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_624459-MLA99434558114_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0FCSHJGGK",
@@ -3485,7 +3553,11 @@
       "catalogId": "MLA63119891"
     },
     "image": "/products/dell-wd25.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_671742-MLA100696382436_122025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_671742-MLA100696382436_122025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0DCHK3ZMW",
@@ -3521,7 +3593,11 @@
       "catalogId": "MLA36805306"
     },
     "image": "/products/gl-inet-ac1200-glsft1200.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_941581-MLU77897414392_082024-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_941581-MLU77897414392_082024-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0DZ75TN5F",
@@ -3575,7 +3651,11 @@
       "catalogId": "MLA79407331"
     },
     "image": "/products/stanley-flip-straw.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_678506-MLA116265435530_092026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_678506-MLA116265435530_092026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0HKYH5TF2",
@@ -3593,7 +3673,11 @@
       "catalogId": "MLA47982937"
     },
     "image": "/products/hydrojug-hydrojug.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_830718-MLA83440644996_042025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_830718-MLA83440644996_042025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0F1HX3WXX",
@@ -3629,7 +3713,11 @@
       "catalogId": "MLA49514095"
     },
     "image": "/products/playstation-dualsensetm-wireless-controller.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_765725-MLA84569798893_052025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_765725-MLA84569798893_052025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B086PKMZ21",
@@ -3647,7 +3735,11 @@
       "catalogId": "MLA57678428"
     },
     "image": "/products/razer-blacksharkv2.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_935278-MLA93287468157_092025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_935278-MLA93287468157_092025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0H4P1YH4P",
@@ -3683,7 +3775,11 @@
       "catalogId": "MLA27673837"
     },
     "image": "/products/hyperx-cloud-iii.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_891161-MLA99525271746_122025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_891161-MLA99525271746_122025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0C7GW9F88",
@@ -3701,7 +3797,11 @@
       "catalogId": "MLA24473062"
     },
     "image": "/products/gamesir-g7-2.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_635451-MLA99932049021_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_635451-MLA99932049021_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0HMKN3C41",
@@ -3809,7 +3909,11 @@
       "catalogId": "MLA60928472"
     },
     "image": "/products/viltrox-9mm-f2-8-e-aps-c.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_834446-MLA95599028464_102025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_834446-MLA95599028464_102025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B000A1SZ2Y",
@@ -3827,7 +3931,11 @@
       "catalogId": "MLA29177110"
     },
     "image": "/products/raynox-dcr250.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_905359-MLU73564655529_122023-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_905359-MLU73564655529_122023-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B09G57BXZ4",
@@ -3863,7 +3971,11 @@
       "catalogId": "MLA77368561"
     },
     "image": "/products/kodak-fz45.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_907155-MLA114834050670_082026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_907155-MLA114834050670_082026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B07ZRZLHH4",
@@ -3899,7 +4011,11 @@
       "catalogId": "MLA58479363"
     },
     "image": "/products/kodak-c1-2-8in.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_784699-MLA116949431726_092026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_784699-MLA116949431726_092026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B07H289S7C",
@@ -3917,7 +4033,11 @@
       "catalogId": "MLA27856288"
     },
     "image": "/products/seagate-barracuda-8tb.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_938025-MLA99955285615_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_938025-MLA99955285615_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0F1GFD44G",
@@ -3971,7 +4091,11 @@
       "catalogId": "MLA36961100"
     },
     "image": "/products/tp-re615x.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_604526-MLU76407176919_052024-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_604526-MLU76407176919_052024-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CP7S3117",
@@ -3989,7 +4113,11 @@
       "catalogId": "MLA38696370"
     },
     "image": "/products/gl-inet-glmt6000.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_720959-MLA80401785524_112024-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_720959-MLA80401785524_112024-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B08QTXNWZ1",
@@ -4007,7 +4135,11 @@
       "catalogId": "MLA18371309"
     },
     "image": "/products/tp-er605.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_710702-MLA99918198067_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_710702-MLA99918198067_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0DHWBS9G6",
@@ -4025,7 +4157,11 @@
       "catalogId": "MLA51483135"
     },
     "image": "/products/asus-rtbe58u.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_956282-MLA95668963799_102025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_956282-MLA95668963799_102025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0GF1J99S4",
@@ -4043,7 +4179,11 @@
       "catalogId": "MLA78721833"
     },
     "image": "/products/gl-inet-glmt3600be.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_600720-MLA115547878422_082026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_600720-MLA115547878422_082026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0FVXMHHRP",
@@ -4151,7 +4291,11 @@
       "catalogId": "MLA61618482"
     },
     "image": "/products/raycon-everyday-bluetooth-wireless-earbuds.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_886907-MLA99985741805_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_886907-MLA99985741805_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CCZ26B5V",
@@ -4206,7 +4350,11 @@
     },
     "hot": "2026-11-02",
     "image": "/products/kingston-a400-240gb.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_622444-MLA116994728816_102026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_622444-MLA116994728816_102026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0BGQ8FB3G",
@@ -4225,7 +4373,11 @@
     },
     "hot": "2026-11-02",
     "image": "/products/msi-spatium-s270-240gb.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_708208-MLA109381497120_042026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_708208-MLA109381497120_042026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0DS6LQL39",
@@ -4282,7 +4434,11 @@
     },
     "hot": "2026-11-02",
     "image": "/products/xiaomi-monitor-a27qi.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_867676-MLA111041191241_042026-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_867676-MLA111041191241_042026-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B094WN6SY2",
@@ -4301,7 +4457,11 @@
     },
     "hot": "2026-11-02",
     "image": "/products/sony-dualsense-cosmic-red.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_984099-MLA99993479459_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_984099-MLA99993479459_112025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   },
   {
     "asin": "B0CQKLS4RP",
@@ -4320,6 +4480,10 @@
     },
     "hot": "2026-11-02",
     "image": "/products/sony-dualsense-blanco.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_954223-MLA96146757619_102025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_954223-MLA96146757619_102025-F.jpg",
+    "shipsToAr": {
+      "freeShipping": false,
+      "checked": "2026-11-03"
+    }
   }
 ]
