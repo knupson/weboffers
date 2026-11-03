@@ -47,6 +47,7 @@ SIN_REEL = {"2026-11-03"}  # el Reel 1 ya está programado
 SIN_CARRUSEL = {"2026-11-23"}  # feriado: pasa al 24
 CALENDARIO_HASTA = datetime.date(2026, 11, 30)
 MINIMO_PRODUCTOS = 100
+MAXIMO_SIN_ENVIO = 3  # tarjetas «no confirmamos el envío» toleradas antes de avisar
 
 
 def leer_env():
@@ -94,9 +95,17 @@ def control(que, ahora, bajar=bajar):
             return pedir(["el sitio no se actualizó hoy, revisá la pi4"])
         # Mínimo acordado: 100 productos con los dos precios de hoy (cada uno es un ListItem del JSON-LD de la portada).
         n = html.count('"@type":"ListItem"')
+        problemas = []
         if n < MINIMO_PRODUCTOS:
-            return pedir([f"el sitio salió hoy con {n} productos (mínimo {MINIMO_PRODUCTOS}), recuperá los que faltan"])
-        return ""
+            problemas.append(f"el sitio salió hoy con {n} productos (mínimo {MINIMO_PRODUCTOS}), recuperá los que faltan")
+        # Lo que ve el visitante: tarjetas donde Amazon gana pero no hay envío confirmado (03/11: 25 tarjetas).
+        try:
+            sin_envio = bajar("https://ofertas.knunet.com/productos/").count("no confirmamos el envío")
+        except Exception:
+            sin_envio = 0
+        if sin_envio > MAXIMO_SIN_ENVIO:
+            problemas.append(f"hay {sin_envio} productos con «no confirmamos el envío», revisá el envío a Argentina")
+        return pedir(problemas) if problemas else ""
     if que in ("telegram12", "telegram20"):
         hora = int(que[-2:])
         try:
