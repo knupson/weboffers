@@ -89,17 +89,20 @@ def run_once():
     return payload
 
 
-def with_ar_shipping(products, amazon_prices_path):
+def with_ar_shipping(products, amazon_prices_path, now=None):
     """El envío vigente del relevamiento (arShipping, ≤14 días) manda sobre el del catálogo, como en el sitio."""
     try:
-        shipping = (json.load(open(amazon_prices_path, encoding="utf-8")) or {}).get("arShipping") or {}
+        data = json.load(open(amazon_prices_path, encoding="utf-8")) or {}
+        shipping = amazon_prices.merge_ar_shipping(data, data.get("items") or {},
+                                                   (now or datetime.now(timezone.utc)).astimezone(amazon_prices.ART).date())
     except (OSError, ValueError):
         shipping = {}
     out = []
     for p in products:
         ar = shipping.get(p.get("slug"))
         if isinstance(ar, dict) and isinstance(ar.get("ships"), bool):
-            p = {**p, "shipsToAr": {**(p.get("shipsToAr") or {}), "freeShipping": ar.get("free") is True}}
+            p = {**p, "shipsToAr": {"freeShipping": ar.get("free") is True, "checked": ar.get("checked")},
+                 "shipsToArToday": ar["ships"]}
         out.append(p)
     return out
 

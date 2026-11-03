@@ -50,11 +50,13 @@ describe('deployer', () => {
     await fs.writeFile(path.join(workDir, 'public', 'products', 'a.webp'), 'original');
     await fs.writeFile(path.join(outputDir, 'products', 'a.webp'), 'automática');
     await fs.writeFile(path.join(outputDir, 'products', 'c.webp'), 'nueva');
+    await fs.writeFile(path.join(outputDir, 'products', 'c.jpg'), 'telegram');
     await overlayCatalog(workDir, outputDir);
     expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'catalog.json'), 'utf8')))
       .toEqual([original, { asin: 'C', slug: 'c' }]);
     expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.webp'), 'utf8')).toBe('original');
     expect(await fs.readFile(path.join(workDir, 'public', 'products', 'c.webp'), 'utf8')).toBe('nueva');
+    expect(await fs.readFile(path.join(workDir, 'public', 'products', 'c.jpg'), 'utf8')).toBe('telegram');
   });
 
   it('tolera ausencia del overlay pero rechaza JSON inválido', async () => {
@@ -75,6 +77,8 @@ describe('deployer', () => {
       runImpl: async (cmd: string) => { calls.push(cmd); return ''; },
     })).toBe('fail');
     expect(calls).toEqual(['git']);
+    expect(JSON.parse(await fs.readFile(path.join(tmpDir, 'last-result.json'), 'utf8')))
+      .toMatchObject({ status: 'fail', at: '2026-11-03T10:00:00.000Z' });
   });
 
   it('el build recibe las altas y sus fotos', async () => {
@@ -86,6 +90,8 @@ describe('deployer', () => {
     await fs.writeFile(path.join(workDir, 'data', 'catalog.json'), '[]');
     await fs.writeFile(path.join(tmpDir, 'catalog-auto.json'), '[{"asin":"A","slug":"a"}]');
     await fs.writeFile(path.join(tmpDir, 'products', 'a.webp'), 'foto');
+    await fs.writeFile(path.join(tmpDir, 'products', 'a.jpg'), 'telegram');
+    await fs.writeFile(path.join(tmpDir, 'offers.json'), JSON.stringify({ rates: { mep: 1234 }, items: [] }));
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-03', items: {} }));
     await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-03', items: { a: { amount: 150 } } }));
     const commands: string[] = [];
@@ -96,11 +102,15 @@ describe('deployer', () => {
         if (command === 'npm') {
           expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'catalog.json'), 'utf8'))).toEqual([{ asin: 'A', slug: 'a' }]);
           expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.webp'), 'utf8')).toBe('foto');
+          expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.jpg'), 'utf8')).toBe('telegram');
+          expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'offers.json'), 'utf8')).rates.mep).toBe(1234);
         }
         return '';
       },
     })).toBe('ok');
     expect(commands).toEqual(['git', 'npm', 'npm', 'npx']);
+    expect(JSON.parse(await fs.readFile(path.join(tmpDir, 'last-result.json'), 'utf8')))
+      .toMatchObject({ status: 'ok', at: '2026-11-03T10:00:00.000Z' });
   });
 
   it('calcula 07:00 ART como inicio, 11:00 ART como tope y 10 min de reintento', () => {
@@ -109,6 +119,33 @@ describe('deployer', () => {
     expect(deadlineAt(now)).toBe(Date.parse('2026-10-30T14:00:00Z')); // 11:00 ART
     expect(nextRunAt(new Date('2026-10-30T09:30:00Z'))).toBe(Date.parse('2026-10-30T10:00:00Z'));
     expect(RETRY_INTERVAL_MS).toBe(10 * 60e3);
+  });
+
+  it('persiste el error del build y evita publicar cuando falta MEP', async () => {
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    const workDir = path.join(tmpDir, 'work');
+    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await fs.writeFile(path.join(workDir, 'data', 'offers.json'), '{"rates":{"mep":999}}');
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-03', items: {} }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-03', items: { a: { amount: 150 } } }));
+    const commands: string[] = [];
+    const result = await deployOnce(new Date('2026-11-03T10:00:00Z'), {
+      outputFile, amazonOutputFile, workDir, stateFile: path.join(tmpDir, 'last-deploy.json'),
+      runImpl: async (cmd: string, args: string[]) => {
+        commands.push(`${cmd} ${args[0]}`);
+        if (cmd === 'npm' && args[0] === 'run') {
+          await expect(fs.access(path.join(workDir, 'data', 'offers.json'))).rejects.toThrow();
+          throw new Error('Sin cotización MEP válida');
+        }
+        return '';
+      },
+    });
+    expect(result).toBe('fail');
+    expect(commands.some((command) => command.startsWith('npx'))).toBe(false);
+    await expect(fs.access(path.join(tmpDir, 'last-deploy.json'))).rejects.toThrow();
+    expect(JSON.parse(await fs.readFile(path.join(tmpDir, 'last-result.json'), 'utf8')))
+      .toEqual({ status: 'fail', reason: 'Sin cotización MEP válida', at: '2026-11-03T10:00:00.000Z' });
   });
 
   it('antes de las 11:00 ART exige que ml-prices.json y amazon-prices.json tengan date == hoy', async () => {
@@ -213,6 +250,7 @@ describe('deployer', () => {
     expect((await hasBothTodayPrices(now, { outputFile, amazonOutputFile })).ready).toBe(false);
     let commands = 0;
     expect(await deployOnce(now, { outputFile, amazonOutputFile, requireBothToday: false,
+      stateFile: path.join(tmpDir, 'state.json'),
       runImpl: async () => { commands++; return ''; },
     })).toBe('fail');
     expect(commands).toBe(0);

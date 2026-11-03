@@ -101,10 +101,45 @@ def test_omits_product_when_items_call_fails(tmp_path, monkeypatch):
     previous = {"generatedAt": "2026-10-29T10:00:00+00:00", "date": "2026-10-29", "items": {
         "monitor": {"price": 480000, "checked": "2026-10-29", "verdict": "ml", "verdictReason": "precio"}}}
     prices.write_text(json.dumps(previous), encoding="utf-8")
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is False
+    assert json.loads(prices.read_text(encoding="utf-8")) == previous
+    monkeypatch.setattr(ml_prices, "fetch_items", lambda _: [{"price": 700000}])
     assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
-    items = json.loads(prices.read_text(encoding="utf-8"))["items"]
-    assert "monitor" not in items
-    assert items["ssd"]["price"] == 700000
+    assert set(json.loads(prices.read_text(encoding="utf-8"))["items"]) == {"monitor", "ssd"}
+
+
+@pytest.mark.parametrize("error", [requests.HTTPError("503"), requests.ConnectionError("sin red")])
+def test_failure_does_not_create_completed_slot(tmp_path, monkeypatch, error):
+    monkeypatch.setattr(ml_prices, "fetch_items", Mock(side_effect=error))
+    path = tmp_path / "ml-prices.json"
+    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert not path.exists()
+
+
+def test_confirmed_absence_completes_slot(tmp_path, monkeypatch):
+    monkeypatch.setattr(ml_prices, "fetch_items", lambda _: [])
+    path = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    data = json.loads(path.read_text())
+    assert data["absent"] == ["monitor", "ssd"]
+    assert data["items"] == {}
+    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+
+
+@pytest.mark.parametrize("payload", [{}, {"results": None}, {"results": {}}, []])
+def test_malformed_response_is_not_absence(monkeypatch, payload):
+    monkeypatch.setattr(ml_prices, "get_json", lambda _: payload)
+    with pytest.raises(ValueError):
+        ml_prices.fetch_items("MLA123")
+
+
+def test_merge_converts_eur_for_telegram(tmp_path):
+    ml = tmp_path / "ml.json"
+    amz = tmp_path / "amz.json"
+    ml.write_text(json.dumps({"date": "2026-10-30", "items": {"monitor": {"price": 500000, "checked": "2026-10-30"}}}))
+    amz.write_text(json.dumps({"date": "2026-10-30", "items": {
+        "monitor": {"amount": 90, "currency": "EUR", "checked": "2026-10-30"}}}))
+    assert ml_prices.merge(CATALOG[:1], ml, amz, MEP, 1.2, AFTER_SEVEN)[0]["amazonUsd"] == 108
 
 
 def test_verdict_from_scraped_amazon_price_ignores_list_price_and_handles_es(tmp_path, monkeypatch):
@@ -333,3 +368,20 @@ def test_missing_slot_key_counts_as_morning_slot_of_its_date(tmp_path, monkeypat
     at_1330 = datetime(2026, 11, 2, 16, 30, tzinfo=timezone.utc)  # 13:30 ART
     assert ml_prices.maybe_refresh(CATALOG, prices_extra, amazon, MEP, at_1330) is True
     assert json.loads(prices_extra.read_text(encoding="utf-8"))["slot"] == "2026-11-02T13"
+
+
+def test_isolated_failure_still_completes_slot(tmp_path, monkeypatch):
+    """Un catalogId roto entre muchos no deja al sitio sin precios de ML: se guarda lo obtenido."""
+    catalog = [{"slug": f"p{i}", "verified": True, "ml": {"catalogId": f"MLA{i}"}} for i in range(10)]
+
+    def fetch(catalog_id):
+        if catalog_id == "MLA3":
+            raise requests.HTTPError("404")
+        return [{"price": 100000, "condition": "new", "id": "MLA9" + catalog_id}]
+
+    monkeypatch.setattr(ml_prices, "fetch_items", fetch)
+    monkeypatch.setattr(ml_prices, "pause", lambda: None)
+    path = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(catalog, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    data = json.loads(path.read_text())
+    assert data["failed"] == ["p3"] and "p3" not in data["absent"] and len(data["items"]) == 9

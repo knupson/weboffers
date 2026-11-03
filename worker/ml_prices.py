@@ -76,7 +76,10 @@ def search_products(query):
 def fetch_items(catalog_id):
     if not re.fullmatch(r"[A-Za-z0-9]+", str(catalog_id)):
         raise ValueError("catalogId inválido")
-    return get_json(f"/products/{catalog_id}/items").get("results", [])
+    payload = get_json(f"/products/{catalog_id}/items")
+    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+        raise ValueError("Respuesta de ML sin resultados válidos")
+    return payload["results"]
 
 
 def is_international(item):
@@ -276,6 +279,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         return False
     amazon_items = load_amazon_prices(amazon_prices_path, local.date())
     items = {}
+    absent, failed = [], []
     for product in catalog:
         ml = product.get("ml") or {}
         catalog_id = ml.get("catalogId")
@@ -285,9 +289,12 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         try:
             best = cheapest_new(fetch_items(catalog_id))
             if best is None:
-                raise ValueError("sin publicaciones nuevas")
+                absent.append(slug)
+                pause()
+                continue
             price, item_id = best
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            failed.append(slug)
             print(f"Mercado Libre: no se pudo consultar {slug} ({type(exc).__name__}); se omite.", flush=True)
             pause()
             continue
@@ -305,7 +312,14 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
             entry["amazonSource"] = source
         items[slug] = entry
         pause()
-    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items})
+    # Caída general (más del 20 % falló): no se cierra el turno y se reintenta. Fallas sueltas (un catalogId
+    # dado de baja, un 500 aislado) no pueden dejar al sitio entero sin precios de ML: se guarda lo obtenido y
+    # los fallidos quedan en "failed" (no son "absent", así Amazon no los memoriza como sin ML).
+    if failed and len(failed) > 0.2 * (len(items) + len(absent) + len(failed)):
+        print(f"Mercado Libre: corrida incompleta ({len(failed)} consultas fallidas); se reintentará el turno.", flush=True)
+        return False
+    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items,
+                                       "absent": absent, "failed": failed})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
     return True
 
@@ -355,6 +369,7 @@ def merge(catalog, prices_path, amazon_prices_path=None, mep=None, eur_usd=None,
             out["amazonArs"] = amazon_ars
             out["amazonSource"] = source
             out["amazonChecked"] = amz_checked
+            out["amazonUsd"] = _resolve_amazon_usd(out, amazon_items, eur_usd)[0]
             ml_price = (out.get("ml") or {}).get("price")
             if _is_valid_amount(ml_price) and amazon_ars is not None:
                 free_shipping = (out.get("shipsToAr") or {}).get("freeShipping")

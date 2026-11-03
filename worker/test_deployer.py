@@ -20,6 +20,7 @@ def test_deadline_without_prices_never_calls_deploy(tmp_path, amazon):
         const { deployWithRetry } = await import(process.argv[1]);
         const result = await deployWithRetry({
             outputFile: process.argv[2], amazonOutputFile: process.argv[3],
+            stateFile: process.argv[4],
             nowFn: () => new Date('2026-11-03T14:00:00Z'),
             deployFn: async () => { throw new Error('No debe desplegar'); },
         });
@@ -27,7 +28,7 @@ def test_deadline_without_prices_never_calls_deploy(tmp_path, amazon):
     """
     # Evita que el guard del módulo lo tome como ejecución del daemon.
     result = subprocess.run(["node", "--input-type=module", "-e", script, module + "?test",
-                             str(ml_path), str(amazon_path)], capture_output=True, text=True, timeout=10)
+                             str(ml_path), str(amazon_path), str(tmp_path / "state.json")], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert "DEPLOY_FAIL" in result.stdout
     assert "amazon-prices.json" in result.stdout

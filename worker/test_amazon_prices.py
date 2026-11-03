@@ -344,9 +344,9 @@ def test_ar_shipping_off_day_only_surveys_unconfirmed(tmp_path, monkeypatch):
     monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", ar)
     assert AFTER_SEVEN.weekday() != amazon_prices.AR_SHIPPING_WEEKDAY
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
-    assert pedidos == [["B03"]]
+    assert pedidos == [["B01", "B03"]]
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert set(data["arShipping"]) == {"cache", "sin-dato"}
+    assert set(data["arShipping"]) == {"catalogo", "cache", "sin-dato"}
 
 def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
     catalog = [
@@ -602,7 +602,7 @@ def test_retry_prices_and_unknown_shipping(tmp_path, monkeypatch):
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
     names = ["price", "shipping", "known", "catalog", "outside", "expired"]
     products = [{"slug": s, "asin": s, "store": "US"} for s in names]
-    products[3]["shipsToAr"] = {"freeShipping": True}
+    products[3]["shipsToAr"] = {"freeShipping": True, "checked": "2026-11-04"}
     prev = {"date": "2026-11-04", "items": {s: {"amount": 200, "currency": "USD"} for s in names},
             "arShipping": {"known": {"ships": False, "checked": "2026-11-03"},
                            "expired": {"ships": True, "free": True, "checked": "2026-10-01"}},
@@ -627,7 +627,7 @@ def test_daily_skip_ml_priority_and_current_out_of_range(tmp_path, monkeypatch):
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
     products = [{"slug": s, "asin": s, "store": "US", "verified": True, "ml": {"price": 1000}}
                 for s in ["outside", "priority", "cbt"]]
-    (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "items": {
+    (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "absent": ["cbt"], "items": {
         "outside": {"price": 1000}, "priority": {"price": 1000}}}))
     prices = Mock(return_value=({"outside": {"amount": 500, "currency": "EUR"},
                                 "priority": {"amount": 200, "currency": "USD"}}, 2, 0))
@@ -671,3 +671,24 @@ def test_shipping_priority_across_stores(monkeypatch):
     monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", fetch)
     amazon_prices.refresh_ar_shipping(selected, items, "2026-11-04")
     assert calls == ["high-us", "high-es", "low-us"]
+
+
+@pytest.mark.parametrize("checked,selected", [("2026-10-21", False), ("2026-10-20", True),
+                                             (None, True), ("2026-11-05", True)])
+def test_resurvey_expired_catalog_shipping(checked, selected):
+    from datetime import date
+    product = {"slug": "a", "shipsToAr": {"freeShipping": True, "checked": checked}}
+    assert bool(amazon_prices.shipping_candidates([product], {}, None, date(2026, 11, 4), None)) is selected
+
+
+@pytest.mark.parametrize("absent,excluded", [([], False), (["a"], True)])
+def test_ml_missing_is_not_confirmed_absence(tmp_path, monkeypatch, absent, excluded):
+    monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
+    monkeypatch.setattr(amazon_prices, "fetch_prices", Mock(return_value=({}, 0, 0)))
+    monkeypatch.setattr(amazon_prices, "refresh_ar_shipping", lambda *args: {})
+    (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "items": {}, "absent": absent}))
+    product = {"slug": "a", "asin": "A", "store": "US", "verified": True, "ml": {"price": 1000}}
+    path = tmp_path / "amazon-prices.json"
+    amazon_prices.maybe_refresh([product], path, datetime(2026, 11, 4, 4, tzinfo=amazon_prices.ART))
+    assert ("a" in json.loads(path.read_text())["outOfRange"]) is excluded
+    assert bool(amazon_prices.fetch_prices.call_args.args[1]) is not excluded

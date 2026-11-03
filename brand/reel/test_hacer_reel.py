@@ -70,7 +70,7 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
             r.escribir(base / 'src/duelo.json', defaults)
             hoy = r.datetime.now(r.ART).date().isoformat()
             catalogo = [dict(slug=s, name=s, category='Audio', asin=s, verified=True,
-                             image=f'/products/{s}.webp', shipsToAr=dict(freeShipping=True))
+                             image=f'/products/{s}.webp', shipsToAr=dict(freeShipping=True, checked=hoy))
                         for s in ('prueba-amazon', 'prueba-ml')]
             for p in catalogo:
                 (repo / 'public/products' / (p['slug'] + '.webp')).write_bytes(b'imagen-de-prueba')
@@ -80,7 +80,7 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
                 'prueba-ml': dict(price=50000, checked=hoy)}))
             r.escribir(repo / 'data/amazon-prices.json', dict(date=hoy, items={
                 'prueba-amazon': dict(amount=200, currency='USD', checked=hoy),
-                'prueba-ml': dict(amount=50, currency='USD', checked=hoy)}))
+                'prueba-ml': dict(amount=200, currency='USD', checked=hoy)}))
             comandos = []
 
             def fake_exec(args, **kwargs):

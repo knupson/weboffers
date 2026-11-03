@@ -466,6 +466,9 @@ export async function loadProducts(now = Date.now()) {
     buildQuotes(),
   ]);
   const mep = quotes.mep ?? offers.rates?.mep ?? null;
+  if (typeof mep !== "number" || !Number.isFinite(mep) || mep <= 0) {
+    throw new Error("Sin cotización MEP válida: no se puede publicar el sitio.");
+  }
   const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd, now);
   const byKey = new Map(offers.items.map((i) => [`${i.store}:${i.asin}`, i]));
   const products = withAmazon.map((entry) => {

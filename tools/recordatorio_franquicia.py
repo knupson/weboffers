@@ -6,13 +6,14 @@ recordatorio_redes.py de Blackseam. Mensajes lo más cortos posible: sólo la fr
 
 Modos:
 - Sin argumentos (10:00): tareas del día según el calendario de publicaciones y avisos puntuales.
-- --control <sitio|telegram12|telegram20>: control automático; sólo escribe si algo falló.
+- --control <sitio|sitio13|telegram12|telegram20>: control automático; sólo escribe si algo falló.
   sitio = la portada tiene la fecha de hoy (deploy de las 7:00); telegramNN = el canal tiene
   la publicación de ese turno.
 - --prueba: manda el mensaje de hoy (o de mañana) como prueba.
 Cron (dockerhost, hora ART):
   0 10 * * *  recordatorio_franquicia.py
   30 7 * * *  recordatorio_franquicia.py --control sitio
+  30 15 * * * recordatorio_franquicia.py --control sitio13  (sólo controla días con despliegue extra)
   20 12 * * * recordatorio_franquicia.py --control telegram12
   20 20 * * * recordatorio_franquicia.py --control telegram20
   10 19 * * 2-4 recordatorio_franquicia.py --control reel19   (API de Meta, token en /home/claude/franquicia400-meta/.env)
@@ -48,6 +49,7 @@ SIN_CARRUSEL = {"2026-11-23"}  # feriado: pasa al 24
 CALENDARIO_HASTA = datetime.date(2026, 11, 30)
 MINIMO_PRODUCTOS = 100
 MAXIMO_SIN_ENVIO = 3  # tarjetas «no confirmamos el envío» toleradas antes de avisar
+EXTRA_DEPLOY_DATES = {"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-27", "2026-11-30"}
 
 
 def leer_env():
@@ -86,16 +88,26 @@ def bajar(url):
 def control(que, ahora, bajar=bajar):
     """Texto de alerta si algo falló; "" si está todo bien."""
     hoy = ahora.date().isoformat()
-    if que == "sitio":
+    if que == "sitio13" and hoy not in EXTRA_DEPLOY_DATES:
+        return ""
+    if que in ("sitio", "sitio13"):
         try:
             html = bajar("https://ofertas.knunet.com/")
         except Exception:
             return pedir(["el sitio no responde, revisalo"])
+        problemas = []
         if f'"{hoy}' not in html:
-            return pedir(["el sitio no se actualizó hoy, revisá la pi4"])
+            problemas.append("el sitio no se actualizó hoy, revisá la pi4")
         # Mínimo acordado: 100 productos con los dos precios de hoy (cada uno es un ListItem del JSON-LD de la portada).
         n = html.count('"@type":"ListItem"')
-        problemas = []
+        try:
+            estado = json.loads(bajar("https://ofertas.knunet.com/estado.json")) or {}
+        except Exception:
+            estado = {}
+        if estado.get("preciosDe") != hoy:
+            problemas.append("estado.json no tiene los precios de hoy, revisá el despliegue")
+        if estado.get("amazon") is None:
+            problemas.append("Amazon: sin datos del worker, revisá la pi4")
         if n < MINIMO_PRODUCTOS:
             problemas.append(f"el sitio salió hoy con {n} productos (mínimo {MINIMO_PRODUCTOS}){causa_amazon(bajar)}, recuperá los que faltan")
         # Lo que ve el visitante: tarjetas donde Amazon gana pero no hay envío confirmado (03/11: 25 tarjetas).
@@ -153,6 +165,9 @@ def control_catalogo(ahora, bajar):
     año, semana, _ = domingo.isocalendar()
     if estado.get("week") != f"{año}-W{semana:02d}" or estado.get("status") == "running":
         return "la búsqueda de productos nuevos del domingo no corrió, revisá la pi4"
+    if estado.get("status") == "failed":
+        motivos = ", ".join(estado.get("motivos") or []) or "sin detalle"
+        return f"la búsqueda del domingo falló ({motivos}, altas={estado.get('added', 0)}), revisala"
     if not estado.get("added"):
         motivos = ", ".join(estado.get("motivos") or []) or "ningún par seguro"
         return f"la búsqueda del domingo no sumó productos ({motivos}), revisala"

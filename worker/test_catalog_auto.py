@@ -61,14 +61,35 @@ def test_once_per_iso_week_keeps_previous_and_logs(setup_job):
     assert log["passes"][0]["ok"] == 1
 
 
-def test_failed_week_uses_failure_channel_without_retry(setup_job, monkeypatch, capsys):
+def test_failed_before_scraping_retries_same_week(setup_job, monkeypatch, capsys):
     repo, output, discover = setup_job
     discover.side_effect = requests.ConnectionError("sin conexión")
     now = datetime.fromisoformat("2026-11-08T17:00:00+00:00")
     assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert not auto.maybe_grow(repo, output, now, mep=1000)
+    assert auto.maybe_grow(repo, output, now, mep=1000)
     assert "DEPLOY_FAIL" in capsys.readouterr().out
     assert json.loads((output / "catalog-auto-state.json").read_text())["status"] == "failed"
+
+
+def test_retry_missing_mep_on_monday_before_three(setup_job):
+    repo, output, discover = setup_job
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T17:00:00+00:00"), mep=None)
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)
+    assert discover.call_count == 1
+    assert json.loads((output / "catalog-auto-state.json").read_text())["week"] == "2026-W45"
+    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T06:00:00+00:00"), mep=1000)
+
+
+def test_no_retry_after_scraping_started(setup_job):
+    repo, output, discover = setup_job
+    def fail(*args, **kwargs):
+        kwargs["get"].__self__.pages = 1
+        raise requests.ConnectionError()
+    discover.side_effect = fail
+    now = datetime.fromisoformat("2026-11-08T17:00:00+00:00")
+    assert auto.maybe_grow(repo, output, now, mep=1000)
+    assert not auto.maybe_grow(repo, output, now, mep=1000)
+    assert discover.call_count == 1
 
 
 def test_daily_budget_reserves_price_retries(setup_job):
@@ -131,6 +152,9 @@ def test_photo_official_webp_max_900(tmp_path, monkeypatch):
     with Image.open(tmp_path / "products" / "foto.webp") as img:
         assert img.size == (900, 600)
         assert img.format == "WEBP"
+    with Image.open(tmp_path / "products" / "foto.jpg") as img:
+        assert img.size == (900, 600)
+        assert img.format == "JPEG"
     assert entry["imageSource"] == "https://http2.mlstatic.com/test.jpg"
 
 

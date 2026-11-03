@@ -188,6 +188,14 @@ def shipping_reason(item):
     return None
 
 
+def fresh_shipping_date(checked, today):
+    try:
+        parsed = date.fromisoformat(checked)
+        return parsed.isoformat() == checked and 0 <= (today - parsed).days <= ARSHIPPING_MAX_DAYS
+    except (TypeError, ValueError):
+        return False
+
+
 def merge_ar_shipping(previous, items, today):
     """Conserva relevamientos reales hasta 14 días ART y actualiza con los de hoy."""
     shipping = dict(previous.get("arShipping") or {}) if isinstance(previous, dict) else {}
@@ -256,7 +264,7 @@ def in_range(candidates, previous, today_date, eur_usd=None, ml_prices=None):
     for p in candidates:
         item = last.get(p["slug"]) or {}
         amount = price_usd(item, eur_usd)
-        if use_ml and p["slug"] not in (ml_prices.get("items") or {}):
+        if use_ml and p["slug"] in (ml_prices.get("absent") or []):
             continue
         if item.get("motivo") == "sin_ml_local":
             continue
@@ -268,8 +276,13 @@ def in_range(candidates, previous, today_date, eur_usd=None, ml_prices=None):
 
 def shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_usd=None, monday=False):
     known = merge_ar_shipping(previous, items, today_date)
-    selected = [p for p in candidates
-                if monday or (p["slug"] not in known and (p.get("shipsToAr") or {}).get("freeShipping") is not True)]
+    def confirmed(product):
+        ar = known.get(product["slug"])
+        if ar is not None:
+            return True
+        catalog_ar = product.get("shipsToAr") or {}
+        return catalog_ar.get("freeShipping") is True and fresh_shipping_date(catalog_ar.get("checked"), today_date)
+    selected = [p for p in candidates if monday or not confirmed(p)]
     ml_items = (ml_prices or {}).get("items") or {}
     def priority(product):
         amount = price_usd(items.get(product["slug"]), eur_usd)
@@ -299,7 +312,7 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
     candidates, skipped = in_range(candidates, previous, today_date, eur_usd, ml_prices)
     without_ml = [p["slug"] for p in all_candidates if ml_prices is not None
                   and ml_prices.get("date") == (today_date - timedelta(days=1)).isoformat()
-                  and p["slug"] not in (ml_prices.get("items") or {})
+                  and p["slug"] in (ml_prices.get("absent") or [])
                   and today_date.weekday() != AR_SHIPPING_WEEKDAY]
     if skipped:
         print(f"Amazon: {skipped} productos fuera de rango o sin ML local no se consultan hoy (se revisan los lunes).", flush=True)

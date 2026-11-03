@@ -12,7 +12,9 @@ CATALOG = [
      "listPrice": {"amount": 150, "currency": "USD"}},
     {"slug": "con-foto", "asin": "B000000002", "name": "Con <foto>", "summary": "Resumen & más", "store": "ES",
      "verified": True, "verdict": "ml", "image": "/products/con-foto.webp",
-     "ml": {"price": 300000}, "amazonArs": 230000, "shipsToAr": {"freeShipping": True}, "amazonSource": "amazon"},
+     "ml": {"price": 300000, "checked": "2026-10-30"}, "amazonArs": 230000,
+     "shipsToAr": {"freeShipping": True, "checked": "2026-10-30"}, "amazonSource": "amazon",
+     "amazonUsd": 200, "amazonChecked": "2026-10-30"},
     {"slug": "solo-source-vencido", "asin": "B000000006", "name": "Source vencido", "summary": "X", "store": "US",
      "verified": True, "ml": {"price": 300000}, "amazonSource": "amazon", "amazonArs": None},
     {"slug": "sin-ml", "asin": "B000000003", "name": "Sin ML", "summary": "X", "store": "US",
@@ -28,6 +30,11 @@ CATALOG = [
 
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return noon_art().astimezone(tz)
+    monkeypatch.setattr(telegram, "datetime", Clock)
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "@canal")
 
@@ -109,10 +116,10 @@ def test_posts_again_at_20_and_respects_old_state(tmp_path, monkeypatch):
 
 def test_no_publica_sin_envio_gratis_confirmado():
     # 03/11: Telegram iba a publicar el Samsung T7 sin envío confirmado (REGLA 0).
-    base = {"slug": "x", "verified": True, "image": "/a.webp", "asin": "B1", "ml": {"price": 1000}, "amazonArs": 900}
+    base = {**CATALOG[1], "shipsToAr": None}
     assert not telegram.is_comparable(base)
     assert not telegram.is_comparable({**base, "shipsToAr": {"freeShipping": False}})
-    assert telegram.is_comparable({**base, "shipsToAr": {"freeShipping": True}})
+    assert telegram.is_comparable({**base, "shipsToAr": {"freeShipping": True, "checked": "2026-10-30"}})
 
 
 def test_envio_del_relevamiento_manda_sobre_el_catalogo(tmp_path):
@@ -120,5 +127,24 @@ def test_envio_del_relevamiento_manda_sobre_el_catalogo(tmp_path):
     path = tmp_path / "amazon-prices.json"
     path.write_text(json.dumps({"arShipping": {"a": {"ships": True, "free": False, "checked": "2026-11-03"},
                                                "b": {"ships": True, "free": True, "checked": "2026-11-03"}}}), encoding="utf-8")
-    out = worker.with_ar_shipping([{"slug": "a", "shipsToAr": {"freeShipping": True}}, {"slug": "b"}, {"slug": "c"}], path)
+    out = worker.with_ar_shipping([{"slug": "a", "shipsToAr": {"freeShipping": True}}, {"slug": "b"}, {"slug": "c"}], path,
+                                 datetime(2026, 11, 3, 15, tzinfo=timezone.utc))
     assert [p.get("shipsToAr", {}).get("freeShipping") for p in out] == [False, True, None]
+    assert out[1]["shipsToAr"]["checked"] == "2026-11-03"
+
+
+@pytest.mark.parametrize("usd,expected", [(99.99, False), (100, True), (400, True), (400.01, False), (None, False)])
+def test_rango_amazon(usd, expected):
+    assert telegram.is_comparable({**CATALOG[1], "amazonUsd": usd}) is expected
+
+
+@pytest.mark.parametrize("checked,expected", [("2026-10-16", True), ("2026-10-15", False),
+                                            ("2026-10-31", False), (None, False), ("2026-02-30", False)])
+def test_vigencia_envio(checked, expected):
+    assert telegram.is_comparable({**CATALOG[1], "shipsToAr": {"freeShipping": True, "checked": checked}}) is expected
+
+
+@pytest.mark.parametrize("change", [{"ml": {"price": 200000, "checked": "2026-10-29"}},
+                                    {"amazonChecked": "2026-10-29"}, {"amazonSource": None}, {"shipsToArToday": False}])
+def test_exige_precios_de_hoy_y_envio(change):
+    assert not telegram.is_comparable({**CATALOG[1], **change})

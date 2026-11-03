@@ -209,12 +209,18 @@ async function overlayCatalog(workDir, outputDir) {
     if (error.code === 'ENOENT') return [];
     throw error;
   });
-  for (const file of files.filter((name) => name.endsWith('.webp'))) {
+  for (const file of files.filter((name) => /\.(webp|jpg)$/.test(name))) {
     await fs.copyFile(path.join(products, file), path.join(dest, file), fs.constants.COPYFILE_EXCL).catch((error) => {
       if (error.code !== 'EEXIST') throw error;
     });
   }
   await fs.writeFile(catalogPath, JSON.stringify(repo, null, 2) + '\n');
+}
+
+async function saveResult(status, reason, now, opts = {}) {
+  const resultFile = opts.resultFile ?? path.join(path.dirname(opts.stateFile ?? STATE_FILE), 'last-result.json');
+  await fs.mkdir(path.dirname(resultFile), { recursive: true });
+  await fs.writeFile(resultFile, JSON.stringify({ status, reason: redact(reason), at: now.toISOString() }) + '\n');
 }
 
 async function deployOnce(now = new Date(), opts = {}) {
@@ -240,6 +246,7 @@ async function deployOnce(now = new Date(), opts = {}) {
   if (!check.ready) {
     const expired = now.getTime() >= deadlineAt(now);
     log(`${expired ? 'DEPLOY_FAIL' : 'DEPLOY_SKIP'} ${check.reason}; no se despliega.`);
+    if (expired) await saveResult('fail', check.reason, now, opts);
     return expired ? 'fail' : 'skip';
   }
   raw = check.mlRaw;
@@ -264,6 +271,11 @@ async function deployOnce(now = new Date(), opts = {}) {
     await syncRepo(workDir, runImpl);
     await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
     await overlayCatalog(workDir, opts.outputDir ?? path.dirname(outputFile));
+    const offersDest = path.join(workDir, 'data', 'offers.json');
+    await fs.copyFile(path.join(opts.outputDir ?? path.dirname(outputFile), 'offers.json'), offersDest).catch(async (error) => {
+      if (error.code !== 'ENOENT') throw error;
+      await fs.rm(offersDest, { force: true });
+    });
     const mlDest = path.join(workDir, 'data', 'ml-prices.json');
     if (raw) {
       await fs.writeFile(mlDest, raw);
@@ -281,10 +293,12 @@ async function deployOnce(now = new Date(), opts = {}) {
     await runImpl('npx', ['--yes', 'wrangler', 'deploy'], workDir);
     await fs.mkdir(path.dirname(stateFile), { recursive: true });
     await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, deployedAt: now.toISOString() }));
+    await saveResult('ok', `Publicado con precios del ${today}`, now, opts);
     log(`DEPLOY_OK publicado con precios del ${today}${slot === 'extra' ? ' (segundo despliegue de las 13:00 ART)' : ''}.`);
     return 'ok';
   } catch (error) {
     log(`DEPLOY_FAIL ${redact(error.message)}`);
+    await saveResult('fail', error.message, now, opts);
     return 'fail';
   }
 }
@@ -311,6 +325,7 @@ async function deployWithRetry(opts = {}) {
     }
     if (now.getTime() >= deadline) {
       log(`DEPLOY_FAIL son las 11:00 ART o más: ${check.reason}; no se despliega.`);
+      await saveResult('fail', check.reason, now, opts);
       return 'fail';
     }
     const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));

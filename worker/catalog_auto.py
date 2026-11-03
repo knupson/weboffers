@@ -1,6 +1,7 @@
 """Alta semanal conservadora, sin credenciales de Git ni generación con IA."""
 from datetime import datetime, timedelta, timezone
 import json
+import io
 import os
 from pathlib import Path
 import sys
@@ -8,6 +9,7 @@ import time
 from urllib.parse import urlsplit
 
 import requests
+from PIL import Image
 
 import amazon_prices
 from catalog import load_catalog, read_catalog
@@ -68,6 +70,8 @@ def fetch_photo(entry, output):
     dest = Path(output) / "products" / f"{entry['slug']}.webp"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)
+    with Image.open(io.BytesIO(data)) as image:
+        image.convert("RGB").save(dest.with_suffix(".jpg"), "JPEG", quality=90)
     entry.update(image=f"/products/{entry['slug']}.webp", imageSource=url)
     return True
 
@@ -95,14 +99,15 @@ def add_accepted(catalog, matches, output, today):
 
 def maybe_grow(catalog_path, output, now=None, mep=None):
     now = (now or datetime.now(timezone.utc)).astimezone(ART)
-    if now.weekday() != 6 or now.hour < 14:
+    if not ((now.weekday() == 6 and now.hour >= 14) or (now.weekday() == 0 and now.hour < 3)):
         return False
     output = Path(output)
     state_path = output / "catalog-auto-state.json"
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
-    year, week, _ = now.isocalendar()
+    sunday = now - timedelta(days=1) if now.weekday() == 0 else now
+    year, week, _ = sunday.isocalendar()
     slot = f"{year}-W{week:02d}"
-    if state.get("week") == slot:
+    if state.get("week") == slot and not (state.get("status") == "failed" and state.get("pages") == 0):
         return False
     # Registrar el intento antes de consultar: un reinicio nunca duplica el gasto semanal.
     publish.write_atomic(state_path, {"week": slot, "status": "running", "at": now.isoformat()})

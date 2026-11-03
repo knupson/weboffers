@@ -92,7 +92,11 @@ def datos_hoy(hoy: str):
     if viejos:
         raise ValueError(f'No se genera el Reel: hoy es {hoy} (Argentina), pero ' + '; '.join(viejos)
                          + '. Actualizá ambos relevamientos: nunca se usan precios viejos.')
-    return ml['items'], amazon['items'], catalogo
+    items = {slug: dict(item) for slug, item in amazon['items'].items()}
+    for slug, shipping in (amazon.get('arShipping') or {}).items():
+        if slug in items and (items[slug].get('shipsToAr') or {}).get('checked') != hoy:
+            items[slug]['shipsToAr'] = shipping
+    return ml['items'], items, catalogo
 
 
 def comparables(ml, amazon, catalogo, hoy, mep, eur_usd):
@@ -109,12 +113,21 @@ def comparables(ml, amazon, catalogo, hoy, mep, eur_usd):
         currency = a.get('currency')
         if currency not in ('USD', 'EUR') or (currency == 'EUR' and not eur_usd):
             continue
-        shipping = a.get('shipsToAr', {})
-        if shipping.get('checked') == hoy and shipping.get('ships') is False:
+        shipping = a.get('shipsToAr') or {}
+        confirmation = shipping or item.get('shipsToAr') or {}
+        try:
+            checked = datetime.strptime(confirmation['checked'], '%Y-%m-%d').date()
+            age = (datetime.fromisoformat(hoy).date() - checked).days
+            fresh = checked.isoformat() == confirmation['checked'] and 0 <= age <= 14
+        except (KeyError, TypeError, ValueError):
+            fresh = False
+        free = fresh and confirmation.get('ships') is not False and (
+            confirmation.get('free') is True if shipping else confirmation.get('freeShipping') is True)
+        if not free:
             continue
-        free = (shipping.get('free') is True if shipping.get('checked') == hoy
-                else item.get('shipsToAr', {}).get('freeShipping') is True)
         usd = a['amount'] * (eur_usd if currency == 'EUR' else 1)
+        if not 100 <= usd <= 400:
+            continue
         az = precio_sitio(usd, mep)
         if az <= 0:
             continue

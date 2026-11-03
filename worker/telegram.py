@@ -10,6 +10,7 @@ from pathlib import Path
 import requests
 
 import ml_prices
+from amazon_prices import fresh_shipping_date
 
 
 SITE = "https://ofertas.knunet.com"
@@ -45,10 +46,12 @@ def _has_amazon_estimate(product):
     return _valid_number(product.get("amazonArs"))
 
 
-def is_comparable(product):
+def is_comparable(product, now=None):
     """Misma regla que isComparable en src/lib/data.ts: verificado, con ASIN, precio en ML y estimado de Amazon."""
     asin = product.get("asin")
     ml = product.get("ml")
+    today = (now or datetime.now(timezone.utc)).astimezone(ART).date()
+    usd = product.get("amazonUsd")
     return bool(
         product.get("verified") is True
         and bool(product.get("image"))
@@ -56,15 +59,21 @@ def is_comparable(product):
         and asin.strip()
         and isinstance(ml, dict)
         and _valid_number(ml.get("price"))
+        and ml.get("checked") == today.isoformat()
         and _has_amazon_estimate(product)
+        and _valid_number(usd) and 100 <= usd <= 400
+        and product.get("amazonSource") == "amazon"
+        and product.get("amazonChecked") == today.isoformat()
+        and product.get("shipsToArToday") is not False
         # REGLA 0 (03/11): sin envío gratis a Argentina confirmado no se publica, igual que en el sitio.
         and (product.get("shipsToAr") or {}).get("freeShipping") is True
+        and fresh_shipping_date((product.get("shipsToAr") or {}).get("checked"), today)
     )
 
 
-def pick(catalog, posted):
+def pick(catalog, posted, now=None):
     """El próximo producto comparable que no salió todavía; con foto primero. Al agotarse, vuelve a empezar."""
-    candidates = [p for p in catalog if is_comparable(p)]
+    candidates = [p for p in catalog if is_comparable(p, now)]
     fresh = [p for p in candidates if p["slug"] not in posted] or candidates
     fresh.sort(key=lambda p: p.get("image") is None)
     return fresh[0] if fresh else None
@@ -129,7 +138,7 @@ def maybe_post(catalog, state_path, now=None):
     last = state.get("lastSlot") or (f"{state['lastDate']}T{POST_HOURS[0]:02d}" if state.get("lastDate") else "")
     if last >= slot:
         return None
-    product = pick(catalog, state.get("posted", []))
+    product = pick(catalog, state.get("posted", []), now)
     if product is None:
         return None
     send(product)

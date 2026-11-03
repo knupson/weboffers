@@ -51,6 +51,19 @@ def test_exact_match_and_apply_shape(api):
     api.assert_called_once_with("/products/MLA123")
 
 
+@pytest.mark.parametrize("ml_title,devices", [("Samsung 990 PRO 1TB PlayStation", ""),
+                                             ("Samsung 990 PRO 1TB", "PS5")])
+def test_amazon_vs_ml_platform_mismatch(api, ml_title, devices):
+    api.return_value = product(ml_title, COMPATIBLE_DEVICES=devices)
+    result = match.match_products([amazon(amazonTitle="Samsung 990 PRO 1TB MZ-V9P1T0B Xbox")], 1575)
+    assert "plataforma" in result["rejected"][0]["reason"]
+
+
+def test_platform_only_in_amazon_needs_review(api):
+    result = match.match_products([amazon(amazonTitle="Samsung 990 PRO 1TB MZ-V9P1T0B Nintendo Switch")], 1575)
+    assert "plataforma" in result["doubtful"][0]["reason"]
+
+
 @pytest.mark.parametrize("ml,reason", [
     (product("Samsung 990 PRO 2TB", CAPACITY="2TB", ALPHANUMERIC_MODEL="MZ-V9P2T0B"), "capacidad"),
     (product("Samsung 990 EVO 1TB", MODEL="990 EVO", ALPHANUMERIC_MODEL=None), "familia"),

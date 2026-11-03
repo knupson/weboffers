@@ -257,6 +257,12 @@ def evaluate(amazon, candidate, product, mep):
         return {key for key, pattern in {"xbox": r"\bxbox\b", "playstation": r"\b(?:playstation|ps[345])\b",
                                         "nintendo": r"\b(?:nintendo|switch)\b"}.items() if re.search(pattern, text)}
     listed_platforms = platforms(attrs.get("COMPATIBLE_DEVICES", ""))
+    amazon_platforms = platforms(title)
+    ml_platforms = platforms(name) | listed_platforms
+    if amazon_platforms and ml_platforms and amazon_platforms.isdisjoint(ml_platforms):
+        return "rejected", "plataforma distinta entre Amazon y ML", evidence
+    if amazon_platforms != ml_platforms and (amazon_platforms or ml_platforms):
+        doubts.append("plataforma sin confirmar entre Amazon y ML")
     if listed_platforms and platforms(name) and listed_platforms.isdisjoint(platforms(name)):
         doubts.append("plataforma contradictoria entre nombre y atributos")
     if not evidence["brand"]:
