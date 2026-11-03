@@ -33,7 +33,6 @@ CLAUDE = r"Abrí Claude Code en E:\Repositorios\Personal\weboffers, con tu Chrom
 FRASES = {
     "2026-11-02": ["revisá que el sitio tenga los precios del Cyber"],
     "2026-11-07": ["informe de la semana y propuesta de publicidad"],
-    "2026-11-16": ["reintentá borrar las placas viejas de historias que movimos al 28/11-1/12 (Meta no dejaba borrarlas)"],
     "2026-11-24": ["armá el carrusel y las historias de la semana"],
     "2026-11-27": ["armá el Reel especial de Black Friday"],
     "2026-11-30": ["armá el Reel especial de Cyber Monday"],
@@ -41,7 +40,6 @@ FRASES = {
 }
 # Avisos que no necesitan a Claude (una línea).
 NOTAS = {
-    "2026-11-03": "Franquicia 400: a las 19:05 fijate en Instagram que haya salido el Reel 1.",
 }
 SIN_REEL = {"2026-11-03"}  # el Reel 1 ya está programado
 SIN_CARRUSEL = {"2026-11-23"}  # feriado: pasa al 24
