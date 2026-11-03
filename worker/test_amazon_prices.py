@@ -459,3 +459,25 @@ def test_each_missing_product_logs_its_reason_and_daily_file(tmp_path, monkeypat
     log = json.loads((tmp_path / "amazon-run-2026-10-30.json").read_text(encoding="utf-8"))
     assert log["passes"][0]["kind"] == "corrida" and log["passes"][0]["ok"] == 1
     assert [f["motivo"] for f in log["passes"][0]["fallas"]] == ["sin_precio_ni_vendedor", "sin_stock"]
+
+
+def test_pace_adjusts_itself():
+    base = {"pause_s": 60.0, "limpios": 0}
+    rafaga = {"rafaga": True, "fallas": 30}
+    limpio = {"rafaga": False, "fallas": 0}
+    assert amazon_prices.adjust_pace(base, rafaga)["pause_s"] == 120.0
+    assert amazon_prices.adjust_pace({"pause_s": 150.0, "limpios": 2}, rafaga)["pause_s"] == amazon_prices.PAUSE_MAX
+    p = base
+    for _ in range(3):
+        p = amazon_prices.adjust_pace(p, limpio)
+    assert p == {"pause_s": 45.0, "limpios": 0}
+    assert amazon_prices.adjust_pace({"pause_s": 30.0, "limpios": 2}, limpio)["pause_s"] == amazon_prices.PAUSE_MIN
+    assert amazon_prices.adjust_pace({"pause_s": 60.0, "limpios": 2}, {"rafaga": False, "fallas": 3}) == {"pause_s": 60.0, "limpios": 0}
+
+
+def test_run_summary_detects_burst(monkeypatch):
+    monkeypatch.setattr(amazon_prices, "failures", [{"pos": p, "motivo": "sin_precio_ni_vendedor"} for p in (60, 70, 80, 90, 100)])
+    s = amazon_prices.run_summary(95, 100)
+    assert s["rafaga"] is True and s["motivos"] == {"sin_precio_ni_vendedor": 5} and s["primeraFallaPos"] == 60
+    monkeypatch.setattr(amazon_prices, "failures", [{"pos": p, "motivo": "sin_precio_ni_vendedor"} for p in (2, 5, 9, 12, 70)])
+    assert amazon_prices.run_summary(95, 100)["rafaga"] is False

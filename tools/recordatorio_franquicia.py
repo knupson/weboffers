@@ -97,7 +97,7 @@ def control(que, ahora, bajar=bajar):
         n = html.count('"@type":"ListItem"')
         problemas = []
         if n < MINIMO_PRODUCTOS:
-            problemas.append(f"el sitio salió hoy con {n} productos (mínimo {MINIMO_PRODUCTOS}), recuperá los que faltan")
+            problemas.append(f"el sitio salió hoy con {n} productos (mínimo {MINIMO_PRODUCTOS}){causa_amazon(bajar)}, recuperá los que faltan")
         # Lo que ve el visitante: tarjetas donde Amazon gana pero no hay envío confirmado (03/11: 25 tarjetas).
         try:
             sin_envio = bajar("https://ofertas.knunet.com/productos/").count("no confirmamos el envío")
@@ -136,6 +136,24 @@ def control(que, ahora, bajar=bajar):
             falta.append("Facebook")
         return pedir([f"no salió el Reel de las 19 en {' ni en '.join(falta)}, revisalo"]) if falta else ""
     raise SystemExit(f"control desconocido: {que}")
+
+
+def causa_amazon(bajar):
+    """Motivo de los faltantes de Amazon según /estado.json (resumen de la corrida del worker), en pocas palabras."""
+    try:
+        run = (json.loads(bajar("https://ofertas.knunet.com/estado.json")) or {}).get("amazon") or {}
+    except Exception:
+        return ""
+    if not run.get("fallas"):
+        return ""
+    motivos = ", ".join(f"{v} {k}" for k, v in sorted((run.get("motivos") or {}).items(), key=lambda kv: -kv[1])[:3])
+    texto = f": Amazon dejó {run['fallas']} sin precio ({motivos})"
+    if run.get("rafaga"):
+        texto += f", cortó por ráfaga desde la posición {run.get('primeraFallaPos')}; mañana el worker va más lento solo"
+    reintento = run.get("reintento") or {}
+    if reintento:
+        texto += f"; el reintento recuperó {reintento.get('recuperados')} de {reintento.get('pendientes')}"
+    return texto
 
 
 META_ENV = "/home/claude/franquicia400-meta/.env"

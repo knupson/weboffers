@@ -195,7 +195,13 @@ def maybe_refresh(catalog, prices_path, now):
     if not base_url:
         return False
 
+    # Ritmo que se ajusta solo con el resultado de la corrida anterior (03/11).
+    global PAUSE_SECONDS
+    pace = next_pace(previous)
+    PAUSE_SECONDS = pace["pause_s"]
     items, ok, missing = fetch_prices(base_url, candidates, today)
+    run = run_summary(ok, len(candidates))
+    pace = adjust_pace(pace, run)
 
     # Envío a Argentina (03/11): los lunes se releva todo; el resto de los días SÓLO lo que no tiene envío
     # confirmado (catálogo o relevamiento de ≤14 días), porque sin ese dato el producto no se publica (REGLA 0)
@@ -210,7 +216,9 @@ def maybe_refresh(catalog, prices_path, now):
         refresh_ar_shipping(to_survey, items, today)
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
-    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items, "arShipping": ar_shipping})
+    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
+                                       "arShipping": ar_shipping, "run": run, "pace": pace})
+    print(f"Amazon: resumen {json.dumps(run, ensure_ascii=False)}; ritmo de mañana {pace['pause_s']:.0f} s.", flush=True)
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
     if candidates and ok == 0:
@@ -228,7 +236,9 @@ def retry_missing(previous, candidates, prices_path, local, base_url):
     got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
     items.update(got)
     ar_shipping = merge_ar_shipping(previous, items, local.date())
-    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "retried": True})
+    run = dict(previous.get("run") or {})
+    run["reintento"] = {"recuperados": ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
+    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
     write_run_log(prices_path, today, "reintento", ok, len(pending))
     return True
@@ -265,6 +275,42 @@ def write_run_log(prices_path, today, kind, ok, total):
     log["passes"].append({"kind": kind, "at": datetime.now(ART).isoformat(timespec="seconds"),
                           "ok": ok, "total": total, "pause_s": PAUSE_SECONDS, "fallas": list(failures)})
     publish.write_atomic(path, log)
+
+
+PAUSE_MIN, PAUSE_MAX = 30.0, 180.0
+CLEAN_DAYS_TO_SPEED_UP = 3
+
+
+def run_summary(ok, total):
+    """Resumen de la corrida con motivos, para el aviso de las 7:30 y para ajustar el ritmo."""
+    motivos = {}
+    for f in failures:
+        motivos[f["motivo"]] = motivos.get(f["motivo"], 0) + 1
+    vacios = sorted(f["pos"] for f in failures if f["motivo"] == "sin_precio_ni_vendedor")
+    # Ráfaga: muchas páginas sin precio ni vendedor y amontonadas en la segunda mitad de la corrida.
+    rafaga = len(vacios) >= 5 and vacios[len(vacios) // 2] > total / 2
+    return {"ok": ok, "total": total, "fallas": len(failures), "motivos": motivos,
+            "primeraFallaPos": min((f["pos"] for f in failures), default=None),
+            "rafaga": rafaga, "pause_s": PAUSE_SECONDS}
+
+
+def next_pace(previous):
+    pace = previous.get("pace") if isinstance(previous, dict) else None
+    if not isinstance(pace, dict) or not is_valid_amount(pace.get("pause_s")):
+        return {"pause_s": PAUSE_SECONDS, "limpios": 0}
+    return {"pause_s": min(PAUSE_MAX, max(PAUSE_MIN, float(pace["pause_s"]))), "limpios": int(pace.get("limpios") or 0)}
+
+
+def adjust_pace(pace, run):
+    """Ráfaga → el doble de pausa mañana; 3 corridas limpias seguidas → 25% menos."""
+    if run["rafaga"]:
+        return {"pause_s": min(PAUSE_MAX, pace["pause_s"] * 2), "limpios": 0}
+    if run["fallas"] == 0:
+        limpios = pace["limpios"] + 1
+        if limpios >= CLEAN_DAYS_TO_SPEED_UP:
+            return {"pause_s": max(PAUSE_MIN, pace["pause_s"] * 0.75), "limpios": 0}
+        return {"pause_s": pace["pause_s"], "limpios": limpios}
+    return {"pause_s": pace["pause_s"], "limpios": 0}
 
 
 def fetch_prices(base_url, products, today):

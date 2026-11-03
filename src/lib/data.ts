@@ -127,6 +127,9 @@ export interface AmazonPrices {
   date: string;
   items: Record<string, AmazonPriceItem>;
   arShipping?: Record<string, AmazonArShipping>;
+  /** Resumen de la corrida del día (motivos de cada falla, ráfaga, ritmo): lo lee el control de las 7:30 vía /estado.json. */
+  run?: Record<string, unknown>;
+  pace?: Record<string, unknown>;
 }
 
 const VERDICTS: readonly string[] = ["amazon", "ml"];
