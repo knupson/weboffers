@@ -130,13 +130,14 @@ def control(que, ahora, bajar=bajar):
             env = leer_meta_env()
             ig = graph(f"/{env['META_IG_USER_ID']}/media", {"fields": "media_product_type,timestamp", "limit": "10"}, env)
             pagina = graph(f"/{env['META_PAGE_ID']}", {"fields": "access_token"}, env)["access_token"]
-            fb = graph(f"/{env['META_PAGE_ID']}/video_reels", {"fields": "created_time", "limit": "10"}, env, pagina)
+            fb = graph(f"/{env['META_PAGE_ID']}/video_reels", {"fields": "created_time,status", "limit": "10"}, env, pagina)
         except Exception as e:
             return pedir([f"no pude comprobar el Reel de las 19 ({type(e).__name__}), revisalo"])
         falta = []
         if not any(m.get("media_product_type") == "REELS" and meta_fecha(m["timestamp"]) >= desde for m in ig.get("data", [])):
             falta.append("Instagram")
-        if not any(meta_fecha(v["created_time"]) >= desde for v in fb.get("data", [])):
+        # Un Reel programado se sube antes: vale la hora de publicación, no la de subida (03/11, falsa alarma).
+        if not any(meta_fecha(publicado_fb(v)) >= desde for v in fb.get("data", [])):
             falta.append("Facebook")
         return pedir([f"no salió el Reel de las 19 en {' ni en '.join(falta)}, revisalo"]) if falta else ""
     raise SystemExit(f"control desconocido: {que}")
@@ -181,6 +182,11 @@ META_ENV = "/home/claude/franquicia400-meta/.env"
 
 def leer_meta_env():
     return dict(l.strip().split("=", 1) for l in open(META_ENV, encoding="utf-8") if "=" in l and not l.startswith("#"))
+
+
+def publicado_fb(video):
+    fase = ((video.get("status") or {}).get("publishing_phase") or {})
+    return fase.get("publish_time") if fase.get("publish_status") == "published" and fase.get("publish_time") else video["created_time"]
 
 
 def meta_fecha(s):
