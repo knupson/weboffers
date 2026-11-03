@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 import ml_prices  # noqa: E402
 import publish  # noqa: E402
 import rates  # noqa: E402
+from tools.apply_candidates import candidate_summary  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
 VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
@@ -385,7 +386,7 @@ def match_products(products, mep, catalog=(), products_cache=None):
             row = {k: amazon.get(k, "") for k in ("asin", "store", "amazonTitle")}
             row.update(catalogId=candidate["catalogId"], itemId=candidate.get("itemId") or "",
                        mlPrice=candidate.get("minPrice") if positive_number(candidate.get("minPrice")) else None, name=name, brand=brand,
-                       category=category_for(amazon.get("amazonCategory")) or "", summary="",
+                       category=category_for(amazon.get("amazonCategory")) or "", summary=candidate_summary(name, brand, attributes(product)),
                        evidence=evidence, mlName=product.get("name") or candidate.get("name") or "",
                        mlBrand=attributes(product).get("BRAND", ""), mlModel=attributes(product).get("MODEL", ""),
                        amazonPriceUsd=amazon.get("amazonPriceUsd"))

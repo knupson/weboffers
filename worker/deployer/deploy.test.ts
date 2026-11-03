@@ -11,6 +11,7 @@ import {
   hasBothTodayPrices,
   hasExtraSlotToday,
   nextRunAt,
+  overlayCatalog,
   runStartupIfPending,
   RETRY_INTERVAL_MS,
 } from './deploy.mjs';
@@ -32,6 +33,74 @@ describe('deployer', () => {
     if (prevAccount === undefined) delete process.env.CLOUDFLARE_ACCOUNT_ID;
     else process.env.CLOUDFLARE_ACCOUNT_ID = prevAccount;
     await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('superpone catálogo y fotos antes del build con prioridad del repo', async () => {
+    const workDir = path.join(tmpDir, 'work');
+    const outputDir = path.join(tmpDir, 'output');
+    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await fs.mkdir(path.join(workDir, 'public', 'products'), { recursive: true });
+    await fs.mkdir(path.join(outputDir, 'products'), { recursive: true });
+    const original = { asin: 'A', slug: 'a', summary: 'del repo' };
+    await fs.writeFile(path.join(workDir, 'data', 'catalog.json'), JSON.stringify([original]));
+    await fs.writeFile(path.join(outputDir, 'catalog-auto.json'), JSON.stringify([
+      { ...original, summary: 'automático' }, { asin: 'A', slug: 'otro' },
+      { asin: 'B', slug: 'a' }, { asin: 'C', slug: 'c' }, { asin: 'C', slug: 'c' },
+    ]));
+    await fs.writeFile(path.join(workDir, 'public', 'products', 'a.webp'), 'original');
+    await fs.writeFile(path.join(outputDir, 'products', 'a.webp'), 'automática');
+    await fs.writeFile(path.join(outputDir, 'products', 'c.webp'), 'nueva');
+    await overlayCatalog(workDir, outputDir);
+    expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'catalog.json'), 'utf8')))
+      .toEqual([original, { asin: 'C', slug: 'c' }]);
+    expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.webp'), 'utf8')).toBe('original');
+    expect(await fs.readFile(path.join(workDir, 'public', 'products', 'c.webp'), 'utf8')).toBe('nueva');
+  });
+
+  it('tolera ausencia del overlay pero rechaza JSON inválido', async () => {
+    await overlayCatalog(path.join(tmpDir, 'work'), tmpDir);
+    await fs.writeFile(path.join(tmpDir, 'catalog-auto.json'), '{}');
+    await expect(overlayCatalog(path.join(tmpDir, 'work'), tmpDir)).rejects.toThrow('lista de productos');
+  });
+
+  it('un overlay fallido mantiene DEPLOY_FAIL y no ejecuta el build', async () => {
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-03', items: {} }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-03', items: { a: { amount: 150 } } }));
+    await fs.writeFile(path.join(tmpDir, 'catalog-auto.json'), '{inválido');
+    const calls: string[] = [];
+    expect(await deployOnce(new Date('2026-11-03T10:00:00Z'), {
+      outputFile, amazonOutputFile, workDir: path.join(tmpDir, 'work'), stateFile: path.join(tmpDir, 'state.json'),
+      runImpl: async (cmd: string) => { calls.push(cmd); return ''; },
+    })).toBe('fail');
+    expect(calls).toEqual(['git']);
+  });
+
+  it('el build recibe las altas y sus fotos', async () => {
+    const workDir = path.join(tmpDir, 'work');
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await fs.mkdir(path.join(tmpDir, 'products'));
+    await fs.writeFile(path.join(workDir, 'data', 'catalog.json'), '[]');
+    await fs.writeFile(path.join(tmpDir, 'catalog-auto.json'), '[{"asin":"A","slug":"a"}]');
+    await fs.writeFile(path.join(tmpDir, 'products', 'a.webp'), 'foto');
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-03', items: {} }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-03', items: { a: { amount: 150 } } }));
+    const commands: string[] = [];
+    expect(await deployOnce(new Date('2026-11-03T10:00:00Z'), {
+      outputFile, amazonOutputFile, workDir, stateFile: path.join(tmpDir, 'state.json'),
+      runImpl: async (command: string) => {
+        commands.push(command);
+        if (command === 'npm') {
+          expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'catalog.json'), 'utf8'))).toEqual([{ asin: 'A', slug: 'a' }]);
+          expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.webp'), 'utf8')).toBe('foto');
+        }
+        return '';
+      },
+    })).toBe('ok');
+    expect(commands).toEqual(['git', 'npm', 'npm', 'npx']);
   });
 
   it('calcula 07:00 ART como inicio, 11:00 ART como tope y 10 min de reintento', () => {

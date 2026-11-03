@@ -43,12 +43,11 @@ def test_exact_match_and_apply_shape(api):
     assert row["evidence"]["brand"] == "samsung"
     assert row["evidence"]["model"] == ["990pro", "mzv9p1t0b"]
     assert row["evidence"]["capacity"] == ["1000gb"]
-    assert row["summary"] == ""
+    assert row["summary"] == "Samsung 990 PRO 1TB de Samsung. Características: 990 PRO."
     assert row["mlPrice"] == 200000
     assert row["name"] == "Samsung 990 PRO 1TB"
     assert result["summary"] == {"accepted": 1, "doubtful": 0, "rejected": 0, "byCategory": {"Almacenamiento": 1}}
-    completed = {**row, "summary": "SSD de 1 TB."}
-    assert apply_candidates.validate_and_build_entries([{"category": "Almacenamiento"}], [completed])[0]["slug"] == row["slug"]
+    assert apply_candidates.validate_and_build_entries([{"category": "Almacenamiento"}], [row])[0]["slug"] == row["slug"]
     api.assert_called_once_with("/products/MLA123")
 
 

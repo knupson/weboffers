@@ -3,7 +3,7 @@
 # Uso (Git Bash, desde la raíz del repo): bash tools/actualizar_worker_pi4.sh [--reintentar]
 set -euo pipefail
 cd "$(dirname "$0")/.."
-git archive HEAD worker data/catalog.json | ssh pi4 "tar -x -C /home/claude/franquicia400"
+git archive HEAD worker tools data/catalog.json | ssh pi4 "tar -x -C /home/claude/franquicia400"
 ssh pi4 "cd /home/claude/franquicia400/worker && docker compose -p franquicia400 up -d --build weboffers-worker weboffers-amazon-ar weboffers-deployer 2>&1 | tail -4"
 if [ "${1:-}" = "--reintentar" ]; then
   sleep 15

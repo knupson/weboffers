@@ -14,6 +14,8 @@ import ml_prices
 import publish
 import rates
 import telegram
+from catalog import load_catalog
+import catalog_auto
 
 
 WORKER_DIR = Path(__file__).resolve().parent
@@ -32,8 +34,8 @@ def resolve_path(value):
 
 def run_once():
     catalog_path = resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json"))
-    with catalog_path.open(encoding="utf-8") as handle:
-        catalog = json.load(handle)
+    output_dir = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
+    catalog = load_catalog(catalog_path, output_dir / "catalog-auto.json")
     grouped = {}
     for entry in catalog:
         grouped.setdefault(entry["store"], []).append(entry["asin"])
@@ -80,6 +82,10 @@ def run_once():
         )
     except Exception as exc:
         print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
+    try:
+        catalog_auto.maybe_grow(catalog_path, output_dir, datetime.now(timezone.utc), mep=mep)
+    except Exception as exc:
+        print(f"DEPLOY_FAIL catálogo semanal ({type(exc).__name__}).", flush=True)
     return payload
 
 

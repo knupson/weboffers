@@ -1,15 +1,35 @@
 # Worker de datos
 
-Requiere Python 3.12 y `requests`. Desde `worker/`:
+Requiere Python 3.12, `requests` y `Pillow`. Desde `worker/`:
 
 ```sh
-python -m pip install requests pytest
+python -m pip install requests Pillow pytest
 python -m pytest -q --basetemp=.pytest_tmp -o cache_dir=.pytest_cache
 python -u worker.py
 ```
 
 Con Docker: `docker compose up -d --build`. La salida queda en
 `worker/output/offers.json`; el catálogo se monta desde `../data` como solo lectura.
+
+El domingo desde las 14:00 ART, el mismo ciclo descubre productos y agrega sólo
+matches aceptados de USD 100–400 con foto oficial de ML convertida a WebP (lado
+máximo 900). El resumen se arma con reglas, sin IA. No se presupone envío gratis:
+los nuevos productos pasan por el relevamiento habitual de envío del lunes.
+`output/catalog-auto.json` conserva las altas y `output/products/` sus fotos.
+`output/catalog-auto-state.json` registra el intento por semana ISO antes de las
+consultas; un reinicio o una falla no dispara otra corrida esa semana.
+
+El tope por corrida es 150 páginas, incluidos categorías y reintentos; se reduce
+si el registro diario de Amazon deja menos presupuesto de las 650 páginas (se
+reservan dos por candidato de precios). `CATALOG_AUTO_MAX_PAGES` permite bajar
+ese tope. Se usa la pausa vigente de precios, backoff de 120 s ante vacío y una
+pausa de 300 s cada 100 páginas. Las fallas salen por `DEPLOY_FAIL` y quedan en
+el registro `amazon-run-<fecha>.json`, con `kind: "catalogo"`.
+
+Worker y deployer fusionan ambos catálogos por ASIN o slug; siempre manda el
+repositorio. El deployer copia las fotos antes del build sin pisar las existentes.
+Para absorber las altas al repo desde Git Bash: `bash tools/sync_catalogo_auto.sh`.
+Usa `ssh pi4` y `/home/claude/franquicia400/worker/output`; no hace commit ni push.
 
 `CHECK_INTERVAL_SECONDS` vale 3600 por defecto. `CATALOG_PATH` acepta una ruta
 absoluta o relativa a `worker/` y vale `../data/catalog.json` por defecto.

@@ -213,6 +213,10 @@ MARKETING_WORDS_RE = re.compile(
 CAPACITY_TOKEN_RE = re.compile(r"\b\d+(?:\.\d+)?\s*(?:TB|GB|MB|W|mAh|Hz|K|mm|inch|\"|'')\b", re.IGNORECASE)
 
 
+class PageBudgetExhausted(Exception):
+    """Se alcanzó el máximo de páginas de la corrida."""
+
+
 def scraper_url(url=None):
     return (url or os.getenv("AMAZON_SCRAPER_URL") or DEFAULT_SCRAPER_URL).rstrip("/")
 
@@ -247,11 +251,11 @@ def is_relevant_category(name, path_or_id=""):
     return any(keyword in haystack for keyword in TARGET_CATEGORY_KEYWORDS)
 
 
-def fetch_bestseller_categories(parent_category="", base_url=None):
+def fetch_bestseller_categories(parent_category="", base_url=None, get=None):
     params = {"country": "US"}
     if parent_category:
         params["category"] = parent_category
-    response = requests.get(
+    response = (get or requests.get)(
         f"{scraper_url(base_url)}/best-sellers/categories",
         params=params,
         timeout=HTTP_TIMEOUT_SECONDS,
@@ -261,7 +265,7 @@ def fetch_bestseller_categories(parent_category="", base_url=None):
     return payload.get("categories") or []
 
 
-def discover_categories(base_url=None, all_departments=False):
+def discover_categories(base_url=None, all_departments=False, get=None):
     """Descubre los IDs/paths de categorías tecnológicas relevantes en Amazon US."""
     discovered = []
     seen = set()
@@ -272,7 +276,7 @@ def discover_categories(base_url=None, all_departments=False):
         seen.add(cat_id)
         discovered.append({"id": cat_id, "name": cat_name or cat_id})
 
-    root_cats = fetch_bestseller_categories("", base_url=base_url)
+    root_cats = fetch_bestseller_categories("", base_url=base_url, get=get)
     scraper_pause()
 
     seed_to_expand = []
@@ -292,7 +296,7 @@ def discover_categories(base_url=None, all_departments=False):
 
     for dept_id, dept_name in seed_to_expand:
         try:
-            sub_cats = fetch_bestseller_categories(dept_id, base_url=base_url)
+            sub_cats = fetch_bestseller_categories(dept_id, base_url=base_url, get=get)
         except requests.RequestException as exc:
             print(f"Categoría raíz {dept_id} falló ({type(exc).__name__})", flush=True)
             sub_cats = []
@@ -316,8 +320,8 @@ def discover_categories(base_url=None, all_departments=False):
     return discovered
 
 
-def fetch_bestsellers_for_category(category_id, category_name="", base_url=None, limit=TOP_PER_CATEGORY):
-    response = requests.get(
+def fetch_bestsellers_for_category(category_id, category_name="", base_url=None, limit=TOP_PER_CATEGORY, get=None):
+    response = (get or requests.get)(
         f"{scraper_url(base_url)}/best-sellers",
         params={"category": category_id, "country": "US", "page": 1},
         timeout=HTTP_TIMEOUT_SECONDS,
@@ -335,8 +339,8 @@ def fetch_bestsellers_for_category(category_id, category_name="", base_url=None,
     return out
 
 
-def fetch_search_results(query, base_url=None, limit=TOP_PER_CATEGORY):
-    response = requests.get(
+def fetch_search_results(query, base_url=None, limit=TOP_PER_CATEGORY, get=None):
+    response = (get or requests.get)(
         f"{scraper_url(base_url)}/search",
         params={"query": query, "country": "US", "page": 1},
         timeout=HTTP_TIMEOUT_SECONDS,
@@ -496,16 +500,20 @@ def find_ml_candidates(query):
     return found
 
 
-def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None):
+def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None, get=None):
     """Reúne y filtra productos de best-sellers y búsquedas adicionales."""
-    cats = categories if categories is not None else discover_categories(base_url=base_url)
+    cats = categories if categories is not None else (discover_categories(base_url=base_url, get=get) if get else discover_categories(base_url=base_url))
     raw_items = []
     for cat in cats:
         cat_id = cat["id"] if isinstance(cat, dict) else str(cat)
         cat_name = cat.get("name", cat_id) if isinstance(cat, dict) else str(cat)
+        if is_excluded_department(cat_name):
+            continue
         try:
-            items = fetch_bestsellers_for_category(cat_id, cat_name, base_url=base_url)
+            items = fetch_bestsellers_for_category(cat_id, cat_name, base_url=base_url, **({"get": get} if get else {}))
             raw_items.extend(items)
+        except PageBudgetExhausted:
+            break
         except requests.RequestException as exc:
             print(f"Best sellers {cat_id} falló ({type(exc).__name__})", flush=True)
         scraper_pause()
@@ -515,8 +523,10 @@ def collect_amazon_candidates(existing_asins, queries=None, categories=None, bas
         if not q:
             continue
         try:
-            items = fetch_search_results(q, base_url=base_url)
+            items = fetch_search_results(q, base_url=base_url, **({"get": get} if get else {}))
             raw_items.extend(items)
+        except PageBudgetExhausted:
+            break
         except requests.RequestException as exc:
             print(f"Búsqueda '{q}' falló ({type(exc).__name__})", flush=True)
         scraper_pause()
@@ -547,13 +557,17 @@ def discover_products(
     queries=None,
     categories=None,
     base_url=None,
+    get=None,
+    existing_asins=None,
+    failures=None,
 ):
-    existing_asins = load_existing_asins(catalog_path)
+    existing_asins = load_existing_asins(catalog_path) if existing_asins is None else existing_asins
     amazon_candidates = collect_amazon_candidates(
         existing_asins=existing_asins,
         queries=queries,
         categories=categories,
         base_url=base_url,
+        **({"get": get} if get else {}),
     )
     total = len(amazon_candidates)
     results = []
@@ -563,6 +577,8 @@ def discover_products(
             ml_list = find_ml_candidates(query)
         except requests.RequestException as exc:
             print(f"  búsqueda ML fallida para {candidate['asin']} ({type(exc).__name__})", flush=True)
+            if failures is not None:
+                failures.append({"asin": candidate["asin"], "motivo": type(exc).__name__})
             ml_list = []
         results.append({
             "asin": candidate["asin"],

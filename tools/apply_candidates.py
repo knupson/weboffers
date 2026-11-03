@@ -64,6 +64,14 @@ def build_ml_url(catalog_id, item_id):
     )
 
 
+def candidate_summary(name, brand, attrs=None):
+    """Descripción breve y reproducible a partir de datos confirmados de ML."""
+    attrs = attrs or {}
+    details = [str(attrs[k]) for k in ("MODEL", "STORAGE_CAPACITY", "INTERNAL_MEMORY", "SCREEN_SIZE") if attrs.get(k)]
+    detail = "; ".join(dict.fromkeys(details))[:100]
+    return f"{name[:140].rstrip('.')} de {brand}" + (f". Características: {detail}." if detail else ".")
+
+
 def validate_and_build_entries(catalog, candidates, today=None):
     """Valida los candidatos contra el catálogo existente y devuelve las nuevas entradas."""
     if not isinstance(catalog, list):
@@ -176,6 +184,8 @@ def apply_candidates(catalog_path, candidates, dry_run=False, today=None):
     catalog = json.loads(cat_file.read_text(encoding="utf-8"))
     if isinstance(candidates, (str, Path)):
         candidates = json.loads(Path(candidates).read_text(encoding="utf-8"))
+    if isinstance(candidates, dict):
+        candidates = candidates.get("accepted")
 
     new_entries = validate_and_build_entries(catalog, candidates, today=today)
 

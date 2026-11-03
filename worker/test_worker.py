@@ -50,6 +50,30 @@ def test_offline_output_matches_spec(tmp_path, monkeypatch, capsys):
     http.assert_not_called()
 
 
+def test_cycle_passes_merged_catalog_to_all_consumers(tmp_path, monkeypatch):
+    repo = [{"asin": "A", "slug": "a", "store": "US"}]
+    automatic = [{"asin": "A", "slug": "repetido", "store": "US"}, {"asin": "B", "slug": "b", "store": "US"}]
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(repo))
+    (tmp_path / "catalog-auto.json").write_text(json.dumps(automatic))
+    monkeypatch.setenv("CATALOG_PATH", str(path))
+    monkeypatch.setattr(rates, "get_rates", lambda: None)
+    amazon = Mock()
+    ml = Mock()
+    merge = Mock(return_value=[])
+    monkeypatch.setattr(worker.amazon_prices, "maybe_refresh", amazon)
+    monkeypatch.setattr(worker.ml_prices, "maybe_refresh", ml)
+    monkeypatch.setattr(worker.ml_prices, "merge", merge)
+    monkeypatch.setattr(worker.telegram, "maybe_post", Mock())
+    monkeypatch.setattr(worker.catalog_auto, "maybe_grow", Mock())
+    payload = worker.run_once()
+    expected = repo + automatic[1:]
+    assert amazon.call_args.args[0] == expected
+    assert ml.call_args.args[0] == expected
+    assert merge.call_args.args[0] == expected
+    assert [p["asin"] for p in payload["items"]] == ["A", "B"]
+
+
 def test_atomic_write_replaces_content_without_temp_files(tmp_path):
     path = tmp_path / "offers.json"
     publish.write_atomic(path, {"old": True})

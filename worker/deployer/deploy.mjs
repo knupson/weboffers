@@ -177,6 +177,46 @@ async function syncRepo(workDir = WORK_DIR, runImpl = run) {
   }
 }
 
+async function overlayCatalog(workDir, outputDir) {
+  // Estado de la búsqueda semanal: lo publica /estado.json para el aviso de fallas de los lunes.
+  await fs.copyFile(path.join(outputDir, 'catalog-auto-state.json'), path.join(workDir, 'data', 'catalog-auto-state.json')).catch((error) => {
+    if (error.code !== 'ENOENT') throw error;
+  });
+  let automatic;
+  try {
+    automatic = JSON.parse(await fs.readFile(path.join(outputDir, 'catalog-auto.json'), 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  if (!Array.isArray(automatic) || automatic.some((p) => !p || typeof p !== 'object' || Array.isArray(p))) {
+    throw new Error('catalog-auto.json debe ser una lista de productos');
+  }
+  const catalogPath = path.join(workDir, 'data', 'catalog.json');
+  const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));
+  const asins = new Set(repo.map((p) => p.asin).filter(Boolean));
+  const slugs = new Set(repo.map((p) => p.slug).filter(Boolean));
+  for (const entry of automatic) {
+    if (asins.has(entry.asin) || slugs.has(entry.slug)) continue;
+    repo.push(entry);
+    if (entry.asin) asins.add(entry.asin);
+    if (entry.slug) slugs.add(entry.slug);
+  }
+  const products = path.join(outputDir, 'products');
+  const dest = path.join(workDir, 'public', 'products');
+  await fs.mkdir(dest, { recursive: true });
+  const files = await fs.readdir(products).catch((error) => {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  });
+  for (const file of files.filter((name) => name.endsWith('.webp'))) {
+    await fs.copyFile(path.join(products, file), path.join(dest, file), fs.constants.COPYFILE_EXCL).catch((error) => {
+      if (error.code !== 'EEXIST') throw error;
+    });
+  }
+  await fs.writeFile(catalogPath, JSON.stringify(repo, null, 2) + '\n');
+}
+
 async function deployOnce(now = new Date(), opts = {}) {
   const outputFile = opts.outputFile ?? OUTPUT_FILE;
   const amazonOutputFile = opts.amazonOutputFile ?? AMAZON_OUTPUT_FILE;
@@ -223,6 +263,7 @@ async function deployOnce(now = new Date(), opts = {}) {
   try {
     await syncRepo(workDir, runImpl);
     await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await overlayCatalog(workDir, opts.outputDir ?? path.dirname(outputFile));
     const mlDest = path.join(workDir, 'data', 'ml-prices.json');
     if (raw) {
       await fs.writeFile(mlDest, raw);
@@ -384,6 +425,7 @@ if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
 }
 
 export {
+  overlayCatalog,
   artDate,
   startAt,
   isExtraDate,
