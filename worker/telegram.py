@@ -57,6 +57,8 @@ def is_comparable(product):
         and isinstance(ml, dict)
         and _valid_number(ml.get("price"))
         and _has_amazon_estimate(product)
+        # REGLA 0 (03/11): sin envío gratis a Argentina confirmado no se publica, igual que en el sitio.
+        and (product.get("shipsToAr") or {}).get("freeShipping") is True
     )
 
 

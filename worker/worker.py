@@ -68,19 +68,34 @@ def run_once():
     # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
     try:
         telegram.maybe_post(
-            ml_prices.merge(
+            with_ar_shipping(ml_prices.merge(
                 catalog,
                 ml_prices_path,
                 amazon_prices_path,
                 mep=mep,
                 eur_usd=eur_usd,
                 now=datetime.now(timezone.utc),
-            ),
+            ), amazon_prices_path),
             resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")),
         )
     except Exception as exc:
         print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
     return payload
+
+
+def with_ar_shipping(products, amazon_prices_path):
+    """El envío vigente del relevamiento (arShipping, ≤14 días) manda sobre el del catálogo, como en el sitio."""
+    try:
+        shipping = (json.load(open(amazon_prices_path, encoding="utf-8")) or {}).get("arShipping") or {}
+    except (OSError, ValueError):
+        shipping = {}
+    out = []
+    for p in products:
+        ar = shipping.get(p.get("slug"))
+        if isinstance(ar, dict) and isinstance(ar.get("ships"), bool):
+            p = {**p, "shipsToAr": {**(p.get("shipsToAr") or {}), "freeShipping": ar.get("free") is True}}
+        out.append(p)
+    return out
 
 
 def main():

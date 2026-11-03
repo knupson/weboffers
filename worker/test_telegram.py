@@ -105,3 +105,20 @@ def test_posts_again_at_20_and_respects_old_state(tmp_path, monkeypatch):
     assert telegram.maybe_post(CATALOG, state, night) == "con-foto"
     assert telegram.maybe_post(CATALOG, state, night) is None
     assert post.call_count == 1
+
+
+def test_no_publica_sin_envio_gratis_confirmado():
+    # 03/11: Telegram iba a publicar el Samsung T7 sin envío confirmado (REGLA 0).
+    base = {"slug": "x", "verified": True, "image": "/a.webp", "asin": "B1", "ml": {"price": 1000}, "amazonArs": 900}
+    assert not telegram.is_comparable(base)
+    assert not telegram.is_comparable({**base, "shipsToAr": {"freeShipping": False}})
+    assert telegram.is_comparable({**base, "shipsToAr": {"freeShipping": True}})
+
+
+def test_envio_del_relevamiento_manda_sobre_el_catalogo(tmp_path):
+    import json, worker
+    path = tmp_path / "amazon-prices.json"
+    path.write_text(json.dumps({"arShipping": {"a": {"ships": True, "free": False, "checked": "2026-11-03"},
+                                               "b": {"ships": True, "free": True, "checked": "2026-11-03"}}}), encoding="utf-8")
+    out = worker.with_ar_shipping([{"slug": "a", "shipsToAr": {"freeShipping": True}}, {"slug": "b"}, {"slug": "c"}], path)
+    assert [p.get("shipsToAr", {}).get("freeShipping") for p in out] == [False, True, None]
