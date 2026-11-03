@@ -5,6 +5,7 @@ Al arrancar reemplaza `amazon.fetch.set_location` para que el scraper consulte "
 """
 
 import json
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -20,6 +21,10 @@ NO_SHIP_PATTERNS = (
     "not available for shipping",
     "no se puede enviar",
 )
+
+
+PAID_DELIVERY_RE = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?\s+delivery", re.IGNORECASE)
+ELIGIBLE_OVER_RE = re.compile(r"orders? over \$\s?(\d[\d,]*(?:\.\d+)?)", re.IGNORECASE)
 
 
 def _texto_de(valor):
@@ -73,6 +78,10 @@ def parse_delivery(details, located=False):
         ships = False
     elif "Argentina" in text and amount_ok:
         ships = True
+    elif located and "argentina" in location.lower() and amount_ok and PAID_DELIVERY_RE.search(text):
+        # 03/11: «$71.77 delivery Monday…» con la sesión en Argentina = envía, pero cobra el envío.
+        # Antes quedaba desconocido para siempre y el producto se volvía a relevar todos los días.
+        ships = True
     # Sin oferta ni texto explícito (31/10: joystick Xbox, HyperX Cloud III) es ambiguo: queda desconocido.
 
     free = None
@@ -84,6 +93,10 @@ def parse_delivery(details, located=False):
             price_text = option.get("price_text")
             if isinstance(price_text, str) and price_text.strip().upper() == "FREE":
                 free = True
+        # 03/11: «FREE delivery … on eligible orders over $99» no es gratis si el producto vale menos que el mínimo.
+        minimo = ELIGIBLE_OVER_RE.search(text)
+        if free and minimo and amount_ok and amount < float(minimo.group(1).replace(",", "")):
+            free = False
     condition = details.get("condition")
     return {
         "ships": ships,

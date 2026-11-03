@@ -295,3 +295,18 @@ def test_handler_error_por_asin_queda_desconocido(monkeypatch):
     assert falla["ships"] is None
     assert falla["free"] is None
     assert falla["error"] == "RuntimeError"
+
+
+def test_envio_pago_con_sesion_en_argentina_es_ships_sin_gratis():
+    # 03/11 (ASUS VG27AQ3A): «$71.77 delivery Monday…» quedaba desconocido para siempre.
+    d = {"price": {"amount": 199.0}, "delivery": {"text": "$71.77 delivery Monday, November 16 Or fastest delivery Saturday", "options": [], "location": "Argentina"}}
+    out = parse_delivery(d, located=True)
+    assert out["ships"] is True and out["free"] is False
+    assert parse_delivery(d, located=False)["ships"] is None  # sin sesión confirmada en AR, sigue desconocido
+
+
+def test_gratis_condicional_por_monto_minimo_no_es_gratis_si_el_producto_vale_menos():
+    # 03/11 (Logitech C920x a USD 67.90): «FREE delivery … on eligible orders over $99».
+    base = {"delivery": {"text": "FREE delivery November 11 - 17 to Argentina on eligible orders over $99", "options": [], "location": "Argentina"}}
+    assert parse_delivery({**base, "price": {"amount": 67.9}}, located=True)["free"] is False
+    assert parse_delivery({**base, "price": {"amount": 120.0}}, located=True)["free"] is True
