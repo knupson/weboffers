@@ -22,7 +22,7 @@ export interface CatalogEntry {
   listPrice?: ListPrice;
   /** Verificado en Amazon con dirección en Argentina: se puede comprar y enviar. */
   shipsToAr?: { freeShipping: boolean; checked: string };
-  /** Envío a Argentina relevado hoy (ART) por el worker: false = Amazon no lo envía, no se muestra. */
+  /** Envío a Argentina vigente (hasta 14 días ART): false = Amazon no lo envía, no se muestra. */
   shipsToArToday?: boolean;
   /** Publicación más barata en Mercado Libre del mismo modelo, con link de afiliado. */
   ml?: { price: number; url: string; checked: string; catalogId?: string };
@@ -106,7 +106,7 @@ export interface MlPrices {
   items: Record<string, MlPriceItem>;
 }
 
-/** Relevamiento de envío a Argentina (servicio amazon-ar): vigente sólo si `checked` es hoy ART. */
+/** Relevamiento de envío a Argentina (servicio amazon-ar), independiente del precio diario. */
 export interface AmazonArShipping {
   ships: boolean;
   /** Envío gratis a Argentina; null si no se pudo determinar. */
@@ -126,6 +126,7 @@ export interface AmazonPrices {
   generatedAt: string;
   date: string;
   items: Record<string, AmazonPriceItem>;
+  arShipping?: Record<string, AmazonArShipping>;
 }
 
 const VERDICTS: readonly string[] = ["amazon", "ml"];
@@ -133,6 +134,7 @@ const VERDICT_REASONS: readonly string[] = ["precio", "sinAmazon"];
 export const MIN_AMAZON_SAVING = 0.10;
 export const MIN_COMPARABLE_PRODUCTS = 100;
 const ART_OFFSET_MS = -3 * 60 * 60 * 1000;
+const ARSHIPPING_MAX_DAYS = 14;
 
 /** Devuelve la fecha AAAA-MM-DD en hora argentina (UTC-3). */
 export function artDate(now = Date.now()): string {
@@ -145,6 +147,15 @@ export function isFreshAmazonDate(checked: unknown, now = Date.now()): checked i
   const checkedMs = Date.parse(`${checked}T00:00:00Z`);
   if (!Number.isFinite(checkedMs) || new Date(checkedMs).toISOString().slice(0, 10) !== checked) return false;
   return checked === artDate(now);
+}
+
+/** El envío conserva vigencia hasta 14 días calendario ART, inclusive. */
+function isFreshArShippingDate(checked: unknown, now: number): checked is string {
+  if (typeof checked !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(checked)) return false;
+  const checkedMs = Date.parse(`${checked}T00:00:00Z`);
+  if (!Number.isFinite(checkedMs) || new Date(checkedMs).toISOString().slice(0, 10) !== checked) return false;
+  const age = (Date.parse(`${artDate(now)}T00:00:00Z`) - checkedMs) / (24 * 60 * 60 * 1000);
+  return age >= 0 && age <= ARSHIPPING_MAX_DAYS;
 }
 
 /** Sólo links https de mercadolibre.com.ar: el archivo viene del worker, no se confía a ciegas. */
@@ -273,9 +284,13 @@ export function mergeAmazonPrices(
         }
       }
     }
-    // El relevamiento de envío de hoy (ART) pisa el shipsToAr del catálogo.
-    const ar = scraped?.shipsToAr;
-    if (ar && isFreshAmazonDate(ar.checked, now)) {
+    // Prioridad: relevamiento de hoy > último relevamiento vigente > catálogo.
+    const todayAr = scraped?.shipsToAr;
+    const cachedAr = prices?.arShipping?.[entry.slug];
+    const ar = todayAr && typeof todayAr.ships === "boolean" && isFreshAmazonDate(todayAr.checked, now)
+      ? todayAr
+      : cachedAr && typeof cachedAr.ships === "boolean" && isFreshArShippingDate(cachedAr.checked, now) ? cachedAr : undefined;
+    if (ar) {
       shipsToAr = { freeShipping: ar.free === true, checked: ar.checked };
       shipsToArToday = ar.ships === true;
     }
@@ -299,14 +314,19 @@ export function mergeAmazonPrices(
 /**
  * Un producto es comparable (y por lo tanto se muestra) únicamente si:
  *   - está verificado y tiene ASIN en Amazon,
- *   - Amazon lo envía a Argentina según el relevamiento de hoy (shipsToArToday !== false),
+ *   - Amazon lo envía a Argentina según el relevamiento vigente (shipsToArToday !== false),
  *   - tiene precio en Mercado Libre relevado hoy (fecha ART == hoy ART), y
  *   - tiene precio en Amazon relevado hoy (fecha ART == hoy ART) convertido a ARS.
  */
 export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now()): boolean {
   const today = artDate(now);
-  // Amazon no envía este producto a Argentina (relevado hoy): no hay comparación posible.
+  // Amazon no envía este producto a Argentina (relevamiento vigente): no hay comparación posible.
   if (entry.shipsToArToday === false) {
+    return false;
+  }
+  // REGLA 0 del user (03/11): un comparador necesita los dos lados completos. El de Amazon es «puesto en tu casa»:
+  // sin envío gratis a Argentina confirmado (catálogo o relevamiento de ≤14 días) no hay total, y no se publica.
+  if (entry.shipsToAr?.freeShipping !== true) {
     return false;
   }
   if (

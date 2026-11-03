@@ -540,7 +540,7 @@
     }
   },
   {
-    "asin": "B0BS1PRC4L",
+    "asin": "",
     "store": "US",
     "slug": "sony-wh-ch520-negro",
     "name": "Sony WH-CH520 Wireless On-Ear Bluetooth Headphones (Black)",
@@ -556,12 +556,6 @@
       "currency": "USD",
       "source": "https://electronics.sony.com/audio/headphones/headband/p/whch520-b",
       "checked": "2026-10-30"
-    },
-    "ml": {
-      "catalogId": "MLA23138487",
-      "url": "https://www.mercadolibre.com.ar/p/MLA23138487?matt_word=ale_benzoni&matt_tool=58527537",
-      "price": 82999,
-      "checked": "2026-11-03"
     }
   },
   {

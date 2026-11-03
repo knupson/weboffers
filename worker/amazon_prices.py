@@ -1,6 +1,6 @@
 """Precios diarios de Amazon vía el scraper interno en la red de Docker."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import math
 import os
@@ -17,6 +17,7 @@ START_HOUR = 6
 # En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
 BULK_MAX = 5
 AR_SHIPPING_WEEKDAY = 0  # lunes
+ARSHIPPING_MAX_DAYS = 14
 RETRY_AT = (6, 45)  # reintento de faltantes: después de la corrida de las 06:00 y antes del deploy de las 07:00
 TIMEOUT = 240
 PAUSE_SECONDS = 3.0
@@ -116,7 +117,7 @@ def refresh_ar_shipping(candidates, items, today):
 
     Cada lote se pide con el `store` de sus productos (la misma tienda que da el precio).
     Si falla el relevamiento de un producto no se guarda nada para él (queda desconocido);
-    nunca se reutiliza el valor de días anteriores. `shipsToAr` sólo se guarda cuando `ships`
+    `items[slug].shipsToAr` nunca reutiliza días anteriores. Sólo se guarda cuando `ships`
     es un booleano real: None u otro valor es desconocido, nunca "no envía".
     """
     base_url = ar_url()
@@ -152,6 +153,30 @@ def refresh_ar_shipping(candidates, items, today):
                 }
 
 
+def merge_ar_shipping(previous, items, today):
+    """Conserva relevamientos reales hasta 14 días ART y actualiza con los de hoy."""
+    shipping = dict(previous.get("arShipping") or {}) if isinstance(previous, dict) else {}
+    for slug, item in items.items():
+        ar = item.get("shipsToAr")
+        if isinstance(ar, dict) and isinstance(ar.get("ships"), bool) and ar.get("checked") == today.isoformat():
+            shipping[slug] = ar
+    valid = {}
+    for slug, ar in shipping.items():
+        if not isinstance(ar, dict) or not isinstance(ar.get("ships"), bool):
+            continue
+        try:
+            checked = date.fromisoformat(ar["checked"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if checked.isoformat() == ar["checked"] and 0 <= (today - checked).days <= ARSHIPPING_MAX_DAYS:
+            valid[slug] = {
+                "ships": ar["ships"],
+                "free": ar.get("free") if isinstance(ar.get("free"), bool) else None,
+                "checked": ar["checked"],
+            }
+    return valid
+
+
 def maybe_refresh(catalog, prices_path, now):
     """Consulta precios de Amazon una vez por día desde las 06:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
@@ -172,12 +197,20 @@ def maybe_refresh(catalog, prices_path, now):
 
     items, ok, missing = fetch_prices(base_url, candidates, today)
 
-    # El envío a Argentina se releva sólo los lunes (03/11): pedirlo a diario duplica las páginas a Amazon y
-    # la Pi4 quedó frenada (38 productos sin precio). El resto de la semana vale el envío verificado del catálogo.
+    # Envío a Argentina (03/11): los lunes se releva todo; el resto de los días SÓLO lo que no tiene envío
+    # confirmado (catálogo o relevamiento de ≤14 días), porque sin ese dato el producto no se publica (REGLA 0)
+    # y pedir todo a diario duplica las páginas a Amazon. Cada relevamiento se conserva 14 días.
+    known = merge_ar_shipping(previous, {}, today_date)
     if today_date.weekday() == AR_SHIPPING_WEEKDAY:
-        refresh_ar_shipping(candidates, items, today)
+        to_survey = candidates
+    else:
+        to_survey = [p for p in candidates
+                     if (p.get("shipsToAr") or {}).get("freeShipping") is not True and p["slug"] not in known]
+    if to_survey:
+        refresh_ar_shipping(to_survey, items, today)
 
-    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items})
+    ar_shipping = merge_ar_shipping(previous, items, today_date)
+    publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items, "arShipping": ar_shipping})
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
     if candidates and ok == 0:
         print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
@@ -193,7 +226,8 @@ def retry_missing(previous, candidates, prices_path, local, base_url):
     pending = [p for p in candidates if p["slug"] not in items]
     got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
     items.update(got)
-    publish.write_atomic(prices_path, {**previous, "items": items, "retried": True})
+    ar_shipping = merge_ar_shipping(previous, items, local.date())
+    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "retried": True})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
     return True
 

@@ -26,6 +26,8 @@ const base = (over: Partial<CatalogEntry>): CatalogEntry => ({
   category: "Monitores",
   summary: "Resumen",
   verified: true,
+  // Envío gratis a Argentina confirmado: sin esto ningún producto se publica (REGLA 0, 03/11).
+  shipsToAr: { freeShipping: true, checked: "2026-10-01" },
   ...over,
 });
 
@@ -321,9 +323,75 @@ describe("shipsToAr relevado hoy (amazon-ar)", () => {
     const merged = mergeAmazonPrices(entries, amazonPrices, 1200, 1.25, NOW_OCT_31);
     expect(isComparable(merged[0], null, NOW_OCT_31)).toBe(true);
     expect(isComparable(merged[1], null, NOW_OCT_31)).toBe(false);
-    expect(isComparable(merged[2], null, NOW_OCT_31)).toBe(true);
+    expect(isComparable(merged[2], null, NOW_OCT_31)).toBe(false); // REGLA 0: sin envío gratis confirmado (catálogo false, relevamiento viejo fuera de la caché) no se publica
     expect(isComparable({ ...merged[0], shipsToArToday: false }, null, NOW_OCT_31)).toBe(false);
     expect(isComparable({ ...merged[0], shipsToArToday: true }, null, NOW_OCT_31)).toBe(true);
+  });
+});
+
+describe("envío a Argentina conservado por hasta 14 días", () => {
+  const entry = base({
+    shipsToAr: { freeShipping: false, checked: "2026-10-01" },
+    ml: { price: 500000, url: "https://meli.la/1", checked: "2026-10-31" },
+  });
+  const amazonPrices: AmazonPrices = {
+    generatedAt: "2026-10-31T10:00:00Z",
+    date: "2026-10-31",
+    items: { producto: { amount: 250, currency: "USD", checked: "2026-10-31" } },
+  };
+
+  it.each(["2026-10-31", "2026-10-30", "2026-10-17"])("usa el envío vigente del %s con fecha ART", (checked) => {
+    // 01/11 UTC todavía es 31/10 ART: el límite de 14 días sigue vigente.
+    const now = Date.parse("2026-11-01T02:00:00Z");
+    const cached: AmazonPrices = { ...amazonPrices, arShipping: { producto: { ships: true, free: true, checked } } };
+    const [merged] = mergeAmazonPrices([entry], cached, 1200, null, now);
+    expect(merged.shipsToAr).toEqual({ freeShipping: true, checked });
+    expect(merged.shipsToArToday).toBe(true);
+    expect(isComparable(merged, null, now)).toBe(true);
+    expect(comparePrices(merged).verdict).toBe("amazon");
+  });
+
+  it.each(["2026-10-16", "2026-11-01", "2026-02-30", "fecha inválida"])("ignora el envío vencido o inválido del %s", (checked) => {
+    const cached: AmazonPrices = { ...amazonPrices, arShipping: { producto: { ships: true, free: true, checked } } };
+    const [merged] = mergeAmazonPrices([entry], cached, 1200, null, NOW_OCT_31);
+    expect(merged.shipsToAr).toEqual(entry.shipsToAr);
+    expect(merged.shipsToArToday).toBeUndefined();
+  });
+
+  it.each([true, false])("el relevamiento de hoy gana sobre la caché cuando ships es %s", (ships) => {
+    const today = { ships, free: ships, checked: "2026-10-31" };
+    const cached: AmazonPrices = {
+      ...amazonPrices,
+      items: { producto: { ...amazonPrices.items.producto, shipsToAr: today } },
+      arShipping: { producto: { ships: !ships, free: !ships, checked: "2026-10-30" } },
+    };
+    const [merged] = mergeAmazonPrices([entry], cached, 1200, null, NOW_OCT_31);
+    expect(merged.shipsToAr).toEqual({ freeShipping: ships, checked: today.checked });
+    expect(merged.shipsToArToday).toBe(ships);
+    expect(isComparable(merged, null, NOW_OCT_31)).toBe(ships);
+  });
+
+  it("respeta ships:false vigente por encima del catálogo y del relevamiento viejo en items", () => {
+    const cached: AmazonPrices = {
+      ...amazonPrices,
+      items: { producto: { ...amazonPrices.items.producto, shipsToAr: { ships: true, free: true, checked: "2026-10-30" } } },
+      arShipping: { producto: { ships: false, free: null, checked: "2026-10-17" } },
+    };
+    const [merged] = mergeAmazonPrices([{ ...entry, shipsToAr: { freeShipping: true, checked: "2026-10-01" } }], cached, 1200, null, NOW_OCT_31);
+    expect(merged.shipsToAr).toEqual({ freeShipping: false, checked: "2026-10-17" });
+    expect(merged.shipsToArToday).toBe(false);
+    expect(isComparable(merged, null, NOW_OCT_31)).toBe(false);
+  });
+
+  it("la caché de envío no habilita precios de ayer ni necesita un precio para conservarse", () => {
+    const arShipping = { producto: { ships: true, free: true, checked: "2026-10-17" } };
+    for (const items of [{ producto: { amount: 250, currency: "USD" as const, checked: "2026-10-30" } }, {}] as AmazonPrices["items"][]) {
+      const [merged] = mergeAmazonPrices([entry], { ...amazonPrices, items, arShipping }, 1200, null, NOW_OCT_31);
+      expect(merged.shipsToAr).toEqual({ freeShipping: true, checked: "2026-10-17" });
+      expect(merged.amazonArs).toBeNull();
+      expect(merged.amazonChecked).toBeNull();
+      expect(isComparable(merged, null, NOW_OCT_31)).toBe(false);
+    }
   });
 });
 
@@ -379,5 +447,18 @@ describe("regla de foto", () => {
     const conTodo = base({ verified: true, ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>);
     expect(isComparable(conTodo, null, now)).toBe(true);
     expect(isComparable({ ...conTodo, image: undefined }, null, now)).toBe(false);
+  });
+});
+
+describe("REGLA 0: sólo se publica con los dos lados completos", () => {
+  const completo = { ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>;
+
+  it("con precios de hoy y envío gratis confirmado, se publica", () => {
+    expect(isComparable(base(completo), null, NOW_OCT_31)).toBe(true);
+  });
+
+  it("sin envío confirmado NO se publica aunque tenga los dos precios de hoy (nada de «no confirmamos el envío»)", () => {
+    expect(isComparable(base({ ...completo, shipsToAr: undefined }), null, NOW_OCT_31)).toBe(false);
+    expect(isComparable(base({ ...completo, shipsToAr: { freeShipping: false, checked: "2026-10-31" } }), null, NOW_OCT_31)).toBe(false);
   });
 });

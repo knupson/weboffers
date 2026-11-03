@@ -250,6 +250,7 @@ def test_ar_calls_agrupadas_por_store_y_con_param_store(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("ships", [None, "si", 1, 0, [True]])
 def test_ar_ships_que_no_es_booleano_no_se_guarda(tmp_path, monkeypatch, ships):
+    monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
     item = ar_item("B01", True, True)
@@ -322,19 +323,29 @@ def test_plausible_sin_lista_o_otra_moneda_acepta():
     assert amazon_prices.plausible((21.0, "USD"), {"listPrice": {"amount": 459.99, "currency": "EUR"}})
 
 
-def test_ar_shipping_only_on_its_weekday(tmp_path, monkeypatch):
-    # 30/10/2026 es viernes: con el relevamiento en lunes no se consulta /ar-shipping.
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+def test_ar_shipping_off_day_only_surveys_unconfirmed(tmp_path, monkeypatch):
+    # 30/10/2026 es viernes: fuera del lunes sólo se releva lo que no tiene envío confirmado (catálogo o caché).
+    catalog = [
+        {"slug": "catalogo", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "cache", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "sin-dato", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}},
+    ]
+    out = tmp_path / "amazon-prices.json"
+    out.write_text(json.dumps({"date": "2026-10-29", "items": {}, "arShipping": {"cache": {"ships": True, "free": True, "checked": "2026-10-27"}}}), encoding="utf-8")
     monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
     monkeypatch.setattr(amazon_prices, "ar_url", lambda: "http://ar")
     monkeypatch.setattr(amazon_prices, "pause", lambda: None)
-    monkeypatch.setattr(amazon_prices, "fetch_bulk", lambda base, asins, store: {"B01": {"asin": "B01", "price": {"amount": 150.5, "currency": "USD"}, "availability": {"is_in_stock": True}}})
-    def no_llamar(*a, **k):
-        raise AssertionError("no debería consultar el envío fuera del día de relevamiento")
-    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", no_llamar)
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", lambda base, asins, store: {a: {"asin": a, "price": {"amount": 150.5, "currency": "USD"}, "availability": {"is_in_stock": True}} for a in asins})
+    pedidos = []
+    def ar(base, asins, store):
+        pedidos.append(list(asins))
+        return {a: {"asin": a, "ships": True, "free": True} for a in asins}
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", ar)
     assert AFTER_SEVEN.weekday() != amazon_prices.AR_SHIPPING_WEEKDAY
-    assert amazon_prices.maybe_refresh(catalog, tmp_path / "amazon-prices.json", AFTER_SEVEN) is True
-
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    assert pedidos == [["B03"]]
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert set(data["arShipping"]) == {"cache", "sin-dato"}
 
 def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
     catalog = [
@@ -359,3 +370,68 @@ def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
     assert data["items"]["ya"]["amount"] == 10 and data["items"]["falta"] == {"amount": 20.0, "currency": "USD", "checked": "2026-10-30"}
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False  # una sola vez por día
     assert pedidos == [["B02"]]
+
+
+@pytest.mark.parametrize("checked,kept", [
+    ("2026-10-29", True),
+    ("2026-10-16", True),  # exactamente 14 días ART
+    ("2026-10-15", False),
+    ("2026-10-31", False),
+    ("2026-02-30", False),
+    (None, False),
+])
+def test_ar_shipping_carry_over_and_expiry(tmp_path, monkeypatch, checked, kept):
+    out = tmp_path / "amazon-prices.json"
+    ar = {"ships": False, "free": None, "checked": checked}
+    out.write_text(json.dumps({
+        "date": "2026-10-29",
+        "arShipping": {"p": ar},
+        "items": {"p": {"amount": 100, "currency": "USD", "checked": "2026-10-29"}},
+    }), encoding="utf-8")
+    monkeypatch.setattr(amazon_prices.requests, "get", Mock(side_effect=requests.ConnectionError("caído")))
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    # Ya es 31/10 UTC, pero sigue siendo 30/10 ART.
+    now = datetime(2026, 10, 31, 2, 0, tzinfo=timezone.utc)
+    assert amazon_prices.maybe_refresh(catalog, out, now) is True
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["date"] == "2026-10-30"
+    assert data["arShipping"] == ({"p": ar} if kept else {})
+    assert data["items"] == {}  # nunca se conservan precios de ayer
+
+
+@pytest.mark.parametrize("ships", [True, False, None, "si", 1])
+def test_ar_shipping_updates_only_with_real_survey(tmp_path, monkeypatch, ships):
+    monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
+    old = {"ships": True, "free": True, "checked": "2026-10-29"}
+    out = tmp_path / "amazon-prices.json"
+    out.write_text(json.dumps({"date": "2026-10-29", "items": {}, "arShipping": {"p": old}}), encoding="utf-8")
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    monkeypatch.setattr(amazon_prices.requests, "get", fake_get_router(None, [ar_item("B01", ships, None)]))
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    data = json.loads(out.read_text(encoding="utf-8"))
+    if isinstance(ships, bool):
+        expected = {"ships": ships, "free": None, "checked": "2026-10-30"}
+        assert data["arShipping"] == {"p": expected}
+        assert data["items"]["p"]["shipsToAr"] == expected
+    else:
+        assert data["arShipping"] == {"p": old}
+        assert "shipsToAr" not in data["items"]["p"]
+
+
+def test_retry_keeps_ar_shipping_and_merges_todays_survey(tmp_path, monkeypatch):
+    old = {"ships": False, "free": None, "checked": "2026-10-16"}
+    today = {"ships": True, "free": True, "checked": "2026-10-30"}
+    out = tmp_path / "amazon-prices.json"
+    out.write_text(json.dumps({
+        "date": "2026-10-30",
+        "items": {"hoy": {"shipsToAr": today}},
+        "arShipping": {"p": old, "hoy": old, "vencido": {**old, "checked": "2026-10-15"}},
+    }), encoding="utf-8")
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    monkeypatch.setattr(amazon_prices.requests, "get", fake_get_router(None, []))
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["retried"] is True
+    assert data["arShipping"] == {"p": old, "hoy": today}
+    assert data["items"]["p"] == {"amount": 150.5, "currency": "USD", "checked": "2026-10-30"}
