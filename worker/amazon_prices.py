@@ -13,14 +13,14 @@ import publish
 
 
 ART = timezone(timedelta(hours=-3))
-START_HOUR = 6
+START_HOUR = 4  # 03/11: arranca a las 04:00 para poder ir lento y reintentar antes del deploy de las 07:00
 # En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
 BULK_MAX = 5
 AR_SHIPPING_WEEKDAY = 0  # lunes
 ARSHIPPING_MAX_DAYS = 14
-RETRY_AT = (6, 45)  # reintento de faltantes: después de la corrida de las 06:00 y antes del deploy de las 07:00
+RETRY_AT = (5, 0)  # reintento de faltantes en el ciclo siguiente a la corrida (05:01 o 06:01), con Amazon ya descansado
 TIMEOUT = 240
-PAUSE_SECONDS = 3.0
+PAUSE_SECONDS = 60.0  # 03/11: con 3 s Amazon devolvia paginas sin precio desde el producto ~50 (rafaga)
 STORE_CURRENCY = {"US": "USD", "ES": "EUR"}
 
 

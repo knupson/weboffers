@@ -126,7 +126,7 @@ def test_skips_before_six_or_already_updated_or_without_url(tmp_path, monkeypatc
     out = tmp_path / "amazon-prices.json"
     catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
 
-    before = datetime(2026, 10, 30, 8, 59, tzinfo=timezone.utc)  # 05:59 ART
+    before = datetime(2026, 10, 30, 6, 59, tzinfo=timezone.utc)  # 03:59 ART
     assert amazon_prices.maybe_refresh(catalog, out, before) is False
 
     monkeypatch.setenv("AMAZON_SCRAPER_URL", "   ")
@@ -361,7 +361,7 @@ def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
         pedidos.append(list(asins))
         return {"B02": {"asin": "B02", "price": {"amount": 20.0, "currency": "USD"}, "availability": {"is_in_stock": True}}}
     monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
-    antes = datetime(2026, 10, 30, 9, 30, tzinfo=timezone.utc)  # 06:30 ART: todavía no
+    antes = datetime(2026, 10, 30, 7, 30, tzinfo=timezone.utc)  # 04:30 ART: todavía no
     assert amazon_prices.maybe_refresh(catalog, out, antes) is False
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
     assert pedidos == [["B02"]]  # sólo el faltante
