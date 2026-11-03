@@ -20,7 +20,12 @@ AR_SHIPPING_WEEKDAY = 0  # lunes
 ARSHIPPING_MAX_DAYS = 14
 RETRY_AT = (5, 0)  # reintento de faltantes en el ciclo siguiente a la corrida (05:01 o 06:01), con Amazon ya descansado
 TIMEOUT = 240
-PAUSE_SECONDS = 60.0  # 03/11: con 3 s Amazon devolvia paginas sin precio desde el producto ~50 (rafaga)
+# Medido el 03/11 (lotes de 5, 60 productos por prueba): 30 s, 15 s y 5 s de pausa sin fallas; el techo lo pone el scraper
+# (~37 s por lote = ~7,6 productos/min aun sin pausa). Con 5 s y el catalogo entero Amazon corto en el producto 132 y se
+# recupero en ~1 min. Paralelo: 2 hilos no suman (el scraper atiende de a uno) y 3 rompen el scraper (ConnectionError).
+PAUSE_SECONDS = 15.0
+BACKOFF_SECONDS = 120.0  # si un lote vuelve vacio, se espera y se repite ese lote una vez
+BACKOFF_MIN_EMPTY = 2
 STORE_CURRENCY = {"US": "USD", "ES": "EUR"}
 
 
@@ -277,7 +282,8 @@ def write_run_log(prices_path, today, kind, ok, total):
     publish.write_atomic(path, log)
 
 
-PAUSE_MIN, PAUSE_MAX = 30.0, 180.0
+PAUSE_MIN, PAUSE_MAX = 15.0, 60.0
+PACE_VERSION = 2  # ritmos guardados con otra version se descartan (03/11: se paso de 60 s a 15 s + reintento por lote)
 CLEAN_DAYS_TO_SPEED_UP = 3
 
 
@@ -296,21 +302,37 @@ def run_summary(ok, total):
 
 def next_pace(previous):
     pace = previous.get("pace") if isinstance(previous, dict) else None
-    if not isinstance(pace, dict) or not is_valid_amount(pace.get("pause_s")):
-        return {"pause_s": PAUSE_SECONDS, "limpios": 0}
-    return {"pause_s": min(PAUSE_MAX, max(PAUSE_MIN, float(pace["pause_s"]))), "limpios": int(pace.get("limpios") or 0)}
+    if not isinstance(pace, dict) or not is_valid_amount(pace.get("pause_s")) or pace.get("v") != PACE_VERSION:
+        return {"pause_s": PAUSE_SECONDS, "limpios": 0, "v": PACE_VERSION}
+    return {"pause_s": min(PAUSE_MAX, max(PAUSE_MIN, float(pace["pause_s"]))), "limpios": int(pace.get("limpios") or 0),
+            "v": PACE_VERSION}
 
 
 def adjust_pace(pace, run):
     """Ráfaga → el doble de pausa mañana; 3 corridas limpias seguidas → 25% menos."""
     if run["rafaga"]:
-        return {"pause_s": min(PAUSE_MAX, pace["pause_s"] * 2), "limpios": 0}
+        return {"pause_s": min(PAUSE_MAX, pace["pause_s"] * 2), "limpios": 0, "v": PACE_VERSION}
     if run["fallas"] == 0:
         limpios = pace["limpios"] + 1
         if limpios >= CLEAN_DAYS_TO_SPEED_UP:
-            return {"pause_s": max(PAUSE_MIN, pace["pause_s"] * 0.75), "limpios": 0}
-        return {"pause_s": pace["pause_s"], "limpios": limpios}
-    return {"pause_s": pace["pause_s"], "limpios": 0}
+            return {"pause_s": max(PAUSE_MIN, pace["pause_s"] * 0.75), "limpios": 0, "v": PACE_VERSION}
+        return {"pause_s": pace["pause_s"], "limpios": limpios, "v": PACE_VERSION}
+    return {"pause_s": pace["pause_s"], "limpios": 0, "v": PACE_VERSION}
+
+
+def fetch_chunk(base_url, chunk, store):
+    try:
+        return fetch_bulk(base_url, [p["asin"] for p in chunk], store), None
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        print(f"Amazon: falló lote {store} ({type(exc).__name__}); se omite.", flush=True)
+        return {}, f"lote_fallido:{type(exc).__name__}"
+
+
+def empty_count(fetched, lote_error, chunk, store):
+    """Productos del lote que volvieron vacíos por corte de Amazon (no los agotados ni los de precio raro)."""
+    if lote_error:
+        return len(chunk)
+    return sum(1 for p in chunk if missing_reason(fetched.get(p["asin"]), store) == "sin_precio_ni_vendedor")
 
 
 def fetch_prices(base_url, products, today):
@@ -332,13 +354,12 @@ def fetch_prices(base_url, products, today):
             if not first_call:
                 pause()
             first_call = False
-            lote_error = None
-            try:
-                fetched = fetch_bulk(base_url, [p["asin"] for p in chunk], store)
-            except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-                print(f"Amazon: falló lote {store} ({type(exc).__name__}); se omite.", flush=True)
-                fetched = {}
-                lote_error = f"lote_fallido:{type(exc).__name__}"
+            fetched, lote_error = fetch_chunk(base_url, chunk, store)
+            if empty_count(fetched, lote_error, chunk, store) >= BACKOFF_MIN_EMPTY:
+                # 03/11: Amazon corta por ráfaga y se recupera en ~1 min; se espera y se repite este lote una vez.
+                print(f"Amazon: lote vacío en pos {position + 1}; espero {BACKOFF_SECONDS:.0f} s y lo repito.", flush=True)
+                time.sleep(BACKOFF_SECONDS)
+                fetched, lote_error = fetch_chunk(base_url, chunk, store)
 
             for product in chunk:
                 position += 1

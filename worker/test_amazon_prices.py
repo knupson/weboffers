@@ -19,6 +19,7 @@ def env(monkeypatch):
     monkeypatch.setenv("AMAZON_SCRAPER_URL", "http://scraper:8000")
     monkeypatch.delenv("AMAZON_AR_URL", raising=False)
     monkeypatch.setattr(amazon_prices, "PAUSE_SECONDS", 0)
+    monkeypatch.setattr(amazon_prices, "BACKOFF_SECONDS", 0)
 
 
 def bulk_response(products):
@@ -462,17 +463,50 @@ def test_each_missing_product_logs_its_reason_and_daily_file(tmp_path, monkeypat
 
 
 def test_pace_adjusts_itself():
-    base = {"pause_s": 60.0, "limpios": 0}
+    v = amazon_prices.PACE_VERSION
+    base = {"pause_s": 15.0, "limpios": 0}
     rafaga = {"rafaga": True, "fallas": 30}
     limpio = {"rafaga": False, "fallas": 0}
-    assert amazon_prices.adjust_pace(base, rafaga)["pause_s"] == 120.0
-    assert amazon_prices.adjust_pace({"pause_s": 150.0, "limpios": 2}, rafaga)["pause_s"] == amazon_prices.PAUSE_MAX
-    p = base
+    assert amazon_prices.adjust_pace(base, rafaga)["pause_s"] == 30.0
+    assert amazon_prices.adjust_pace({"pause_s": 40.0, "limpios": 2}, rafaga)["pause_s"] == amazon_prices.PAUSE_MAX
+    p = {"pause_s": 40.0, "limpios": 0}
     for _ in range(3):
         p = amazon_prices.adjust_pace(p, limpio)
-    assert p == {"pause_s": 45.0, "limpios": 0}
-    assert amazon_prices.adjust_pace({"pause_s": 30.0, "limpios": 2}, limpio)["pause_s"] == amazon_prices.PAUSE_MIN
-    assert amazon_prices.adjust_pace({"pause_s": 60.0, "limpios": 2}, {"rafaga": False, "fallas": 3}) == {"pause_s": 60.0, "limpios": 0}
+    assert p == {"pause_s": 30.0, "limpios": 0, "v": v}
+    assert amazon_prices.adjust_pace({"pause_s": 15.0, "limpios": 2}, limpio)["pause_s"] == amazon_prices.PAUSE_MIN
+    assert amazon_prices.adjust_pace({"pause_s": 30.0, "limpios": 2}, {"rafaga": False, "fallas": 3}) == {"pause_s": 30.0, "limpios": 0, "v": v}
+
+
+def test_old_pace_is_discarded(monkeypatch):
+    # 03/11: el ritmo guardado de 60 s (antes de medir) no debe sobrevivir al cambio a 15 s.
+    monkeypatch.setattr(amazon_prices, "PAUSE_SECONDS", 15.0)
+    assert amazon_prices.next_pace({"pace": {"pause_s": 60.0, "limpios": 0}})["pause_s"] == 15.0
+    assert amazon_prices.next_pace({"pace": {"pause_s": 30.0, "limpios": 1, "v": amazon_prices.PACE_VERSION}})["pause_s"] == 30.0
+
+
+def test_empty_batch_waits_and_retries_once(monkeypatch):
+    # 03/11: con el catálogo entero Amazon cortó en el producto 132 y se recuperó en ~1 min.
+    calls = []
+    def fetch(base, asins, store):
+        calls.append(list(asins))
+        if len(calls) == 1:
+            return {a: {"asin": a, "price": None, "buybox": None, "availability": None} for a in asins}
+        return {a: {"asin": a, "price": {"amount": 20.0, "currency": "USD"}, "availability": {"is_in_stock": True}} for a in asins}
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
+    products = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US", "ml": {"price": 1000}} for i in range(3)]
+    items, ok, missing = amazon_prices.fetch_prices("http://scraper", products, "2026-11-04")
+    assert (ok, missing) == (3, 0) and len(calls) == 2
+
+
+def test_out_of_stock_does_not_trigger_retry(monkeypatch):
+    calls = []
+    def fetch(base, asins, store):
+        calls.append(1)
+        return {a: {"asin": a, "price": {"amount": 20.0, "currency": "USD"}, "availability": {"is_in_stock": False}} for a in asins}
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
+    products = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US", "ml": {"price": 1000}} for i in range(3)]
+    amazon_prices.fetch_prices("http://scraper", products, "2026-11-04")
+    assert len(calls) == 1
 
 
 def test_run_summary_detects_burst(monkeypatch):
