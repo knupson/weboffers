@@ -487,3 +487,9 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
   .pasos b { font-size: 18px; }
   .pasos span { font-size: 14px; }
 }
+
+/* Invitación al canal de Telegram (portada) */
+.telegram-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 24px; border-radius: var(--r-placa); background: var(--placa); border: 1px solid var(--linea); color: var(--crema-2); text-decoration: none; }
+.telegram-cta b { display: block; color: var(--crema); font-size: 1.15rem; margin-bottom: 4px; }
+.telegram-cta .btn { flex-shrink: 0; }
+@media (max-width: 640px) { .telegram-cta { flex-direction: column; align-items: stretch; text-align: center; } }
