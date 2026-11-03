@@ -15,6 +15,7 @@ Cron (dockerhost, hora ART):
   30 7 * * *  recordatorio_franquicia.py --control sitio
   20 12 * * * recordatorio_franquicia.py --control telegram12
   20 20 * * * recordatorio_franquicia.py --control telegram20
+  10 19 * * 2-4 recordatorio_franquicia.py --control reel19   (API de Meta, token en /home/claude/franquicia400-meta/.env)
 Logs sin números ni claves: FRANQUICIA_RECORDATORIO_OK / _NADA / _FAIL, FRANQUICIA_CONTROL_OK.
 """
 import datetime
@@ -22,6 +23,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -101,7 +103,44 @@ def control(que, ahora, bajar=bajar):
         if any(f >= desde for f in fechas):
             return ""
         return pedir([f"no salió el Telegram de las {hora}, revisá la pi4"])
+    if que == "reel19":
+        # Días de Reel del calendario: mar a jue 19:00 en IG y FB. Se consulta la API oficial de Meta.
+        if ahora.weekday() not in (1, 2, 3) or ahora.date() > CALENDARIO_HASTA:
+            return ""
+        desde = datetime.datetime.fromisoformat(f"{hoy}T18:50:00-03:00")
+        try:
+            env = leer_meta_env()
+            ig = graph(f"/{env['META_IG_USER_ID']}/media", {"fields": "media_product_type,timestamp", "limit": "10"}, env)
+            pagina = graph(f"/{env['META_PAGE_ID']}", {"fields": "access_token"}, env)["access_token"]
+            fb = graph(f"/{env['META_PAGE_ID']}/video_reels", {"fields": "created_time", "limit": "10"}, env, pagina)
+        except Exception as e:
+            return pedir([f"no pude comprobar el Reel de las 19 ({type(e).__name__}), revisalo"])
+        falta = []
+        if not any(m.get("media_product_type") == "REELS" and meta_fecha(m["timestamp"]) >= desde for m in ig.get("data", [])):
+            falta.append("Instagram")
+        if not any(meta_fecha(v["created_time"]) >= desde for v in fb.get("data", [])):
+            falta.append("Facebook")
+        return pedir([f"no salió el Reel de las 19 en {' ni en '.join(falta)}, revisalo"]) if falta else ""
     raise SystemExit(f"control desconocido: {que}")
+
+
+META_ENV = "/home/claude/franquicia400-meta/.env"
+
+
+def leer_meta_env():
+    return dict(l.strip().split("=", 1) for l in open(META_ENV, encoding="utf-8") if "=" in l and not l.startswith("#"))
+
+
+def meta_fecha(s):
+    # Graph devuelve "2026-11-03T22:00:05+0000".
+    return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
+
+
+def graph(ruta, params, env, token=None):
+    """GET a la Graph API (token del usuario del sistema o de la página); el token nunca se loguea."""
+    q = urllib.parse.urlencode({**params, "access_token": token or env["META_SYSTEM_TOKEN"]})
+    with urllib.request.urlopen(f"https://graph.facebook.com/v21.0{ruta}?{q}", timeout=30) as r:
+        return json.load(r)
 
 
 def enviar(texto, etiqueta):
