@@ -238,6 +238,7 @@ def caption(a, b, cantidad, fecha):
 {emoji(b)} {b['name']}: ${ars(b['ml'])} en Mercado Libre vs ~${ars(b['az'])} de Amazon. Gana Mercado Libre: {motivo}
 
 Comparamos {cantidad} productos con los precios de hoy: link en la bio.
+La mejor oferta del día, todos los días a las 12 y a las 20, en Telegram: t.me/franquicia400
 
 Precios del {fecha}. Amazon: estimado puesto en casa, con envío e impuestos (franquicia de USD 400).
 
