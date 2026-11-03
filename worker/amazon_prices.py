@@ -182,6 +182,37 @@ def merge_ar_shipping(previous, items, today):
     return valid
 
 
+# El sitio es de productos de USD 100 a 400 con envío gratis (franquicia): debajo de 100 Amazon cobra el envío a
+# Argentina y arriba de 400 se pasa la franquicia. 03/11: 47 de 160 estaban debajo de 100 y ninguno tenía envío gratis;
+# se pedían todos los días para nada. Con margen, para no perder los que rozan el límite; los lunes se revisan todos.
+RANGE_MIN, RANGE_MAX = 100.0, 400.0
+RANGE_MARGIN = 0.9
+
+
+def out_of_range_memory(previous, items):
+    """Último precio conocido de los que no se consultaron hoy, para seguir salteándolos hasta el lunes."""
+    if not isinstance(previous, dict):
+        return {}
+    last = {**(previous.get("outOfRange") or {}), **(previous.get("items") or {})}
+    return {slug: {"amount": it["amount"]} for slug, it in last.items()
+            if slug not in items and isinstance(it, dict) and is_valid_amount(it.get("amount"))
+            and not (RANGE_MIN * RANGE_MARGIN <= it["amount"] <= RANGE_MAX / RANGE_MARGIN)}
+
+
+def in_range(candidates, previous, today_date):
+    """Saca de la consulta del día los que en la última corrida estaban claramente fuera de rango (salvo los lunes)."""
+    if today_date.weekday() == AR_SHIPPING_WEEKDAY or not isinstance(previous, dict):
+        return candidates, 0
+    last = {**(previous.get("outOfRange") or {}), **(previous.get("items") or {})}
+    keep = []
+    for p in candidates:
+        amount = (last.get(p["slug"]) or {}).get("amount")
+        if is_valid_amount(amount) and not (RANGE_MIN * RANGE_MARGIN <= amount <= RANGE_MAX / RANGE_MARGIN):
+            continue
+        keep.append(p)
+    return keep, len(candidates) - len(keep)
+
+
 def maybe_refresh(catalog, prices_path, now):
     """Consulta precios de Amazon una vez por día desde las 06:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
@@ -197,6 +228,9 @@ def maybe_refresh(catalog, prices_path, now):
     ]
     if isinstance(previous, dict) and previous.get("date") == today:
         return retry_missing(previous, candidates, prices_path, local, base_url)
+    candidates, skipped = in_range(candidates, previous, today_date)
+    if skipped:
+        print(f"Amazon: {skipped} productos fuera de USD {RANGE_MIN:.0f}-{RANGE_MAX:.0f} no se consultan hoy (se revisan los lunes).", flush=True)
     if not base_url:
         return False
 
@@ -222,7 +256,8 @@ def maybe_refresh(catalog, prices_path, now):
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
-                                       "arShipping": ar_shipping, "run": run, "pace": pace})
+                                       "arShipping": ar_shipping, "run": run, "pace": pace,
+                                       "outOfRange": out_of_range_memory(previous, items)})
     print(f"Amazon: resumen {json.dumps(run, ensure_ascii=False)}; ritmo de mañana {pace['pause_s']:.0f} s.", flush=True)
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
@@ -237,7 +272,8 @@ def retry_missing(previous, candidates, prices_path, local, base_url):
         return False
     today = previous["date"]
     items = dict(previous.get("items") or {})
-    pending = [p for p in candidates if p["slug"] not in items]
+    skip = previous.get("outOfRange") or {}
+    pending = [p for p in candidates if p["slug"] not in items and p["slug"] not in skip]
     got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
     items.update(got)
     ar_shipping = merge_ar_shipping(previous, items, local.date())

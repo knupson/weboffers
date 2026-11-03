@@ -515,3 +515,34 @@ def test_run_summary_detects_burst(monkeypatch):
     assert s["rafaga"] is True and s["motivos"] == {"sin_precio_ni_vendedor": 5} and s["primeraFallaPos"] == 60
     monkeypatch.setattr(amazon_prices, "failures", [{"pos": p, "motivo": "sin_precio_ni_vendedor"} for p in (2, 5, 9, 12, 70)])
     assert amazon_prices.run_summary(95, 100)["rafaga"] is False
+
+
+def test_out_of_range_products_are_skipped_except_mondays():
+    # 03/11: 47 productos de menos de USD 100 se consultaban a diario y ninguno podía publicarse.
+    from datetime import date
+    cands = [{"slug": s} for s in ("barato", "justo", "medio", "caro", "nuevo")]
+    prev = {"items": {"barato": {"amount": 39.99}, "justo": {"amount": 95.0}, "medio": {"amount": 250.0}, "caro": {"amount": 899.0}}}
+    keep, skipped = amazon_prices.in_range(cands, prev, date(2026, 11, 4))  # miércoles
+    assert [p["slug"] for p in keep] == ["justo", "medio", "nuevo"] and skipped == 2
+    keep, skipped = amazon_prices.in_range(cands, prev, date(2026, 11, 9))  # lunes: se revisan todos
+    assert len(keep) == 5 and skipped == 0
+
+
+def test_out_of_range_memory_survives_the_next_day():
+    from datetime import date
+    prev = {"items": {"medio": {"amount": 250.0}}, "outOfRange": {"barato": {"amount": 39.99}}}
+    mem = amazon_prices.out_of_range_memory(prev, {"medio": {"amount": 251.0}})
+    assert mem == {"barato": {"amount": 39.99}}
+    keep, skipped = amazon_prices.in_range([{"slug": "barato"}, {"slug": "medio"}], {"items": {}, "outOfRange": mem}, date(2026, 11, 5))
+    assert [p["slug"] for p in keep] == ["medio"] and skipped == 1
+
+
+def test_retry_does_not_fetch_out_of_range(tmp_path, monkeypatch):
+    from datetime import datetime
+    asked = []
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", lambda base, asins, store: asked.extend(asins) or {})
+    prev = {"date": "2026-11-04", "items": {}, "outOfRange": {"barato": {"amount": 39.99}}}
+    out = tmp_path / "amazon-prices.json"
+    cands = [{"slug": "barato", "asin": "B1", "store": "US", "ml": {"price": 1}}, {"slug": "medio", "asin": "B2", "store": "US", "ml": {"price": 1}}]
+    amazon_prices.retry_missing(prev, cands, out, datetime(2026, 11, 4, 5, 1, tzinfo=amazon_prices.ART), "http://scraper")
+    assert asked == ["B2"]
