@@ -1,6 +1,7 @@
 """Precios diarios de Amazon vía el scraper interno en la red de Docker."""
 
 from datetime import date, datetime, timedelta, timezone
+from itertools import groupby
 import json
 import math
 import os
@@ -117,7 +118,7 @@ def fetch_ar_shipping(base_url, asins, store):
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
 
 
-def refresh_ar_shipping(candidates, items, today):
+def refresh_ar_shipping(candidates, items, today, prices_path=None):
     """Consulta /ar-shipping en lotes de BULK_MAX agrupados por tienda y guarda shipsToAr por slug.
 
     Cada lote se pide con el `store` de sus productos (la misma tienda que da el precio).
@@ -125,37 +126,66 @@ def refresh_ar_shipping(candidates, items, today):
     `items[slug].shipsToAr` nunca reutiliza días anteriores. Sólo se guarda cuando `ships`
     es un booleano real: None u otro valor es desconocido, nunca "no envía".
     """
+    summary = {"relevados": 0, "gratis": 0, "sin_dato": 0}
+    shipping_failures = []
     base_url = ar_url()
     if not base_url:
-        return
-    by_store = {}
-    for product in candidates:
-        by_store.setdefault(product["store"], []).append(product)
+        return summary
     first_call = True
-    for store, store_products in by_store.items():
+    # Conserva la prioridad global; cada lote sigue usando una sola tienda.
+    for store, group in groupby(candidates, key=lambda p: p["store"]):
+        store_products = list(group)
         for i in range(0, len(store_products), BULK_MAX):
             chunk = store_products[i:i + BULK_MAX]
             if not first_call:
                 pause()
             first_call = False
-            try:
-                fetched = fetch_ar_shipping(base_url, [p["asin"] for p in chunk], store)
-            except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-                print(f"Amazon AR: falló lote {store} ({type(exc).__name__}); se omite.", flush=True)
-                continue
-            for product in chunk:
-                item = fetched.get(product["asin"])
-                if not isinstance(item, dict) or "error" in item:
+            fetched = {}
+            lote_error = None
+            for attempt in range(2):
+                lote_error = None
+                try:
+                    fetched = fetch_ar_shipping(base_url, [p["asin"] for p in chunk], store)
+                except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                    fetched = {}
+                    lote_error = f"lote_fallido:{type(exc).__name__}"
+                unknown = sum(shipping_reason(fetched.get(p["asin"])) is not None for p in chunk)
+                if attempt == 0 and (lote_error or unknown >= BACKOFF_MIN_EMPTY):
+                    print(f"Amazon AR: lote sin datos; espero {BACKOFF_SECONDS:.0f} s y lo repito.", flush=True)
+                    time.sleep(BACKOFF_SECONDS)
                     continue
-                ships = item.get("ships")
-                if not isinstance(ships, bool):
-                    continue  # desconocido: no se guarda nada para este slug
+                break
+            for product in chunk:
+                summary["relevados"] += 1
+                item = fetched.get(product["asin"])
+                reason = lote_error or shipping_reason(item)
+                if reason:
+                    summary["sin_dato"] += 1
+                    shipping_failures.append({"slug": product["slug"], "asin": product["asin"],
+                                              "store": store, "motivo": reason})
+                    print(f"Amazon AR: sin dato {product['slug']} ({reason}).", flush=True)
+                    continue
                 free = item.get("free")
+                summary["gratis"] += int(item["ships"] is True and free is True)
                 items.setdefault(product["slug"], {})["shipsToAr"] = {
-                    "ships": ships,
+                    "ships": item["ships"],
                     "free": free if isinstance(free, bool) else None,
                     "checked": today,
                 }
+    if prices_path is not None:
+        write_run_log(prices_path, today, "envio", summary["relevados"] - summary["sin_dato"],
+                      summary["relevados"], shipping_failures)
+    return summary
+
+
+def shipping_reason(item):
+    if not isinstance(item, dict):
+        return "no_vino_en_respuesta"
+    if "error" in item:
+        return "error:" + str(item["error"])[:60]
+    if not isinstance(item.get("ships"), bool):
+        return "sin_ships_booleano"
+    return None
 
 
 def merge_ar_shipping(previous, items, today):
@@ -189,31 +219,66 @@ RANGE_MIN, RANGE_MAX = 100.0, 400.0
 RANGE_MARGIN = 0.9
 
 
-def out_of_range_memory(previous, items):
-    """Último precio conocido de los que no se consultaron hoy, para seguir salteándolos hasta el lunes."""
-    if not isinstance(previous, dict):
-        return {}
-    last = {**(previous.get("outOfRange") or {}), **(previous.get("items") or {})}
-    return {slug: {"amount": it["amount"]} for slug, it in last.items()
-            if slug not in items and isinstance(it, dict) and is_valid_amount(it.get("amount"))
-            and not (RANGE_MIN * RANGE_MARGIN <= it["amount"] <= RANGE_MAX / RANGE_MARGIN)}
+def price_usd(item, eur_usd=None):
+    amount = item.get("amount") if isinstance(item, dict) else None
+    if not is_valid_amount(amount):
+        return None
+    rate = eur_usd if is_valid_amount(eur_usd) else 1.08
+    return amount * rate if item.get("currency") == "EUR" else amount
 
 
-def in_range(candidates, previous, today_date):
-    """Saca de la consulta del día los que en la última corrida estaban claramente fuera de rango (salvo los lunes)."""
-    if today_date.weekday() == AR_SHIPPING_WEEKDAY or not isinstance(previous, dict):
+def out_of_range_memory(previous, items, eur_usd=None, without_ml=()):
+    """Conserva exclusiones y agrega los precios fuera de rango consultados hoy."""
+    previous = previous if isinstance(previous, dict) else {}
+    last = {**(previous.get("outOfRange") or {}), **(previous.get("items") or {}), **items}
+    memory = {}
+    for slug, item in last.items():
+        if not isinstance(item, dict):
+            continue
+        amount = price_usd(item, eur_usd)
+        if amount is not None and not (RANGE_MIN <= amount <= RANGE_MAX):
+            memory[slug] = {k: item[k] for k in ("amount", "currency") if k in item}
+        elif slug not in items and item.get("motivo") == "sin_ml_local":
+            memory[slug] = item
+    for slug in without_ml:
+        memory[slug] = {**memory.get(slug, {}), "motivo": "sin_ml_local"}
+    return memory
+
+
+def in_range(candidates, previous, today_date, eur_usd=None, ml_prices=None):
+    """Saltea precios fuera de rango y productos sin ML local; los lunes revisa todos."""
+    if today_date.weekday() == AR_SHIPPING_WEEKDAY:
         return candidates, 0
+    previous = previous if isinstance(previous, dict) else {}
     last = {**(previous.get("outOfRange") or {}), **(previous.get("items") or {})}
+    use_ml = isinstance(ml_prices, dict) and ml_prices.get("date") == (today_date - timedelta(days=1)).isoformat()
     keep = []
     for p in candidates:
-        amount = (last.get(p["slug"]) or {}).get("amount")
-        if is_valid_amount(amount) and not (RANGE_MIN * RANGE_MARGIN <= amount <= RANGE_MAX / RANGE_MARGIN):
+        item = last.get(p["slug"]) or {}
+        amount = price_usd(item, eur_usd)
+        if use_ml and p["slug"] not in (ml_prices.get("items") or {}):
+            continue
+        if item.get("motivo") == "sin_ml_local":
+            continue
+        if amount is not None and not (RANGE_MIN * RANGE_MARGIN <= amount <= RANGE_MAX / RANGE_MARGIN):
             continue
         keep.append(p)
     return keep, len(candidates) - len(keep)
 
 
-def maybe_refresh(catalog, prices_path, now):
+def shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_usd=None, monday=False):
+    known = merge_ar_shipping(previous, items, today_date)
+    selected = [p for p in candidates
+                if monday or (p["slug"] not in known and (p.get("shipsToAr") or {}).get("freeShipping") is not True)]
+    ml_items = (ml_prices or {}).get("items") or {}
+    def priority(product):
+        amount = price_usd(items.get(product["slug"]), eur_usd)
+        return not (is_valid_amount((ml_items.get(product["slug"]) or {}).get("price"))
+                    and amount is not None and RANGE_MIN <= amount <= RANGE_MAX)
+    return sorted(selected, key=priority)
+
+
+def maybe_refresh(catalog, prices_path, now, eur_usd=None):
     """Consulta precios de Amazon una vez por día desde las 06:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today_date = local.date()
@@ -222,15 +287,22 @@ def maybe_refresh(catalog, prices_path, now):
         return False
     previous = load_json(prices_path, None)
     base_url = scraper_url()
+    ml_path = Path(os.environ.get("ML_PRICES_PATH", str(Path(prices_path).with_name("ml-prices.json"))))
+    ml_prices = load_json(ml_path, None)
     candidates = [
         p for p in catalog
         if p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY
     ]
     if isinstance(previous, dict) and previous.get("date") == today:
-        return retry_missing(previous, candidates, prices_path, local, base_url)
-    candidates, skipped = in_range(candidates, previous, today_date)
+        return retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
+    all_candidates = candidates
+    candidates, skipped = in_range(candidates, previous, today_date, eur_usd, ml_prices)
+    without_ml = [p["slug"] for p in all_candidates if ml_prices is not None
+                  and ml_prices.get("date") == (today_date - timedelta(days=1)).isoformat()
+                  and p["slug"] not in (ml_prices.get("items") or {})
+                  and today_date.weekday() != AR_SHIPPING_WEEKDAY]
     if skipped:
-        print(f"Amazon: {skipped} productos fuera de USD {RANGE_MIN:.0f}-{RANGE_MAX:.0f} no se consultan hoy (se revisan los lunes).", flush=True)
+        print(f"Amazon: {skipped} productos fuera de rango o sin ML local no se consultan hoy (se revisan los lunes).", flush=True)
     if not base_url:
         return False
 
@@ -245,19 +317,14 @@ def maybe_refresh(catalog, prices_path, now):
     # Envío a Argentina (03/11): los lunes se releva todo; el resto de los días SÓLO lo que no tiene envío
     # confirmado (catálogo o relevamiento de ≤14 días), porque sin ese dato el producto no se publica (REGLA 0)
     # y pedir todo a diario duplica las páginas a Amazon. Cada relevamiento se conserva 14 días.
-    known = merge_ar_shipping(previous, {}, today_date)
-    if today_date.weekday() == AR_SHIPPING_WEEKDAY:
-        to_survey = candidates
-    else:
-        to_survey = [p for p in candidates
-                     if (p.get("shipsToAr") or {}).get("freeShipping") is not True and p["slug"] not in known]
-    if to_survey:
-        refresh_ar_shipping(to_survey, items, today)
+    to_survey = shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_usd,
+                                    monday=today_date.weekday() == AR_SHIPPING_WEEKDAY)
+    run["envio"] = refresh_ar_shipping(to_survey, items, today, prices_path)
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
                                        "arShipping": ar_shipping, "run": run, "pace": pace,
-                                       "outOfRange": out_of_range_memory(previous, items)})
+                                       "outOfRange": out_of_range_memory(previous, items, eur_usd, without_ml)})
     print(f"Amazon: resumen {json.dumps(run, ensure_ascii=False)}; ritmo de mañana {pace['pause_s']:.0f} s.", flush=True)
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
@@ -266,20 +333,28 @@ def maybe_refresh(catalog, prices_path, now):
     return True
 
 
-def retry_missing(previous, candidates, prices_path, local, base_url):
-    """Segunda pasada del día, una sola vez y sólo para los que quedaron sin precio, antes del deploy de las 07:00."""
+def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=None, ml_prices=None):
+    """Reintenta una vez los precios faltantes y el envío desconocido de productos en rango."""
     if previous.get("retried") or not base_url or (local.hour, local.minute) < RETRY_AT:
         return False
     today = previous["date"]
     items = dict(previous.get("items") or {})
     skip = previous.get("outOfRange") or {}
-    pending = [p for p in candidates if p["slug"] not in items and p["slug"] not in skip]
+    pending = [p for p in candidates if not is_valid_amount((items.get(p["slug"]) or {}).get("amount"))
+               and p["slug"] not in skip]
     got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
-    items.update(got)
+    for slug, item in got.items():
+        items[slug] = {**items.get(slug, {}), **item}
+    to_survey = shipping_candidates(candidates, items, previous, local.date(), ml_prices, eur_usd)
+    to_survey = [p for p in to_survey if (amount := price_usd(items.get(p["slug"]), eur_usd)) is not None
+                 and RANGE_MIN <= amount <= RANGE_MAX]
+    envio = refresh_ar_shipping(to_survey, items, today, prices_path)
     ar_shipping = merge_ar_shipping(previous, items, local.date())
     run = dict(previous.get("run") or {})
+    run["envio"] = {key: (run.get("envio") or {}).get(key, 0) + value for key, value in envio.items()}
     run["reintento"] = {"recuperados": ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
-    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True})
+    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True,
+                                       "outOfRange": out_of_range_memory(previous, items, eur_usd)})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
     write_run_log(prices_path, today, "reintento", ok, len(pending))
     return True
@@ -309,12 +384,12 @@ def missing_reason(raw, store):
     return "desconocido"
 
 
-def write_run_log(prices_path, today, kind, ok, total):
+def write_run_log(prices_path, today, kind, ok, total, log_failures=None):
     """Registro diario que sobrevive a la recreación del contenedor: output/amazon-run-AAAA-MM-DD.json."""
     path = Path(prices_path).with_name(f"amazon-run-{today}.json")
     log = load_json(path, {"date": today, "passes": []})
     log["passes"].append({"kind": kind, "at": datetime.now(ART).isoformat(timespec="seconds"),
-                          "ok": ok, "total": total, "pause_s": PAUSE_SECONDS, "fallas": list(failures)})
+                          "ok": ok, "total": total, "pause_s": PAUSE_SECONDS, "fallas": list(failures if log_failures is None else log_failures)})
     publish.write_atomic(path, log)
 
 

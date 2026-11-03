@@ -122,17 +122,6 @@ async function readJsonWithDate(filePath) {
   }
 }
 
-async function readOptionalJsonFile(filePath, label) {
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    JSON.parse(raw);
-    return raw;
-  } catch {
-    log(`DEPLOY_INFO sin ${label} válido; se omite del directorio de build.`);
-    return null;
-  }
-}
-
 async function hasBothTodayPrices(now = new Date(), opts = {}) {
   const outputFile = opts.outputFile ?? OUTPUT_FILE;
   const amazonOutputFile = opts.amazonOutputFile ?? AMAZON_OUTPUT_FILE;
@@ -154,6 +143,9 @@ async function hasBothTodayPrices(now = new Date(), opts = {}) {
         ? 'amazon-prices.json ausente o inválido'
         : `amazon-prices.json es de ${amz.data?.date} (hoy ${today})`,
     };
+  }
+  if (!amz.data.items || Array.isArray(amz.data.items) || typeof amz.data.items !== 'object' || Object.keys(amz.data.items).length === 0) {
+    return { ready: false, reason: 'amazon-prices.json tiene items vacío o inválido' };
   }
   return { ready: true, mlRaw: ml.raw, amazonRaw: amz.raw };
 }
@@ -191,7 +183,6 @@ async function deployOnce(now = new Date(), opts = {}) {
   const workDir = opts.workDir ?? WORK_DIR;
   const stateFile = opts.stateFile ?? STATE_FILE;
   const runImpl = opts.runImpl ?? run;
-  const requireBothToday = opts.requireBothToday ?? (now.getTime() < deadlineAt(now));
   const slot = opts.slot ?? 'morning';
 
   const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
@@ -205,45 +196,20 @@ async function deployOnce(now = new Date(), opts = {}) {
   let raw = null;
   let amazonRaw = null;
 
-  if (requireBothToday) {
-    const ml = await readJsonWithDate(outputFile);
-    if (!ml.ok) {
-      log(ml.missing ? 'DEPLOY_SKIP no existe ml-prices.json todavía.' : 'DEPLOY_SKIP ml-prices.json no es JSON válido.');
+  const check = await hasBothTodayPrices(now, opts);
+  if (!check.ready) {
+    const expired = now.getTime() >= deadlineAt(now);
+    log(`${expired ? 'DEPLOY_FAIL' : 'DEPLOY_SKIP'} ${check.reason}; no se despliega.`);
+    return expired ? 'fail' : 'skip';
+  }
+  raw = check.mlRaw;
+  amazonRaw = check.amazonRaw;
+  if (opts.requireExtraSlot) {
+    const extra = await hasExtraSlotToday(now, opts);
+    if (!extra.ready) {
+      log(`DEPLOY_SKIP ${extra.reason}; no se despliega.`);
       return 'skip';
     }
-    if (ml.data?.date !== today) {
-      log(`DEPLOY_SKIP ml-prices.json es de ${ml.data?.date}, hoy es ${today}.`);
-      return 'skip';
-    }
-    const amz = await readJsonWithDate(amazonOutputFile);
-    if (!amz.ok) {
-      log(amz.missing ? 'DEPLOY_SKIP no existe amazon-prices.json todavía.' : 'DEPLOY_SKIP amazon-prices.json no es JSON válido.');
-      return 'skip';
-    }
-    if (amz.data?.date !== today) {
-      log(`DEPLOY_SKIP amazon-prices.json es de ${amz.data?.date}, hoy es ${today}.`);
-      return 'skip';
-    }
-    raw = ml.raw;
-    amazonRaw = amz.raw;
-  } else if (opts.requireExtraSlot) {
-    // Segundo despliegue del día de oferta: exige el slot "<fecha>T13" de ml-prices.json;
-    // amazon-prices.json se reutiliza tal cual (Amazon no se relee).
-    const slotId = extraSlotId(today);
-    const ml = await readJsonWithDate(outputFile);
-    if (!ml.ok) {
-      log(ml.missing ? 'DEPLOY_SKIP no existe ml-prices.json todavía.' : 'DEPLOY_SKIP ml-prices.json no es JSON válido.');
-      return 'skip';
-    }
-    if (ml.data?.date !== today || ml.data?.slot !== slotId) {
-      log(`DEPLOY_SKIP ml-prices.json no tiene slot ${slotId} (date=${ml.data?.date}, slot=${JSON.stringify(ml.data?.slot)}).`);
-      return 'skip';
-    }
-    raw = ml.raw;
-    amazonRaw = await readOptionalJsonFile(amazonOutputFile, 'amazon-prices.json');
-  } else {
-    raw = await readOptionalJsonFile(outputFile, 'ml-prices.json');
-    amazonRaw = await readOptionalJsonFile(amazonOutputFile, 'amazon-prices.json');
   }
 
   const hashInput = [raw ?? '', amazonRaw ?? ''].join('\n');
@@ -303,8 +269,8 @@ async function deployWithRetry(opts = {}) {
       continue;
     }
     if (now.getTime() >= deadline) {
-      log(`DEPLOY_INFO son las 11:00 ART o más (${check.reason}); se despliega igual.`);
-      return await deployFn(now, { ...opts, requireBothToday: false });
+      log(`DEPLOY_FAIL son las 11:00 ART o más: ${check.reason}; no se despliega.`);
+      return 'fail';
     }
     const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
     log(`DEPLOY_WAIT esperando precios del día (${check.reason}); próximo chequeo en ${Math.round(waitMs / 60e3)} min.`);

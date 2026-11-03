@@ -38,6 +38,8 @@ export interface CatalogEntry {
   hot?: string;
   /** Total estimado puesto en casa en pesos al MEP, redondeado a 10.000 ARS. */
   amazonArs?: number | null;
+  /** Precio diario convertido a USD para validar la franquicia. */
+  amazonUsd?: number | null;
   /** Fuente del estimado de Amazon: únicamente precio diario scrapeado ("amazon") o null. */
   amazonSource?: "amazon" | null;
   /** Fecha (AAAA-MM-DD) del precio usado para el estimado de Amazon. */
@@ -265,6 +267,7 @@ export function mergeAmazonPrices(
   const items = prices?.items ?? {};
   return catalog.map((entry) => {
     let amazonArs: number | null = null;
+    let amazonUsd: number | null = null;
     let amazonSource: "amazon" | null = null;
     let amazonChecked: string | null = null;
     let shipsToAr = entry.shipsToAr;
@@ -281,7 +284,8 @@ export function mergeAmazonPrices(
       ) {
         const toUsd = scraped.currency === "EUR" ? eurUsd : 1;
         if (toUsd && toUsd > 0) {
-          amazonArs = roundArs10k(estimateFromAmazon(scraped.amount * toUsd, mep));
+          amazonUsd = scraped.amount * toUsd;
+          amazonArs = roundArs10k(estimateFromAmazon(amazonUsd, mep));
           amazonSource = "amazon";
           amazonChecked = scraped.checked;
         }
@@ -304,6 +308,7 @@ export function mergeAmazonPrices(
     return {
       ...entry,
       amazonArs,
+      amazonUsd,
       amazonSource,
       amazonChecked,
       shipsToAr,
@@ -321,7 +326,7 @@ export function mergeAmazonPrices(
  *   - tiene precio en Mercado Libre relevado hoy (fecha ART == hoy ART), y
  *   - tiene precio en Amazon relevado hoy (fecha ART == hoy ART) convertido a ARS.
  */
-export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now()): boolean {
+export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now(), eurUsd = 1.08): boolean {
   const today = artDate(now);
   // Amazon no envía este producto a Argentina (relevamiento vigente): no hay comparación posible.
   if (entry.shipsToArToday === false) {
@@ -329,7 +334,7 @@ export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | 
   }
   // REGLA 0 del user (03/11): un comparador necesita los dos lados completos. El de Amazon es «puesto en tu casa»:
   // sin envío gratis a Argentina confirmado (catálogo o relevamiento de ≤14 días) no hay total, y no se publica.
-  if (entry.shipsToAr?.freeShipping !== true) {
+  if (entry.shipsToAr?.freeShipping !== true || !isFreshArShippingDate(entry.shipsToAr.checked, now)) {
     return false;
   }
   if (
@@ -349,14 +354,20 @@ export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | 
       typeof entry.amazonArs === "number" &&
       Number.isFinite(entry.amazonArs) &&
       entry.amazonArs > 0 &&
+      typeof entry.amazonUsd === "number" &&
+      Number.isFinite(entry.amazonUsd) &&
+      entry.amazonUsd >= 100 && entry.amazonUsd <= 400 &&
       entry.amazonSource === "amazon" &&
       entry.amazonChecked === today
     );
   }
   const items = amazonPrices?.items ?? {};
   const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+  const usd = scraped?.amount != null ? scraped.amount * (scraped.currency === "EUR" ? eurUsd : 1) : NaN;
   return Boolean(
     scraped &&
+      (scraped.currency === "USD" || scraped.currency === "EUR") &&
+      usd >= 100 && usd <= 400 &&
       typeof scraped.amount === "number" &&
       Number.isFinite(scraped.amount) &&
       scraped.amount > 0 &&

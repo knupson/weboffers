@@ -78,6 +78,8 @@ def parse_delivery(details, located=False):
         ships = False
     elif "Argentina" in text and amount_ok:
         ships = True
+    elif located and amount_ok and text.upper().startswith("FREE DELIVERY"):
+        ships = True
     elif located and "argentina" in location.lower() and amount_ok and PAID_DELIVERY_RE.search(text):
         # 03/11: «$71.77 delivery Monday…» con la sesión en Argentina = envía, pero cobra el envío.
         # Antes quedaba desconocido para siempre y el producto se volvía a relevar todos los días.
@@ -192,8 +194,9 @@ class ArShippingHandler(BaseHTTPRequestHandler):
         products = []
         for asin in asins:
             try:
+                details = fetch_details(asin, store)
                 located = sesion_confirmada_ar(store)
-                products.append({"asin": asin, **parse_delivery(fetch_details(asin, store), located=located)})
+                products.append({"asin": asin, **parse_delivery(details, located=located)})
             except Exception as exc:  # por ASIN: un error no tumba al resto del lote; queda desconocido
                 products.append({"asin": asin, "ships": None, "free": None, "error": type(exc).__name__})
         self._send_json(200, {"products": products})

@@ -27,7 +27,7 @@ const base = (over: Partial<CatalogEntry>): CatalogEntry => ({
   summary: "Resumen",
   verified: true,
   // Envío gratis a Argentina confirmado: sin esto ningún producto se publica (REGLA 0, 03/11).
-  shipsToAr: { freeShipping: true, checked: "2026-10-01" },
+  shipsToAr: { freeShipping: true, checked: "2026-10-31" },
   ...over,
 });
 
@@ -188,6 +188,7 @@ describe("mergeAmazonPrices & isComparable", () => {
       slug: "ok",
       ml: { price: 500000, url: "https://meli.la/1", checked: "2026-10-31" },
       amazonArs: 380000,
+      amazonUsd: 250,
       amazonSource: "amazon",
       amazonChecked: "2026-10-31",
     });
@@ -209,13 +210,13 @@ describe("mergeAmazonPrices & isComparable", () => {
       base({
         slug: "amazon-mas-caro",
         verdict: "amazon",
-        shipsToAr: { freeShipping: true, checked: "2026-10-01" },
+        shipsToAr: { freeShipping: true, checked: "2026-10-31" },
         ml: { price: 350000, url: "https://meli.la/1", checked: "2026-10-31" },
       }),
       base({
         slug: "amazon-gana",
         verdict: "ml",
-        shipsToAr: { freeShipping: true, checked: "2026-10-01" },
+        shipsToAr: { freeShipping: true, checked: "2026-10-31" },
         ml: { price: 500000, url: "https://meli.la/2", checked: "2026-10-31" },
       }),
       base({
@@ -289,7 +290,7 @@ describe("shipsToAr relevado hoy (amazon-ar)", () => {
     }),
     base({
       slug: "no-envia",
-      shipsToAr: { freeShipping: true, checked: "2026-10-01" },
+      shipsToAr: { freeShipping: true, checked: "2026-10-31" },
       ml: { price: 500000, url: "https://meli.la/2", checked: "2026-10-31" },
     }),
     base({
@@ -444,14 +445,14 @@ describe("freshPrice, logIfFewProducts y resolvePricesDate", () => {
 describe("regla de foto", () => {
   it("un producto sin foto no es comparable aunque tenga los dos precios de hoy", () => {
     const now = Date.parse("2026-10-31T15:00:00-03:00");
-    const conTodo = base({ verified: true, ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>);
+    const conTodo = base({ verified: true, ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonUsd: 150, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>);
     expect(isComparable(conTodo, null, now)).toBe(true);
     expect(isComparable({ ...conTodo, image: undefined }, null, now)).toBe(false);
   });
 });
 
 describe("REGLA 0: sólo se publica con los dos lados completos", () => {
-  const completo = { ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>;
+  const completo = { ml: { price: 100000, url: "https://www.mercadolibre.com.ar/p/MLA1", checked: "2026-10-31" }, amazonArs: 90000, amazonUsd: 150, amazonSource: "amazon", amazonChecked: "2026-10-31" } as Partial<CatalogEntry>;
 
   it("con precios de hoy y envío gratis confirmado, se publica", () => {
     expect(isComparable(base(completo), null, NOW_OCT_31)).toBe(true);
@@ -461,4 +462,27 @@ describe("REGLA 0: sólo se publica con los dos lados completos", () => {
     expect(isComparable(base({ ...completo, shipsToAr: undefined }), null, NOW_OCT_31)).toBe(false);
     expect(isComparable(base({ ...completo, shipsToAr: { freeShipping: false, checked: "2026-10-31" } }), null, NOW_OCT_31)).toBe(false);
   });
+});
+
+
+describe("límites de publicación de la auditoría", () => {
+  const product = base({ ml: { price: 100000, url: "https://meli.la/a", checked: "2026-10-31" } });
+  it.each([[99.99, "USD", false], [100, "USD", true], [400, "USD", true], [461.99, "USD", false],
+           [90, "EUR", false], [100, "EUR", true], [380, "EUR", false]] as const)(
+    "valida %s %s convertido a USD", (amount, currency, expected) => {
+      const prices: AmazonPrices = { date: "2026-10-31", generatedAt: "", items: {
+        producto: { amount, currency, checked: "2026-10-31" },
+      } };
+      const merged = mergeAmazonPrices([product], prices, 1000, 1.08, NOW_OCT_31)[0];
+      expect(isComparable(merged, null, NOW_OCT_31)).toBe(expected);
+      expect(isComparable(product, prices, NOW_OCT_31)).toBe(expected);
+    });
+  it.each([["2026-10-17", true], ["2026-10-16", false], ["2026-11-01", false], ["", false]])(
+    "el envío del catálogo del %s respeta los 14 días", (checked, expected) => {
+      const prices: AmazonPrices = { date: "2026-10-31", generatedAt: "", items: {
+        producto: { amount: 200, currency: "USD", checked: "2026-10-31" },
+      } };
+      const entry = { ...product, shipsToAr: { freeShipping: true, checked } };
+      expect(isComparable(mergeAmazonPrices([entry], prices, 1000, 1.08, NOW_OCT_31)[0], null, NOW_OCT_31)).toBe(expected);
+    });
 });

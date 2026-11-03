@@ -310,3 +310,28 @@ def test_gratis_condicional_por_monto_minimo_no_es_gratis_si_el_producto_vale_me
     base = {"delivery": {"text": "FREE delivery November 11 - 17 to Argentina on eligible orders over $99", "options": [], "location": "Argentina"}}
     assert parse_delivery({**base, "price": {"amount": 67.9}}, located=True)["free"] is False
     assert parse_delivery({**base, "price": {"amount": 120.0}}, located=True)["free"] is True
+
+
+def test_free_delivery_without_country_uses_confirmed_session():
+    details = {"price": {"amount": 120}, "delivery": {"text": "FREE delivery November 11 - 17"}}
+    assert parse_delivery(details, located=True)["ships"] is True
+    assert parse_delivery(details, located=True)["free"] is True
+    assert parse_delivery(details, located=False)["ships"] is None
+    details["delivery"]["text"] += " on eligible orders over $150"
+    assert parse_delivery(details, located=True)["free"] is False
+
+
+def test_handler_checks_location_after_fetch(monkeypatch):
+    confirmed = []
+    monkeypatch.setattr(ar_server, "sesion_confirmada_ar", lambda store: bool(confirmed))
+    def fetch(asin, store):
+        confirmed.append(store)
+        return {"price": {"amount": 120}, "delivery": {"text": "FREE delivery tomorrow"}}
+    monkeypatch.setattr(ar_server, "fetch_details", fetch)
+    handler = ar_server.ArShippingHandler.__new__(ar_server.ArShippingHandler)
+    handler.path = "/ar-shipping?asins=B01"
+    result = {}
+    handler._send_json = lambda status, payload: result.update(payload)
+    handler.do_GET()
+    assert result["products"][0]["ships"] is True
+    assert result["products"][0]["free"] is True

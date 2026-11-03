@@ -546,3 +546,128 @@ def test_retry_does_not_fetch_out_of_range(tmp_path, monkeypatch):
     cands = [{"slug": "barato", "asin": "B1", "store": "US", "ml": {"price": 1}}, {"slug": "medio", "asin": "B2", "store": "US", "ml": {"price": 1}}]
     amazon_prices.retry_missing(prev, cands, out, datetime(2026, 11, 4, 5, 1, tzinfo=amazon_prices.ART), "http://scraper")
     assert asked == ["B2"]
+
+
+@pytest.mark.parametrize("first", [None, "exception"])
+def test_shipping_backoff_recovers_once(tmp_path, monkeypatch, first):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    products = [{"slug": str(i), "asin": str(i), "store": "US"} for i in range(2)]
+    result = {p["asin"]: {"ships": True, "free": True} for p in products}
+    fetch = Mock(side_effect=[requests.ConnectionError() if first == "exception" else {}, result])
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", fetch)
+    sleep = Mock()
+    monkeypatch.setattr(amazon_prices.time, "sleep", sleep)
+    monkeypatch.setattr(amazon_prices, "BACKOFF_SECONDS", 120)
+    items = {}
+    summary = amazon_prices.refresh_ar_shipping(products, items, "2026-11-04", tmp_path / "amazon-prices.json")
+    assert summary == {"relevados": 2, "gratis": 2, "sin_dato": 0}
+    assert fetch.call_count == 2
+    sleep.assert_called_once_with(120)
+    assert items["0"]["shipsToAr"]["ships"] is True
+
+
+def test_shipping_failures_logged_without_overwriting_price_failures(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    products = [{"slug": str(i), "asin": str(i), "store": "US"} for i in range(3)]
+    fetch = Mock(return_value={"0": {"ships": None}, "1": {"error": "bloqueado"},
+                              "2": {"ships": False, "free": None}})
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", fetch)
+    monkeypatch.setattr(amazon_prices, "failures", [{"motivo": "sin_stock", "pos": 1}])
+    summary = amazon_prices.refresh_ar_shipping(products, {}, "2026-11-04", tmp_path / "amazon-prices.json")
+    assert summary == {"relevados": 3, "gratis": 0, "sin_dato": 2}
+    assert fetch.call_count == 2
+    log = json.loads((tmp_path / "amazon-run-2026-11-04.json").read_text())["passes"][0]
+    assert log["kind"] == "envio" and log["total"] == 3 and log["ok"] == 1
+    assert [f["motivo"] for f in log["fallas"]] == ["sin_ships_booleano", "error:bloqueado"]
+    assert amazon_prices.failures == [{"motivo": "sin_stock", "pos": 1}]
+
+
+def test_single_unknown_shipping_does_not_backoff(monkeypatch):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    fetch = Mock(return_value={})
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", fetch)
+    summary = amazon_prices.refresh_ar_shipping([{"slug": "a", "asin": "A", "store": "US"}], {}, "2026-11-04")
+    assert fetch.call_count == 1 and summary["sin_dato"] == 1
+
+
+def test_shipping_single_request_failure_also_retries(monkeypatch):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    fetch = Mock(side_effect=requests.ConnectionError())
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", fetch)
+    summary = amazon_prices.refresh_ar_shipping([{"slug": "a", "asin": "A", "store": "US"}], {}, "2026-11-04")
+    assert fetch.call_count == 2 and summary["sin_dato"] == 1
+
+
+def test_retry_prices_and_unknown_shipping(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    names = ["price", "shipping", "known", "catalog", "outside", "expired"]
+    products = [{"slug": s, "asin": s, "store": "US"} for s in names]
+    products[3]["shipsToAr"] = {"freeShipping": True}
+    prev = {"date": "2026-11-04", "items": {s: {"amount": 200, "currency": "USD"} for s in names},
+            "arShipping": {"known": {"ships": False, "checked": "2026-11-03"},
+                           "expired": {"ships": True, "free": True, "checked": "2026-10-01"}},
+            "run": {"envio": {"relevados": 1, "gratis": 0, "sin_dato": 1}}}
+    prev["items"]["price"] = {"shipsToAr": {"ships": True, "free": True, "checked": "2026-11-04"}}
+    prev["items"]["outside"]["amount"] = 461.99
+    prices = Mock(return_value=({"price": {"amount": 180, "currency": "USD"}}, 1, 0))
+    monkeypatch.setattr(amazon_prices, "fetch_prices", prices)
+    shipping = Mock(return_value={s: {"ships": True, "free": True} for s in names})
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", shipping)
+    out = tmp_path / "amazon-prices.json"
+    assert amazon_prices.retry_missing(prev, products, out, datetime(2026, 11, 4, 6, tzinfo=amazon_prices.ART), "http://scraper")
+    assert [p["slug"] for p in prices.call_args.args[1]] == ["price"]
+    assert shipping.call_args.args[1] == ["shipping", "expired"]
+    saved = json.loads(out.read_text())
+    assert saved["items"]["price"]["shipsToAr"]["ships"] is True
+    assert saved["arShipping"]["shipping"]["free"] is True
+    assert saved["run"]["envio"] == {"relevados": 3, "gratis": 2, "sin_dato": 1}
+
+
+def test_daily_skip_ml_priority_and_current_out_of_range(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    products = [{"slug": s, "asin": s, "store": "US", "verified": True, "ml": {"price": 1000}}
+                for s in ["outside", "priority", "cbt"]]
+    (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "items": {
+        "outside": {"price": 1000}, "priority": {"price": 1000}}}))
+    prices = Mock(return_value=({"outside": {"amount": 500, "currency": "EUR"},
+                                "priority": {"amount": 200, "currency": "USD"}}, 2, 0))
+    monkeypatch.setattr(amazon_prices, "fetch_prices", prices)
+    shipping = Mock(return_value={"priority": {"ships": True, "free": True}, "outside": {"ships": None}})
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", shipping)
+    out = tmp_path / "amazon-prices.json"
+    amazon_prices.maybe_refresh(products, out, datetime(2026, 11, 4, 4, tzinfo=amazon_prices.ART), eur_usd=1.2)
+    assert [p["slug"] for p in prices.call_args.args[1]] == ["outside", "priority"]
+    assert shipping.call_args.args[1] == ["priority", "outside"]
+    saved = json.loads(out.read_text())
+    assert saved["outOfRange"]["cbt"]["motivo"] == "sin_ml_local"
+    assert saved["outOfRange"]["outside"] == {"amount": 500, "currency": "EUR"}
+    assert saved["run"]["envio"] == {"relevados": 2, "gratis": 1, "sin_dato": 1}
+
+
+def test_range_converts_eur_and_monday_rechecks_ml():
+    from datetime import date
+    products = [{"slug": "eur"}, {"slug": "cbt"}]
+    prev = {"items": {"eur": {"amount": 420, "currency": "EUR"}},
+            "outOfRange": {"cbt": {"motivo": "sin_ml_local"}}}
+    assert amazon_prices.in_range(products, prev, date(2026, 11, 4))[0] == []  # 453.6 USD
+    assert amazon_prices.in_range(products, prev, date(2026, 11, 4), 1.01)[0] == [{"slug": "eur"}]
+    assert amazon_prices.in_range(products, prev, date(2026, 11, 9))[0] == products
+    memory = amazon_prices.out_of_range_memory(prev, {"eur": {"amount": 80, "currency": "EUR"}}, 1.5)
+    assert "eur" not in memory  # 120 USD
+
+
+def test_shipping_priority_across_stores(monkeypatch):
+    from datetime import date
+    monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
+    products = [{"slug": slug, "asin": slug, "store": store}
+                for slug, store in [("low-us", "US"), ("high-us", "US"), ("high-es", "ES")]]
+    items = {p["slug"]: {"amount": 200, "currency": "USD"} for p in products}
+    ml = {"items": {"high-us": {"price": 1000}, "high-es": {"price": 1000}}}
+    selected = amazon_prices.shipping_candidates(products, items, None, date(2026, 11, 4), ml)
+    calls = []
+    def fetch(base, asins, store):
+        calls.extend(asins)
+        return {asin: {"ships": True, "free": True} for asin in asins}
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping", fetch)
+    amazon_prices.refresh_ar_shipping(selected, items, "2026-11-04")
+    assert calls == ["high-us", "high-es", "low-us"]

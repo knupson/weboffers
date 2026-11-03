@@ -105,100 +105,48 @@ describe('deployer', () => {
     expect(deployCalls).toEqual([{ iso: '2026-10-30T10:50:00.000Z', requireBothToday: true }]);
   });
 
-  it('a las 11:00 ART despliega igual aunque falten precios de hoy y limpia archivos inválidos del workDir', async () => {
+  it('a las 11:00 ART falla sin precios del día y conserva el sitio previo', async () => {
     const outputFile = path.join(tmpDir, 'ml-prices.json');
     const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
     const workDir = path.join(tmpDir, 'work');
     const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
-
-    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
     await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
-    const staleAmazonInWork = path.join(workDir, 'data', 'amazon-prices.json');
-    await fs.writeFile(staleAmazonInWork, JSON.stringify({ date: '2026-10-29', items: { viejo: { amount: 100 } } }));
-
+    const previous = path.join(workDir, 'data', 'amazon-prices.json');
+    await fs.writeFile(previous, 'sitio anterior');
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, '{json-roto');
-
-    // Simula que son las 10:50 ART (falta 1 intervalo de 10m para las 11:00 ART = 14:00Z)
     let currentMs = Date.parse('2026-10-30T13:50:00Z');
-    const sleeps: number[] = [];
-
+    const commands: string[] = [];
     const result = await deployWithRetry({
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async () => '',
+      outputFile, amazonOutputFile, workDir, stateFile,
+      runImpl: async (cmd: string) => { commands.push(cmd); return ''; },
       nowFn: () => new Date(currentMs),
-      sleepFn: async (ms: number) => {
-        sleeps.push(ms);
-        currentMs += ms;
-      },
+      sleepFn: async (ms: number) => { currentMs += ms; },
     });
-
-    expect(sleeps).toEqual([10 * 60e3]);
-    expect(result).toBe('ok');
-    await expect(fs.access(staleAmazonInWork)).rejects.toThrow();
-
-    // Si luego amazon-prices.json no existe a las 11:00 ART y cambia ml-prices.json, también borra el previo
-    await fs.writeFile(staleAmazonInWork, JSON.stringify({ date: '2026-10-30', items: {} }));
-    await fs.rm(amazonOutputFile, { force: true });
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 2000 } } }));
-
-    const result2 = await deployOnce(new Date('2026-10-30T14:00:00Z'), {
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async () => '',
-    });
-
-    expect(result2).toBe('ok');
-    await expect(fs.access(staleAmazonInWork)).rejects.toThrow();
+    expect(result).toBe('fail');
+    expect(commands).toEqual([]);
+    expect(await fs.readFile(previous, 'utf8')).toBe('sitio anterior');
+    for (const raw of ['{json-roto', JSON.stringify({ date: '2026-10-29', items: { a: { amount: 100 } } })]) {
+      await fs.writeFile(amazonOutputFile, raw);
+      expect(await deployOnce(new Date('2026-10-30T14:00:00Z'), {
+        outputFile, amazonOutputFile, workDir, stateFile,
+        runImpl: async (cmd: string) => { commands.push(cmd); return ''; },
+      })).toBe('fail');
+    }
+    expect(commands).toEqual([]);
   });
 
-  it('a las 11:00 ART no hace skip si el hash coincide con ayer pero la fecha del último despliegue es anterior', async () => {
+  it('rechaza Amazon de hoy con items vacío incluso con requireBothToday desactivado', async () => {
     const outputFile = path.join(tmpDir, 'ml-prices.json');
     const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    const workDir = path.join(tmpDir, 'work');
-    const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
-    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
-
-    // Día 1 (2026-10-30): ambos archivos del día se despliegan y guardan su hash con date=2026-10-30
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 100 } } }));
-    const day1 = await deployOnce(new Date('2026-10-30T10:30:00Z'), {
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async () => '',
-    });
-    expect(day1).toBe('ok');
-
-    // Día 2 (2026-10-31 a las 11:00 ART): los archivos siguen idénticos a ayer (mismo hash, distinta fecha)
-    const day2At11 = await deployWithRetry({
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async () => '',
-      nowFn: () => new Date('2026-10-31T14:00:00Z'),
-      sleepFn: async () => {},
-    });
-    expect(day2At11).toBe('ok');
-    const savedState = JSON.parse(await fs.readFile(stateFile, 'utf8'));
-    expect(savedState.date).toBe('2026-10-31');
-
-    // Mismo día 2 con el mismo hash y misma fecha -> ahora sí hace skip
-    const day2Repeat = await deployOnce(new Date('2026-10-31T14:05:00Z'), {
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async () => '',
-    });
-    expect(day2Repeat).toBe('skip');
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: {} }));
+    const now = new Date('2026-10-30T14:00:00Z');
+    expect((await hasBothTodayPrices(now, { outputFile, amazonOutputFile })).ready).toBe(false);
+    let commands = 0;
+    expect(await deployOnce(now, { outputFile, amazonOutputFile, requireBothToday: false,
+      runImpl: async () => { commands++; return ''; },
+    })).toBe('fail');
+    expect(commands).toBe(0);
   });
 
   it('al iniciar después de las 07:30 ART ejecuta la ventana pendiente del día si no hubo despliegue hoy', async () => {
