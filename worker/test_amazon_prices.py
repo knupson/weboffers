@@ -435,3 +435,27 @@ def test_retry_keeps_ar_shipping_and_merges_todays_survey(tmp_path, monkeypatch)
     assert data["retried"] is True
     assert data["arShipping"] == {"p": old, "hoy": today}
     assert data["items"]["p"] == {"amount": 150.5, "currency": "USD", "checked": "2026-10-30"}
+
+
+def test_each_missing_product_logs_its_reason_and_daily_file(tmp_path, monkeypatch, capsys):
+    # 03/11: el log sólo decía «faltantes=41» y se perdía al recrear el contenedor.
+    catalog = [
+        {"slug": "ok", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "vacio", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "agotado", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+    ]
+    monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
+    monkeypatch.setattr(amazon_prices, "ar_url", lambda: "")
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", lambda base, asins, store: {
+        "B01": {"asin": "B01", "price": {"amount": 10.0, "currency": "USD"}, "availability": {"is_in_stock": True}},
+        "B02": {"asin": "B02", "title": "x", "price": None, "buybox": None, "availability": None},
+        "B03": {"asin": "B03", "price": {"amount": 10.0, "currency": "USD"}, "availability": {"is_in_stock": False}},
+    })
+    out = tmp_path / "amazon-prices.json"
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    printed = capsys.readouterr().out
+    assert "sin precio vacio (pos 2, sin_precio_ni_vendedor)" in printed
+    assert "sin precio agotado (pos 3, sin_stock)" in printed
+    log = json.loads((tmp_path / "amazon-run-2026-10-30.json").read_text(encoding="utf-8"))
+    assert log["passes"][0]["kind"] == "corrida" and log["passes"][0]["ok"] == 1
+    assert [f["motivo"] for f in log["passes"][0]["fallas"]] == ["sin_precio_ni_vendedor", "sin_stock"]

@@ -212,6 +212,7 @@ def maybe_refresh(catalog, prices_path, now):
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items, "arShipping": ar_shipping})
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
+    write_run_log(prices_path, today, "corrida", ok, len(candidates))
     if candidates and ok == 0:
         print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
     return True
@@ -229,7 +230,41 @@ def retry_missing(previous, candidates, prices_path, local, base_url):
     ar_shipping = merge_ar_shipping(previous, items, local.date())
     publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "retried": True})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
+    write_run_log(prices_path, today, "reintento", ok, len(pending))
     return True
+
+
+# Motivo de cada producto sin precio en la última pasada (03/11: el user pidió saber SIEMPRE por qué falla).
+failures = []
+
+
+def missing_reason(raw, store):
+    """Por qué un producto no dio precio válido, en palabras cortas para el log y el registro diario."""
+    if not isinstance(raw, dict):
+        return "no_vino_en_respuesta"
+    if raw.get("error"):
+        return "error:" + str(raw.get("error"))[:60]
+    availability = raw.get("availability")
+    if isinstance(availability, dict) and availability.get("is_in_stock") is not True:
+        return "sin_stock"
+    price = raw.get("price")
+    if not isinstance(price, dict) or not is_valid_amount(price.get("amount")):
+        buybox = raw.get("buybox")
+        return "sin_precio_ni_vendedor" if not (isinstance(buybox, dict) and buybox.get("seller")) else "sin_precio"
+    if price.get("currency") != STORE_CURRENCY.get(store):
+        return "moneda:" + str(price.get("currency"))
+    if not (isinstance(raw.get("buybox"), dict) and (raw["buybox"].get("seller") or {}).get("name")):
+        return "sin_vendedor_ni_stock"
+    return "desconocido"
+
+
+def write_run_log(prices_path, today, kind, ok, total):
+    """Registro diario que sobrevive a la recreación del contenedor: output/amazon-run-AAAA-MM-DD.json."""
+    path = Path(prices_path).with_name(f"amazon-run-{today}.json")
+    log = load_json(path, {"date": today, "passes": []})
+    log["passes"].append({"kind": kind, "at": datetime.now(ART).isoformat(timespec="seconds"),
+                          "ok": ok, "total": total, "pause_s": PAUSE_SECONDS, "fallas": list(failures)})
+    publish.write_atomic(path, log)
 
 
 def fetch_prices(base_url, products, today):
@@ -242,6 +277,8 @@ def fetch_prices(base_url, products, today):
     ok = 0
     missing = 0
     first_call = True
+    position = 0
+    failures.clear()
 
     for store, store_products in by_store.items():
         for i in range(0, len(store_products), BULK_MAX):
@@ -249,22 +286,31 @@ def fetch_prices(base_url, products, today):
             if not first_call:
                 pause()
             first_call = False
+            lote_error = None
             try:
                 fetched = fetch_bulk(base_url, [p["asin"] for p in chunk], store)
             except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
                 print(f"Amazon: falló lote {store} ({type(exc).__name__}); se omite.", flush=True)
                 fetched = {}
+                lote_error = f"lote_fallido:{type(exc).__name__}"
 
             for product in chunk:
+                position += 1
                 slug = product["slug"]
-                parsed = valid_price(fetched.get(product["asin"]), store)
+                raw = fetched.get(product["asin"])
+                parsed = valid_price(raw, store)
+                reason = None
                 if parsed is not None and not plausible(parsed, product):
                     print(f"Amazon: precio descartado por inverosímil {slug} ({parsed[0]} {parsed[1]}).", flush=True)
                     parsed = None
+                    reason = "precio_inverosimil"
                 if parsed is not None:
                     amount, currency = parsed
                     items[slug] = {"amount": amount, "currency": currency, "checked": today}
                     ok += 1
                 else:
                     missing += 1
+                    reason = reason or lote_error or missing_reason(raw, store)
+                    failures.append({"slug": slug, "asin": product["asin"], "store": store, "pos": position, "motivo": reason})
+                    print(f"Amazon: sin precio {slug} (pos {position}, {reason}).", flush=True)
     return items, ok, missing
