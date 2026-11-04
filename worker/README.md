@@ -29,7 +29,7 @@ el registro `amazon-run-<fecha>.json`, con `kind: "catalogo"`.
 Worker y deployer fusionan ambos catálogos por ASIN o slug; siempre manda el
 repositorio. El deployer copia las fotos antes del build sin pisar las existentes.
 Para absorber las altas al repo desde Git Bash: `bash tools/sync_catalogo_auto.sh`.
-Usa `ssh pi4` y `/home/claude/franquicia400/worker/output`; no hace commit ni push.
+Usa `ssh docker` y `/opt/docker/franquicia400/worker/output`; no hace commit ni push.
 
 `CHECK_INTERVAL_SECONDS` vale 3600 por defecto. `CATALOG_PATH` acepta una ruta
 absoluta o relativa a `worker/` y vale `../data/catalog.json` por defecto.

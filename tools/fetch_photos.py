@@ -5,7 +5,7 @@ Regla del sitio: producto sin foto no se publica. Este script deja la foto en
 public/products/<slug>.webp y completa `image` e `imageSource` en data/catalog.json.
 
 Uso (desde Windows, Git Bash):
-  python tools/fetch_photos.py            # pide las URLs a la Pi4 (API de ML) y baja las fotos
+  python tools/fetch_photos.py            # pide las URLs a la VM docker (API de ML) y baja las fotos
   python tools/fetch_photos.py --urls x.json   # usa un JSON {slug: url} ya armado
 """
 import argparse
@@ -24,7 +24,7 @@ OUT_DIR = ROOT / "public" / "products"
 MAX_SIDE = 900
 ALLOWED_HOSTS = ("http2.mlstatic.com",)
 
-# Corre adentro del worker de la Pi4 (tiene las claves de ML): imprime {slug: url}.
+# Corre adentro del worker de la VM docker (tiene las claves de ML): imprime {slug: url}.
 PI_SNIPPET = r'''
 import json, ml_prices as m
 c = json.load(open("/app/data/catalog.json", encoding="utf-8"))
@@ -45,7 +45,7 @@ print(json.dumps(out))
 
 def urls_from_pi():
     res = subprocess.run(
-        ["ssh", "pi4", "docker exec -i franquicia400-weboffers-worker-1 python -"],
+        ["ssh", "docker", "docker exec -i franquicia400-weboffers-worker-1 python -"],
         input=PI_SNIPPET, capture_output=True, text=True, timeout=600, check=True)
     return json.loads(res.stdout.strip().splitlines()[-1])
 
@@ -62,7 +62,7 @@ def to_webp(data):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--urls", help="JSON {slug: url}; si falta, se piden a la Pi4")
+    ap.add_argument("--urls", help="JSON {slug: url}; si falta, se piden a la VM docker")
     args = ap.parse_args()
     urls = json.loads(Path(args.urls).read_text(encoding="utf-8")) if args.urls else urls_from_pi()
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))

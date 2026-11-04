@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recordatorios y controles de Franquicia 400 por WhatsApp (WAHA del pi4).
+"""Recordatorios y controles de Franquicia 400 por WhatsApp (WAHA de la VM docker).
 
 Reusa la configuración de WAHA del servicio de avisos de soporte (su .env), igual que
 recordatorio_redes.py de Blackseam. Mensajes lo más cortos posible: sólo la frase para Claude.
@@ -97,7 +97,7 @@ def control(que, ahora, bajar=bajar):
             return pedir(["el sitio no responde, revisalo"])
         problemas = []
         if f'"{hoy}' not in html:
-            problemas.append("el sitio no se actualizó hoy, revisá la pi4")
+            problemas.append("el sitio no se actualizó hoy, revisá la VM docker")
         # Mínimo acordado: 100 productos con los dos precios de hoy (cada uno es un ListItem del JSON-LD de la portada).
         n = html.count('"@type":"ListItem"')
         try:
@@ -107,7 +107,7 @@ def control(que, ahora, bajar=bajar):
         if estado.get("preciosDe") != hoy:
             problemas.append("estado.json no tiene los precios de hoy, revisá el despliegue")
         if estado.get("amazon") is None:
-            problemas.append("Amazon: sin datos del worker, revisá la pi4")
+            problemas.append("Amazon: sin datos del worker, revisá la VM docker")
         if n < MINIMO_PRODUCTOS:
             problemas.append(f"el sitio salió hoy con {n} productos (mínimo {MINIMO_PRODUCTOS}){causa_amazon(bajar)}, recuperá los que faltan")
         # Lo que ve el visitante: tarjetas donde Amazon gana pero no hay envío confirmado (03/11: 25 tarjetas).
@@ -132,7 +132,7 @@ def control(que, ahora, bajar=bajar):
         fechas = [datetime.datetime.fromisoformat(f) for f in re.findall(r'<time[^>]*datetime="([^"]+)"', html)]
         if any(f >= desde for f in fechas):
             return ""
-        return pedir([f"no salió el Telegram de las {hora}, revisá la pi4"])
+        return pedir([f"no salió el Telegram de las {hora}, revisá la VM docker"])
     if que == "reel19":
         # Días de Reel del calendario: mar a jue 19:00 en IG y FB. Se consulta la API oficial de Meta.
         if ahora.weekday() not in (1, 2, 3) or ahora.date() > CALENDARIO_HASTA:
@@ -164,7 +164,7 @@ def control_catalogo(ahora, bajar):
     domingo = ahora.date() - datetime.timedelta(days=1)
     año, semana, _ = domingo.isocalendar()
     if estado.get("week") != f"{año}-W{semana:02d}" or estado.get("status") == "running":
-        return "la búsqueda de productos nuevos del domingo no corrió, revisá la pi4"
+        return "la búsqueda de productos nuevos del domingo no corrió, revisá la VM docker"
     if estado.get("status") == "failed":
         motivos = ", ".join(estado.get("motivos") or []) or "sin detalle"
         return f"la búsqueda del domingo falló ({motivos}, altas={estado.get('added', 0)}), revisala"
