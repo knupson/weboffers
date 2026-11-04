@@ -1,100 +1,188 @@
 {
   "voz": [
-    4.008,
-    7.2,
-    2.832,
-    8.4,
-    5.664,
-    4.848
+    3.288253968253968,
+    8.831473922902495,
+    1.8602267573696145,
+    10.726530612244899,
+    5.961179138321995,
+    3.743673469387755
   ],
   "audio": [
-    "f0.mp3",
-    "f1.mp3",
-    "f2.mp3",
-    "f3.mp3",
-    "f4.mp3",
-    "f5.mp3"
+    "d0.wav",
+    "d1.wav",
+    "d2.wav",
+    "d3.wav",
+    "d4.wav",
+    "d5.wav"
   ],
   "subs": [
-    [],
     [
       [
-        0.05,
-        "Skullcandy Crusher ANC 2"
+        0.0,
+        "Podés pagar más del"
       ],
       [
-        1.3,
-        "$ 869.099 en Mercado Libre"
+        0.953,
+        "doble si comprás este"
       ],
       [
-        3.9,
-        "Traídos de Amazon…"
-      ],
-      [
-        5.0,
-        "unos $ 350.000"
+        2.002,
+        "producto en Mercado Libre."
       ]
     ],
-    [],
     [
       [
-        0.05,
-        "Joystick GameSir G7 SE"
+        0.0,
+        "ASUS RT-BE82U WiFi 7"
       ],
       [
-        1.4,
-        "$ 96.952 en Mercado Libre"
+        1.27,
+        "Router. novecientos veintitrés mil"
       ],
       [
-        3.85,
-        "De Amazon: $ 170.000"
+        3.387,
+        "pesos en Mercado Libre."
       ],
       [
-        6.45,
-        "El envío se come todo"
+        4.839,
+        "Traído de Amazon, unos"
+      ],
+      [
+        6.23,
+        "trescientos veinte mil pesos."
+      ],
+      [
+        8.045,
+        "Gana Amazon."
       ]
     ],
-    [],
-    []
+    [
+      [
+        0.0,
+        "Pero ojo, no siempre"
+      ],
+      [
+        1.149,
+        "gana Amazon."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "Samsung Galaxy Buds 4"
+      ],
+      [
+        1.204,
+        "Pro. trescientos cincuenta mil"
+      ],
+      [
+        2.901,
+        "pesos en Mercado Libre."
+      ],
+      [
+        4.214,
+        "De Amazon, unos cuatrocientos"
+      ],
+      [
+        5.856,
+        "noventa mil pesos. Gana"
+      ],
+      [
+        7.169,
+        "Mercado Libre. Incluso con"
+      ],
+      [
+        8.647,
+        "envío gratis,"
+      ],
+      [
+        9.413,
+        "conviene comprarlo acá."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "La regla: debajo de"
+      ],
+      [
+        1.01,
+        "cien dólares, el envío"
+      ],
+      [
+        2.172,
+        "puede matar el ahorro."
+      ],
+      [
+        3.334,
+        "Desde cien, compará el"
+      ],
+      [
+        4.496,
+        "total con"
+      ],
+      [
+        5.001,
+        "envío e impuestos."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "Comparamos ciento uno productos"
+      ],
+      [
+        1.664,
+        "con los precios de"
+      ],
+      [
+        2.652,
+        "hoy. Link"
+      ],
+      [
+        3.172,
+        "en la bio."
+      ]
+    ]
   ],
   "duelos": [
     {
-      "img": "skullcandy-crusher-anc-2.webp",
-      "nombre": "Skullcandy Crusher ANC 2",
-      "ml": 869099,
-      "az": 350000,
+      "img": "asus-rt-be82u.webp",
+      "nombre": "ASUS RT-BE82U WiFi 7 Router",
+      "ml": 923399,
+      "az": 320000,
+      "gana": "amazon",
       "mlAt": [
-        1.3,
-        2.9
+        1.4130358276643993,
+        3.179330612244898
       ],
       "azAt": [
-        5.0,
-        6.3
+        4.680681179138323,
+        6.446975963718821
       ],
-      "gana": "amazon",
-      "ganaAt": 6.5,
-      "nota": "Te ahorrás ~$ 520.000"
+      "ganaAt": 7.330123356009071,
+      "nota": "Te ahorrás ~$ 603.399"
     },
     {
-      "img": "gamesir-g7-2.webp",
-      "nombre": "Joystick GameSir G7 SE",
-      "ml": 96952,
-      "az": 170000,
+      "img": "samsung-galaxy-buds-4-pro.webp",
+      "nombre": "Samsung Galaxy Buds 4 Pro",
+      "ml": 350000,
+      "az": 490000,
+      "gana": "ml",
       "mlAt": [
-        1.4,
-        2.8
+        1.7162448979591838,
+        3.8615510204081636
       ],
       "azAt": [
-        4.7,
-        5.7
+        5.685061224489797,
+        7.830367346938776
       ],
-      "gana": "ml",
-      "ganaAt": 6.45,
-      "nota": "El envío se come la diferencia"
+      "ganaAt": 8.903020408163265,
+      "nota": "Conviene comprarlo acá"
     }
   ],
-  "hookImage": "skullcandy-crusher-anc-2.webp",
-  "cantidad": 97,
+  "hookImage": "asus-rt-be82u.webp",
+  "cantidad": 101,
   "textos": {
     "marca": "Franquicia 400",
     "gancho": [
@@ -102,7 +190,7 @@
       "MÁS DEL",
       "DOBLE"
     ],
-    "ganchoSub": "si los comprás en Mercado Libre",
+    "ganchoSub": "si lo comprás en Mercado Libre",
     "giro": [
       "PERO OJO",
       "NO SIEMPRE",
@@ -112,11 +200,11 @@
     "tarjetas": [
       {
         "titulo": "MENOS DE USD 100",
-        "sub": "Comprá en Mercado Libre: el envío desde EE.UU. te mata."
+        "sub": "El envío puede comerse el ahorro. Compará el total."
       },
       {
-        "titulo": "MÁS DE USD 100",
-        "sub": "Compará: Amazon manda gratis y puede salir mucho menos."
+        "titulo": "DESDE USD 100",
+        "sub": "En productos elegibles, el envío es gratis. Compará."
       }
     ],
     "cierre": [
@@ -130,6 +218,6 @@
     "amazon": "Amazon (EE.UU.)",
     "selloMl": "GANA\nMERCADO\nLIBRE",
     "selloAmazon": "GANA\nAMAZON",
-    "pie": "Precios del 01/11/2026 · Amazon: estimado con envío e impuestos"
+    "pie": "Precios del 04/11/2026 · Amazon: estimado con envío e impuestos"
   }
 }
