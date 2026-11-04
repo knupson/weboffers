@@ -55,7 +55,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA2114757283?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 724825,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/beelink-mini-s12-pro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_931323-CBT113780779241_062026-F.jpg"
   },
   {
     "asin": "B0BHJF2VRN",
@@ -178,7 +180,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA21012297?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 639999,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/samsung-odyssey-g5-27-lc27g55t.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_908540-MPE48146795628_112021-F.jpg"
   },
   {
     "asin": "B0874XN4D8",
@@ -218,7 +222,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA54098740?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 1066119,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/crucial-p3-plus-1tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_703218-MLA99978261637_112025-F.jpg"
   },
   {
     "asin": "B0B2943QSJ",
@@ -234,7 +240,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA2033036768?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 891543,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/beelink-ser5-5560u.webp",
+    "imageSource": "https://http2.mlstatic.com/D_663866-CBT81579751953_122024-F.jpg"
   },
   {
     "asin": "B0CFPJYX7P",
@@ -260,7 +268,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA2044349585?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 213406,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/amazon-fire-hd-10-2023-32gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_827374-CBT87221188503_072025-F.jpg"
   },
   {
     "asin": "B09HM94VDS",
@@ -650,7 +660,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA15261608?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 192859,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/krups-nespresso-essenza-mini-xn1101-blanca.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_703068-MLA99480291462_112025-F.jpg"
   },
   {
     "asin": "B07GJY9KH9",
@@ -815,7 +827,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA2097352700?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 701498,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/roborock-q7-m5-2-en-1.webp",
+    "imageSource": "https://http2.mlstatic.com/D_941847-MLA88128272719_072025-F.jpg"
   },
   {
     "asin": "B0CGKHGMW5",
@@ -1325,7 +1339,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA2116296946?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 1036121,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/asrock-rx-7600-challenger-pro-8gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_738338-CBT116424448358_092026-F.jpg"
   },
   {
     "asin": "B0DQYM2MHX",
@@ -1345,7 +1361,9 @@
       "url": "https://www.mercadolibre.com.ar/p/MLA46446806?matt_word=ale_benzoni&matt_tool=58527537",
       "price": 679999,
       "checked": "2026-11-03"
-    }
+    },
+    "image": "/products/asrock-arc-b570-challenger-10gb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_657316-MLA99523995646_122025-F.jpg"
   },
   {
     "asin": "B0BBJDS62N",
@@ -4485,5 +4503,863 @@
       "freeShipping": false,
       "checked": "2026-11-03"
     }
+  },
+  {
+    "asin": "B09DVRBNWV",
+    "store": "US",
+    "slug": "wd-green-sn350-2tb",
+    "name": "WD Green SN350 2TB NVMe",
+    "brand": "Western Digital",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe M.2 2280 de 2 TB para sumar espacio rápido a la PC o notebook.",
+    "verified": true,
+    "ml": {
+      "price": 479330,
+      "url": "https://www.mercadolibre.com.ar/p/MLA19713197?pdp_filters=item_id%3AMLA1549732603&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA19713197"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/wd-green-sn350-2tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_794249-MLA99469888652_112025-F.jpg"
+  },
+  {
+    "asin": "B092CB69Q4",
+    "store": "US",
+    "slug": "logitech-g502-x-plus-negro",
+    "name": "Logitech G502 X Plus negro",
+    "brand": "Logitech",
+    "category": "Periféricos",
+    "summary": "Mouse gamer inalámbrico Lightspeed con luces RGB, switches híbridos y sensor HERO 25K.",
+    "verified": true,
+    "ml": {
+      "price": 298798,
+      "url": "https://www.mercadolibre.com.ar/p/MLA64182237?pdp_filters=item_id%3AMLA3798607680&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA64182237"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/logitech-g502-x-plus-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_919788-MLA104543242239_012026-F.jpg"
+  },
+  {
+    "asin": "B092CRH1RX",
+    "store": "US",
+    "slug": "logitech-g502-x-lightspeed-negro",
+    "name": "Logitech G502 X Lightspeed negro",
+    "brand": "Logitech",
+    "category": "Periféricos",
+    "summary": "Mouse gamer inalámbrico Lightspeed con switches híbridos y sensor HERO 25K.",
+    "verified": true,
+    "ml": {
+      "price": 470789,
+      "url": "https://www.mercadolibre.com.ar/p/MLA22366999?pdp_filters=item_id%3AMLA3416974654&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA22366999"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/logitech-g502-x-lightspeed-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_808800-MLA51721504986_092022-F.jpg"
+  },
+  {
+    "asin": "B0DB1XBRBK",
+    "store": "US",
+    "slug": "logitech-g915-x-lightspeed-clicky",
+    "name": "Logitech G915 X Lightspeed Clicky",
+    "brand": "Logitech",
+    "category": "Periféricos",
+    "summary": "Teclado mecánico gamer inalámbrico de perfil bajo, con switches clicky y luces RGB.",
+    "verified": true,
+    "ml": {
+      "price": 349990,
+      "url": "https://www.mercadolibre.com.ar/p/MLA43105424?pdp_filters=item_id%3AMLA4019053878&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA43105424"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/logitech-g915-x-lightspeed-clicky.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_691004-MLA100000152437_112025-F.jpg"
+  },
+  {
+    "asin": "B0D6T9CRLT",
+    "store": "US",
+    "slug": "samsung-galaxy-buds3-pro",
+    "name": "Samsung Galaxy Buds3 Pro",
+    "brand": "Samsung",
+    "category": "Audio y video",
+    "summary": "Auriculares in-ear inalámbricos con cancelación de ruido activa y resistencia al agua.",
+    "verified": true,
+    "ml": {
+      "price": 306199,
+      "url": "https://www.mercadolibre.com.ar/p/MLA38451794?pdp_filters=item_id%3AMLA2145315673&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA38451794"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/samsung-galaxy-buds3-pro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_652688-MLA96099645533_102025-F.jpg"
+  },
+  {
+    "asin": "B0BBYF2SXX",
+    "store": "US",
+    "slug": "marshall-acton-iii-crema",
+    "name": "Marshall Acton III crema",
+    "brand": "Marshall",
+    "category": "Audio y video",
+    "summary": "Parlante Bluetooth de escritorio para la casa, con perillas de graves y agudos.",
+    "verified": true,
+    "ml": {
+      "price": 650000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA23403252?pdp_filters=item_id%3AMLA3676956262&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA23403252"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/marshall-acton-iii-crema.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_751983-MLA99949464375_112025-F.jpg"
+  },
+  {
+    "asin": "B0BTHL673V",
+    "store": "US",
+    "slug": "marshall-middleton",
+    "name": "Marshall Middleton",
+    "brand": "Marshall",
+    "category": "Audio y video",
+    "summary": "Parlante Bluetooth portátil resistente al agua y al polvo, con más de 20 horas de batería.",
+    "verified": true,
+    "ml": {
+      "price": 1243800,
+      "url": "https://www.mercadolibre.com.ar/p/MLA44710755?pdp_filters=item_id%3AMLA4013383274&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA44710755"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/marshall-middleton.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_751297-MLU74074040962_012024-F.jpg"
+  },
+  {
+    "asin": "B0GXH3N61Z",
+    "store": "US",
+    "slug": "marshall-emberton-iii-negro",
+    "name": "Marshall Emberton III negro",
+    "brand": "Marshall",
+    "category": "Audio y video",
+    "summary": "Parlante Bluetooth portátil y resistente al agua, con más de 30 horas de batería.",
+    "verified": true,
+    "ml": {
+      "price": 373023,
+      "url": "https://www.mercadolibre.com.ar/p/MLA79723978?pdp_filters=item_id%3AMLA4136838854&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA79723978"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/marshall-emberton-iii-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_936666-MLA118023267385_092026-F.jpg"
+  },
+  {
+    "asin": "B0FNBLG4SB",
+    "store": "US",
+    "slug": "razer-kiyo-v2-negro",
+    "name": "Razer Kiyo V2 negra",
+    "brand": "Razer",
+    "category": "Periféricos",
+    "summary": "Webcam 4K a 30 fps con autoenfoque, pensada para streaming y videollamadas.",
+    "verified": true,
+    "ml": {
+      "price": 380317,
+      "url": "https://www.mercadolibre.com.ar/p/MLA70362182?pdp_filters=item_id%3AMLA3435790960&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA70362182"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/razer-kiyo-v2-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_776985-MLA111286797952_052026-F.jpg"
+  },
+  {
+    "asin": "B09BZZCGC8",
+    "store": "US",
+    "slug": "shure-mv7x",
+    "name": "Shure MV7X",
+    "brand": "Shure",
+    "category": "Audio y video",
+    "summary": "Micrófono dinámico XLR para podcast, streaming y voz, de patrón cardioide.",
+    "verified": true,
+    "ml": {
+      "price": 380000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA19569070?pdp_filters=item_id%3AMLA4156807138&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA19569070"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/shure-mv7x.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_827992-MLA99859947995_112025-F.jpg"
+  },
+  {
+    "asin": "B0H485TLR3",
+    "store": "US",
+    "slug": "razer-seiren-v3-chroma-negro",
+    "name": "Razer Seiren V3 Chroma negro",
+    "brand": "Razer",
+    "category": "Audio y video",
+    "summary": "Micrófono USB-C supercardioide con luces RGB, para streaming y juego.",
+    "verified": true,
+    "ml": {
+      "price": 200790,
+      "url": "https://www.mercadolibre.com.ar/p/MLA34266599?pdp_filters=item_id%3AMLA2341290318&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA34266599"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/razer-seiren-v3-chroma-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_923792-MLA99979668799_112025-F.jpg"
+  },
+  {
+    "asin": "B0BZBZK4DS",
+    "store": "US",
+    "slug": "logitech-g-yeti-gx",
+    "name": "Logitech G Yeti GX",
+    "brand": "Logitech",
+    "category": "Audio y video",
+    "summary": "Micrófono dinámico USB con luces RGB, para streaming, juego y podcast.",
+    "verified": true,
+    "ml": {
+      "price": 244929,
+      "url": "https://www.mercadolibre.com.ar/p/MLA37155308?pdp_filters=item_id%3AMLA1861035530&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA37155308"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/logitech-g-yeti-gx.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_956047-MLA99464277432_112025-F.jpg"
+  },
+  {
+    "asin": "B0CTK1SFVD",
+    "store": "US",
+    "slug": "msi-rtx-3050-ventus-2x-6g-oc",
+    "name": "MSI GeForce RTX 3050 Ventus 2X 6G OC",
+    "brand": "MSI",
+    "category": "Componentes",
+    "summary": "Placa de video RTX 3050 de 6 GB GDDR6 con doble ventilador, para jugar en Full HD.",
+    "verified": true,
+    "ml": {
+      "price": 449000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA40164061?pdp_filters=item_id%3AMLA3924404632&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA40164061"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/msi-rtx-3050-ventus-2x-6g-oc.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_607507-MLU78890915369_092024-F.jpg"
+  },
+  {
+    "asin": "B0CB8JJR7F",
+    "store": "US",
+    "slug": "acer-predator-gm7-2tb",
+    "name": "Acer Predator GM7 2TB NVMe",
+    "brand": "Acer",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe M.2 2280 PCIe 4.0 de 2 TB para PC gamer o PS5.",
+    "verified": true,
+    "ml": {
+      "price": 1249182,
+      "url": "https://www.mercadolibre.com.ar/p/MLA27422674?pdp_filters=item_id%3AMLA2216798039&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA27422674"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/acer-predator-gm7-2tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_957168-MLU73692333259_122023-F.jpg"
+  },
+  {
+    "asin": "B0DHLCRF91",
+    "store": "US",
+    "slug": "samsung-990-evo-plus-2tb",
+    "name": "Samsung 990 EVO Plus 2TB",
+    "brand": "Samsung",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe M.2 2280 de 2 TB, compatible con PCIe 4.0 y 5.0, de hasta 7.250 MB/s.",
+    "verified": true,
+    "ml": {
+      "price": 699999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA45711162?pdp_filters=item_id%3AMLA3030793390&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA45711162"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/samsung-990-evo-plus-2tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_868177-MLA99583734080_122025-F.jpg"
+  },
+  {
+    "asin": "B0DHLFWBQ1",
+    "store": "US",
+    "slug": "samsung-990-evo-plus-1tb",
+    "name": "Samsung 990 EVO Plus 1TB",
+    "brand": "Samsung",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe M.2 2280 de 1 TB, compatible con PCIe 4.0 y 5.0, de hasta 7.150 MB/s.",
+    "verified": true,
+    "ml": {
+      "price": 531649,
+      "url": "https://www.mercadolibre.com.ar/p/MLA63058691?pdp_filters=item_id%3AMLA3738092128&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA63058691"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/samsung-990-evo-plus-1tb.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_690672-MLA101021622565_122025-F.jpg"
+  },
+  {
+    "asin": "B0D61SDZD2",
+    "store": "US",
+    "slug": "crucial-p310-2tb-2230",
+    "name": "Crucial P310 2TB M.2 2230",
+    "brand": "Crucial",
+    "category": "Almacenamiento",
+    "summary": "SSD NVMe M.2 2230 de 2 TB, ideal para Steam Deck, ROG Ally o notebooks chicas.",
+    "verified": true,
+    "ml": {
+      "price": 1269899,
+      "url": "https://www.mercadolibre.com.ar/p/MLA43944105?pdp_filters=item_id%3AMLA2492015790&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA43944105"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/crucial-p310-2tb-2230.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_885631-MLA100067540167_122025-F.jpg"
+  },
+  {
+    "asin": "B0DG837JYP",
+    "store": "US",
+    "slug": "razer-basilisk-v3-pro-35k-negro",
+    "name": "Razer Basilisk V3 Pro 35K negro",
+    "brand": "Razer",
+    "category": "Periféricos",
+    "summary": "Mouse gamer inalámbrico con sensor de 35.000 DPI, rueda inteligente y luces Chroma.",
+    "verified": true,
+    "ml": {
+      "price": 235999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA47272080?pdp_filters=item_id%3AMLA3286891960&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA47272080"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/razer-basilisk-v3-pro-35k-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_781465-MLA95662462210_102025-F.jpg"
+  },
+  {
+    "asin": "B0F3QDLZKG",
+    "store": "US",
+    "slug": "razer-blackshark-v3-pro-negro",
+    "name": "Razer BlackShark V3 Pro negro",
+    "brand": "Razer",
+    "category": "Audio y video",
+    "summary": "Auriculares gamer inalámbricos con cancelación de ruido activa, para PC y consolas.",
+    "verified": true,
+    "ml": {
+      "price": 640555,
+      "url": "https://www.mercadolibre.com.ar/p/MLA61673240?pdp_filters=item_id%3AMLA2201484487&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA61673240"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/razer-blackshark-v3-pro-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_866534-MLA97349476181_112025-F.jpg"
+  },
+  {
+    "asin": "B0F66XD5LF",
+    "store": "US",
+    "slug": "nothing-headphone-1",
+    "name": "Nothing Headphone (1)",
+    "brand": "Nothing",
+    "category": "Audio y video",
+    "summary": "Auriculares vincha inalámbricos con cancelación de ruido activa y audio de alta resolución.",
+    "verified": true,
+    "ml": {
+      "price": 1243469,
+      "url": "https://www.mercadolibre.com.ar/p/MLA52623869?pdp_filters=item_id%3AMLA2712008150&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA52623869"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/nothing-headphone-1.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_819727-MLA87776707674_072025-F.jpg"
+  },
+  {
+    "asin": "B0F3PQHWTZ",
+    "store": "US",
+    "slug": "sony-wh-1000xm6-negro",
+    "name": "Sony WH-1000XM6",
+    "brand": "Sony",
+    "category": "Audio y video",
+    "summary": "Auriculares vincha inalámbricos de Sony con su mejor cancelación de ruido.",
+    "verified": true,
+    "ml": {
+      "price": 708799,
+      "url": "https://www.mercadolibre.com.ar/p/MLA65869913?pdp_filters=item_id%3AMLA3221099962&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA65869913"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/sony-wh-1000xm6-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_640121-MLA106797872006_022026-F.jpg"
+  },
+  {
+    "asin": "B0D3629RB6",
+    "store": "US",
+    "slug": "jbl-live-beam-3",
+    "name": "JBL Live Beam 3",
+    "brand": "JBL",
+    "category": "Audio y video",
+    "summary": "Auriculares in-ear inalámbricos con cancelación de ruido y estuche con pantalla táctil.",
+    "verified": true,
+    "ml": {
+      "price": 425999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA39458958?pdp_filters=item_id%3AMLA1847115117&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA39458958"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/jbl-live-beam-3.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_975358-MLA99561705912_122025-F.jpg"
+  },
+  {
+    "asin": "B0DDTH3HX8",
+    "store": "US",
+    "slug": "insta360-link-2",
+    "name": "Insta360 Link 2",
+    "brand": "Insta360",
+    "category": "Periféricos",
+    "summary": "Webcam 4K con cabezal motorizado que te sigue con IA, para streaming y reuniones.",
+    "verified": true,
+    "ml": {
+      "price": 496850,
+      "url": "https://www.mercadolibre.com.ar/p/MLA64206257?pdp_filters=item_id%3AMLA1642848469&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA64206257"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/insta360-link-2.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_928222-MLA104644237779_012026-F.jpg"
+  },
+  {
+    "asin": "B0DDTGY8FG",
+    "store": "US",
+    "slug": "insta360-link-2c",
+    "name": "Insta360 Link 2C",
+    "brand": "Insta360",
+    "category": "Periféricos",
+    "summary": "Webcam 4K con encuadre automático por IA y sensor de 1/2 pulgada.",
+    "verified": true,
+    "ml": {
+      "price": 452751,
+      "url": "https://www.mercadolibre.com.ar/p/MLA51171451?pdp_filters=item_id%3AMLA3982901484&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA51171451"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/insta360-link-2c.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_628464-MLA99941476907_112025-F.jpg"
+  },
+  {
+    "asin": "B0B823S1NR",
+    "store": "US",
+    "slug": "audio-technica-at2020usb-x",
+    "name": "Audio-Technica AT2020USB-X",
+    "brand": "Audio-Technica",
+    "category": "Audio y video",
+    "summary": "Micrófono condensador USB-C cardioide, para grabar voz, streaming y podcast.",
+    "verified": true,
+    "ml": {
+      "price": 472227,
+      "url": "https://www.mercadolibre.com.ar/p/MLA29241176?pdp_filters=item_id%3AMLA1413803663&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA29241176"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/audio-technica-at2020usb-x.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_861421-MLA99384702332_112025-F.jpg"
+  },
+  {
+    "asin": "B00B5ZX9FM",
+    "store": "US",
+    "slug": "audio-technica-at2020usb-plus",
+    "name": "Audio-Technica AT2020USB+",
+    "brand": "Audio-Technica",
+    "category": "Audio y video",
+    "summary": "Micrófono condensador USB cardioide con salida de auriculares, para grabar en casa.",
+    "verified": true,
+    "ml": {
+      "price": 385871,
+      "url": "https://www.mercadolibre.com.ar/p/MLA15706162?pdp_filters=item_id%3AMLA910420782&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA15706162"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/audio-technica-at2020usb-plus.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_717151-MLA99476072622_112025-F.jpg"
+  },
+  {
+    "asin": "B0H1DW8HXQ",
+    "store": "US",
+    "slug": "razer-seiren-v3-pro-negro",
+    "name": "Razer Seiren V3 Pro negro",
+    "brand": "Razer",
+    "category": "Audio y video",
+    "summary": "Micrófono dinámico USB-C y XLR con eliminación de ruido por IA y luces RGB.",
+    "verified": true,
+    "ml": {
+      "price": 457502,
+      "url": "https://www.mercadolibre.com.ar/p/MLA76153524?pdp_filters=item_id%3AMLA3706569292&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA76153524"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/razer-seiren-v3-pro-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_880973-MLA114077140578_072026-F.jpg"
+  },
+  {
+    "asin": "B0CBNTXNWV",
+    "store": "US",
+    "slug": "steelseries-alias",
+    "name": "SteelSeries Alias",
+    "brand": "SteelSeries",
+    "category": "Audio y video",
+    "summary": "Micrófono condensador USB para streaming y juego, con cápsula grande y luz de silencio.",
+    "verified": true,
+    "ml": {
+      "price": 550999,
+      "url": "https://www.mercadolibre.com.ar/p/MLA30275756?pdp_filters=item_id%3AMLA1840885622&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA30275756"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/steelseries-alias.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_832610-MLA99936612015_112025-F.jpg"
+  },
+  {
+    "asin": "B0002E4Z8M",
+    "store": "US",
+    "slug": "shure-sm7b",
+    "name": "Shure SM7B",
+    "brand": "Shure",
+    "category": "Audio y video",
+    "summary": "Micrófono dinámico XLR de estudio, el clásico de podcast, radio y voz.",
+    "verified": true,
+    "ml": {
+      "price": 700000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA75913436?pdp_filters=item_id%3AMLA2154258627&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA75913436"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/shure-sm7b.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_626539-MLA113989259522_072026-F.jpg"
+  },
+  {
+    "asin": "B083TZ68H1",
+    "store": "US",
+    "slug": "gigabyte-b650-eagle-ax",
+    "name": "Gigabyte B650 Eagle AX",
+    "brand": "Gigabyte",
+    "category": "Componentes",
+    "summary": "Motherboard ATX para AMD AM5 con DDR5, Wi-Fi 6E y tres ranuras M.2.",
+    "verified": true,
+    "ml": {
+      "price": 378776,
+      "url": "https://www.mercadolibre.com.ar/p/MLA37631692?pdp_filters=item_id%3AMLA2060325178&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA37631692"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/gigabyte-b650-eagle-ax.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_806930-MLA99472261314_112025-F.jpg"
+  },
+  {
+    "asin": "B0DGB8Q19Y",
+    "store": "US",
+    "slug": "asus-tuf-gaming-x870-plus-wifi",
+    "name": "ASUS TUF Gaming X870-PLUS WiFi",
+    "brand": "ASUS",
+    "category": "Componentes",
+    "summary": "Motherboard ATX para AMD AM5 con chipset X870, DDR5 y Wi-Fi 7.",
+    "verified": true,
+    "ml": {
+      "price": 619315,
+      "url": "https://www.mercadolibre.com.ar/p/MLA44426190?pdp_filters=item_id%3AMLA2246587561&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA44426190"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/asus-tuf-gaming-x870-plus-wifi.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_696812-MLA99514782214_112025-F.jpg"
+  },
+  {
+    "asin": "B0DPLPLR88",
+    "store": "US",
+    "slug": "asus-tuf-gaming-b850-plus-wifi",
+    "name": "ASUS TUF Gaming B850-PLUS WiFi",
+    "brand": "ASUS",
+    "category": "Componentes",
+    "summary": "Motherboard ATX para AMD AM5 con chipset B850, DDR5 y Wi-Fi 7.",
+    "verified": true,
+    "ml": {
+      "price": 658260,
+      "url": "https://www.mercadolibre.com.ar/p/MLA45581039?pdp_filters=item_id%3AMLA4079993582&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA45581039"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/asus-tuf-gaming-b850-plus-wifi.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_991741-MLA99983323551_112025-F.jpg"
+  },
+  {
+    "asin": "B0DF12WKQY",
+    "store": "US",
+    "slug": "asus-rog-strix-x870-a-gaming-wifi",
+    "name": "ASUS ROG Strix X870-A Gaming WiFi",
+    "brand": "ASUS",
+    "category": "Componentes",
+    "summary": "Motherboard ATX para AMD AM5 con chipset X870, DDR5 y Wi-Fi 7, en blanco.",
+    "verified": true,
+    "ml": {
+      "price": 672274,
+      "url": "https://www.mercadolibre.com.ar/p/MLA44316192?pdp_filters=item_id%3AMLA3075209496&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA44316192"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/asus-rog-strix-x870-a-gaming-wifi.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_651700-MLA100041207273_122025-F.jpg"
+  },
+  {
+    "asin": "B0DQLHLVLK",
+    "store": "US",
+    "slug": "gigabyte-b850m-gaming-x-wifi6e",
+    "name": "Gigabyte B850M Gaming X WIFI6E",
+    "brand": "Gigabyte",
+    "category": "Componentes",
+    "summary": "Motherboard micro-ATX para AMD AM5 con chipset B850, DDR5 y Wi-Fi 6E.",
+    "verified": true,
+    "ml": {
+      "price": 346858,
+      "url": "https://www.mercadolibre.com.ar/p/MLA79085956?pdp_filters=item_id%3AMLA2237281327&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA79085956"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/gigabyte-b850m-gaming-x-wifi6e.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_800236-MLA117368352679_092026-F.jpg"
+  },
+  {
+    "asin": "B0D55SWRSM",
+    "store": "US",
+    "slug": "asus-rt-be88u",
+    "name": "ASUS RT-BE88U",
+    "brand": "ASUS",
+    "category": "Redes",
+    "summary": "Router Wi-Fi 7 de doble banda con dos puertos de 10 Gbps y compatible con AiMesh.",
+    "verified": true,
+    "ml": {
+      "price": 1581000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA54239464?pdp_filters=item_id%3AMLA1882763355&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA54239464"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/asus-rt-be88u.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_754057-MLA90928066130_082025-F.jpg"
+  },
+  {
+    "asin": "B0G36827DR",
+    "store": "US",
+    "slug": "asus-rog-raikiri-ii-xbox",
+    "name": "ASUS ROG Raikiri II para Xbox",
+    "brand": "ASUS",
+    "category": "Gaming",
+    "summary": "Joystick inalámbrico con licencia oficial de Xbox, para Xbox Series y PC.",
+    "verified": true,
+    "ml": {
+      "price": 408955,
+      "url": "https://www.mercadolibre.com.ar/p/MLA81095731?pdp_filters=item_id%3AMLA2242751175&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA81095731"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/asus-rog-raikiri-ii-xbox.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_882583-MLA120318153077_102026-F.jpg"
+  },
+  {
+    "asin": "B0FNDGHM92",
+    "store": "US",
+    "slug": "razer-raiju-v3-pro-negro",
+    "name": "Razer Raiju V3 Pro negro",
+    "brand": "Razer",
+    "category": "Gaming",
+    "summary": "Joystick inalámbrico para PS5 y PC, con botones traseros y gatillos ajustables.",
+    "verified": true,
+    "ml": {
+      "price": 487776,
+      "url": "https://www.mercadolibre.com.ar/p/MLA65091791?pdp_filters=item_id%3AMLA2196613651&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA65091791"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/razer-raiju-v3-pro-negro.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_714370-MLA105584824274_012026-F.jpg"
+  },
+  {
+    "asin": "B0CXJDDJ9X",
+    "store": "US",
+    "slug": "dji-mini-4k",
+    "name": "DJI Mini 4K",
+    "brand": "DJI",
+    "category": "Cámaras",
+    "summary": "Drone de menos de 249 g con cámara 4K, estabilizador de 3 ejes y control remoto incluido.",
+    "verified": true,
+    "ml": {
+      "price": 950000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA51960147?pdp_filters=item_id%3AMLA1564718819&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA51960147"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/dji-mini-4k.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_610147-MLA99931973243_112025-F.jpg"
+  },
+  {
+    "asin": "B0DGQVB7GH",
+    "store": "US",
+    "slug": "tp-link-archer-be700",
+    "name": "TP-Link Archer BE700",
+    "brand": "TP-Link",
+    "category": "Redes",
+    "summary": "Router Wi-Fi 7 tribanda BE15000 con puerto de 10 Gbps, para casas grandes.",
+    "verified": true,
+    "ml": {
+      "price": 490000,
+      "url": "https://www.mercadolibre.com.ar/p/MLA55811820?pdp_filters=item_id%3AMLA1937827309&matt_word=ale_benzoni&matt_tool=58527537",
+      "checked": "2026-11-04",
+      "catalogId": "MLA55811820"
+    },
+    "shipsToAr": {
+      "freeShipping": true,
+      "checked": "2026-11-04"
+    },
+    "image": "/products/tp-link-archer-be700.webp",
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_761279-MLA99536189834_122025-F.jpg"
   }
 ]
