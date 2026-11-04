@@ -9,9 +9,8 @@ import { isComparable, loadProducts } from "../lib/data";
 
 const { products, offers } = await loadProducts();
 const shown = products.filter((p) => isComparable(p));
-// Lo más vendido de Mercado Libre va en su sección; el resto, en el catálogo de abajo.
+// Lo más vendido de Mercado Libre va en su sección y también en el catálogo de abajo, para que no se pierda al scrollear o filtrar.
 const hot = shown.filter((p) => p.hot);
-const rest = shown.filter((p) => !p.hot);
 const stamp = offers.rates ? `de las ${new Date(offers.rates.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" })}` : "de hoy";
 
 // Categorías con productos van al catálogo; las demás, directo a una búsqueda en Amazon.
@@ -93,7 +92,7 @@ const cats = [
         <h2 class="letra">Dónde conviene cada uno</h2>
         <p>Precio en pesos de Mercado Libre y el veredicto contra el total de Amazon con envío e impuestos.</p>
       </div>
-      <Catalog products={rest} />
+      <Catalog products={shown} />
     </div>
   </section>
 
