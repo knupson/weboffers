@@ -29,7 +29,8 @@ services:
   weboffers-amazon-scraper:
     build: https://github.com/omkarcloud/amazon-scraper.git#8ffd4f976c705d009ec06d8e4e3e15fc77e35cee
     restart: unless-stopped
-    mem_limit: 256m
+    # 05/11: con 256m el kernel lo mató 3 veces (OOM a ~259 MB); en reposo usa ~150 MB. VM con 8,7 GB libres.
+    mem_limit: 512m
 
   weboffers-amazon-ar:
     build: ./amazon-ar
