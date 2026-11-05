@@ -11,6 +11,10 @@ sys.path.insert(0, "/app/worker")
 import catalog_auto  # noqa: E402
 import rates  # noqa: E402
 import worker  # noqa: E402  (redirige la salida al log diario persistente)
+import amazon_prices  # noqa: E402
+
+# Pausa entre páginas de Amazon para esta corrida (s). Medido 05/11: 1.095 consultas sin pausa en 14 min, 0 cortes.
+amazon_prices.PAUSE_SECONDS = float(os.getenv("CRECER_PAUSA_S", "5"))
 
 out = Path("/app/output")
 sys.stdout = worker.DailyLog(out / "logs", sys.stdout)
