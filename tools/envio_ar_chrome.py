@@ -22,6 +22,10 @@ import websockets
 CDP = "http://127.0.0.1:9222"
 TIMEOUT_PRODUCTO = 30
 ESPERA_CARGA = 4
+RECICLAR_CADA = 10  # pestaña nueva cada N productos: libera memoria (05/11 el kernel mató un Chrome por OOM con 3 GB)
+# Para leer el texto de envío no hacen falta imágenes, videos ni fuentes: se bloquean para bajar memoria y tráfico.
+BLOQUEADOS = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.avif", "*.svg", "*.mp4", "*.webm", "*.m3u8",
+              "*.woff", "*.woff2", "*.ttf", "*images-amazon.com/images/I/*", "*m.media-amazon.com/images/*"]
 
 LEER = r"""(() => {const t=document.body.innerText;
 return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||{}).innerText||'').replace(/\s+/g,' '),
@@ -74,6 +78,8 @@ async def nueva_pestana(c, ctx):
     tid = (await c.call("Target.createTarget", {"url": "about:blank", "browserContextId": ctx}))["targetId"]
     s = (await c.call("Target.attachToTarget", {"targetId": tid, "flatten": True}))["sessionId"]
     await c.call("Page.enable", {}, s)
+    await c.call("Network.enable", {}, s)
+    await c.call("Network.setBlockedURLs", {"urls": BLOQUEADOS}, s)
     return tid, s
 
 
@@ -93,7 +99,13 @@ async def main(asins):
         ctx = (await c.call("Target.createBrowserContext", {"disposeOnDetach": True}))["browserContextId"]
         tid, s = await nueva_pestana(c, ctx)
         try:
-            for asin in asins:
+            for n, asin in enumerate(asins):
+                if n and n % RECICLAR_CADA == 0:
+                    try:
+                        await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    tid, s = await nueva_pestana(c, ctx)
                 try:
                     items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin), TIMEOUT_PRODUCTO + ESPERA_CARGA + 5))
                 except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
