@@ -106,6 +106,18 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
         if "DEPLOY_FAIL" in linea:
             problemas["deploy:" + linea[25:90]] = f"el despliegue falló: {linea[25:180]}"
 
+    if (ahora.hour, ahora.minute) >= (4, 30):
+        # Relevamiento del envío AR con Chrome (cron 03:30): sin él, los envíos no se confirman (REGLA 0).
+        try:
+            envio = leer(WORKER, f"/app/output/ar-chrome-{hoy}.json")
+        except Exception:  # noqa: BLE001
+            envio = None
+        items = (envio or {}).get("items") or {}
+        if not items:
+            problemas["envio-chrome"] = "no corrió el relevamiento del envío a Argentina con Chrome (cron 03:30)"
+        elif sum(1 for x in items.values() if isinstance(x, dict) and x.get("ships") is True) == 0:
+            problemas["envio-chrome-cero"] = f"el relevamiento con Chrome no confirmó ningún envío ({len(items)} productos)"
+
     if (ahora.hour, ahora.minute) >= (7, 30):
         for nombre in ("ml-prices.json", "amazon-prices.json"):
             try:

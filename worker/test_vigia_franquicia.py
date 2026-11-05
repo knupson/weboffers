@@ -17,6 +17,8 @@ def fake_sh(ps=TODOS, deployer=""):
 
 
 def leer_ok(contenedor, ruta):
+    if "ar-chrome" in ruta:
+        return {"items": {"B1": {"ships": True, "free": True}}}
     return {"date": "2026-11-05"}
 
 
@@ -112,3 +114,9 @@ def test_un_chequeo_que_explota_se_reporta(tmp_path):
     log(tmp_path, "09:16:05 ok")
     p = correr(tmp_path, leer=roto, bajar=lambda u: (_ for _ in ()).throw(RuntimeError("x")))
     assert "fresco:ml-prices.json" in p and "sitio-caido" in p
+
+
+def test_avisa_si_no_corrio_el_relevamiento_con_chrome(tmp_path):
+    log(tmp_path, "09:16:05 ok")
+    p = correr(tmp_path, leer=lambda c, r: None if "ar-chrome" in r else {"date": "2026-11-05"})
+    assert "envio-chrome" in p
