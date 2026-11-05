@@ -95,7 +95,9 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
             asin = item["asin"].strip()
             vistos_asin.add(asin)
             out.append({"asin": asin, "store": "US", "amazonTitle": (item.get("title") or "").strip(),
-                        "brand": discovery.infer_brand(item), "amazonCategory": f"ml:{productos[pid]}",
+                        # 05/11: la categoría sale del título de Amazon (match_candidates.category_for reconoce sus
+                        # palabras); con "ml:<id>" todos quedaban «dudosos: categoría» y no entraba ninguno.
+                        "brand": discovery.infer_brand(item), "amazonCategory": (item.get("title") or "").strip(),
                         "amazonPriceUsd": discovery.extract_price_usd(item),
                         "ml": [{"catalogId": pid, "name": nombre, "minPrice": precio, "itemId": item_id}]})
         if n % 25 == 0:

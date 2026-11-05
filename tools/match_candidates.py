@@ -248,6 +248,11 @@ def evaluate(amazon, candidate, product, mep):
         return "rejected", "libro o manual en lugar del producto", evidence
     if accessory(title) or accessory(name):
         return "rejected", "accesorio", evidence
+    # 05/11: combo en un lado y producto solo en el otro (Instax Mini 12 «+ 60 Photo Prints + Accessories» vs la cámara).
+    # Sobre el texto en minúsculas SIN normalizar: normalize() borra los «+».
+    combo = re.compile(r"\bkit\b.*\b(?:film|prints)\b|\+\s*\d+\s*(?:photo|prints|film|sheets)|\bphoto prints\b|\+\s*accessor")
+    if bool(combo.search(ascii_text(title).lower())) != bool(combo.search(ascii_text(name).lower())):
+        return "rejected", "combo en un solo lado", evidence
     if brand and attrs.get("BRAND") and brand_key(brand) != brand_key(attrs["BRAND"]):
         return "rejected", "marca distinta", evidence
     def connection(text):

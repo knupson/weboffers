@@ -505,3 +505,12 @@ def test_catalog_platform_contradiction(devices, status):
     ml = cached_product("Razer Wolverine V2 Pro Wireless Para PS5 Negro", "Razer", "Wolverine V2",
                         COMPATIBLE_DEVICES=devices)
     assert cached_match("Razer Wolverine V2 Pro Wireless PlayStation Controller Black", ml, "Razer", "Gaming")[status]
+
+
+def test_combo_en_un_solo_lado_se_rechaza():
+    from tools import match_candidates as m
+    amazon = {"asin": "B1", "store": "US", "amazonTitle": "Instax Mini 12 Instant Camera + 60 Photo Prints + Accessories, Lilac Purple",
+              "brand": "Fujifilm", "amazonPriceUsd": 165, "amazonCategory": "camera"}
+    cand = {"catalogId": "MLA1", "name": "Camara Fujifilm Instax Mini 12 Morada", "minPrice": 188000, "itemId": "MLA2"}
+    estado, motivo, _ = m.evaluate(amazon, cand, {"name": cand["name"], "attributes": {}}, 1500)
+    assert (estado, motivo) == ("rejected", "combo en un solo lado")
