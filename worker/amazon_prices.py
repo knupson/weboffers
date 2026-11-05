@@ -407,6 +407,7 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
         no_offer.update({slug: today for slug in new_no_offer})
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
+    ar_shipping.update(chrome_shipping(candidates, prices_path, today))
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
                                        "arShipping": ar_shipping, "run": run, "pace": pace,
                                        "outOfRange": out_of_range_memory(previous, items, eur_usd, without_ml),
@@ -447,6 +448,7 @@ def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=No
                  and RANGE_MIN <= amount <= RANGE_MAX]
     envio = refresh_ar_shipping(to_survey, items, today, prices_path)
     ar_shipping = merge_ar_shipping(previous, items, local.date())
+    ar_shipping.update(chrome_shipping(candidates, prices_path, today))
     run = dict(previous.get("run") or {})
     run["envio"] = {key: (run.get("envio") or {}).get(key, 0) + value for key, value in envio.items()}
     run["reintento"] = {"recuperados": ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
@@ -565,6 +567,23 @@ def load_chrome_prices(prices_path, today):
             except ValueError:
                 amount = None
         out[asin] = (amount if is_valid_amount(amount) else None, it["ships"])
+    return out
+
+
+def chrome_shipping(products, prices_path, today):
+    """Envío visto HOY por Chrome en la página de la oferta destacada: reemplaza confirmaciones anteriores (05/11).
+
+    Sin esto, un producto confirmado «gratis» hace días que hoy tiene envío pago o no tiene oferta para Argentina
+    seguiría publicado hasta que venza la confirmación de 14 días.
+    """
+    data = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), None) if prices_path else None
+    items = data.get("items") if isinstance(data, dict) else None
+    out = {}
+    for p in products:
+        it = (items or {}).get(p.get("asin")) if p.get("store") == "US" else None
+        if isinstance(it, dict) and isinstance(it.get("ships"), bool):
+            out[p["slug"]] = {"ships": it["ships"], "free": it.get("free") if isinstance(it.get("free"), bool) else None,
+                              "checked": today}
     return out
 
 

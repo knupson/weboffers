@@ -256,3 +256,15 @@ def test_precios_de_chrome_primero_y_scraper_de_respaldo(tmp_path, monkeypatch):
     assert "s2" not in items and missing == 1          # sin oferta AR según Chrome: ni se consulta
     assert llamados == [["B3", "E1"]]                  # lo que Chrome no leyó y la tienda ES van al scraper
     assert ok == 3
+
+
+def test_envio_de_chrome_de_hoy_reemplaza_confirmacion_vieja(tmp_path):
+    import json
+    import amazon_prices as a
+    prices = tmp_path / "amazon-prices.json"
+    (tmp_path / "ar-chrome-2026-11-05.json").write_text(json.dumps({"items": {
+        "B1": {"ships": True, "free": False}, "B2": {"ships": False}, "B3": {"ships": None}}}), encoding="utf-8")
+    productos = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US"} for i in (1, 2, 3)]
+    out = a.chrome_shipping(productos, prices, "2026-11-05")
+    assert out == {"s1": {"ships": True, "free": False, "checked": "2026-11-05"},
+                   "s2": {"ships": False, "free": None, "checked": "2026-11-05"}}
