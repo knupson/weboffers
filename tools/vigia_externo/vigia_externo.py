@@ -31,7 +31,9 @@ def leer_env(path=ENV):
 
 
 def chequeos(ahora, latido=LATIDO, bajar=None, puerto_abierto=None):
-    bajar = bajar or (lambda u: urllib.request.urlopen(u, timeout=20).read().decode("utf-8", "replace"))
+    # Cloudflare rechaza el User-Agent por defecto de Python con 403 (05/11): mismo UA que el recordatorio.
+    bajar = bajar or (lambda u: urllib.request.urlopen(urllib.request.Request(
+        u, headers={"User-Agent": "Mozilla/5.0 (control Franquicia 400)"}), timeout=20).read().decode("utf-8", "replace"))
     puerto_abierto = puerto_abierto or _puerto_abierto
     problemas = {}
     try:
