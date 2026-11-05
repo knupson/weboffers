@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
-import { GET } from './estado.json';
-import { loadMlPrices } from '../lib/data';
-vi.mock('../lib/data', () => ({
+import { GET } from '../pages/estado.json';
+import { loadMlPrices } from './data';
+vi.mock('./data', () => ({
   loadProducts: vi.fn(async () => ({ products: [] })),
   isComparable: vi.fn(() => false),
   loadAmazonPrices: vi.fn(() => null),
