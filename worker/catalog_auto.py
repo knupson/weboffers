@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import discover_products as discovery, match_candidates as matching
 from tools.apply_candidates import validate_and_build_entries
 from tools.fetch_photos import to_webp, ALLOWED_HOSTS
+from tools import crecer_desde_ml
 
 ART = timezone(timedelta(hours=-3))
 
@@ -82,6 +83,9 @@ def add_accepted(catalog, matches, output, today):
     for row in matches["accepted"]:
         if any(row.get("asin") == p.get("asin") or row.get("slug") == p.get("slug") for p in catalog + added):
             continue
+        # El mismo producto de ML no se da de alta dos veces con ASIN distintos (05/11, flujo desde ML).
+        if row.get("catalogId") and any(row["catalogId"] == (p.get("ml") or {}).get("catalogId") for p in catalog + added):
+            continue
         usd = row.get("amazonPriceUsd")
         if not matching.positive_number(usd) or not 100 <= usd <= 400:
             continue
@@ -137,8 +141,16 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         scraper = PacedScraper(int(tope) if tope else 10**9)
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")
+        existing_asins = {p.get("asin") for p in catalog}
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
-            get=scraper.get, existing_asins={p.get("asin") for p in catalog}, failures=failures)
+            get=scraper.get, existing_asins=existing_asins, failures=failures)
+        # 05/11: también al revés, desde lo que ML vende en Argentina (rinde mucho más que partir de Amazon).
+        if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1":
+            desde_ml = crecer_desde_ml.candidatos(existing_asins | {p["asin"] for p in products},
+                                                  {(p.get("ml") or {}).get("catalogId") for p in catalog},
+                                                  mep, get=scraper.get, failures=failures)
+            publish.write_atomic(output / "discovery-desde-ml.json", desde_ml)
+            products = products + desde_ml
         if not scraper.valid:
             raise ValueError("El scraper no devolvió páginas válidas.")
         matches = matching.match_products(products, mep, catalog)

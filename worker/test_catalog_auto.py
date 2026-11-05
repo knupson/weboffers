@@ -14,6 +14,8 @@ from tools import apply_candidates, sync_catalogo_auto
 
 
 def candidate(**changes):
+    if "asin" in changes and "catalogId" not in changes:
+        changes["catalogId"] = "MLA" + changes["asin"]  # cada producto de prueba con su propia ficha de ML
     row = dict(asin="B000000001", store="US", slug="samsung-t9", name="Samsung T9 SSD",
                brand="Samsung", category="Almacenamiento", summary="SSD Samsung T9.",
                catalogId="MLA123", itemId="MLA456", mlPrice=200000,
@@ -34,6 +36,7 @@ def setup_job(tmp_path, monkeypatch):
     monkeypatch.setattr(auto.discovery, "discover_products", discovery)
     monkeypatch.setattr(auto.matching, "match_products", lambda *args: {"accepted": [candidate()], "doubtful": [], "rejected": []})
     monkeypatch.setattr(auto, "fetch_photo", lambda entry, output: entry.update(image=f"/products/{entry['slug']}.webp") or True)
+    monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", lambda *a, **k: [])  # sin API real de ML en los tests
     return repo, output, discovery
 
 
@@ -235,3 +238,11 @@ def test_sync_preserves_repo_and_photos(tmp_path):
     assert json.loads((root / "data" / "catalog.json").read_text())[0] == existing
     assert (root / "public" / "products" / "a.webp").read_bytes() == b"original"
     assert (root / "public" / "products" / "b.webp").read_bytes() == b"auto"
+
+
+def test_no_da_de_alta_dos_veces_la_misma_ficha_de_ml(setup_job):
+    repo, output, _ = setup_job
+    rows = [candidate(asin="A1", slug="a1", catalogId="MLA999"), candidate(asin="A2", slug="a2", catalogId="MLA999")]
+    added, _ = auto.add_accepted(load_catalog(repo, output / "catalog-auto.json"),
+                                 {"accepted": rows, "doubtful": [], "rejected": []}, output, "2026-11-08")
+    assert [p["slug"] for p in added] == ["a1"]
