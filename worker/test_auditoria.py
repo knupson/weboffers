@@ -187,3 +187,46 @@ def test_envio_de_otra_oferta_no_confirma():
     assert a.offer_mismatch({"ships": True, "free": True, "price": 70.0, "condition": "New"}, precio) == "oferta_distinta"
     assert a.offer_mismatch({"ships": True, "free": True, "price": 100.0, "condition": "Used - Good"}, precio).startswith("condicion")
     assert a.offer_mismatch({"ships": True, "free": True}, precio) is None  # sin datos de oferta: como antes
+
+
+def test_envio_ar_usa_el_relevamiento_del_chrome(tmp_path, monkeypatch):
+    """05/11: amazon-ar bloqueado por Amazon; el Chrome anónimo de la VM releva y el worker lo usa primero."""
+    import json
+    import amazon_prices as a
+    prices = tmp_path / "amazon-prices.json"
+    (tmp_path / "ar-chrome-2026-11-05.json").write_text(json.dumps({"items": {
+        "B1": {"ships": True, "free": True, "text": "FREE delivery Mon, Nov 16 to Argentina"},
+        "B2": {"ships": None, "free": None, "motivo": "error:TimeoutError"}}}), encoding="utf-8")
+    llamados = []
+    monkeypatch.setattr(a, "ar_url", lambda: "http://ar")
+    monkeypatch.setattr(a, "pause", lambda: None)
+    monkeypatch.setattr(a.time, "sleep", lambda s: None)
+
+    def fake(base, asins, store):
+        llamados.append(list(asins))
+        return {x: {"asin": x, "ships": False, "free": None} for x in asins}
+    monkeypatch.setattr(a, "fetch_ar_shipping", fake)
+    items = {}
+    productos = [{"slug": "s1", "asin": "B1", "store": "US"}, {"slug": "s2", "asin": "B2", "store": "US"}]
+    a.refresh_ar_shipping(productos, items, "2026-11-05", prices)
+    assert items["s1"]["shipsToAr"] == {"ships": True, "free": True, "checked": "2026-11-05"}
+    assert llamados == [["B2"]]  # sólo lo que el Chrome no pudo leer va al servicio
+
+
+def test_interpretar_texto_del_chrome():
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location("envio_ar_chrome", pathlib.Path(__file__).resolve().parent.parent / "tools" / "envio_ar_chrome.py")
+    try:
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    except ModuleNotFoundError:  # websockets sólo existe en el contenedor de Chrome
+        import pytest
+        pytest.skip("sin websockets")
+    ar = "Deliver to Argentina"
+    assert mod.interpretar({"deliver": ar, "envio": "FREE delivery Mon, Nov 16 to Argentina", "titulo": "x"})["free"] is True
+    assert mod.interpretar({"deliver": ar, "envio": "Delivery Monday, November 16 to Argentina", "titulo": "x"}) == {
+        "ships": True, "free": False, "text": "Delivery Monday, November 16 to Argentina", "motivo": None}
+    assert mod.interpretar({"deliver": ar, "sinOferta": "See All Buying Options", "titulo": "x"})["ships"] is False
+    assert mod.interpretar({"deliver": "Deliver to 10001", "envio": "FREE delivery"})["ships"] is None
+    assert mod.interpretar({"deliver": ar, "captcha": True})["motivo"] == "captcha"

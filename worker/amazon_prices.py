@@ -122,6 +122,23 @@ def fetch_ar_shipping(base_url, asins, store):
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
 
 
+def load_ar_chrome(prices_path, today):
+    """Relevamiento del día hecho con el Chrome anónimo de la VM (tools/envio_ar_chrome.sh).
+
+    Sólo se usan entradas con `ships` booleano (evidencia literal en la página); el resto queda pendiente.
+    """
+    if prices_path is None:
+        return {}
+    path = Path(prices_path).with_name(f"ar-chrome-{today}.json")
+    data = load_json(path, None)
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, dict):
+        return {}
+    return {asin: {"asin": asin, "ships": it["ships"], "free": it.get("free") if isinstance(it.get("free"), bool) else None,
+                   "text": it.get("text"), "price": None, "condition": None}
+            for asin, it in items.items() if isinstance(it, dict) and isinstance(it.get("ships"), bool)}
+
+
 def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=None):
     """Consulta /ar-shipping en lotes de BULK_MAX agrupados por tienda y guarda shipsToAr por slug.
 
@@ -133,7 +150,8 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
     summary = {"relevados": 0, "gratis": 0, "sin_dato": 0}
     shipping_failures = []
     base_url = ar_url()
-    if not base_url:
+    chrome = load_ar_chrome(prices_path, today)
+    if not base_url and not chrome:
         return summary
     first_call = True
     # Conserva la prioridad global; cada lote sigue usando una sola tienda.
@@ -141,28 +159,31 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
         store_products = list(group)
         for i in range(0, len(store_products), BULK_MAX):
             chunk = store_products[i:i + BULK_MAX]
-            if not first_call:
-                pause()
-            first_call = False
-            fetched = {}
+            # 05/11: primero el relevamiento del Chrome anónimo (amazon-ar está bloqueado por Amazon).
+            fetched = {p["asin"]: chrome[p["asin"]] for p in chunk if store == "US" and p["asin"] in chrome}
+            de_chrome = set(fetched)
+            pendientes = [p for p in chunk if p["asin"] not in fetched]
             lote_error = None
-            for attempt in range(2):
-                lote_error = None
-                try:
-                    fetched = fetch_ar_shipping(base_url, [p["asin"] for p in chunk], store)
-                except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-                    fetched = {}
-                    lote_error = f"lote_fallido:{type(exc).__name__}"
-                unknown = sum(shipping_reason(fetched.get(p["asin"])) is not None for p in chunk)
-                if attempt == 0 and (lote_error or unknown >= BACKOFF_MIN_EMPTY):
-                    print(f"Amazon AR: lote sin datos; espero {BACKOFF_SECONDS:.0f} s y lo repito.", flush=True)
-                    time.sleep(BACKOFF_SECONDS)
-                    continue
-                break
+            if pendientes and base_url:
+                if not first_call:
+                    pause()
+                first_call = False
+                for attempt in range(2):
+                    lote_error = None
+                    try:
+                        fetched.update(fetch_ar_shipping(base_url, [p["asin"] for p in pendientes], store))
+                    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                        lote_error = f"lote_fallido:{type(exc).__name__}"
+                    unknown = sum(shipping_reason(fetched.get(p["asin"])) is not None for p in pendientes)
+                    if attempt == 0 and (lote_error or unknown >= BACKOFF_MIN_EMPTY):
+                        print(f"Amazon AR: lote sin datos; espero {BACKOFF_SECONDS:.0f} s y lo repito.", flush=True)
+                        time.sleep(BACKOFF_SECONDS)
+                        continue
+                    break
             for product in chunk:
                 summary["relevados"] += 1
                 item = fetched.get(product["asin"])
-                reason = lote_error or shipping_reason(item) or offer_mismatch(item, items.get(product["slug"]))
+                reason = (None if product["asin"] in de_chrome else lote_error) or shipping_reason(item)                     or offer_mismatch(item, items.get(product["slug"]))
                 if reason:
                     if reason == "sin_ships_booleano" and no_offer is not None:
                         no_offer.append(product["slug"])
