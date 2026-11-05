@@ -54,7 +54,15 @@ def leer_json_contenedor(contenedor, ruta):
     return json.loads(out) if code == 0 and out.strip() else None
 
 
-def chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, bajar=rf.bajar, logs_dir=LOGS_WORKER):
+def chequeos(ahora, **kw):
+    """Devuelve {clave: texto} con cada problema; si un chequeo explota, eso también es un problema (no tumba al resto)."""
+    try:
+        return _chequeos(ahora, **kw)
+    except Exception as e:  # noqa: BLE001
+        return {"vigia-error": f"el vigía falló al revisar ({type(e).__name__}: {str(e)[:80]})"}
+
+
+def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, bajar=rf.bajar, logs_dir=LOGS_WORKER):
     """Devuelve {clave: texto} con cada problema encontrado ahora."""
     hoy = ahora.date().isoformat()
     problemas = {}
@@ -62,7 +70,11 @@ def chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, baj
         problemas["internet"] = "la VM docker no tiene salida a internet, revisá la ruta por defecto"
         return problemas  # sin internet el resto da falsos positivos
 
-    code, out = sh("docker", "ps", "--format", "{{.Names}}")
+    try:
+        code, out = sh("docker", "ps", "--format", "{{.Names}}")
+    except Exception as e:  # noqa: BLE001
+        code, out = 1, ""
+        problemas["docker"] = f"docker no responde ({type(e).__name__})"
     vivos = set(out.split()) if code == 0 else set()
     caidos = [c for c in CONTENEDORES if c not in vivos]
     if caidos:
@@ -86,14 +98,20 @@ def chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, baj
             if (ahora - h).total_seconds() > SIN_LATIDO_MIN * 60:
                 problemas["latido"] = f"el worker no da señales desde las {ultima[:5]}"
 
-    code, out = sh("docker", "exec", DEPLOYER, "cat", f"/state/logs/deployer-{hoy}.log")
+    try:
+        code, out = sh("docker", "exec", DEPLOYER, "cat", f"/state/logs/deployer-{hoy}.log")
+    except Exception:  # noqa: BLE001
+        code, out = 1, ""
     for linea in (out.splitlines() if code == 0 else []):
         if "DEPLOY_FAIL" in linea:
             problemas["deploy:" + linea[25:90]] = f"el despliegue falló: {linea[25:180]}"
 
     if (ahora.hour, ahora.minute) >= (7, 30):
         for nombre in ("ml-prices.json", "amazon-prices.json"):
-            data = leer(WORKER, f"/app/output/{nombre}")
+            try:
+                data = leer(WORKER, f"/app/output/{nombre}")
+            except Exception:  # noqa: BLE001
+                data = None
             if not data or data.get("date") != hoy:
                 problemas["fresco:" + nombre] = f"{nombre} no tiene la fecha de hoy"
         try:
@@ -136,12 +154,15 @@ def main(ahora=None, enviar=rf.enviar):
     nuevos = {k: v for k, v in problemas.items() if k not in estado["avisados"]}
     estado["pendientes"].update(nuevos)
     if estado["pendientes"] and "internet" not in problemas:
-        texto = rf.pedir(list(estado["pendientes"].values())[:6])
+        # Hasta 6 por mensaje; sólo se marcan como avisados los que salieron (el resto va en la pasada siguiente).
+        lote = list(estado["pendientes"])[:6]
+        texto = rf.pedir([estado["pendientes"][k] for k in lote])
         try:
             enviar(texto, f"vigia {hoy}")
-            estado["avisados"] += list(estado["pendientes"])
-            print("VIGIA_AVISO", ",".join(estado["pendientes"]))
-            estado["pendientes"] = {}
+            estado["avisados"] += lote
+            for k in lote:
+                estado["pendientes"].pop(k)
+            print("VIGIA_AVISO", ",".join(lote))
         except SystemExit:
             print("VIGIA_PENDIENTE", len(estado["pendientes"]))
     elif "internet" in problemas:

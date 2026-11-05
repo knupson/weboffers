@@ -356,7 +356,10 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
                                     monday=today_date.weekday() == AR_SHIPPING_WEEKDAY, skip=no_offer)
     new_no_offer = []
     run["envio"] = refresh_ar_shipping(to_survey, items, today, prices_path, no_offer=new_no_offer)
-    no_offer.update({slug: today for slug in new_no_offer})
+    # Sólo se memoriza "sin oferta" si el relevamiento anduvo para algún producto en esta corrida:
+    # si nada trajo `ships`, puede ser un cambio de formato o un freno, no ausencia comercial (auditoría 05/11).
+    if run["envio"].get("relevados", 0) > run["envio"].get("sin_dato", 0):
+        no_offer.update({slug: today for slug in new_no_offer})
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,

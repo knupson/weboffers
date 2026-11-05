@@ -94,3 +94,21 @@ def test_avisa_cuando_vuelve_internet(tmp_path, monkeypatch):
     monkeypatch.setattr(v, "chequeos", lambda ahora: {})
     v.main(HOY + datetime.timedelta(minutes=15), enviar=lambda t, e: enviados.append(t))
     assert len(enviados) == 1 and "sin internet desde" in enviados[0]
+
+
+def test_mas_de_seis_problemas_se_mandan_en_tandas(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {f"p{i}": f"problema {i}" for i in range(8)})
+    enviados = []
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 2 and "problema 7" in enviados[1]
+
+
+def test_un_chequeo_que_explota_se_reporta(tmp_path):
+    def roto(contenedor, ruta):
+        raise ValueError("json roto")
+    log(tmp_path, "09:16:05 ok")
+    p = correr(tmp_path, leer=roto, bajar=lambda u: (_ for _ in ()).throw(RuntimeError("x")))
+    assert "fresco:ml-prices.json" in p and "sitio-caido" in p
