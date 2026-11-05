@@ -170,6 +170,20 @@ def main(ahora=None, enviar=rf.enviar):
     else:
         print("VIGIA_OK", hoy, ahora.strftime("%H:%M"))
     json.dump(estado, open(ESTADO, "w", encoding="utf-8"), ensure_ascii=False)
+    latido("sin-internet" if "internet" in problemas else "ok")
+
+
+def latido(texto):
+    """Le avisa a la pi3 que este vigía está vivo (vigía externo, 05/11). La llave sólo puede escribir el latido."""
+    clave = os.path.expanduser("~/.ssh/vigia_pi3")
+    if not os.path.exists(clave):
+        return
+    try:
+        subprocess.run(["ssh", "-i", clave, "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+                        "-o", "StrictHostKeyChecking=accept-new", "claude@192.168.3.254"],
+                       input=texto, text=True, capture_output=True, timeout=20)
+    except Exception:  # noqa: BLE001
+        pass  # si no llega, el vigía externo lo detecta y avisa
 
 
 if __name__ == "__main__":
