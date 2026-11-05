@@ -32,7 +32,10 @@ def test_variant_conflicts(a, b, key):
     assert variant_conflicts(a, b) == variant_conflicts(b, a)
     from tools.match_candidates import evaluate
     status, reason, _ = evaluate({"amazonTitle": a}, {"name": b}, {}, 1000)
-    assert (status, reason) == ("rejected", "variante")
+    if key == "color":   # 05/11: el color no rechaza el par (no es otro producto)
+        assert reason != "variante"
+    else:
+        assert (status, reason) == ("rejected", "variante")
 
 
 @pytest.mark.parametrize("a,b", [

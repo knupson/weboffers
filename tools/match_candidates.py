@@ -214,10 +214,14 @@ def evaluate(amazon, candidate, product, mep):
     title = amazon.get("amazonTitle") or ""
     name = product.get("name") or candidate.get("name") or ""
     attrs = attributes(product)
-    conflicts = variant_conflicts(title, name)
+    # 05/11: el color NO es otro producto (Galaxy Tab A11 Silver vs Gris, Echo Spot): sólo diferencias funcionales.
+    conflicts = [c for c in variant_conflicts(title, name) if c != "color"]
     if conflicts:
         return "rejected", "variante", {"brand": "", "model": [], "capacity": [], "conflicts": conflicts}
-    brand = amazon.get("brand") or (title.split()[0] if title.split() else "")
+    # 05/11: sin marca informada por Amazon NO se usa la primera palabra del título («Echo Spot» -> marca «Echo»).
+    # Se usa la de ML si aparece en el título; si no, queda desconocida y la decide el modelo más abajo.
+    brand_ml = attrs.get("BRAND") or ""
+    brand = amazon.get("brand") or (brand_ml if brand_ml and normalize(brand_ml) in normalize(title) else "")
     model = " ".join(attrs.get(key, "") for key in ("MODEL", "ALPHANUMERIC_MODEL"))
     ml_text = " ".join([name, *(value for key, value in attrs.items() if key in QUANTITY_ATTRS)])
     a_models, b_models = model_tokens(title), model_tokens(model + " " + name)
@@ -241,6 +245,8 @@ def evaluate(amazon, candidate, product, mep):
             and not (a_models and b_models and not shared)):
         shared.add(textual)
 
+    if not brand and brand_ml and shared:
+        brand = brand_ml  # marca desconocida en Amazon, pero el modelo coincide: se toma la de ML
     evidence = {"brand": brand_key(brand) if brand_key(brand) == brand_key(attrs.get("BRAND")) else "",
                 "model": sorted(shared), "capacity": sorted(f"{n:g}{u}" for u in a_caps.keys() & b_caps.keys() for n in a_caps[u] & b_caps[u])}
     doubts = []
@@ -250,7 +256,7 @@ def evaluate(amazon, candidate, product, mep):
         return "rejected", "accesorio", evidence
     # 05/11: combo en un lado y producto solo en el otro (Instax Mini 12 «+ 60 Photo Prints + Accessories» vs la cámara).
     # Sobre el texto en minúsculas SIN normalizar: normalize() borra los «+».
-    combo = re.compile(r"\bkit\b.*\b(?:film|prints)\b|\+\s*\d+\s*(?:photo|prints|film|sheets)|\bphoto prints\b|\+\s*accessor")
+    combo = re.compile(r"\bkit\b.*\b(?:film|prints)\b|\+\s*\d+\s*(?:photo|prints|film|sheets)|\bphoto prints\b|\+\s*accessor|\bstudio\b")
     if bool(combo.search(ascii_text(title).lower())) != bool(combo.search(ascii_text(name).lower())):
         return "rejected", "combo en un solo lado", evidence
     if brand and attrs.get("BRAND") and brand_key(brand) != brand_key(attrs["BRAND"]):
@@ -277,7 +283,11 @@ def evaluate(amazon, candidate, product, mep):
     if not evidence["brand"]:
         doubts.append("marca ausente")
     for unit in a_caps.keys() & b_caps.keys():
-        if a_caps[unit] != b_caps[unit]:
+        # 05/11: «4+64GB» vs «4 GB Ram 64 GB» comparten 64: no es otra capacidad. Sólo si no comparten ninguna.
+        # Pero si los dos lados informan varios valores (RAM + almacenamiento), tienen que coincidir todos:
+        # IdeaPad 1 «8GB RAM, 128GB» vs «4GB 128gB» comparte 128 y es otra configuración.
+        if a_caps[unit].isdisjoint(b_caps[unit]) or (len(a_caps[unit]) > 1 and len(b_caps[unit]) > 1
+                                                     and a_caps[unit] != b_caps[unit]):
             return "rejected", "capacidad o tamaño distinto", evidence
     if a_caps.keys() != b_caps.keys():
         doubts.append("capacidad o tamaño sin confirmar")
@@ -327,6 +337,12 @@ def evaluate(amazon, candidate, product, mep):
         doubts.append("atributos o nombre ausentes")
     if not all(isinstance(amazon.get(k), str) and amazon[k].strip() for k in ("asin", "store")) or not candidate.get("itemId"):
         doubts.append("identificadores ausentes")
+    # 05/11: con marca Y modelo confirmados, la duda sólo de color no frena el alta (el color no cambia el
+    # producto). La categoría SÍ frena: apply_candidates exige una categoría válida del catálogo.
+    leves = {"color sin confirmar"}
+    if doubts and evidence["brand"] and evidence["model"] and set(doubts) <= leves:
+        evidence["dudasLeves"] = doubts
+        return "accepted", "", evidence
     return ("doubtful", "; ".join(doubts), evidence) if doubts else ("accepted", "", evidence)
 
 

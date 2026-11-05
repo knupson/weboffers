@@ -257,10 +257,11 @@ def test_variants_with_shared_model_are_doubtful(api, left, right):
     assert "variante" in result["doubtful"][0]["reason"]
 
 
-def test_color_difference_doubtful(api):
+def test_color_difference_with_brand_and_model_is_accepted(api):
+    """05/11: mismo modelo en otro color se acepta (la duda de color queda anotada)."""
     api.return_value = product("Samsung 990 PRO 1TB", COLOR="Blanco")
     result = match.match_products([amazon(amazonTitle="Samsung 990 PRO 1TB MZ-V9P1T0B Black")], 1575)
-    assert "color" in result["doubtful"][0]["reason"]
+    assert result["accepted"] and "color sin confirmar" in result["accepted"][0]["evidence"]["dudasLeves"]
 
 
 def test_attribute_value_list_and_malformed_values(api):
@@ -472,9 +473,9 @@ def test_translated_colors(left, right):
     assert cached_match(f"Samsung T9 1TB {left}", ml)["accepted"]
 
 
-def test_unconfirmed_color_stays_doubtful():
+def test_unconfirmed_color_with_model_is_accepted():
     ml = cached_product("Samsung T9 1TB Blanco", "Samsung", "T9")
-    assert cached_match("Samsung T9 1TB", ml)["doubtful"]
+    assert cached_match("Samsung T9 1TB", ml)["accepted"]
 
 
 def test_best_rejected_candidate_is_auditable(api):

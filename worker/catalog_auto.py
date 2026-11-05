@@ -78,6 +78,20 @@ def fetch_photo(entry, output):
     return True
 
 
+def mismo_producto(row, existente):
+    """Misma marca, algún código de modelo en común y misma capacidad (o ninguna informada)."""
+    nombre_a = " ".join(filter(None, [row.get("name"), row.get("amazonTitle")]))
+    nombre_b = " ".join(filter(None, [existente.get("name"), existente.get("amazonTitle")]))
+    if not nombre_a or not nombre_b:
+        return False
+    if matching.brand_key(row.get("brand") or "") != matching.brand_key(existente.get("brand") or ""):
+        return False
+    if not (matching.model_tokens(nombre_a) & matching.model_tokens(nombre_b)):
+        return False
+    cap_a, cap_b = matching.quantities(nombre_a).get("gb", set()), matching.quantities(nombre_b).get("gb", set())
+    return not cap_a or not cap_b or max(cap_a) == max(cap_b)
+
+
 def add_accepted(catalog, matches, output, today):
     added, failures = [], []
     for row in matches["accepted"]:
@@ -85,6 +99,9 @@ def add_accepted(catalog, matches, output, today):
             continue
         # El mismo producto de ML no se da de alta dos veces con ASIN distintos (05/11, flujo desde ML).
         if row.get("catalogId") and any(row["catalogId"] == (p.get("ml") or {}).get("catalogId") for p in catalog + added):
+            continue
+        # Ni el mismo modelo en otro color (otra ficha y otro ASIN): JBL Flip 7 y Tab A11 se duplicaron el 05/11.
+        if any(mismo_producto(row, p) for p in catalog + added if p.get("verified") is not False):
             continue
         usd = row.get("amazonPriceUsd")
         if not matching.positive_number(usd) or not 100 <= usd <= 400:

@@ -148,7 +148,7 @@ def test_accepted_only_skip_existing_range_and_photo(setup_job, monkeypatch):
     rows = [candidate(), candidate(asin="EXISTENTE", slug="otro"), candidate(asin="otro", slug="existente"),
             candidate(asin="barato", slug="barato", amazonPriceUsd=99),
             candidate(asin="caro", slug="caro", amazonPriceUsd=401),
-            candidate(asin="sin-foto", slug="sin-foto"),
+            candidate(asin="sin-foto", slug="sin-foto", name="Samsung T7 SSD", amazonTitle="Samsung T7 SSD"),
             candidate(asin="funda", slug="funda", amazonTitle="Samsung T9 protective case")]
     photo = Mock(side_effect=lambda p, _: p["slug"] != "sin-foto")
     monkeypatch.setattr(auto, "fetch_photo", photo)
@@ -246,3 +246,11 @@ def test_no_da_de_alta_dos_veces_la_misma_ficha_de_ml(setup_job):
     added, _ = auto.add_accepted(load_catalog(repo, output / "catalog-auto.json"),
                                  {"accepted": rows, "doubtful": [], "rejected": []}, output, "2026-11-08")
     assert [p["slug"] for p in added] == ["a1"]
+
+
+def test_no_duplica_el_mismo_modelo_en_otro_color():
+    existente = {"slug": "jbl-flip-7", "brand": "JBL", "name": "JBL Flip 7 negro", "verified": True}
+    nuevo = {"slug": "jbl-flip7", "brand": "JBL", "name": "Parlante Jbl Flip 7 Portátil Azul", "amazonTitle": "Flip 7 Portable Speaker - Teal"}
+    assert auto.mismo_producto(nuevo, existente)
+    otro = {"slug": "s", "brand": "Samsung", "name": "Galaxy Tab A11 128GB"}
+    assert not auto.mismo_producto(otro, {"slug": "t", "brand": "Samsung", "name": "Galaxy Tab A11 64GB"})
