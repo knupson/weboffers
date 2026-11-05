@@ -1,20 +1,6 @@
 #!/usr/bin/env bash
-# Despliegue manual desde Windows (Git Bash). Baja los precios de ML y Amazon de la VM y publica.
+# Despliegue manual: lo hace el deployer de la VM, por el MISMO camino que el automático (05/11).
+# Antes compilaba en la PC con data/catalog.json y sin catalog-auto.json: las altas automáticas no se publicaban.
+# Uso (Git Bash, raíz del repo): bash tools/deploy.sh   (requiere el código ya pusheado a main)
 set -euo pipefail
-cd "$(dirname "$0")/.."
-
-# Descargar ambos antes de reemplazar los archivos locales.
-trap 'rm -f data/ml-prices.json.tmp data/amazon-prices.json.tmp' EXIT
-for f in ml-prices.json amazon-prices.json; do
-  if ! ssh docker "docker exec franquicia400-weboffers-worker-1 cat /app/output/$f" > "data/$f.tmp" || [ ! -s "data/$f.tmp" ]; then
-    echo "No se pudo bajar $f de la VM; se aborta." >&2
-    exit 1
-  fi
-done
-node tools/validate-price-files.mjs data/ml-prices.json.tmp data/amazon-prices.json.tmp
-for f in ml-prices.json amazon-prices.json; do
-  mv "data/$f.tmp" "data/$f"
-done
-
-npm run build
-npx wrangler deploy
+ssh docker "docker exec franquicia400-weboffers-deployer-1 node /app/deploy.mjs --ahora"

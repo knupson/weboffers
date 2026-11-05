@@ -306,7 +306,7 @@ async function deployOnce(now = new Date(), opts = {}) {
   const skipReason = recovery && (last.hash === hash ? 'los precios no cambiaron desde el último despliegue'
     : Number.isFinite(gapEnd) && now.getTime() < gapEnd ? 'pasaron menos de 30 min desde el último despliegue'
     : now.getTime() >= recoveryDeadlineAt(now) ? 'cerró la ventana de recuperaciones de las 20:00 ART' : null);
-  if (skipReason) {
+  if (skipReason && !opts.manual) {
     log(`DEPLOY_SKIP ${skipReason}.`);
     return 'skip';
   }
@@ -489,7 +489,15 @@ async function main() {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
-  main();
+  if (process.argv.includes('--ahora')) {
+    // 05/11: despliegue manual por el MISMO camino que el automático (altas de catalog-auto, fotos y validaciones).
+    // tools/deploy.sh compilaba en la PC sin las altas automáticas y publicaba un catálogo incompleto.
+    deployOnce(new Date(), { slot: 'manual', manual: true })
+      .then((r) => { log(`DEPLOY_MANUAL ${r}`); process.exit(r === 'ok' ? 0 : 1); })
+      .catch((e) => { log(`DEPLOY_FAIL manual: ${redact(String(e.message))}`); process.exit(1); });
+  } else {
+    main();
+  }
 }
 
 export {
