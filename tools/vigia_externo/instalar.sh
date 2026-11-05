@@ -18,11 +18,11 @@ echo "command=\"/home/claude/recibir_latido.sh\",restrict $(cat "$TMP/pub")" > "
 scp -q tools/vigia_externo/recibir_latido.sh tools/vigia_externo/vigia_externo.py "$TMP/authline" "$TMP/env" pi3:/home/claude/
 ssh pi3 'set -e; cd ~
 mv env .vigia_externo.env; chmod 600 .vigia_externo.env; chmod 755 recibir_latido.sh
-cp -p .ssh/authorized_keys .ssh/authorized_keys.bak-vigia
+[ -f .ssh/authorized_keys.bak-vigia ] || cp -p .ssh/authorized_keys .ssh/authorized_keys.bak-vigia
 grep -q vigia-franquicia .ssh/authorized_keys || cat authline >> .ssh/authorized_keys
 rm authline
 LINEA="*/10 * * * * /usr/bin/python3 /home/claude/vigia_externo.py >> /home/claude/vigia_externo.log 2>&1"
-(crontab -l 2>/dev/null | grep -v vigia_externo.py; echo "$LINEA") | crontab -
+{ crontab -l 2>/dev/null | grep -v vigia_externo.py || true; echo "$LINEA"; } | crontab -
 crontab -l | grep vigia_externo'
 
 ssh docker 'echo ok | ssh -i ~/.ssh/vigia_pi3 -o BatchMode=yes -o StrictHostKeyChecking=accept-new claude@192.168.3.254'
