@@ -1,0 +1,96 @@
+import datetime
+import json
+
+from tools import vigia_franquicia as v
+
+ART = v.rf.ART
+HOY = datetime.datetime(2026, 11, 5, 10, 0, tzinfo=ART)
+TODOS = "\n".join(v.CONTENEDORES)
+
+
+def fake_sh(ps=TODOS, deployer=""):
+    def sh(*cmd, timeout=30):
+        if cmd[:2] == ("docker", "ps"):
+            return 0, ps
+        return 0, deployer
+    return sh
+
+
+def leer_ok(contenedor, ruta):
+    return {"date": "2026-11-05"}
+
+
+def bajar_ok(url):
+    return json.dumps({"preciosDe": "2026-11-05", "publicados": 100})
+
+
+def log(tmp_path, *lineas):
+    (tmp_path / "worker-2026-11-05.log").write_text("\n".join(lineas) + "\n", encoding="utf-8")
+
+
+def correr(tmp_path, **kw):
+    args = dict(internet=lambda: True, sh=fake_sh(), leer=leer_ok, bajar=bajar_ok, logs_dir=str(tmp_path))
+    args.update(kw)
+    return v.chequeos(HOY, **args)
+
+
+def test_todo_bien_no_avisa(tmp_path):
+    log(tmp_path, "09:16:05 Publicación completa: modo=offline, productos=241, cambios=True.")
+    assert correr(tmp_path) == {}
+
+
+def test_sin_internet_es_lo_unico_que_se_reporta(tmp_path):
+    assert list(correr(tmp_path, internet=lambda: False)) == ["internet"]
+
+
+def test_contenedor_caido_y_fallas_del_log(tmp_path):
+    log(tmp_path, "09:16:05 Falló la actualización de precios de Mercado Libre (ConnectionError).",
+        *[f"09:2{i}:00 Mercado Libre: no se pudo consultar p{i} (HTTPError); se omite." for i in range(5)])
+    p = correr(tmp_path, sh=fake_sh(ps="franquicia400-weboffers-worker-1"))
+    assert any(k.startswith("contenedores:") for k in p)
+    assert any(k.startswith("log:Falló") for k in p)
+    assert "ml-fallas" in p
+
+
+def test_worker_sin_latido(tmp_path):
+    log(tmp_path, "07:01:00 Publicación completa: modo=offline, productos=241, cambios=True.")
+    assert "latido" in correr(tmp_path)
+
+
+def test_precios_viejos_y_sitio_bajo_minimo(tmp_path):
+    log(tmp_path, "09:16:05 ok")
+    p = correr(tmp_path, leer=lambda c, r: {"date": "2026-11-04"},
+               bajar=lambda u: json.dumps({"preciosDe": "2026-11-05", "publicados": 82}))
+    assert {"fresco:ml-prices.json", "fresco:amazon-prices.json", "sitio-minimo"} <= set(p)
+
+
+def test_deploy_fail_en_log_del_deployer(tmp_path):
+    log(tmp_path, "09:16:05 ok")
+    p = correr(tmp_path, sh=fake_sh(deployer="2026-11-05T10:00:26.716Z DEPLOY_FAIL build (exit 1)"))
+    assert any(k.startswith("deploy:") for k in p)
+
+
+def test_avisa_una_vez_y_reintenta_si_no_sale(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {"latido": "el worker no da señales"})
+    enviados = []
+
+    def falla(texto, etiqueta):
+        raise SystemExit(1)
+
+    v.main(HOY, enviar=falla)
+    assert json.load(open(tmp_path / "estado.json", encoding="utf-8"))["pendientes"] == {"latido": "el worker no da señales"}
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1  # se reintentó y después no se repite
+
+
+def test_avisa_cuando_vuelve_internet(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    enviados = []
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {"internet": "sin internet"})
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    assert enviados == []
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {})
+    v.main(HOY + datetime.timedelta(minutes=15), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1 and "sin internet desde" in enviados[0]

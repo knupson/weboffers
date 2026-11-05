@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Encola una pieza de redes en la cola de Meta del dockerhost (cola_meta.json).
+"""Encola una pieza de redes en la cola de Meta del docker (cola_meta.json).
 
 Corre en la PC Windows bajo Git Bash (python3). Copia el media con scp a
-dockerhost:/opt/docker/blackseam/lista/descargas/redes/<ID>/ (servido por
+docker:/opt/docker/blackseam/lista/descargas/redes/<ID>/ (servido por
 https://lista.blackseam.knunet.com), arma las URLs públicas y hace upsert de
 la entrada (por id) en /home/claude/franquicia400-meta/cola_meta.json vía
-`ssh dockerhost python3 -` con el script en stdin. Nunca usa shell=True.
+`ssh docker python3 -` con el script en stdin. Nunca usa shell=True.
 
 Ejemplos:
   python3 tools/redes/meta_encolar.py --id pieza-2026-11-10 \\
@@ -20,10 +20,11 @@ import os
 import subprocess
 import sys
 
-HOST = "dockerhost"
-DIR_LISTA = "/opt/docker/blackseam/lista/descargas/redes/franquicia400"  # lo sirve el nginx de la lista de Blackseam
+HOST = "docker"
+DIR_LISTA = "/opt/docker/blackseam/lista/descargas/redes"  # lo sirve la lista de Blackseam; sólo UN nivel de carpeta (05/11: con subcarpeta daba 404)
+PREFIJO = "f400-"
 DIR_SOPORTE = "/home/claude/franquicia400-meta"
-URL_BASE = "https://lista.blackseam.knunet.com/descargas/redes/franquicia400"
+URL_BASE = "https://lista.blackseam.knunet.com/descargas/redes"
 TZ_AR = datetime.timezone(datetime.timedelta(hours=-3))
 
 SCRIPT_UPSERT = r'''import json, os
@@ -71,7 +72,7 @@ def ssh_stdin(script):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Encola una pieza en la cola de Meta del dockerhost")
+    ap = argparse.ArgumentParser(description="Encola una pieza en la cola de Meta del docker")
     ap.add_argument("--listar", action="store_true", help="muestra la cola remota con su estado")
     ap.add_argument("--id", help="id único de la pieza, ej. pieza-2026-11-10")
     ap.add_argument("--cuando", help='horario de publicación, ej. "2026-11-10 19:00" (hora de Argentina, -03:00)')
@@ -98,15 +99,23 @@ def main(argv=None):
     with open(args.texto_fb, encoding="utf-8") as f:
         texto_fb = f.read()
 
-    remoto_dir = "%s/%s" % (DIR_LISTA, args.id)
+    remoto_dir = "%s/%s%s" % (DIR_LISTA, PREFIJO, args.id)
     subprocess.run(["ssh", HOST, "mkdir", "-p", remoto_dir], check=True, capture_output=True)
 
     urls = []
     for m in args.media:
         base = os.path.basename(m)
         subprocess.run(["scp", m, "%s:%s/%s" % (HOST, remoto_dir, base)], check=True, capture_output=True)
-        urls.append("%s/%s/%s" % (URL_BASE, args.id, base))
-        print("subido %s" % urls[-1])
+        urls.append("%s/%s%s/%s" % (URL_BASE, PREFIJO, args.id, base))
+        # Meta descarga desde esta URL: si no responde 200, la pieza fallaría a la hora de publicar (05/11).
+        try:
+            import urllib.request
+            code = urllib.request.urlopen(urllib.request.Request(urls[-1], method="HEAD"), timeout=30).status
+        except Exception as e:
+            code = getattr(e, "code", type(e).__name__)
+        if code != 200:
+            sys.exit("la URL pública no responde 200 (%s): %s — no se encola" % (code, urls[-1]))
+        print("subido y verificado %s" % urls[-1])
 
     entry = {"id": args.id, "cuando": cuando, "tipo": args.tipo, "destinos": destinos,
              "media": urls, "texto_ig": texto_ig, "texto_fb": texto_fb}

@@ -10,7 +10,7 @@ Modos:
   sitio = la portada tiene la fecha de hoy (deploy de las 7:00); telegramNN = el canal tiene
   la publicación de ese turno.
 - --prueba: manda el mensaje de hoy (o de mañana) como prueba.
-Cron (dockerhost, hora ART):
+Cron (docker, hora ART):
   0 10 * * *  recordatorio_franquicia.py
   30 7 * * *  recordatorio_franquicia.py --control sitio
   30 15 * * * recordatorio_franquicia.py --control sitio13  (sólo controla días con despliegue extra)

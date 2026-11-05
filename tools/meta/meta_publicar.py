@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Publicador de Instagram + Facebook de FRANQUICIA 400 (copia adaptada del de Blackseam) por la Meta Graph API (v21.0).
 
-Corre por cron en el dockerhost (cada 5 min): lee cola_meta.json de este
+Corre por cron en el docker (cada 5 min): lee cola_meta.json de este
 directorio, publica lo que toca (cuando <= ahora, hasta 3 intentos por
 destino) y deja el estado en estado_meta.json. Las piezas más de 6 h pasadas
 sin publicar quedan "vencido" y avisam por WhatsApp (WAHA) una sola vez.
 Logs sin tokens ni URLs con access_token: META_OK / META_FAIL / META_NADA.
-Vive en dockerhost:/home/claude/franquicia400-meta/ (.env con META_*; WAHA se lee del .env de Blackseam).
+Vive en docker:/home/claude/franquicia400-meta/ (.env con META_*; WAHA se lee del .env de Blackseam).
 """
 import argparse
 import datetime
@@ -128,12 +128,36 @@ def publicar_ig(entry, token):
     return r["id"]
 
 
+def publicar_fb_reel(pagina, video_url, descripcion, token):
+    """Reel de página con la Reels Publishing API (start → rupload con file_url → finish), 05/11.
+
+    Antes iba por /videos y salía como video común: no aparecía en video_reels (control reel19).
+    Doc: developers.facebook.com/documentation/video-api/guides/reels-publishing
+    """
+    r = graph_post("/%s/video_reels" % pagina, {"upload_phase": "start"}, token)
+    video_id = r["video_id"]
+    req = urllib.request.Request("https://rupload.facebook.com/video-upload/v21.0/%s" % video_id, data=b"", method="POST")
+    req.add_header("Authorization", "OAuth " + token)
+    req.add_header("file_url", video_url)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            ok = json.loads(resp.read().decode("utf-8")).get("success")
+    except urllib.error.HTTPError as e:
+        raise _sanear(e)
+    except urllib.error.URLError as e:
+        raise MetaError(type(e).__name__)
+    if not ok:
+        raise MetaError("rupload sin success para el reel %s" % video_id)
+    graph_post("/%s/video_reels" % pagina, {"upload_phase": "finish", "video_id": video_id,
+                                            "video_state": "PUBLISHED", "description": descripcion}, token)
+    return video_id
+
+
 def publicar_fb(entry, token):
     pagina = ENV["META_PAGE_ID"]
     media = entry["media"]
     if entry["tipo"] == "reel":
-        r = graph_post("/%s/videos" % pagina, {"file_url": media[0], "description": entry["texto_fb"]}, token)
-        return r["id"]
+        return publicar_fb_reel(pagina, media[0], entry["texto_fb"], token)
     ids = []
     for url in media:
         r = graph_post("/%s/photos" % pagina, {"url": url, "published": "false"}, token)
