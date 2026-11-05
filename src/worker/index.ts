@@ -91,7 +91,13 @@ export function bestNewPrice(items: unknown[]): number | null {
   let best: number | null = null;
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
-    const { price, condition } = item as { price?: unknown; condition?: unknown };
+    const { price, condition, tags, shipping, international_delivery_mode: mode, currency_id: currency } = item as {
+      price?: unknown; condition?: unknown; tags?: unknown; shipping?: { tags?: unknown };
+      international_delivery_mode?: unknown; currency_id?: unknown;
+    };
+    const allTags = [...(Array.isArray(tags) ? tags : []), ...(Array.isArray(shipping?.tags) ? shipping.tags : [])];
+    if (allTags.some(t => typeof t === "string" && t.startsWith("cbt")) || (mode != null && mode !== "none")) continue;
+    if ("currency_id" in item && currency !== "ARS") continue;
     if (typeof condition === "string" && condition !== "new") continue;
     if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) continue;
     if (best === null || price < best) best = price;

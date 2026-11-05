@@ -1,4 +1,4 @@
-import { calculate } from "./calc";
+import { calculate, type CalcInput, type Rates } from "./calc";
 import { fetchEurUsd, fetchRates } from "./dolar";
 import type { ListPrice } from "./data";
 
@@ -15,15 +15,21 @@ export const AMAZON_EXTRA = 0.04;
 export const shippingFor = (usd: number) => (usd >= 100 ? 0 : 45);
 
 /** Costo total en USD puesto en casa (impuestos + envío + 4% de Amazon), igual que amazon_total_usd en worker/ml_prices.py. */
-export function amazonTotalUsd(usd: number): number {
-  const r = calculate({ fobUsd: usd, shippingUsd: shippingFor(usd) }, null);
-  return Math.round((r.totalUsd + usd * AMAZON_EXTRA) * 100) / 100;
+export function calculateAmazon(input: CalcInput, rates: Rates | null) {
+  const result = calculate(input, rates);
+  const gross = result.totalUsd + input.fobUsd * AMAZON_EXTRA;
+  const totalUsd = Math.round(gross * 100) / 100;
+  return { ...result, totalUsd, amazonExtraUsd: input.fobUsd * AMAZON_EXTRA,
+    totalArsMep: rates && rates.mep > 0 ? Math.round(gross * rates.mep) : null,
+    totalArsTarjeta: rates && rates.tarjeta > 0 ? Math.round(gross * rates.tarjeta) : null };
 }
 
-/** Puesto en casa, en pesos al MEP, a partir del precio que la persona ve hoy en Amazon.com. */
+export function amazonTotalUsd(usd: number): number {
+  return calculateAmazon({ fobUsd: usd, shippingUsd: shippingFor(usd) }, null).totalUsd;
+}
+
 export function estimateFromAmazon(usd: number, mep: number): number {
-  const r = calculate({ fobUsd: usd, shippingUsd: shippingFor(usd) }, { mep, tarjeta: 0 });
-  return Math.round((r.totalUsd + usd * AMAZON_EXTRA) * mep);
+  return calculateAmazon({ fobUsd: usd, shippingUsd: shippingFor(usd) }, { mep, tarjeta: 0 }).totalArsMep!;
 }
 
 /**

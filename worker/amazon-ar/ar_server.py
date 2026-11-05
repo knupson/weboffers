@@ -6,8 +6,13 @@ Al arrancar reemplaza `amazon.fetch.set_location` para que el scraper consulte "
 
 import json
 import re
+from threading import BoundedSemaphore
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+
+HTTP_TIMEOUT = 45
+QUEUE_TIMEOUT = 240
+REQUEST_SLOT = BoundedSemaphore(1)
 
 PORT = 8001
 MAX_ASINS = 5
@@ -113,6 +118,8 @@ def apply_ar_location():
     """Reemplaza set_location del paquete amazon para consultar como comprador en Argentina."""
     from amazon import fetch
 
+    fetch.TIMEOUT = HTTP_TIMEOUT  # Las sesiones del transporte heredan este timeout.
+
     def set_ar(sess, postal_code=None):
         if getattr(sess, "located", None) == "AR" or not sess.glow_token:
             return False
@@ -120,13 +127,13 @@ def apply_ar_location():
         headers = {**sess.headers(fetch.AJAX_HEADERS), "anti-csrftoken-a2z": sess.glow_token, "referer": base + "/"}
         resp = sess.curl.get(base + "/portal-migration/hz/glow/get-rendered-address-selections",
                              params={"deviceType": "desktop", "pageType": "Detail", "storeContext": "generic",
-                                     "actionSource": "desktop-modal"}, headers=headers)
+                                     "actionSource": "desktop-modal"}, headers=headers, timeout=HTTP_TIMEOUT)
         m = fetch._MODAL_TOKEN_RE.search(resp.text or "")
         token = m.group(1) if m else sess.glow_token
         resp = sess.curl.post(base + "/portal-migration/hz/glow/address-change", params={"actionSource": "glow"},
                               json={"locationType": "COUNTRY", "district": "AR", "countryCode": "AR", "deviceType": "web",
                                     "storeContext": "generic", "pageType": "Detail", "actionSource": "glow"},
-                              headers={**headers, "anti-csrftoken-a2z": token, "content-type": "application/json"})
+                              headers={**headers, "anti-csrftoken-a2z": token, "content-type": "application/json"}, timeout=HTTP_TIMEOUT)
         # La ubicación en AR sólo queda confirmada si Amazon respondió 200 con éxito
         # (isAddressUpdated o successful) y, si informa la dirección, su país es AR;
         # cualquier otra respuesta deja la sesión como estaba (ubicación desconocida).
@@ -191,15 +198,22 @@ class ArShippingHandler(BaseHTTPRequestHandler):
         if store not in STORES:
             self._send_json(400, {"error": f"store debe ser uno de: {', '.join(STORES)}"})
             return
-        products = []
-        for asin in asins:
-            try:
-                details = fetch_details(asin, store)
-                located = sesion_confirmada_ar(store)
-                products.append({"asin": asin, **parse_delivery(details, located=located)})
-            except Exception as exc:  # por ASIN: un error no tumba al resto del lote; queda desconocido
-                products.append({"asin": asin, "ships": None, "free": None, "error": type(exc).__name__})
-        self._send_json(200, {"products": products})
+        if not REQUEST_SLOT.acquire(timeout=QUEUE_TIMEOUT):
+            self._send_json(503, {"error": "Tiempo de espera agotado"})
+            return
+        try:
+            products = []
+            for asin in asins:
+                try:
+                    details = fetch_details(asin, store)
+                    located = sesion_confirmada_ar(store)
+                    products.append({"asin": asin, **parse_delivery(details, located=located)})
+                except Exception as exc:  # por ASIN: un error no tumba al resto del lote; queda desconocido
+                    products.append({"asin": asin, "ships": None, "free": None, "error": type(exc).__name__})
+            self._send_json(200, {"products": products})
+        finally:
+            REQUEST_SLOT.release()
+
 
 
 def main():

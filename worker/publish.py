@@ -31,6 +31,17 @@ def write_atomic(path, data):
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
+        if path.name in {"ml-prices.json", "amazon-prices.json"} and path.parent.name != "historial":
+            from datetime import date, timedelta
+            day = date.fromisoformat(data["date"])
+            history = path.parent / "historial"
+            write_atomic(history / f"{day}-{path.name}", data)
+            for old in history.glob("????-??-??-*-prices.json"):
+                try:
+                    if date.fromisoformat(old.name[:10]) <= day - timedelta(days=60):
+                        old.unlink()
+                except (ValueError, OSError):
+                    pass
     finally:
         if temporary is not None and os.path.exists(temporary):
             os.unlink(temporary)

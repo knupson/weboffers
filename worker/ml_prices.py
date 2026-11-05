@@ -113,7 +113,7 @@ def cheapest_new(results):
     for item in results:
         if not isinstance(item, dict) or item.get("condition") not in (None, "new"):
             continue
-        if is_international(item):
+        if ("currency_id" in item and item["currency_id"] != "ARS") or is_international(item):
             continue
         price = item.get("price")
         if isinstance(price, bool) or not isinstance(price, (int, float)):
@@ -249,7 +249,7 @@ def _resolve_amazon_usd(product, amazon_items, eur_usd=None):
     """Devuelve (usd, source, checked) sólo desde amazon-prices.json del día."""
     slug = product.get("slug")
     scraped = amazon_items.get(slug) if isinstance(amazon_items, dict) else None
-    if isinstance(scraped, dict) and _is_valid_amount(scraped.get("amount")):
+    if isinstance(scraped, dict) and ("asin" not in scraped or scraped["asin"] == product.get("asin")) and _is_valid_amount(scraped.get("amount")):
         currency = scraped.get("currency")
         if currency == "USD":
             return float(scraped["amount"]), "amazon", scraped.get("checked")
@@ -289,21 +289,28 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     if extra_slot is not None and local.hour >= EXTRA_REFRESH_HOUR and done_slot != extra_slot:
         slot = extra_slot
     elif done_slot is not None:
-        return False
+        if not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
+            return False
+        slot = done_slot
     else:
         slot = _slot_id(today, START_HOUR)
     if not is_configured():
         print("Mercado Libre: faltan ML_CLIENT_ID o ML_CLIENT_SECRET; se omite.", flush=True)
         return False
     amazon_items = load_amazon_prices(amazon_prices_path, local.date())
-    items = {}
-    absent, failed = [], []
+    retry = done_slot == slot
+    items = dict(previous.get("items") or {}) if retry else {}
+    absent = list(previous.get("absent") or []) if retry else []
+    failed = []
+    attempts = previous.get("attempts", 1) + 1 if retry else 1
     for product in catalog:
         ml = product.get("ml") or {}
         catalog_id = ml.get("catalogId")
         if not product.get("verified") or not catalog_id:
             continue
         slug = product["slug"]
+        if retry and slug not in previous.get("failed", []):
+            continue
         try:
             best = cheapest_new(fetch_items(catalog_id))
             if best is None:
@@ -324,20 +331,14 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         else:
             free_shipping = (product.get("shipsToAr") or {}).get("freeShipping")
             verdict, reason = verdict_from_ars(price, amazon_ars, free_shipping), "precio"
-        entry = {"price": price, "url": item_url(catalog_id, item_id), "checked": today,
+        entry = {"catalogId": catalog_id, "price": price, "url": item_url(catalog_id, item_id), "checked": today,
                  "verdict": verdict, "verdictReason": reason}
         if source:
             entry["amazonSource"] = source
         items[slug] = entry
         pause()
-    # Caída general (más del 20 % falló): no se cierra el turno y se reintenta. Fallas sueltas (un catalogId
-    # dado de baja, un 500 aislado) no pueden dejar al sitio entero sin precios de ML: se guarda lo obtenido y
-    # los fallidos quedan en "failed" (no son "absent", así Amazon no los memoriza como sin ML).
-    if failed and len(failed) > 0.2 * (len(items) + len(absent) + len(failed)):
-        print(f"Mercado Libre: corrida incompleta ({len(failed)} consultas fallidas); se reintentará el turno.", flush=True)
-        return False
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items,
-                                       "absent": absent, "failed": failed})
+                                       "absent": absent, "failed": failed, "attempts": attempts, "attemptHour": local.hour})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
     return True
 
@@ -364,6 +365,8 @@ def merge(catalog, prices_path, amazon_prices_path=None, mep=None, eur_usd=None,
         has_ml = (
             bool(product.get("ml"))
             and fresh_ml
+            and isinstance(item, dict)
+            and ("catalogId" not in item or item["catalogId"] == product["ml"].get("catalogId"))
             and not isinstance(price, bool)
             and isinstance(price, (int, float))
             and math.isfinite(price)

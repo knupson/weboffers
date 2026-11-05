@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 import ml_prices  # noqa: E402
 import publish  # noqa: E402
 import rates  # noqa: E402
+from variants import variant_conflicts
 from tools.apply_candidates import candidate_summary  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
@@ -213,6 +214,9 @@ def evaluate(amazon, candidate, product, mep):
     title = amazon.get("amazonTitle") or ""
     name = product.get("name") or candidate.get("name") or ""
     attrs = attributes(product)
+    conflicts = variant_conflicts(title, name)
+    if conflicts:
+        return "rejected", "variante", {"brand": "", "model": [], "capacity": [], "conflicts": conflicts}
     brand = amazon.get("brand") or (title.split()[0] if title.split() else "")
     model = " ".join(attrs.get(key, "") for key in ("MODEL", "ALPHANUMERIC_MODEL"))
     ml_text = " ".join([name, *(value for key, value in attrs.items() if key in QUANTITY_ATTRS)])

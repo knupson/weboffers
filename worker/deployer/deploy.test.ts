@@ -23,6 +23,8 @@ describe('deployer', () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'deploy-test-'));
+    await fs.mkdir(path.join(tmpDir, 'work', 'dist'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'work', 'dist', 'estado.json'), JSON.stringify({ publicados: 100 }));
     process.env.CLOUDFLARE_API_TOKEN = 'test-token';
     process.env.CLOUDFLARE_ACCOUNT_ID = 'test-account';
   });

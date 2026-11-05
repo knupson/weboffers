@@ -121,6 +121,7 @@ class DailyLog:
         self.stream = stream
         self.dir.mkdir(parents=True, exist_ok=True)
         self._purge()
+        self._log_day = self._now_art().date()
 
     def _now_art(self):
         return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3)))
@@ -138,6 +139,9 @@ class DailyLog:
         self.stream.write(text)
         if text.strip():
             now = self._now_art()
+            if now.date() != self._log_day:
+                self._purge()
+                self._log_day = now.date()
             try:
                 with open(self.dir / f"worker-{now:%Y-%m-%d}.log", "a", encoding="utf-8") as fh:
                     for line in text.splitlines():

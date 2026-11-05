@@ -19,7 +19,7 @@ START_HOUR = 4  # 03/11: arranca a las 04:00 para poder ir lento y reintentar an
 BULK_MAX = 5
 AR_SHIPPING_WEEKDAY = 0  # lunes
 ARSHIPPING_MAX_DAYS = 14
-RETRY_AT = (5, 0)  # reintento de faltantes en el ciclo siguiente a la corrida (05:01 o 06:01), con Amazon ya descansado
+RETRY_TIMES = ((5, 0), (6, 0), (7, 30))
 TIMEOUT = 240
 # Medido el 03/11 (lotes de 5, 60 productos por prueba): 30 s, 15 s y 5 s de pausa sin fallas; el techo lo pone el scraper
 # (~37 s por lote = ~7,6 productos/min aun sin pausa). Con 5 s y el catalogo entero Amazon corto en el producto 132 y se
@@ -91,6 +91,7 @@ def plausible(parsed, product):
 
 
 def fetch_bulk(base_url, asins, store):
+    charge_pages(len(asins))
     resp = requests.get(
         f"{base_url}/products/bulk",
         params={"products": ",".join(asins), "country": store},
@@ -105,6 +106,7 @@ def fetch_bulk(base_url, asins, store):
 
 
 def fetch_ar_shipping(base_url, asins, store):
+    charge_pages(len(asins))
     resp = requests.get(
         f"{base_url}/ar-shipping",
         params={"asins": ",".join(asins), "store": store},
@@ -169,7 +171,8 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
                     continue
                 free = item.get("free")
                 summary["gratis"] += int(item["ships"] is True and free is True)
-                items.setdefault(product["slug"], {})["shipsToAr"] = {
+                items.setdefault(product["slug"], {})["asin"] = product["asin"]
+                items[product["slug"]]["shipsToAr"] = {
                     "ships": item["ships"],
                     "free": free if isinstance(free, bool) else None,
                     "checked": today,
@@ -340,6 +343,7 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
     if not base_url:
         return False
 
+    configure_budget(prices_path, today)
     # Ritmo que se ajusta solo con el resultado de la corrida anterior (03/11).
     global PAUSE_SECONDS
     pace = next_pace(previous)
@@ -375,14 +379,24 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
 
 
 def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=None, ml_prices=None):
-    """Reintenta una vez los precios faltantes y el envío desconocido de productos en rango."""
-    if previous.get("retried") or not base_url or (local.hour, local.minute) < RETRY_AT:
+    """Hasta tres reintentos con espera, sólo para precios o envíos pendientes."""
+    count = previous.get("retryCount", int(bool(previous.get("retried"))))
+    if count >= len(RETRY_TIMES) or not base_url or (local.hour, local.minute) < RETRY_TIMES[count]:
+        return False
+    last_attempt = previous.get("retryAt")
+    if last_attempt and (local - datetime.fromisoformat(last_attempt)).total_seconds() < (3600 if count == 1 else 5400):
         return False
     today = previous["date"]
+    configure_budget(prices_path, today)
     items = dict(previous.get("items") or {})
     skip = previous.get("outOfRange") or {}
     pending = [p for p in candidates if not is_valid_amount((items.get(p["slug"]) or {}).get("amount"))
                and p["slug"] not in skip]
+    unknown_shipping = shipping_candidates(candidates, items, previous, local.date(), ml_prices, eur_usd,
+                                           skip=previous.get("noArOffer") or {})
+    unknown_shipping = [p for p in unknown_shipping if (amount := price_usd(items.get(p["slug"]), eur_usd)) is not None and RANGE_MIN <= amount <= RANGE_MAX]
+    if not pending and not unknown_shipping:
+        return False
     got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
     for slug, item in got.items():
         items[slug] = {**items.get(slug, {}), **item}
@@ -395,7 +409,7 @@ def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=No
     run = dict(previous.get("run") or {})
     run["envio"] = {key: (run.get("envio") or {}).get(key, 0) + value for key, value in envio.items()}
     run["reintento"] = {"recuperados": ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
-    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True,
+    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True, "retryCount": count + 1, "retryAt": local.isoformat(),
                                        "outOfRange": out_of_range_memory(previous, items, eur_usd)})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
     write_run_log(prices_path, today, "reintento", ok, len(pending))
@@ -526,7 +540,7 @@ def fetch_prices(base_url, products, today):
                     reason = "precio_inverosimil"
                 if parsed is not None:
                     amount, currency = parsed
-                    items[slug] = {"amount": amount, "currency": currency, "checked": today}
+                    items[slug] = {"asin": product["asin"], "amount": amount, "currency": currency, "checked": today}
                     ok += 1
                 else:
                     missing += 1
@@ -534,3 +548,24 @@ def fetch_prices(base_url, products, today):
                     failures.append({"slug": slug, "asin": product["asin"], "store": store, "pos": position, "motivo": reason})
                     print(f"Amazon: sin precio {slug} (pos {position}, {reason}).", flush=True)
     return items, ok, missing
+
+
+_budget_path = None
+_budget_day = None
+
+
+def configure_budget(prices_path, today):
+    global _budget_path, _budget_day
+    _budget_path = Path(prices_path).with_name("amazon-page-budget.json")
+    _budget_day = today
+
+
+def charge_pages(count):
+    if _budget_path is None:
+        return
+    state = load_json(_budget_path, {})
+    used = state.get("pages", 0) if state.get("date") == _budget_day else 0
+    limit = int(os.environ.get("AMAZON_DAILY_MAX_PAGES", "650"))
+    if used + count > limit:
+        raise ValueError("Presupuesto diario de páginas de Amazon agotado")
+    publish.write_atomic(_budget_path, {"date": _budget_day, "pages": used + count})
