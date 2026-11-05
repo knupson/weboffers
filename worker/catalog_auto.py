@@ -27,7 +27,7 @@ ART = timezone(timedelta(hours=-3))
 class PacedScraper:
     """Cuenta también reintentos y categorías; corta antes de agotar el presupuesto."""
     def __init__(self, limit):
-        self.limit = min(150, max(0, limit))
+        self.limit = max(0, limit)
         self.pages = 0
         self.valid = 0
         self.failures = 0
@@ -98,24 +98,27 @@ def add_accepted(catalog, matches, output, today):
     return added, failures
 
 
-def maybe_grow(catalog_path, output, now=None, mep=None):
+def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
+    """Alta automática de productos: TODAS las noches de 20:00 a 03:00 ART (05/11; antes sólo los domingos),
+    antes del relevamiento de Chrome de las 03:30 que confirma envío y precio de los nuevos.
+    `force=True` corre ahora fuera de la ventana (tools/crecer_ahora.py)."""
     now = (now or datetime.now(timezone.utc)).astimezone(ART)
-    if not ((now.weekday() == 6 and now.hour >= 14) or (now.weekday() == 0 and now.hour < 3)):
+    if not force and not (now.hour >= 20 or now.hour < 3):
         return False
     output = Path(output)
     state_path = output / "catalog-auto-state.json"
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
-    sunday = now - timedelta(days=1) if now.weekday() == 0 else now
-    year, week, _ = sunday.isocalendar()
-    slot = f"{year}-W{week:02d}"
+    noche = now - timedelta(days=1) if now.hour < 3 else now
+    year, week, _ = noche.isocalendar()
+    slot = noche.date().isoformat() + (f"-forzado-{now:%H%M%S}" if force else "")
     try:
         expired = state.get("status") == "running" and now - datetime.fromisoformat(state["at"]) > timedelta(hours=6)
     except (KeyError, ValueError, TypeError):
         expired = state.get("status") == "running"
-    if state.get("week") == slot and not expired and not (state.get("status") == "failed" and state.get("pages") == 0):
+    if state.get("slot") == slot and not expired and not (state.get("status") == "failed" and state.get("pages") == 0):
         return False
     # Registrar el intento antes de consultar: un reinicio nunca duplica el gasto semanal.
-    publish.write_atomic(state_path, {"week": slot, "status": "running", "at": now.isoformat()})
+    publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": "running", "at": now.isoformat()})
     today = now.date().isoformat()
     added, failures, total = [], [], 0
     scraper = None
@@ -127,10 +130,9 @@ def maybe_grow(catalog_path, output, now=None, mep=None):
         catalog = load_catalog(catalog_path, auto_path)
         run_path = output / f"amazon-run-{today}.json"
         runs = json.loads(run_path.read_text(encoding="utf-8")) if run_path.exists() else {}
-        # Reservar hasta dos páginas por candidato de precios (incluye el backoff de lote).
-        spent = sum(2 * p.get("total", 0) for p in runs.get("passes", []) if p.get("kind") != "catalogo")
         amazon_prices.configure_budget(output / "amazon-prices.json", today)
-        scraper = PacedScraper(min(int(os.getenv("CATALOG_AUTO_MAX_PAGES", "150")), max(0, 650 - spent)))
+        # 05/11: sin el tope de 650 páginas/día (no estaba medido; la medición dio 1.970 consultas/h sin cortes).
+        scraper = PacedScraper(int(os.getenv("CATALOG_AUTO_MAX_PAGES", "400")))
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
@@ -149,7 +151,7 @@ def maybe_grow(catalog_path, output, now=None, mep=None):
         added = []
         failures.append({"motivo": type(exc).__name__})
     status = "failed" if failures else "ok"
-    publish.write_atomic(state_path, {"week": slot, "status": status, "at": now.isoformat(),
+    publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
                                     "added": len(added), "pages": scraper.pages if scraper else 0,
                                     "motivos": sorted({f.get("motivo") for f in failures if f.get("motivo")})})
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)

@@ -9,10 +9,11 @@ exec >> /home/claude/logs/envio_ar_chrome.log 2>&1
 HOY=$(TZ=America/Argentina/Buenos_Aires date +%F)
 W=franquicia400-weboffers-worker-1
 echo "$(date '+%F %T') ENVIO_AR_CHROME inicio"
-ASINS=$(docker exec "$W" python3 -c "
-import json
-c = json.load(open('/app/data/catalog.json', encoding='utf-8'))
-print(' '.join(p['asin'] for p in c if p.get('verified') and p.get('asin') and p.get('store') == 'US' and (p.get('ml') or {}).get('catalogId')))")
+# Catálogo del repo + altas automáticas (catalog-auto.json): sin estas, un producto nuevo nunca tendría envío (05/11).
+ASINS=$(docker exec -w /app/worker "$W" python3 -c "
+from catalog import load_catalog
+c = load_catalog('/app/data/catalog.json', '/app/output/catalog-auto.json')
+print(' '.join(dict.fromkeys(p['asin'] for p in c if p.get('verified') and p.get('asin') and p.get('store') == 'US' and (p.get('ml') or {}).get('catalogId'))))")
 docker cp /opt/docker/franquicia400/tools/envio_ar_chrome.py chrome-claude:/tmp/envio_ar_chrome.py
 TMP=$(mktemp)
 # shellcheck disable=SC2086

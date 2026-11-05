@@ -46,34 +46,44 @@ def test_gate_art_before_sunday_afternoon(setup_job, instant):
     assert discover.call_count == int(expected)
 
 
-def test_once_per_iso_week_keeps_previous_and_logs(setup_job):
+def test_once_per_night_keeps_previous_and_logs(setup_job):
+    """05/11: corre todas las noches (20:00-03:00 ART), una vez por noche."""
     repo, output, discover = setup_job
-    now = datetime.fromisoformat("2026-11-08T17:00:00+00:00")
+    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")  # 20:30 ART
     assert auto.maybe_grow(repo, output, now, mep=1000)
     assert not auto.maybe_grow(repo, output, now, mep=1000)
+    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)  # 02:59, misma noche
     assert discover.call_count == 1
     entries = json.loads((output / "catalog-auto.json").read_text())
     assert len(entries) == 1
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-15T17:00:00+00:00"), mep=1000)
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T23:30:00+00:00"), mep=1000)  # noche siguiente
     assert json.loads((output / "catalog-auto.json").read_text()) == entries
     log = json.loads((output / "amazon-run-2026-11-08.json").read_text())
     assert log["passes"][0]["kind"] == "catalogo"
     assert log["passes"][0]["ok"] == 1
 
 
-def test_failed_before_scraping_retries_same_week(setup_job, monkeypatch, capsys):
+def test_force_runs_outside_the_window(setup_job):
+    repo, output, discover = setup_job
+    tarde = datetime.fromisoformat("2026-11-05T19:00:00+00:00")  # 16:00 ART
+    assert not auto.maybe_grow(repo, output, tarde, mep=1000)
+    assert auto.maybe_grow(repo, output, tarde, mep=1000, force=True)
+    assert discover.call_count == 1
+
+
+def test_failed_before_scraping_retries_same_night(setup_job, monkeypatch, capsys):
     repo, output, discover = setup_job
     discover.side_effect = requests.ConnectionError("sin conexión")
-    now = datetime.fromisoformat("2026-11-08T17:00:00+00:00")
+    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
     assert auto.maybe_grow(repo, output, now, mep=1000)
     assert auto.maybe_grow(repo, output, now, mep=1000)
     assert "DEPLOY_FAIL" in capsys.readouterr().out
     assert json.loads((output / "catalog-auto-state.json").read_text())["status"] == "failed"
 
 
-def test_retry_missing_mep_on_monday_before_three(setup_job):
+def test_retry_missing_mep_before_three(setup_job):
     repo, output, discover = setup_job
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T17:00:00+00:00"), mep=None)
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=None)
     assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)
     assert discover.call_count == 1
     assert json.loads((output / "catalog-auto-state.json").read_text())["week"] == "2026-W45"
@@ -86,7 +96,7 @@ def test_no_retry_after_scraping_started(setup_job):
         kwargs["get"].__self__.pages = 1
         raise requests.ConnectionError()
     discover.side_effect = fail
-    now = datetime.fromisoformat("2026-11-08T17:00:00+00:00")
+    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
     assert auto.maybe_grow(repo, output, now, mep=1000)
     assert not auto.maybe_grow(repo, output, now, mep=1000)
     assert discover.call_count == 1
@@ -96,26 +106,25 @@ def test_no_retry_after_scraping_started(setup_job):
 def test_expired_running_retries(setup_job, hours, retry):
     from datetime import timedelta
     repo, output, discover = setup_job
-    now = datetime.fromisoformat("2026-11-08T23:00:00+00:00")
+    now = datetime.fromisoformat("2026-11-09T05:00:00+00:00")  # 02:00 ART, noche del 08/11
     output.mkdir(parents=True)
     (output / "catalog-auto-state.json").write_text(json.dumps({
-        "week": "2026-W45", "status": "running", "at": (now - timedelta(hours=hours)).isoformat(),
+        "slot": "2026-11-08", "week": "2026-W45", "status": "running", "at": (now - timedelta(hours=hours)).isoformat(),
     }))
     assert auto.maybe_grow(repo, output, now, mep=1000) is retry
     assert discover.call_count == int(retry)
 
 
-def test_daily_budget_reserves_price_retries(setup_job):
+def test_budget_comes_from_env_without_fixed_cap(setup_job, monkeypatch):
     repo, output, discover = setup_job
-    output.mkdir()
-    (output / "amazon-run-2026-11-08.json").write_text(json.dumps({"passes": [{"kind": "corrida", "total": 300}]}))
-    auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T17:00:00+00:00"), mep=1000)
-    assert discover.call_args.kwargs["get"].__self__.limit == 50
+    monkeypatch.setenv("CATALOG_AUTO_MAX_PAGES", "900")
+    auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    assert discover.call_args.kwargs["get"].__self__.limit == 900
 
 
 def test_iso_year_survives_calendar_year_boundary(setup_job):
     repo, output, discover = setup_job
-    auto.maybe_grow(repo, output, datetime.fromisoformat("2027-01-03T17:00:00+00:00"), mep=1000)
+    auto.maybe_grow(repo, output, datetime.fromisoformat("2027-01-03T23:30:00+00:00"), mep=1000)
     assert json.loads((output / "catalog-auto-state.json").read_text())["week"] == "2026-W53"
 
 
@@ -197,7 +206,7 @@ def test_pause_breaks_consecutive_pages(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
     monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [1]})))
-    scraper = auto.PacedScraper(999)
+    scraper = auto.PacedScraper(150)  # el tope sale del parámetro (05/11: sin tope fijo en el código)
     for _ in range(150):
         scraper.get("http://scraper")
     with pytest.raises(auto.discovery.PageBudgetExhausted):
