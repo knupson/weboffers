@@ -118,7 +118,7 @@ def fetch_ar_shipping(base_url, asins, store):
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
 
 
-def refresh_ar_shipping(candidates, items, today, prices_path=None):
+def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=None):
     """Consulta /ar-shipping en lotes de BULK_MAX agrupados por tienda y guarda shipsToAr por slug.
 
     Cada lote se pide con el `store` de sus productos (la misma tienda que da el precio).
@@ -160,6 +160,8 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None):
                 item = fetched.get(product["asin"])
                 reason = lote_error or shipping_reason(item)
                 if reason:
+                    if reason == "sin_ships_booleano" and no_offer is not None:
+                        no_offer.append(product["slug"])
                     summary["sin_dato"] += 1
                     shipping_failures.append({"slug": product["slug"], "asin": product["asin"],
                                               "store": store, "motivo": reason})
@@ -274,7 +276,26 @@ def in_range(candidates, previous, today_date, eur_usd=None, ml_prices=None):
     return keep, len(candidates) - len(keep)
 
 
-def shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_usd=None, monday=False):
+def recent_no_offer(previous, today_date):
+    """Productos sin oferta para Argentina en los últimos días (05/11): no se reconsultan hasta el lunes.
+
+    Con ubicación AR la página no trae `ships` cuando Amazon no tiene oferta para Argentina
+    (confirmado en Chrome el 04/11); pedirlos a diario sólo gasta páginas. El lunes se revisa todo.
+    """
+    if today_date.weekday() == AR_SHIPPING_WEEKDAY or not isinstance(previous, dict):
+        return {}
+    memory = {}
+    for slug, checked in (previous.get("noArOffer") or {}).items():
+        try:
+            age = (today_date - date.fromisoformat(checked)).days
+        except (TypeError, ValueError):
+            continue
+        if 0 <= age <= 6:
+            memory[slug] = checked
+    return memory
+
+
+def shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_usd=None, monday=False, skip=()):
     known = merge_ar_shipping(previous, items, today_date)
     def confirmed(product):
         ar = known.get(product["slug"])
@@ -282,7 +303,7 @@ def shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_
             return True
         catalog_ar = product.get("shipsToAr") or {}
         return catalog_ar.get("freeShipping") is True and fresh_shipping_date(catalog_ar.get("checked"), today_date)
-    selected = [p for p in candidates if monday or not confirmed(p)]
+    selected = [p for p in candidates if monday or (not confirmed(p) and p["slug"] not in skip)]
     ml_items = (ml_prices or {}).get("items") or {}
     def priority(product):
         amount = price_usd(items.get(product["slug"]), eur_usd)
@@ -330,14 +351,18 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
     # Envío a Argentina (03/11): los lunes se releva todo; el resto de los días SÓLO lo que no tiene envío
     # confirmado (catálogo o relevamiento de ≤14 días), porque sin ese dato el producto no se publica (REGLA 0)
     # y pedir todo a diario duplica las páginas a Amazon. Cada relevamiento se conserva 14 días.
+    no_offer = recent_no_offer(previous, today_date)
     to_survey = shipping_candidates(candidates, items, previous, today_date, ml_prices, eur_usd,
-                                    monday=today_date.weekday() == AR_SHIPPING_WEEKDAY)
-    run["envio"] = refresh_ar_shipping(to_survey, items, today, prices_path)
+                                    monday=today_date.weekday() == AR_SHIPPING_WEEKDAY, skip=no_offer)
+    new_no_offer = []
+    run["envio"] = refresh_ar_shipping(to_survey, items, today, prices_path, no_offer=new_no_offer)
+    no_offer.update({slug: today for slug in new_no_offer})
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
                                        "arShipping": ar_shipping, "run": run, "pace": pace,
-                                       "outOfRange": out_of_range_memory(previous, items, eur_usd, without_ml)})
+                                       "outOfRange": out_of_range_memory(previous, items, eur_usd, without_ml),
+                                       "noArOffer": no_offer})
     print(f"Amazon: resumen {json.dumps(run, ensure_ascii=False)}; ritmo de mañana {pace['pause_s']:.0f} s.", flush=True)
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
@@ -358,7 +383,8 @@ def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=No
     got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
     for slug, item in got.items():
         items[slug] = {**items.get(slug, {}), **item}
-    to_survey = shipping_candidates(candidates, items, previous, local.date(), ml_prices, eur_usd)
+    to_survey = shipping_candidates(candidates, items, previous, local.date(), ml_prices, eur_usd,
+                                    skip=previous.get("noArOffer") or {})
     to_survey = [p for p in to_survey if (amount := price_usd(items.get(p["slug"]), eur_usd)) is not None
                  and RANGE_MIN <= amount <= RANGE_MAX]
     envio = refresh_ar_shipping(to_survey, items, today, prices_path)

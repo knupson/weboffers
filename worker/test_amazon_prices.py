@@ -685,10 +685,34 @@ def test_resurvey_expired_catalog_shipping(checked, selected):
 def test_ml_missing_is_not_confirmed_absence(tmp_path, monkeypatch, absent, excluded):
     monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
     monkeypatch.setattr(amazon_prices, "fetch_prices", Mock(return_value=({}, 0, 0)))
-    monkeypatch.setattr(amazon_prices, "refresh_ar_shipping", lambda *args: {})
+    monkeypatch.setattr(amazon_prices, "refresh_ar_shipping", lambda *args, **kwargs: {})
     (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "items": {}, "absent": absent}))
     product = {"slug": "a", "asin": "A", "store": "US", "verified": True, "ml": {"price": 1000}}
     path = tmp_path / "amazon-prices.json"
     amazon_prices.maybe_refresh([product], path, datetime(2026, 11, 4, 4, tzinfo=amazon_prices.ART))
     assert ("a" in json.loads(path.read_text())["outOfRange"]) is excluded
     assert bool(amazon_prices.fetch_prices.call_args.args[1]) is not excluded
+
+
+def test_sin_oferta_ar_no_se_reconsulta_hasta_el_lunes():
+    """05/11: 7 productos sin oferta para Argentina se pedían todos los días; ahora esperan al lunes."""
+    from datetime import date
+    previous = {"noArOffer": {"a": "2026-11-04", "viejo": "2026-10-28", "roto": "x"}}
+    assert amazon_prices.recent_no_offer(previous, date(2026, 11, 5)) == {"a": "2026-11-04"}
+    assert amazon_prices.recent_no_offer(previous, date(2026, 11, 9)) == {}  # lunes: se revisa todo
+    product = {"slug": "a", "asin": "B0", "store": "US"}
+    assert amazon_prices.shipping_candidates([product], {}, None, date(2026, 11, 5), None, skip={"a": "2026-11-04"}) == []
+    assert amazon_prices.shipping_candidates([product], {}, None, date(2026, 11, 9), None, monday=True,
+                                             skip={"a": "2026-11-04"}) == [product]
+
+
+def test_refresh_ar_shipping_anota_sin_oferta(monkeypatch):
+    monkeypatch.setattr(amazon_prices, "ar_url", lambda: "http://ar")
+    monkeypatch.setattr(amazon_prices, "fetch_ar_shipping",
+                        lambda base, asins, store: {"B1": {"asin": "B1"}, "B2": {"asin": "B2", "ships": True, "free": True}})
+    monkeypatch.setattr(amazon_prices.time, "sleep", lambda s: None)
+    monkeypatch.setattr(amazon_prices, "pause", lambda: None)
+    no_offer = []
+    products = [{"slug": "s1", "asin": "B1", "store": "US"}, {"slug": "s2", "asin": "B2", "store": "US"}]
+    amazon_prices.refresh_ar_shipping(products, {}, "2026-11-05", no_offer=no_offer)
+    assert no_offer == ["s1"]

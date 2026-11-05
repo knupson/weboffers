@@ -40,3 +40,10 @@ def test_failed_catalog_alerts_even_with_additions():
     state = {"catalogo": {"week": "2026-W45", "status": "failed", "added": 2, "motivos": ["sin_foto"]}}
     text = reminder.control_catalogo(datetime.fromisoformat("2026-11-09T07:30:00-03:00"), download(state))
     assert "falló" in text and "altas=2" in text and "sin_foto" in text
+
+
+def test_calendario_sin_vencimiento_despues_de_noviembre():
+    """El esqueleto semanal sigue en diciembre (antes vencía el 30/11)."""
+    import datetime as _dt
+    assert "armá el Reel del día" in reminder.mensaje(_dt.date(2026, 12, 8))  # martes
+    assert "armá el carrusel" in reminder.mensaje(_dt.date(2026, 12, 7))  # lunes

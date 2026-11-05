@@ -46,7 +46,6 @@ NOTAS = {
 }
 SIN_REEL = {"2026-11-03"}  # el Reel 1 ya está programado
 SIN_CARRUSEL = {"2026-11-23"}  # feriado: pasa al 24
-CALENDARIO_HASTA = datetime.date(2026, 11, 30)
 MINIMO_PRODUCTOS = 100
 MAXIMO_SIN_ENVIO = 3  # tarjetas «no confirmamos el envío» toleradas antes de avisar
 EXTRA_DEPLOY_DATES = {"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-27", "2026-11-30"}
@@ -68,11 +67,11 @@ def mensaje(hoy):
         frases += ["rutina de los lunes", "informe de la semana"]
         if hoy.day <= 7:
             frases.append("informe del mes")
-    if hoy <= CALENDARIO_HASTA:
-        if hoy.weekday() == 0 and iso not in SIN_CARRUSEL:
-            frases.append("armá el carrusel y las historias de la semana")
-        if hoy.weekday() in (1, 2, 3) and iso not in SIN_REEL:
-            frases.append("armá el Reel del día")
+    # Esqueleto semanal permanente (skill redes-proyectos): sin fecha de vencimiento (05/11).
+    if hoy.weekday() == 0 and iso not in SIN_CARRUSEL:
+        frases.append("armá el carrusel y las historias de la semana")
+    if hoy.weekday() in (1, 2, 3) and iso not in SIN_REEL:
+        frases.append("armá el Reel del día")
     frases += FRASES.get(iso, [])
     partes = [pedir(frases)] if frases else []
     if iso in NOTAS:
@@ -135,7 +134,7 @@ def control(que, ahora, bajar=bajar):
         return pedir([f"no salió el Telegram de las {hora}, revisá la VM docker"])
     if que == "reel19":
         # Días de Reel del calendario: mar a jue 19:00 en IG y FB. Se consulta la API oficial de Meta.
-        if ahora.weekday() not in (1, 2, 3) or ahora.date() > CALENDARIO_HASTA:
+        if ahora.weekday() not in (1, 2, 3):
             return ""
         desde = datetime.datetime.fromisoformat(f"{hoy}T18:50:00-03:00")
         try:
