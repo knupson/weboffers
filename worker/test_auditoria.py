@@ -224,9 +224,13 @@ def test_interpretar_texto_del_chrome():
         import pytest
         pytest.skip("sin websockets")
     ar = "Deliver to Argentina"
-    assert mod.interpretar({"deliver": ar, "envio": "FREE delivery Mon, Nov 16 to Argentina", "titulo": "x"})["free"] is True
-    assert mod.interpretar({"deliver": ar, "envio": "Delivery Monday, November 16 to Argentina", "titulo": "x"}) == {
-        "ships": True, "free": False, "text": "Delivery Monday, November 16 to Argentina", "motivo": None, "precio": None}
+    assert mod.interpretar({"deliver": ar, "buybox": True, "envio": "FREE delivery Mon, Nov 16 to Argentina", "precio": "$10", "titulo": "x"})["free"] is True
+    assert mod.interpretar({"deliver": ar, "buybox": True, "envio": "Delivery Monday, November 16 to Argentina", "precio": "$10", "titulo": "x"}) == {
+        "ships": True, "free": False, "text": "Delivery Monday, November 16 to Argentina", "motivo": None, "precio": "$10"}
+    # 05/11: texto de envío sin precio en el recuadro = no confirma; sin recuadro = desconocido.
+    assert mod.interpretar({"deliver": ar, "buybox": True, "envio": "FREE delivery to Argentina", "titulo": "x"})["ships"] is None
+    assert mod.interpretar({"deliver": ar, "buybox": False, "envio": "FREE delivery to Argentina", "precio": "$1"})["ships"] is None
+    assert mod.interpretar({"deliver": ar, "buybox": True, "sinOferta": "See All Buying Options", "titulo": "x"})["ships"] is False
     assert mod.interpretar({"deliver": ar, "sinOferta": "See All Buying Options", "titulo": "x"})["ships"] is False
     assert mod.interpretar({"deliver": "Deliver to 10001", "envio": "FREE delivery"})["ships"] is None
     assert mod.interpretar({"deliver": ar, "captcha": True})["motivo"] == "captcha"

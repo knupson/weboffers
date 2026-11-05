@@ -27,12 +27,21 @@ RECICLAR_CADA = 10  # pestaña nueva cada N productos: libera memoria (05/11 el 
 BLOQUEADOS = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.avif", "*.svg", "*.mp4", "*.webm", "*.m3u8",
               "*.woff", "*.woff2", "*.ttf", "*images-amazon.com/images/I/*", "*m.media-amazon.com/images/*"]
 
+# 05/11: el envío se lee SÓLO del bloque de entrega de la oferta destacada (#deliveryBlockContainer dentro del
+# recuadro de compra). Leyendo la página entera se tomaban «FREE delivery … to Argentina» de productos PATROCINADOS
+# (bloques sp_detail*): el Kingston NV3 decía «FREE» por un patrocinado y su envío real era «$26.14 delivery».
 LEER = r"""(() => {const t=document.body.innerText;
+const bb=document.getElementById('desktop_qualifiedBuyBox')||document.getElementById('desktop_buybox')||document.getElementById('buybox');
+const q=(sel)=>{const e=bb&&bb.querySelector(sel); return e?(e.innerText||'').replace(/\s+/g,' ').trim():'';};
+const entrega=q('#deliveryBlockContainer')||q('#mir-layout-DELIVERY_BLOCK')||q('#deliveryBlockMessage');
+const b=bb?(bb.innerText||''):'';
 return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||{}).innerText||'').replace(/\s+/g,' '),
- envio:(t.match(/[^\n]*(delivery|Delivery)[^\n]*Argentina[^\n]*/)||[])[0]||null,
- sinOferta:(t.match(/[^\n]*(See All Buying Options|No featured offers available|cannot be shipped to your selected delivery location|This item cannot be shipped|Currently unavailable)[^\n]*/)||[])[0]||null,
+ buybox:!!bb,
+ envio:entrega||null,
+ sinOferta:(b.match(/[^\n]*(See All Buying Options|No featured offers available|cannot be shipped to your selected delivery location|This item cannot be shipped|Currently unavailable)[^\n]*/)||[])[0]||null,
  captcha:/captcha|Enter the characters you see/i.test(t),
- precio:(document.querySelector('#corePrice_feature_div .a-offscreen, #apex_desktop .a-offscreen, #corePriceDisplay_desktop_feature_div .a-offscreen')||{}).innerText||null, titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
+ precio:(['#corePrice_feature_div .a-offscreen','#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen','#corePriceDisplay_desktop_feature_div .a-offscreen','#apex_desktop .a-offscreen'].map(s=>{const e=document.querySelector(s); return e && (e.innerText||e.textContent||'').trim();}).find(v=>v && /\d/.test(v)))||null,
+ titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
 
 
 def interpretar(d):
@@ -41,10 +50,17 @@ def interpretar(d):
         return {"ships": None, "free": None, "text": None, "motivo": "captcha"}
     if "argentina" not in (d.get("deliver") or "").lower():
         return {"ships": None, "free": None, "text": None, "motivo": "ubicacion_no_ar"}
+    if d.get("buybox") is False:
+        return {"ships": None, "free": None, "text": None, "motivo": "sin_recuadro_de_compra"}
     envio = d.get("envio")
-    if envio:
-        return {"ships": True, "free": bool(re.match(r"\s*FREE delivery", envio, re.I)), "text": envio[:160], "motivo": None,
+    if d.get("sinOferta") and not envio:
+        return {"ships": False, "free": None, "text": d["sinOferta"][:160], "motivo": "sin_oferta_ar"}
+    if envio and d.get("precio"):
+        # Envío confirmado sólo con texto de envío Y precio en el recuadro de compra: una oferta real.
+        return {"ships": True, "free": bool(re.match(r"\s*FREE (delivery|shipping)", envio, re.I)), "text": envio[:160], "motivo": None,
                 "precio": d.get("precio")}
+    if envio:
+        return {"ships": None, "free": None, "text": envio[:160], "motivo": "envio_sin_precio"}
     if d.get("sinOferta"):
         return {"ships": False, "free": None, "text": d["sinOferta"][:160], "motivo": "sin_oferta_ar"}
     if not d.get("titulo"):
@@ -91,6 +107,10 @@ async def leer_producto(c, s, asin):
     await c.call("Page.navigate", {"url": f"https://www.amazon.com/dp/{asin}?language=en_US"}, s)
     await asyncio.sleep(ESPERA_CARGA)
     r = await c.call("Runtime.evaluate", {"expression": LEER, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
+    if r.get("exceptionDetails"):
+        # Un error del JavaScript de lectura nunca puede pasar como «página vacía» (05/11).
+        det = r["exceptionDetails"]
+        raise RuntimeError(f"js: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
     return json.loads((r.get("result") or {}).get("value") or "{}")
 
 
