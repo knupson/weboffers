@@ -21,6 +21,9 @@ const EXTRA_DEPLOY_AT_UTC = '16:00:00Z';  // 13:00 ART
 const EXTRA_DEADLINE_UTC = '18:00:00Z';   // 15:00 ART
 const EXTRA_SLOT_HOUR = 13;               // slot "<fecha>T13" que escribe el worker
 const RETRY_INTERVAL_MS = 10 * 60e3;  // 10 minutos
+// Redespliegue por precios recuperados: sin tope diario (05/11, el tope de 2 dejó correcciones sin publicar),
+// pero con al menos 30 min entre despliegues y sólo si cambiaron los precios.
+const MIN_REDEPLOY_GAP_MS = 30 * 60e3;
 const ONE_DAY_MS = 86400e3;
 const MAX_SLEEP_MS = 60e3;
 
@@ -81,8 +84,10 @@ function redeployCount(state) {
 
 function nextRunAt(now, lastState) {
   const today = artDate(now);
-  if (lastState?.date === today && redeployCount(lastState) < 2 && now.getTime() < recoveryDeadlineAt(now)) {
-    return Math.min(now.getTime() + RETRY_INTERVAL_MS, recoveryDeadlineAt(now));
+  if (lastState?.date === today && now.getTime() < recoveryDeadlineAt(now)) {
+    const gapEnd = Date.parse(lastState.deployedAt ?? '') + MIN_REDEPLOY_GAP_MS;
+    const next = Math.max(now.getTime() + RETRY_INTERVAL_MS, Number.isFinite(gapEnd) ? gapEnd : 0);
+    return Math.min(next, recoveryDeadlineAt(now));
   }
   let target = startAt(now);
   if (target <= now.getTime()) {
@@ -297,8 +302,9 @@ async function deployOnce(now = new Date(), opts = {}) {
   const hash = createHash('sha256').update(hashInput).digest('hex');
   const last = await readState(stateFile);
   const recovery = last?.date === today;
+  const gapEnd = Date.parse(last?.deployedAt ?? '') + MIN_REDEPLOY_GAP_MS;
   const skipReason = recovery && (last.hash === hash ? 'los precios no cambiaron desde el último despliegue'
-    : redeployCount(last) >= 2 ? 'ya se hicieron dos redespliegues hoy'
+    : Number.isFinite(gapEnd) && now.getTime() < gapEnd ? 'pasaron menos de 30 min desde el último despliegue'
     : now.getTime() >= recoveryDeadlineAt(now) ? 'cerró la ventana de recuperaciones de las 20:00 ART' : null);
   if (skipReason) {
     log(`DEPLOY_SKIP ${skipReason}.`);

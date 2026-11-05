@@ -389,7 +389,7 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None):
     global PAUSE_SECONDS
     pace = next_pace(previous)
     PAUSE_SECONDS = pace["pause_s"]
-    items, ok, missing = fetch_prices(base_url, candidates, today)
+    items, ok, missing = prices_with_chrome(base_url, candidates, today, prices_path)
     run = run_summary(ok, len(candidates))
     pace = adjust_pace(pace, run)
 
@@ -438,7 +438,7 @@ def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=No
     unknown_shipping = [p for p in unknown_shipping if (amount := price_usd(items.get(p["slug"]), eur_usd)) is not None and RANGE_MIN <= amount <= RANGE_MAX]
     if not pending and not unknown_shipping:
         return False
-    got, ok, _ = fetch_prices(base_url, pending, today) if pending else ({}, 0, 0)
+    got, ok, _ = prices_with_chrome(base_url, pending, today, prices_path) if pending else ({}, 0, 0)
     for slug, item in got.items():
         items[slug] = {**items.get(slug, {}), **item}
     to_survey = shipping_candidates(candidates, items, previous, local.date(), ml_prices, eur_usd,
@@ -541,6 +541,62 @@ def empty_count(fetched, lote_error, chunk, store):
     if lote_error:
         return len(chunk)
     return sum(1 for p in chunk if missing_reason(fetched.get(p["asin"]), store) == "sin_precio_ni_vendedor")
+
+
+def load_chrome_prices(prices_path, today):
+    """Precio en USD leído por el Chrome anónimo (ar-chrome-AAAA-MM-DD.json): {asin: (amount|None, ships)}.
+
+    05/11: el scraper dio sin precio 22 productos de los que Chrome mostró 16 a la venta con envío a Argentina;
+    Chrome lee precio y envío de la MISMA página (misma oferta). El scraper queda de respaldo.
+    """
+    if prices_path is None:
+        return {}
+    data = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), None)
+    items = data.get("items") if isinstance(data, dict) else None
+    out = {}
+    for asin, it in (items or {}).items():
+        if not isinstance(it, dict) or not isinstance(it.get("ships"), bool):
+            continue
+        amount = None
+        m = re.fullmatch(r"\s*\$\s*([\d,]+(?:\.\d+)?)\s*", str(it.get("precio") or ""))
+        if m:
+            try:
+                amount = float(m.group(1).replace(",", ""))
+            except ValueError:
+                amount = None
+        out[asin] = (amount if is_valid_amount(amount) else None, it["ships"])
+    return out
+
+
+def prices_with_chrome(base_url, products, today, prices_path=None):
+    """Precios del día: primero Chrome (tienda US), el resto con el scraper. Devuelve (items, ok, faltantes)."""
+    chrome = load_chrome_prices(prices_path, today)
+    items, ok, missing, resto = {}, 0, 0, []
+    chrome_fallas = []
+    for p in products:
+        amount, ships = chrome.get(p["asin"], (None, None)) if p.get("store") == "US" else (None, None)
+        if ships is False:
+            # Chrome vio la página sin oferta para Argentina: no se publica (REGLA 0) y no se gasta el scraper.
+            missing += 1
+            chrome_fallas.append({"slug": p["slug"], "asin": p["asin"], "store": "US", "motivo": "sin_oferta_ar_chrome"})
+            continue
+        if amount is not None and plausible((amount, "USD"), p):
+            items[p["slug"]] = {"asin": p["asin"], "amount": amount, "currency": "USD", "checked": today, "source": "chrome"}
+            ok += 1
+            continue
+        resto.append(p)
+    if chrome:
+        print(f"Amazon: Chrome dio {ok} precios y {missing} sin oferta AR; {len(resto)} van al scraper.", flush=True)
+    if base_url:
+        got, ok2, missing2 = fetch_prices(base_url, resto, today)
+        items.update(got)
+        ok += ok2
+        missing += missing2
+    else:
+        missing += len(resto)
+    if chrome_fallas and prices_path is not None:
+        write_run_log(prices_path, today, "chrome", ok, len(products), chrome_fallas)
+    return items, ok, missing
 
 
 def fetch_prices(base_url, products, today):

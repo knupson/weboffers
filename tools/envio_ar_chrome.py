@@ -31,7 +31,8 @@ LEER = r"""(() => {const t=document.body.innerText;
 return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||{}).innerText||'').replace(/\s+/g,' '),
  envio:(t.match(/[^\n]*(delivery|Delivery)[^\n]*Argentina[^\n]*/)||[])[0]||null,
  sinOferta:(t.match(/[^\n]*(See All Buying Options|No featured offers available|cannot be shipped to your selected delivery location|This item cannot be shipped|Currently unavailable)[^\n]*/)||[])[0]||null,
- captcha:/captcha|Enter the characters you see/i.test(t), titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
+ captcha:/captcha|Enter the characters you see/i.test(t),
+ precio:(document.querySelector('#corePrice_feature_div .a-offscreen, #apex_desktop .a-offscreen, #corePriceDisplay_desktop_feature_div .a-offscreen')||{}).innerText||null, titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
 
 
 def interpretar(d):
@@ -42,7 +43,8 @@ def interpretar(d):
         return {"ships": None, "free": None, "text": None, "motivo": "ubicacion_no_ar"}
     envio = d.get("envio")
     if envio:
-        return {"ships": True, "free": bool(re.match(r"\s*FREE delivery", envio, re.I)), "text": envio[:160], "motivo": None}
+        return {"ships": True, "free": bool(re.match(r"\s*FREE delivery", envio, re.I)), "text": envio[:160], "motivo": None,
+                "precio": d.get("precio")}
     if d.get("sinOferta"):
         return {"ships": False, "free": None, "text": d["sinOferta"][:160], "motivo": "sin_oferta_ar"}
     if not d.get("titulo"):
@@ -80,6 +82,8 @@ async def nueva_pestana(c, ctx):
     await c.call("Page.enable", {}, s)
     await c.call("Network.enable", {}, s)
     await c.call("Network.setBlockedURLs", {"urls": BLOQUEADOS}, s)
+    # Precios en dólares en la página (preferencia de moneda de Amazon); sin cuenta.
+    await c.call("Network.setCookie", {"name": "i18n-prefs", "value": "USD", "domain": ".amazon.com", "path": "/"}, s)
     return tid, s
 
 

@@ -75,7 +75,21 @@ it('corta exactamente a las 20 ART y no consume cupo por fallas', async () => {
   expect(commands.filter(c => c.startsWith('npx'))).toHaveLength(1);
   expect(nextRunAt(now('22:59'), await state())).toBe(now('23:00').getTime());
   expect(nextRunAt(now('23:00'), await state())).toBe(Date.parse('2026-11-06T10:00:00Z'));
-  expect(nextRunAt(now('16:00'), { date: '2026-11-05', redeploys: 2 })).toBe(Date.parse('2026-11-06T10:00:00Z'));
+  // 05/11: sin tope diario de redespliegues; sólo 30 min de separación desde el último despliegue.
+  expect(nextRunAt(now('16:00'), { date: '2026-11-05', redeploys: 2 })).toBe(now('16:10').getTime());
+  expect(nextRunAt(now('16:00'), { date: '2026-11-05', redeploys: 5, deployedAt: now('15:50').toISOString() }))
+    .toBe(now('16:20').getTime());
+});
+
+it('redespliega más de dos veces por día, con 30 min entre despliegues', async () => {
+  expect(await deployOnce(now('10:00'), opts)).toBe('ok');
+  for (const [i, hora] of [[1, '11:00'], [2, '12:00'], [3, '13:00']] as const) {
+    await prices('ml', i);
+    expect(await deployOnce(now(hora), opts)).toBe('ok');
+  }
+  await prices('ml', 4);
+  expect(await deployOnce(now('13:10'), opts)).toBe('skip');   // menos de 30 min desde el último
+  expect((await state()).redeploys).toBe(3);
 });
 
 it('no redespliega si alguno de los archivos dejó de ser de hoy', async () => {

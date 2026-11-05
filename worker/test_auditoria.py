@@ -226,7 +226,29 @@ def test_interpretar_texto_del_chrome():
     ar = "Deliver to Argentina"
     assert mod.interpretar({"deliver": ar, "envio": "FREE delivery Mon, Nov 16 to Argentina", "titulo": "x"})["free"] is True
     assert mod.interpretar({"deliver": ar, "envio": "Delivery Monday, November 16 to Argentina", "titulo": "x"}) == {
-        "ships": True, "free": False, "text": "Delivery Monday, November 16 to Argentina", "motivo": None}
+        "ships": True, "free": False, "text": "Delivery Monday, November 16 to Argentina", "motivo": None, "precio": None}
     assert mod.interpretar({"deliver": ar, "sinOferta": "See All Buying Options", "titulo": "x"})["ships"] is False
     assert mod.interpretar({"deliver": "Deliver to 10001", "envio": "FREE delivery"})["ships"] is None
     assert mod.interpretar({"deliver": ar, "captcha": True})["motivo"] == "captcha"
+
+
+def test_precios_de_chrome_primero_y_scraper_de_respaldo(tmp_path, monkeypatch):
+    import json
+    import amazon_prices as a
+    prices = tmp_path / "amazon-prices.json"
+    (tmp_path / "ar-chrome-2026-11-05.json").write_text(json.dumps({"items": {
+        "B1": {"ships": True, "free": True, "precio": "$1,159.00"},
+        "B2": {"ships": False, "free": None},
+        "B3": {"ships": None, "motivo": "error:TimeoutError"}}}), encoding="utf-8")
+    llamados = []
+
+    def fake(base, products, today):
+        llamados.append([p["asin"] for p in products])
+        return {p["slug"]: {"asin": p["asin"], "amount": 50.0, "currency": "USD", "checked": today} for p in products}, len(products), 0
+    monkeypatch.setattr(a, "fetch_prices", fake)
+    productos = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US"} for i in (1, 2, 3)] + [{"slug": "es", "asin": "E1", "store": "ES"}]
+    items, ok, missing = a.prices_with_chrome("http://scraper", productos, "2026-11-05", prices)
+    assert items["s1"]["amount"] == 1159.0 and items["s1"]["source"] == "chrome"
+    assert "s2" not in items and missing == 1          # sin oferta AR según Chrome: ni se consulta
+    assert llamados == [["B3", "E1"]]                  # lo que Chrome no leyó y la tienda ES van al scraper
+    assert ok == 3
