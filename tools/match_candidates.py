@@ -340,6 +340,11 @@ def evaluate(amazon, candidate, product, mep):
     # 05/11: con marca Y modelo confirmados, la duda sólo de color no frena el alta (el color no cambia el
     # producto). La categoría SÍ frena: apply_candidates exige una categoría válida del catálogo.
     leves = {"color sin confirmar"}
+    # La capacidad sin confirmar en un solo lado sólo importa donde la capacidad ES la variante (05/11: Plaud Note Pro
+    # 64 GB, MWE Gold 850 W, EVIVA 12" quedaban dudosos siendo el mismo producto).
+    if category_for(amazon.get("amazonCategory")) not in {"Almacenamiento", "Celulares", "Tablets y lectores",
+                                                          "Monitores", "Componentes", "Mini PCs"}:
+        leves = leves | {"capacidad o tamaño sin confirmar"}
     if doubts and evidence["brand"] and evidence["model"] and set(doubts) <= leves:
         evidence["dudasLeves"] = doubts
         return "accepted", "", evidence

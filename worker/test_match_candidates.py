@@ -515,3 +515,12 @@ def test_combo_en_un_solo_lado_se_rechaza():
     cand = {"catalogId": "MLA1", "name": "Camara Fujifilm Instax Mini 12 Morada", "minPrice": 188000, "itemId": "MLA2"}
     estado, motivo, _ = m.evaluate(amazon, cand, {"name": cand["name"], "attributes": {}}, 1500)
     assert (estado, motivo) == ("rejected", "combo en un solo lado")
+
+
+def test_capacidad_sin_confirmar_no_frena_fuera_de_categorias_de_capacidad():
+    """05/11: un parlante con los W informados sólo en ML es el mismo producto."""
+    ml = cached_product("Parlante JBL Charge 6 30W Bluetooth", "JBL", "Charge 6")
+    assert cached_match("JBL Charge 6 Portable Bluetooth Speaker", ml, "JBL", "Audio y video")["accepted"]
+    # En almacenamiento la capacidad ES la variante: sin confirmar en un lado sigue frenando.
+    ssd = cached_product("Samsung T9 SSD", "Samsung", "T9")
+    assert cached_match("Samsung T9 Portable SSD 2TB", ssd)["doubtful"]
