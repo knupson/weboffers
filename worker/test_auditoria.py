@@ -178,3 +178,12 @@ def test_dockerfile_copia_todos_los_modulos_del_worker():
                     pendientes.append(f"{n}.py")
     faltan = vistos - copiados
     assert not faltan, f"faltan en el COPY del Dockerfile: {sorted(faltan)}"
+
+
+def test_envio_de_otra_oferta_no_confirma():
+    import amazon_prices as a
+    precio = {"amount": 100.0}
+    assert a.offer_mismatch({"ships": True, "free": True, "price": 104.0, "condition": "New"}, precio) is None
+    assert a.offer_mismatch({"ships": True, "free": True, "price": 70.0, "condition": "New"}, precio) == "oferta_distinta"
+    assert a.offer_mismatch({"ships": True, "free": True, "price": 100.0, "condition": "Used - Good"}, precio).startswith("condicion")
+    assert a.offer_mismatch({"ships": True, "free": True}, precio) is None  # sin datos de oferta: como antes

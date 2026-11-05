@@ -3,6 +3,7 @@
 from datetime import date, datetime, timedelta, timezone
 from itertools import groupby
 import json
+import re
 import math
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ START_HOUR = 4  # 03/11: arranca a las 04:00 para poder ir lento y reintentar an
 # En la Pi4 el scraper tarda ~13 s por producto: lotes chicos y espera larga (medido el 31/10).
 BULK_MAX = 5
 AR_SHIPPING_WEEKDAY = 0  # lunes
+OFFER_TOLERANCE = 0.15  # precio de la oferta con envío AR vs precio del día
 ARSHIPPING_MAX_DAYS = 14
 RETRY_TIMES = ((5, 0), (6, 0), (7, 30))
 TIMEOUT = 240
@@ -160,7 +162,7 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
             for product in chunk:
                 summary["relevados"] += 1
                 item = fetched.get(product["asin"])
-                reason = lote_error or shipping_reason(item)
+                reason = lote_error or shipping_reason(item) or offer_mismatch(item, items.get(product["slug"]))
                 if reason:
                     if reason == "sin_ships_booleano" and no_offer is not None:
                         no_offer.append(product["slug"])
@@ -181,6 +183,24 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
         write_run_log(prices_path, today, "envio", summary["relevados"] - summary["sin_dato"],
                       summary["relevados"], shipping_failures)
     return summary
+
+
+def offer_mismatch(ar_item, price_item):
+    """El envío confirmado tiene que ser de la misma oferta que el precio publicado (auditoría 05/11).
+
+    amazon-ar devuelve precio y condición de la oferta que ve con ubicación Argentina; si no es nueva
+    o su precio difiere más de OFFER_TOLERANCE del precio del día, el envío no se da por confirmado.
+    """
+    if not isinstance(ar_item, dict):
+        return None
+    condition = ar_item.get("condition")
+    if isinstance(condition, str) and condition.strip() and not re.match(r"(?i)\s*(new|nuevo)", condition):
+        return "condicion:" + condition.strip()[:30]
+    ar_price = ar_item.get("price")
+    amount = (price_item or {}).get("amount") if isinstance(price_item, dict) else None
+    if is_valid_amount(ar_price) and is_valid_amount(amount) and abs(ar_price - amount) / amount > OFFER_TOLERANCE:
+        return "oferta_distinta"
+    return None
 
 
 def shipping_reason(item):

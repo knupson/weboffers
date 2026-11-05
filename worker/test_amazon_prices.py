@@ -146,7 +146,7 @@ def ar_response(products):
     return resp
 
 
-def ar_item(asin, ships, free, text="FREE delivery Wednesday, November 11 to Argentina", price=25.99):
+def ar_item(asin, ships, free, text="FREE delivery Wednesday, November 11 to Argentina", price=None):
     return {"asin": asin, "ships": ships, "free": free, "text": text if ships else None, "price": price if ships else None, "condition": "New"}
 
 
