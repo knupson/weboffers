@@ -4578,7 +4578,7 @@
     "brand": "Logitech",
     "category": "Periféricos",
     "summary": "Teclado mecánico gamer inalámbrico de perfil bajo, con switches clicky y luces RGB.",
-    "verified": true,
+    "verified": false,
     "ml": {
       "price": 349990,
       "url": "https://www.mercadolibre.com.ar/p/MLA43105424?pdp_filters=item_id%3AMLA4019053878&matt_word=ale_benzoni&matt_tool=58527537",
@@ -4590,7 +4590,8 @@
       "checked": "2026-11-04"
     },
     "image": "/products/logitech-g915-x-lightspeed-clicky.webp",
-    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_691004-MLA100000152437_112025-F.jpg"
+    "imageSource": "https://http2.mlstatic.com/D_NQ_NP_691004-MLA100000152437_112025-F.jpg",
+    "note": "05/11: la publicación de ML (MLA43105424) es GL Tactile, no Clicky; falta emparejar el mismo switch."
   },
   {
     "asin": "B0D6T9CRLT",
