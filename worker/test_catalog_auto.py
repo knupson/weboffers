@@ -254,3 +254,13 @@ def test_no_duplica_el_mismo_modelo_en_otro_color():
     assert auto.mismo_producto(nuevo, existente)
     otro = {"slug": "s", "brand": "Samsung", "name": "Galaxy Tab A11 128GB"}
     assert not auto.mismo_producto(otro, {"slug": "t", "brand": "Samsung", "name": "Galaxy Tab A11 64GB"})
+
+
+def test_falla_suelta_no_marca_la_corrida_como_fallida(setup_job, monkeypatch, capsys):
+    """05/11: una foto o una búsqueda que falla queda contada, pero la corrida es OK (el vigía no avisa en falso)."""
+    repo, output, _ = setup_job
+    monkeypatch.setattr(auto, "fetch_photo", lambda entry, out: False)
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    estado = json.loads((output / "catalog-auto-state.json").read_text())
+    assert estado["status"] == "ok" and "sin_foto" in estado["motivos"]
+    assert "CATALOGO_OK" in capsys.readouterr().out

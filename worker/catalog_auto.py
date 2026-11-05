@@ -142,6 +142,7 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": "running", "at": now.isoformat()})
     today = now.date().isoformat()
     added, failures, total = [], [], 0
+    fatal = False
     scraper = None
     try:
         if not ml_prices.is_configured() or not matching.positive_number(mep):
@@ -178,15 +179,19 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         publish.write_atomic(auto_path, previous + added)
         if scraper.failures:
             failures.append({"motivo": "paginas_sin_datos", "total": scraper.failures})
+            # Muchas páginas vacías sí es una falla de la corrida (freno o scraper roto), no un caso suelto.
+            fatal = fatal or scraper.failures > 0.3 * max(1, scraper.pages)
     except Exception as exc:
         added = []
         failures.append({"motivo": type(exc).__name__})
-    status = "failed" if failures else "ok"
+        fatal = True
+    # 05/11: fallas sueltas (una búsqueda HTTPError, una foto) no marcan la corrida como fallida: quedan contadas.
+    status = "failed" if fatal else "ok"
     publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
                                     "added": len(added), "pages": scraper.pages if scraper else 0,
                                     "motivos": sorted({f.get("motivo") for f in failures if f.get("motivo")})})
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)
     # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
-    marker = "DEPLOY_FAIL" if failures else "CATALOGO_OK"
+    marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"
     print(f"{marker} catálogo semanal: altas={len(added)}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
     return True

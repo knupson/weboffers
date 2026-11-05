@@ -76,17 +76,27 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
         if not (ML_MIN_USD <= precio / mep <= ML_MAX_USD):
             continue
         r = _get(f"/products/{pid}")
-        nombre = (r.json().get("name") or "").strip() if r.ok else ""
+        ficha = r.json() if r.ok else {}
+        nombre = (ficha.get("name") or "").strip()
         if not nombre:
             continue
-        try:
-            resultados = discovery.fetch_search_results(nombre, limit=RESULTADOS_AMAZON, **({"get": get} if get else {}))
-        except discovery.PageBudgetExhausted:
+        attrs = {x.get("id"): (x.get("value_name") or "").strip() for x in ficha.get("attributes") or []}
+        marca_modelo = " ".join(filter(None, [attrs.get("BRAND"), attrs.get("MODEL") or attrs.get("ALPHANUMERIC_MODEL")]))
+        # 05/11: dos búsquedas (nombre comercial y marca + modelo); la prueba A/B mostró que cada una encuentra
+        # productos que la otra no (sobre 219 productos: 0 vs 2 aceptados, y la de nombre encontró otros 5).
+        consultas = [nombre] + ([marca_modelo] if marca_modelo and marca_modelo.lower() != nombre.lower() else [])
+        resultados, cortar = [], False
+        for consulta in consultas:
+            try:
+                resultados += discovery.fetch_search_results(consulta, limit=RESULTADOS_AMAZON, **({"get": get} if get else {}))
+            except discovery.PageBudgetExhausted:
+                cortar = True
+                break
+            except requests.RequestException as exc:
+                if failures is not None:
+                    failures.append({"catalogId": pid, "motivo": f"busqueda_amazon:{type(exc).__name__}"})
+        if cortar:
             break
-        except requests.RequestException as exc:
-            if failures is not None:
-                failures.append({"catalogId": pid, "motivo": f"busqueda_amazon:{type(exc).__name__}"})
-            continue
         for item in resultados:
             if item.get("is_sponsored"):
                 continue
