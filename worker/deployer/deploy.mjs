@@ -3,7 +3,7 @@
 // Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_WAIT / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, mkdirSync, promises as fs } from 'node:fs';
+import { appendFileSync, mkdirSync, readdirSync, unlinkSync, promises as fs } from 'node:fs';
 import path from 'node:path';
 
 const REPO_URL = 'https://github.com/knupson/weboffers.git';
@@ -35,9 +35,18 @@ function log(line) {
   process.stdout.write(text);
   try {
     mkdirSync(LOG_DIR, { recursive: true });
+    purgeLogs(LOG_DIR, now);
     appendFileSync(path.join(LOG_DIR, `deployer-${artDate(now)}.log`), text);
   } catch {
     // El log en disco nunca frena un despliegue.
+  }
+}
+
+function purgeLogs(dir, now = new Date()) {
+  const cutoff = artDate(new Date(now.getTime() - 30 * ONE_DAY_MS));
+  for (const file of readdirSync(dir)) {
+    const match = /^deployer-(\d{4}-\d{2}-\d{2})\.log$/.exec(file);
+    if (match && match[1] <= cutoff) unlinkSync(path.join(dir, file));
   }
 }
 
@@ -69,10 +78,10 @@ function nextRunAt(now, lastState) {
   const today = artDate(now);
   let target = startAt(now);
   if (target <= now.getTime()) {
-    if (lastState !== undefined && lastState?.date !== today) {
+    if (lastState !== undefined && lastState?.date !== today && now.getTime() < deadlineAt(now)) {
       return now.getTime();
     }
-    if (isExtraDate(today) && (lastState?.slot ?? 'morning') !== 'extra') {
+    if (isExtraDate(today) && lastState?.date === today && (lastState?.slot ?? 'morning') !== 'extra' && now.getTime() < extraDeadlineAt(now)) {
       const extra = extraStartAt(now);
       return extra > now.getTime() ? extra : now.getTime();
     }
@@ -90,10 +99,16 @@ function redact(text) {
   return token ? text.split(token).join('***') : text;
 }
 
-function run(command, args, cwd) {
+function commandTimeout(command) {
+  return command === 'git' ? 120e3 : command === 'npm' ? 600e3 : 300e3;
+}
+
+function run(command, args, cwd, execImpl = execFile) {
   const childEnv = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
   return new Promise((resolve, reject) => {
-    execFile(command, args, {
+    execImpl(command, args, {
+      timeout: commandTimeout(command),
+      killSignal: 'SIGKILL',
       cwd,
       maxBuffer: 20 * 1024 * 1024,
       env: childEnv,
@@ -107,7 +122,7 @@ function run(command, args, cwd) {
       if (error) {
         const lines = combined.trim().split('\n').map((l) => l.trim()).filter(Boolean);
         const tail = redact(lines.slice(-3).join(' | '));
-        reject(new Error(`${command} ${args.join(' ')} falló (código ${error.code ?? '?'}): ${tail}`));
+        reject(new Error(`${command} ${args.join(' ')} falló (${error.killed ? 'timeout' : `código ${error.code ?? '?'}`}): ${tail}`));
       } else {
         resolve(stdout);
       }
@@ -301,9 +316,16 @@ async function deployOnce(now = new Date(), opts = {}) {
     }
     await runImpl('npm', ['ci'], workDir);
     await runImpl('npm', ['run', 'build'], workDir);
+    const buildState = JSON.parse(await fs.readFile(path.join(workDir, 'dist', 'estado.json'), 'utf8'));
+    const publicados = buildState.publicados;
+    if (!Number.isInteger(publicados) || publicados <= 0) throw new Error('Catálogo vacío o cantidad de comparables inválida');
+    // Con menos productos se publican igual los frescos (regla del user: nunca dejar precios viejos); sólo se avisa.
+    if (typeof last?.publicados === 'number' && publicados < last.publicados * 0.5) {
+      log(`DEPLOY_FAIL caída brusca: ${publicados} comparables contra ${last.publicados} del último despliegue (se publica igual).`);
+    }
     await runImpl('npx', ['--yes', 'wrangler', 'deploy'], workDir);
     await fs.mkdir(path.dirname(stateFile), { recursive: true });
-    await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, deployedAt: now.toISOString() }));
+    await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, publicados, deployedAt: now.toISOString() }));
     await saveResult('ok', `Publicado con precios del ${today}`, now, opts);
     log(`DEPLOY_OK publicado con precios del ${today}${slot === 'extra' ? ' (segundo despliegue de las 13:00 ART)' : ''}.`);
     return 'ok';
@@ -451,6 +473,9 @@ if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
 }
 
 export {
+  run,
+  commandTimeout,
+  purgeLogs,
   overlayCatalog,
   artDate,
   startAt,

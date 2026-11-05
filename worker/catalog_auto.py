@@ -38,6 +38,7 @@ class PacedScraper:
                 raise discovery.PageBudgetExhausted()
             if self.pages:
                 time.sleep(300 if self.pages % 100 == 0 else amazon_prices.PAUSE_SECONDS)
+            amazon_prices.charge_pages(1)
             self.pages += 1
             try:
                 response = requests.get(url, **kwargs)
@@ -107,7 +108,11 @@ def maybe_grow(catalog_path, output, now=None, mep=None):
     sunday = now - timedelta(days=1) if now.weekday() == 0 else now
     year, week, _ = sunday.isocalendar()
     slot = f"{year}-W{week:02d}"
-    if state.get("week") == slot and not (state.get("status") == "failed" and state.get("pages") == 0):
+    try:
+        expired = state.get("status") == "running" and now - datetime.fromisoformat(state["at"]) > timedelta(hours=6)
+    except (KeyError, ValueError, TypeError):
+        expired = state.get("status") == "running"
+    if state.get("week") == slot and not expired and not (state.get("status") == "failed" and state.get("pages") == 0):
         return False
     # Registrar el intento antes de consultar: un reinicio nunca duplica el gasto semanal.
     publish.write_atomic(state_path, {"week": slot, "status": "running", "at": now.isoformat()})
@@ -124,6 +129,7 @@ def maybe_grow(catalog_path, output, now=None, mep=None):
         runs = json.loads(run_path.read_text(encoding="utf-8")) if run_path.exists() else {}
         # Reservar hasta dos páginas por candidato de precios (incluye el backoff de lote).
         spent = sum(2 * p.get("total", 0) for p in runs.get("passes", []) if p.get("kind") != "catalogo")
+        amazon_prices.configure_budget(output / "amazon-prices.json", today)
         scraper = PacedScraper(min(int(os.getenv("CATALOG_AUTO_MAX_PAGES", "150")), max(0, 650 - spent)))
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")

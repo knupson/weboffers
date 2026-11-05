@@ -65,7 +65,7 @@ def test_platform_only_in_amazon_needs_review(api):
 
 
 @pytest.mark.parametrize("ml,reason", [
-    (product("Samsung 990 PRO 2TB", CAPACITY="2TB", ALPHANUMERIC_MODEL="MZ-V9P2T0B"), "capacidad"),
+    (product("Samsung 990 PRO 2TB", CAPACITY="2TB", ALPHANUMERIC_MODEL="MZ-V9P2T0B"), "variante"),
     (product("Samsung 990 EVO 1TB", MODEL="990 EVO", ALPHANUMERIC_MODEL=None), "familia"),
     (product(BRAND="Bestoss"), "marca"),
     (product("Case for Samsung 990 PRO 1TB"), "accesorio"),
@@ -207,7 +207,7 @@ def test_structured_capacity_and_size_mismatch(api):
     ml["attributes"].append({"id": "CASE_SIZE", "value_struct": {"number": 44, "unit": "mm"}})
     api.return_value = ml
     row = amazon(amazonTitle="Samsung SM-R900 40mm")
-    assert "tamaño" in match.match_products([row], 1575)["rejected"][0]["reason"]
+    assert match.match_products([row], 1575)["rejected"][0]["reason"] == "variante"
 
 
 def test_cli_atomic_output_limit_rates_and_progress(api, monkeypatch, tmp_path, capsys):
@@ -424,7 +424,7 @@ def test_network_speed_class_never_proves_model(title, name, model):
 
 def test_wired_hero_is_not_wireless_lightspeed():
     ml = cached_product("Mouse Inalámbrico Logitech G502 Lightspeed Negro", "Logitech", "G502 Lightspeed")
-    assert cached_match("Logitech G502 Hero Wired Gaming Mouse Black", ml, "Logitech", "Periféricos")["rejected"][0]["reason"] == "conectividad distinta"
+    assert cached_match("Logitech G502 Hero Wired Gaming Mouse Black", ml, "Logitech", "Periféricos")["rejected"][0]["reason"] == "variante"
 
 
 @pytest.mark.parametrize("title,name,model", [

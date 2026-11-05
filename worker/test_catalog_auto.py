@@ -92,6 +92,19 @@ def test_no_retry_after_scraping_started(setup_job):
     assert discover.call_count == 1
 
 
+@pytest.mark.parametrize("hours,retry", [(6, False), (7, True)])
+def test_expired_running_retries(setup_job, hours, retry):
+    from datetime import timedelta
+    repo, output, discover = setup_job
+    now = datetime.fromisoformat("2026-11-08T23:00:00+00:00")
+    output.mkdir(parents=True)
+    (output / "catalog-auto-state.json").write_text(json.dumps({
+        "week": "2026-W45", "status": "running", "at": (now - timedelta(hours=hours)).isoformat(),
+    }))
+    assert auto.maybe_grow(repo, output, now, mep=1000) is retry
+    assert discover.call_count == int(retry)
+
+
 def test_daily_budget_reserves_price_retries(setup_job):
     repo, output, discover = setup_job
     output.mkdir()

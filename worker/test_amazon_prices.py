@@ -69,8 +69,8 @@ def test_groups_by_store_and_chunks_by_bulk_max(tmp_path, monkeypatch):
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["date"] == "2026-10-30"
     assert len(data["items"]) == 13
-    assert data["items"]["us-0"] == {"amount": 150.5, "currency": "USD", "checked": "2026-10-30"}
-    assert data["items"]["es-1"] == {"amount": 150.5, "currency": "EUR", "checked": "2026-10-30"}
+    assert data["items"]["us-0"] == {"asin": "B000000000", "amount": 150.5, "currency": "USD", "checked": "2026-10-30"}
+    assert data["items"]["es-1"] == {"asin": "B000000099", "amount": 150.5, "currency": "EUR", "checked": "2026-10-30"}
 
 
 @pytest.mark.parametrize("bad_item", [
@@ -134,7 +134,7 @@ def test_skips_before_six_or_already_updated_or_without_url(tmp_path, monkeypatc
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False
 
     monkeypatch.setenv("AMAZON_SCRAPER_URL", "http://scraper:8000")
-    out.write_text(json.dumps({"date": "2026-10-30", "items": {}, "retried": True}), encoding="utf-8")
+    out.write_text(json.dumps({"date": "2026-10-30", "items": {}, "retried": True, "retryCount": 3}), encoding="utf-8")
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False
     get.assert_not_called()
 
@@ -368,7 +368,7 @@ def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
     assert pedidos == [["B02"]]  # sólo el faltante
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["retried"] is True
-    assert data["items"]["ya"]["amount"] == 10 and data["items"]["falta"] == {"amount": 20.0, "currency": "USD", "checked": "2026-10-30"}
+    assert data["items"]["ya"]["amount"] == 10 and data["items"]["falta"] == {"asin": "B02", "amount": 20.0, "currency": "USD", "checked": "2026-10-30"}
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False  # una sola vez por día
     assert pedidos == [["B02"]]
 
@@ -435,7 +435,7 @@ def test_retry_keeps_ar_shipping_and_merges_todays_survey(tmp_path, monkeypatch)
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["retried"] is True
     assert data["arShipping"] == {"p": old, "hoy": today}
-    assert data["items"]["p"] == {"amount": 150.5, "currency": "USD", "checked": "2026-10-30"}
+    assert data["items"]["p"] == {"asin": "B01", "amount": 150.5, "currency": "USD", "checked": "2026-10-30"}
 
 
 def test_each_missing_product_logs_its_reason_and_daily_file(tmp_path, monkeypatch, capsys):

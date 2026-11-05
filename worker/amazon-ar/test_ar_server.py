@@ -192,6 +192,9 @@ def test_set_ar_confirma_solo_con_200_y_exito(fake_amazon):
     sess = _sess(_resp(200, {"isAddressUpdated": True}))
     assert set_ar(sess) is True
     assert sess.located == "AR"
+    assert fetch_mod.TIMEOUT == ar_server.HTTP_TIMEOUT
+    assert sess.curl.get.call_args.kwargs["timeout"] == ar_server.HTTP_TIMEOUT
+    assert sess.curl.post.call_args.kwargs["timeout"] == ar_server.HTTP_TIMEOUT
 
     # 200 + successful + address.countryCode AR -> confirmada.
     sess = _sess(_resp(200, {"successful": True, "address": {"countryCode": "AR"}}))
@@ -335,3 +338,35 @@ def test_handler_checks_location_after_fetch(monkeypatch):
     handler.do_GET()
     assert result["products"][0]["ships"] is True
     assert result["products"][0]["free"] is True
+
+
+def test_handler_serializes_and_times_out_queue(monkeypatch):
+    from threading import BoundedSemaphore, Event, Thread
+    semaphore = BoundedSemaphore(1)
+    entered, release = Event(), Event()
+    monkeypatch.setattr(ar_server, "REQUEST_SLOT", semaphore)
+    monkeypatch.setattr(ar_server, "QUEUE_TIMEOUT", 0.02)
+    monkeypatch.setattr(ar_server, "sesion_confirmada_ar", lambda _: True)
+    def fetch(*args):
+        entered.set()
+        assert release.wait(2)
+        return {}
+    monkeypatch.setattr(ar_server, "fetch_details", fetch)
+    def handler():
+        h = ar_server.ArShippingHandler.__new__(ar_server.ArShippingHandler)
+        h.path = "/ar-shipping?asins=A"
+        h._send_json = Mock()
+        return h
+    first, second = handler(), handler()
+    thread = Thread(target=first.do_GET)
+    thread.start()
+    try:
+        assert entered.wait(2)
+        second.do_GET()
+        assert second._send_json.call_args.args[0] == 503
+    finally:
+        release.set()
+        thread.join(2)
+    assert first._send_json.call_args.args[0] == 200
+    second.do_GET()
+    assert second._send_json.call_args.args[0] == 200

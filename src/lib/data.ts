@@ -93,6 +93,7 @@ function readJson<T>(rel: string): T | null {
 
 /** Precio diario de Mercado Libre por slug (data/ml-prices.json). Lo escribe el proceso del worker. */
 export interface MlPriceItem {
+  catalogId?: string;
   price: number;
   /** Link de afiliado a la publicación de ese precio (la más barata del día). */
   url?: string;
@@ -118,6 +119,7 @@ export interface AmazonArShipping {
 
 /** Precio diario de Amazon por slug (data/amazon-prices.json). Lo escribe el worker; nunca se publica en USD/EUR. */
 export interface AmazonPriceItem {
+  asin?: string;
   amount?: number;
   currency?: "USD" | "EUR";
   checked?: string;
@@ -196,6 +198,7 @@ export function mergeMlPrices(
     const item = items[entry.slug];
     if (
       !item ||
+      (item.catalogId !== undefined && item.catalogId !== entry.ml.catalogId) ||
       !Number.isFinite(item.price) ||
       !(item.price > 0) ||
       item.checked !== today
@@ -272,7 +275,8 @@ export function mergeAmazonPrices(
     let amazonChecked: string | null = null;
     let shipsToAr = entry.shipsToAr;
     let shipsToArToday: boolean | undefined;
-    const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+    const raw = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+    const scraped = raw && (raw.asin === undefined || raw.asin === entry.asin) ? raw : undefined;
     if (mep && mep > 0) {
       if (
         scraped &&
@@ -362,7 +366,8 @@ export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | 
     );
   }
   const items = amazonPrices?.items ?? {};
-  const scraped = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+  const raw = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
+  const scraped = raw && (raw.asin === undefined || raw.asin === entry.asin) ? raw : undefined;
   const usd = scraped?.amount != null ? scraped.amount * (scraped.currency === "EUR" ? eurUsd : 1) : NaN;
   return Boolean(
     scraped &&
@@ -465,7 +470,8 @@ export async function loadProducts(now = Date.now()) {
     loadOffers(),
     buildQuotes(),
   ]);
-  const mep = quotes.mep ?? offers.rates?.mep ?? null;
+  const fallbackAge = now - Date.parse(offers.rates?.fetchedAt ?? "");
+  const mep = quotes.mep ?? (fallbackAge >= 0 && fallbackAge <= 3 * 86400e3 ? offers.rates?.mep : null) ?? null;
   if (typeof mep !== "number" || !Number.isFinite(mep) || mep <= 0) {
     throw new Error("Sin cotización MEP válida: no se puede publicar el sitio.");
   }

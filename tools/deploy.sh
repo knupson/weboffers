@@ -3,16 +3,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Si falla la descarga se usa el archivo que ya haya en data/.
-# Los archivos son de root (los escribe el contenedor), por eso se leen con docker exec y no con scp.
+# Descargar ambos antes de reemplazar los archivos locales.
+trap 'rm -f data/ml-prices.json.tmp data/amazon-prices.json.tmp' EXIT
 for f in ml-prices.json amazon-prices.json; do
-  if ssh docker "docker exec franquicia400-weboffers-worker-1 cat /app/output/$f" > "data/$f.tmp" \
-    && [ -s "data/$f.tmp" ]; then
-    mv "data/$f.tmp" "data/$f"
-  else
-    rm -f "data/$f.tmp"
-    echo "No se pudo bajar $f de la VM; se usa el local (si existe)."
+  if ! ssh docker "docker exec franquicia400-weboffers-worker-1 cat /app/output/$f" > "data/$f.tmp" || [ ! -s "data/$f.tmp" ]; then
+    echo "No se pudo bajar $f de la VM; se aborta." >&2
+    exit 1
   fi
+done
+node tools/validate-price-files.mjs data/ml-prices.json.tmp data/amazon-prices.json.tmp
+for f in ml-prices.json amazon-prices.json; do
+  mv "data/$f.tmp" "data/$f"
 done
 
 npm run build

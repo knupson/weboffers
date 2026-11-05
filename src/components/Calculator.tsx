@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { calculate } from "../lib/calc";
 import { fetchEurUsd, fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd, formatStamp } from "../lib/format";
-import { AMAZON_EXTRA, shippingFor } from "../lib/estimate";
+import { calculateAmazon, shippingFor } from "../lib/estimate";
 
 interface BuildRates {
   mep: number;
@@ -56,22 +55,19 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
 
   const toUsd = currency === "EUR" ? eurUsd ?? 0 : 1;
 
-  // En Amazon.com el envío sale solo (medido el 30/10/2026); en Amazon.es lo carga la persona.
-  const autoShip = currency === "USD" ? shippingFor(num(fob)) : 0;
+  // Mismo envío estimado que las tarjetas; se puede reemplazar por el que informa Amazon.
+  const autoShip = shippingFor(num(fob) * toUsd);
   const shipUsd = ship.trim() === "" ? autoShip : num(ship) * toUsd;
   const result = useMemo(
     () =>
-      calculate(
+      calculateAmazon(
         { fobUsd: num(fob) * toUsd, shippingUsd: shipUsd, ivaRate: num(iva) / 100, dutyRate: num(duty) / 100 },
         rates
       ),
     [fob, shipUsd, iva, duty, rates, toUsd]
   );
-  // Amazon cobra, además del IVA, cargos de importación propios (≈4% del precio).
-  const extraUsd = currency === "USD" ? result.fobUsd * AMAZON_EXTRA : 0;
-  const totalUsd = result.totalUsd + extraUsd;
-  const totalArsMep = rates ? totalUsd * rates.mep : null;
-  const totalArsTarjeta = rates ? totalUsd * rates.tarjeta : null;
+  const { totalUsd, totalArsMep, totalArsTarjeta } = result;
+  const extraUsd = result.amazonExtraUsd;
 
   const empty = num(fob) === 0 || toUsd === 0;
   const hasExcess = result.excessUsd > 0;
@@ -121,7 +117,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
               <span>{currency}</span>
               <input id="c-ship" class="in" inputMode="decimal" placeholder={currency === "USD" ? (autoShip === 0 ? "Gratis" : String(autoShip)) : ""} value={ship} onInput={(e) => setShip(e.currentTarget.value)} />
             </div>
-            <small>{currency === "USD" ? "Lo calculamos solo: gratis desde USD 100 en productos elegibles, unos USD 45 debajo. Cargalo sólo si Amazon te muestra otro." : "Cargá el envío que te muestra Amazon.es antes de pagar."}</small>
+            <small>Lo calculamos solo: gratis desde USD 100 en productos elegibles, unos USD 45 debajo. Cargalo sólo si Amazon te muestra otro.</small>
           </div>
           {hasExcess && (
             <div class="field">

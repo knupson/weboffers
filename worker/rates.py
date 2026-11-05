@@ -1,20 +1,32 @@
 """Cotizaciones actuales, sin valores de respaldo."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import math
 
 import requests
 
 
+def provider_date(body):
+    stamp = body["fechaActualizacion"]
+    updated = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    age = datetime.now(timezone.utc) - updated
+    if age < timedelta(0) or age > timedelta(days=3):
+        raise ValueError("Cotización vencida o con fecha futura")
+    return updated, stamp
+
+
 def get_rates():
     try:
         rates = {}
+        dates = []
         for key, endpoint in (("mep", "bolsa"), ("tarjeta", "tarjeta"), ("oficial", "oficial")):
             response = requests.get(
                 f"https://dolarapi.com/v1/dolares/{endpoint}", timeout=20
             )
             response.raise_for_status()
-            value = response.json()["venta"]
+            body = response.json()
+            dates.append(provider_date(body))
+            value = body["venta"]
             if isinstance(value, bool):
                 return None
             value = float(value)
@@ -23,7 +35,7 @@ def get_rates():
             rates[key] = value
         return {
             **rates,
-            "fetchedAt": datetime.now(timezone.utc).isoformat(),
+            "fetchedAt": min(dates)[1],
             "source": "dolarapi.com",
         }
     except Exception:
@@ -36,7 +48,9 @@ def get_eur_usd(oficial=None):
         if isinstance(oficial, bool) or not isinstance(oficial, (int, float)) or not math.isfinite(oficial) or oficial <= 0:
             resp_of = requests.get("https://dolarapi.com/v1/dolares/oficial", timeout=20)
             resp_of.raise_for_status()
-            oficial = resp_of.json()["venta"]
+            body = resp_of.json()
+            provider_date(body)
+            oficial = body["venta"]
             if isinstance(oficial, bool):
                 return None
             oficial = float(oficial)
@@ -44,7 +58,9 @@ def get_eur_usd(oficial=None):
                 return None
         response = requests.get("https://dolarapi.com/v1/cotizaciones/eur", timeout=20)
         response.raise_for_status()
-        eur = response.json()["venta"]
+        body = response.json()
+        provider_date(body)
+        eur = body["venta"]
         if isinstance(eur, bool):
             return None
         eur = float(eur)

@@ -101,10 +101,12 @@ def test_omits_product_when_items_call_fails(tmp_path, monkeypatch):
     previous = {"generatedAt": "2026-10-29T10:00:00+00:00", "date": "2026-10-29", "items": {
         "monitor": {"price": 480000, "checked": "2026-10-29", "verdict": "ml", "verdictReason": "precio"}}}
     prices.write_text(json.dumps(previous), encoding="utf-8")
-    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is False
-    assert json.loads(prices.read_text(encoding="utf-8")) == previous
-    monkeypatch.setattr(ml_prices, "fetch_items", lambda _: [{"price": 700000}])
     assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
+    partial = json.loads(prices.read_text(encoding="utf-8"))
+    assert set(partial["items"]) == {"ssd"}
+    assert partial["failed"] == ["monitor"]
+    monkeypatch.setattr(ml_prices, "fetch_items", lambda _: [{"price": 700000}])
+    assert ml_prices.maybe_refresh(CATALOG, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN.replace(hour=13)) is True
     assert set(json.loads(prices.read_text(encoding="utf-8"))["items"]) == {"monitor", "ssd"}
 
 
@@ -112,8 +114,9 @@ def test_omits_product_when_items_call_fails(tmp_path, monkeypatch):
 def test_failure_does_not_create_completed_slot(tmp_path, monkeypatch, error):
     monkeypatch.setattr(ml_prices, "fetch_items", Mock(side_effect=error))
     path = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert json.loads(path.read_text())["failed"] == ["monitor", "ssd"]
     assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
-    assert not path.exists()
 
 
 def test_confirmed_absence_completes_slot(tmp_path, monkeypatch):

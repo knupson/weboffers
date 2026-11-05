@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from unittest.mock import Mock
@@ -141,7 +141,7 @@ def test_rates_failure_returns_none(monkeypatch):
 
 
 def test_rates_mapping(monkeypatch):
-    responses = [Mock(json=Mock(return_value={"venta": value})) for value in (1200, 1500, 1000)]
+    responses = [Mock(json=Mock(return_value={"venta": value, "fechaActualizacion": datetime.now(timezone.utc).isoformat()})) for value in (1200, 1500, 1000)]
     get = Mock(side_effect=responses)
     monkeypatch.setattr(requests, "get", get)
     result = rates.get_rates()
@@ -154,7 +154,7 @@ def test_rates_mapping(monkeypatch):
 
 
 def test_eur_usd_mapping(monkeypatch):
-    get = Mock(return_value=Mock(json=Mock(return_value={"venta": 1250}), raise_for_status=Mock()))
+    get = Mock(return_value=Mock(json=Mock(return_value={"venta": 1250, "fechaActualizacion": datetime.now(timezone.utc).isoformat()}), raise_for_status=Mock()))
     monkeypatch.setattr(requests, "get", get)
     assert rates.get_eur_usd(1000) == 1.25
     assert get.call_args.args[0].endswith("/cotizaciones/eur")
