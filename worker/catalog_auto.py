@@ -131,8 +131,10 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         run_path = output / f"amazon-run-{today}.json"
         runs = json.loads(run_path.read_text(encoding="utf-8")) if run_path.exists() else {}
         amazon_prices.configure_budget(output / "amazon-prices.json", today)
-        # 05/11: sin el tope de 650 páginas/día (no estaba medido; la medición dio 1.970 consultas/h sin cortes).
-        scraper = PacedScraper(int(os.getenv("CATALOG_AUTO_MAX_PAGES", "400")))
+        # 05/11: sin topes inventados (ni el 650/día ni un 400/corrida): no hay límite medido. El descubrimiento
+        # termina solo (categorías x más vendidos + búsquedas). Sólo se limita si se configura la variable.
+        tope = os.getenv("CATALOG_AUTO_MAX_PAGES")
+        scraper = PacedScraper(int(tope) if tope else 10**9)
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",

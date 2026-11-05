@@ -683,8 +683,10 @@ def charge_pages(count):
         return
     state = load_json(_budget_path, {})
     used = state.get("pages", 0) if state.get("date") == _budget_day else 0
-    # 05/11: 650 venía de una nota no medida (31/10). Medido hoy: 1.970 consultas en 1 h sin cortes ni errores.
-    limit = int(os.environ.get("AMAZON_DAILY_MAX_PAGES", "4000"))
-    if used + count > limit:
+    # 05/11: SIN tope por defecto. El 650 venía de una nota no comprobada (31/10) y no hay ningún límite medido;
+    # lo único medido es 1.970 consultas en 1 h sin cortes. La protección es detectar tandas vacías (backoff + vigía).
+    # Sólo se limita si se configura AMAZON_DAILY_MAX_PAGES a propósito. Se sigue contando para tener el dato.
+    limit = int(os.environ["AMAZON_DAILY_MAX_PAGES"]) if os.environ.get("AMAZON_DAILY_MAX_PAGES") else None
+    if limit is not None and used + count > limit:
         raise ValueError("Presupuesto diario de páginas de Amazon agotado")
     publish.write_atomic(_budget_path, {"date": _budget_day, "pages": used + count})
