@@ -1,0 +1,6 @@
+# Los scripts corren en Linux (VM docker / pi3): siempre LF, también en `git archive` desde Windows (05/11:
+# envio_ar_chrome.sh llegó con CRLF y murió en `set -eu\r`).
+*.sh text eol=lf
+*.py text eol=lf
+*.mjs text eol=lf
+Dockerfile text eol=lf
