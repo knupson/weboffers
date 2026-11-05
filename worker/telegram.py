@@ -34,7 +34,9 @@ def load_state(path):
 def save_state(path, state):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def _valid_number(value):
@@ -134,6 +136,13 @@ def maybe_post(catalog, state_path, now=None):
         return None
     slot = f"{today}T{slots[-1]:02d}"
     state = load_state(state_path)
+    pending = state.get("attempt")
+    if pending:
+        # Sin un identificador confirmado no podemos verificar el envío: consumimos ese turno.
+        print(f"TELEGRAM_INCIERTO {pending['slug']}", flush=True)
+        state["lastSlot"] = max(state.get("lastSlot", ""), pending["slot"])
+        state["attempt"] = None
+        save_state(state_path, state)
     # Estado viejo (sólo lastDate): el turno de las 12 de ese día ya salió.
     last = state.get("lastSlot") or (f"{state['lastDate']}T{POST_HOURS[0]:02d}" if state.get("lastDate") else "")
     if last >= slot:
@@ -141,7 +150,19 @@ def maybe_post(catalog, state_path, now=None):
     product = pick(catalog, state.get("posted", []), now)
     if product is None:
         return None
-    send(product)
+    state["attempt"] = {"estado": "intentando", "slug": product["slug"], "slot": slot}
+    save_state(state_path, state)
+    print(f"intentando {product['slug']} {slot}", flush=True)
+    try:
+        send(product)
+    except (TimeoutError, requests.exceptions.ReadTimeout):
+        raise  # el mensaje pudo haber salido: queda como intento incierto y no se repite
+    except Exception:
+        # Error claro de la API o sin conexión: no salió, se borra el intento y se reintenta en el ciclo siguiente.
+        state["attempt"] = None
+        save_state(state_path, state)
+        raise
+    state["attempt"] = None
     state["lastDate"] = today
     state["lastSlot"] = slot
     state["posted"] = (state.get("posted", []) + [product["slug"]])[-200:]

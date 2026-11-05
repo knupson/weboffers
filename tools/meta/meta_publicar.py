@@ -68,13 +68,13 @@ def _sanear(e):
         return MetaError("http %s" % code)
 
 
-def graph_get(path, params, token):
+def graph_get(path, params, token, timeout=30):
     params = dict(params)
     params["access_token"] = token
     url = BASE + path + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         raise _sanear(e)
@@ -128,6 +128,27 @@ def publicar_ig(entry, token):
     return r["id"]
 
 
+def esperar_fb_publicado(video_id, token):
+    fin = time.monotonic() + POLL_MAX
+    estado = {}
+    while time.monotonic() < fin:
+        try:
+            estado = graph_get("/" + video_id, {"fields": "status"}, token,
+                               timeout=min(30, max(0.001, fin - time.monotonic()))).get("status") or {}
+        except MetaError as exc:
+            raise MetaError("Reel %s: status=%s; %s" % (video_id, json.dumps(estado), exc)) from exc
+        publicacion = estado.get("publishing_phase") or {}
+        fases = [estado.get(k) or {} for k in ("uploading_phase", "processing_phase", "publishing_phase")]
+        if estado.get("video_status") in ("error", "expired", "upload_failed") or any(
+            f.get("status") == "error" or f.get("publish_status") == "error" for f in fases
+        ):
+            raise MetaError("Reel %s falló: status=%s" % (video_id, json.dumps(estado)))
+        if publicacion.get("publish_status") == "published":
+            return
+        time.sleep(min(POLL_INTERVAL, max(0, fin - time.monotonic())))
+    raise MetaError("timeout Reel %s: status=%s" % (video_id, json.dumps(estado)))
+
+
 def publicar_fb_reel(pagina, video_url, descripcion, token):
     """Reel de página con la Reels Publishing API (start → rupload con file_url → finish), 05/11.
 
@@ -150,6 +171,7 @@ def publicar_fb_reel(pagina, video_url, descripcion, token):
         raise MetaError("rupload sin success para el reel %s" % video_id)
     graph_post("/%s/video_reels" % pagina, {"upload_phase": "finish", "video_id": video_id,
                                             "video_state": "PUBLISHED", "description": descripcion}, token)
+    esperar_fb_publicado(video_id, token)
     return video_id
 
 
@@ -184,14 +206,16 @@ def alertar(texto):
         req = urllib.request.Request(ENV["WAHA_URL"].rstrip("/") + "/api/sendText", data=json.dumps(payload).encode(), method="POST")
         req.add_header("X-Api-Key", ENV.get("WAHA_API_KEY", ""))
         req.add_header("Content-Type", "application/json")
-        urllib.request.urlopen(req, timeout=15).read()
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        return True
     except Exception:
-        pass
+        return False
 
 
 def alerta_fallo(entry_id, destino, motivo):
     red = "Instagram" if destino == "ig" else "Facebook"
-    alertar("⚠️ Franquicia 400: no se pudo publicar %s en %s (%s). Lo reviso en el próximo lote." % (entry_id, red, motivo[:80]))
+    return alertar("⚠️ Franquicia 400: no se pudo publicar %s en %s (%s). Lo reviso en el próximo lote." % (entry_id, red, motivo[:80]))
 
 
 def cargar_json(path, defecto):
@@ -267,14 +291,15 @@ def main(argv=None, here=None):
                     st = {"estado": "vencido", "intentos": st.get("intentos", 0), "ultimo_error": st.get("ultimo_error", ""), "alertado": False}
                     estado[k] = st
                 if not st.get("alertado"):
-                    alerta_fallo(entry["id"], destino, "vencida")
-                    st["alertado"] = True
+                    st["alertado"] = alerta_fallo(entry["id"], destino, "vencida")
                     estado[k] = st
                 continue
             if cuando > ahora and args.ahora != entry["id"]:
                 continue
             intentos = st.get("intentos", 0)
             if st.get("estado") == "vencido" or intentos >= MAX_INTENTOS:
+                if not st.get("alertado"):
+                    st["alertado"] = alerta_fallo(entry["id"], destino, st.get("ultimo_error", "sin confirmar"))
                 continue
             if args.seco:
                 print("META_SECO %s %s %s %d media" % (entry["id"], destino, entry["tipo"], len(entry["media"])))
@@ -292,8 +317,7 @@ def main(argv=None, here=None):
                 estado[k] = {"estado": "fallo", "intentos": intentos, "ultimo_error": str(e)[:300]}
                 print("META_FAIL %s %s %s" % (entry["id"], destino, e))
                 if intentos >= MAX_INTENTOS and not st.get("alertado"):
-                    alerta_fallo(entry["id"], destino, str(e))
-                    estado[k]["alertado"] = True
+                    estado[k]["alertado"] = alerta_fallo(entry["id"], destino, str(e))
             # Guardar después de cada destino: si algo corta la corrida, lo ya publicado no se repite.
             guardar_json(estado_path, estado)
     guardar_json(estado_path, estado)

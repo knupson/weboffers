@@ -43,19 +43,23 @@ def run_once():
     current_rates = rates.get_rates()
     eur_usd = rates.get_eur_usd(current_rates.get("oficial")) if current_rates else None
     mep = (current_rates or {}).get("mep")
-    items = []
-    for store, asins in grouped.items():
-        items.extend(creators_api.fetch_items(asins, store))
-    mode = "api" if any(creators_api.is_configured(s) for s in grouped) else "offline"
-    payload = publish.build_offers(datetime.now(timezone.utc).isoformat(), mode, current_rates, items)
-    output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
-    changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
-    print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
+    payload = None
+    try:
+        items = []
+        for store, asins in grouped.items():
+            items.extend(creators_api.fetch_items(asins, store))
+        mode = "api" if any(creators_api.is_configured(s) for s in grouped) else "offline"
+        payload = publish.build_offers(datetime.now(timezone.utc).isoformat(), mode, current_rates, items)
+        output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
+        changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
+        print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
+    except Exception as exc:
+        print(f"Falló publish ({type(exc).__name__}).", flush=True)
     amazon_prices_path = resolve_path(os.environ.get("AMAZON_PRICES_PATH", "output/amazon-prices.json"))
     try:
         amazon_prices.maybe_refresh(catalog, amazon_prices_path, datetime.now(timezone.utc), eur_usd=eur_usd)
     except Exception as exc:
-        print(f"Falló la actualización de precios de Amazon ({type(exc).__name__}).", flush=True)
+        print(f"Falló Amazon ({type(exc).__name__}).", flush=True)
     ml_prices_path = resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json"))
     try:
         ml_prices.maybe_refresh(
@@ -67,7 +71,7 @@ def run_once():
             eur_usd=eur_usd,
         )
     except Exception as exc:
-        print(f"Falló la actualización de precios de Mercado Libre ({type(exc).__name__}).", flush=True)
+        print(f"Falló ML ({type(exc).__name__}).", flush=True)
     # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
     try:
         telegram.maybe_post(
@@ -82,11 +86,11 @@ def run_once():
             resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")),
         )
     except Exception as exc:
-        print(f"Falló la publicación en Telegram ({type(exc).__name__}).", flush=True)
+        print(f"Falló Telegram ({type(exc).__name__}).", flush=True)
     try:
         catalog_auto.maybe_grow(catalog_path, output_dir, datetime.now(timezone.utc), mep=mep)
     except Exception as exc:
-        print(f"DEPLOY_FAIL catálogo semanal ({type(exc).__name__}).", flush=True)
+        print(f"Falló catálogo semanal ({type(exc).__name__}).", flush=True)
     return payload
 
 

@@ -6,7 +6,7 @@ import {
   artDate,
   deadlineAt,
   deployExtraWithRetry,
-  deployOnce,
+  deployOnce as actualDeployOnce,
   deployWithRetry,
   hasBothTodayPrices,
   hasExtraSlotToday,
@@ -16,6 +16,12 @@ import {
   RETRY_INTERVAL_MS,
 } from './deploy.mjs';
 
+async function deployOnce(now: Date, opts: any) {
+  const runImpl = opts.runImpl;
+  return actualDeployOnce(now, { ...opts, runImpl: async (cmd: string, args: string[], cwd: string) =>
+    cmd === "git" && args[0] === "rev-parse" ? "a".repeat(40) : runImpl(cmd, args, cwd) });
+}
+
 describe('deployer', () => {
   let tmpDir: string;
   const prevToken = process.env.CLOUDFLARE_API_TOKEN;
@@ -24,6 +30,8 @@ describe('deployer', () => {
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'deploy-test-'));
     await fs.mkdir(path.join(tmpDir, 'work', 'dist'), { recursive: true });
+    await fs.mkdir(path.join(tmpDir, 'work', 'data'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'work', 'data', 'catalog.json'), '[]');
     await fs.writeFile(path.join(tmpDir, 'work', 'dist', 'estado.json'), JSON.stringify({ publicados: 100 }));
     process.env.CLOUDFLARE_API_TOKEN = 'test-token';
     process.env.CLOUDFLARE_ACCOUNT_ID = 'test-account';
@@ -76,7 +84,7 @@ describe('deployer', () => {
     const calls: string[] = [];
     expect(await deployOnce(new Date('2026-11-03T10:00:00Z'), {
       outputFile, amazonOutputFile, workDir: path.join(tmpDir, 'work'), stateFile: path.join(tmpDir, 'state.json'),
-      runImpl: async (cmd: string) => { calls.push(cmd); return ''; },
+      runImpl: async (cmd: string) => { calls.push(cmd); return 'a'.repeat(40); },
     })).toBe('fail');
     expect(calls).toEqual(['git']);
     expect(JSON.parse(await fs.readFile(path.join(tmpDir, 'last-result.json'), 'utf8')))
@@ -107,7 +115,7 @@ describe('deployer', () => {
           expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.jpg'), 'utf8')).toBe('telegram');
           expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'offers.json'), 'utf8')).rates.mep).toBe(1234);
         }
-        return '';
+        return 'a'.repeat(40);
       },
     })).toBe('ok');
     expect(commands).toEqual(['git', 'npm', 'npm', 'npx']);
@@ -140,7 +148,7 @@ describe('deployer', () => {
           await expect(fs.access(path.join(workDir, 'data', 'offers.json'))).rejects.toThrow();
           throw new Error('Sin cotización MEP válida');
         }
-        return '';
+        return 'a'.repeat(40);
       },
     });
     expect(result).toBe('fail');
@@ -226,7 +234,7 @@ describe('deployer', () => {
     const commands: string[] = [];
     const result = await deployWithRetry({
       outputFile, amazonOutputFile, workDir, stateFile,
-      runImpl: async (cmd: string) => { commands.push(cmd); return ''; },
+      runImpl: async (cmd: string) => { commands.push(cmd); return 'a'.repeat(40); },
       nowFn: () => new Date(currentMs),
       sleepFn: async (ms: number) => { currentMs += ms; },
     });
@@ -237,7 +245,7 @@ describe('deployer', () => {
       await fs.writeFile(amazonOutputFile, raw);
       expect(await deployOnce(new Date('2026-10-30T14:00:00Z'), {
         outputFile, amazonOutputFile, workDir, stateFile,
-        runImpl: async (cmd: string) => { commands.push(cmd); return ''; },
+        runImpl: async (cmd: string) => { commands.push(cmd); return 'a'.repeat(40); },
       })).toBe('fail');
     }
     expect(commands).toEqual([]);
@@ -253,7 +261,7 @@ describe('deployer', () => {
     let commands = 0;
     expect(await deployOnce(now, { outputFile, amazonOutputFile, requireBothToday: false,
       stateFile: path.join(tmpDir, 'state.json'),
-      runImpl: async () => { commands++; return ''; },
+      runImpl: async () => { commands++; return 'a'.repeat(40); },
     })).toBe('fail');
     expect(commands).toBe(0);
   });
@@ -286,7 +294,7 @@ describe('deployer', () => {
       amazonOutputFile,
       workDir,
       stateFile,
-      runImpl: async () => '',
+      runImpl: async () => 'a'.repeat(40),
       nowFn: () => new Date(currentMs),
       sleepFn: async (ms: number) => {
         sleeps.push(ms);
@@ -359,7 +367,7 @@ describe('deployer', () => {
     expect(finalSleeps).toEqual([10 * 60e3]);
   });
 
-  it('en día extra (2026-11-02) hay segundo despliegue a las 13:00 ART una sola vez y nextRunAt apunta a las 16:00Z tras la mañana', async () => {
+  it('en día extra conserva el slot de las 13 y chequea recuperaciones cada diez minutos', async () => {
     const outputFile = path.join(tmpDir, 'ml-prices.json');
     const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
     const workDir = path.join(tmpDir, 'work');
@@ -370,14 +378,14 @@ describe('deployer', () => {
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-02', slot: '2026-11-02T06', items: { a: { price: 1000 } } }));
     await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-02', items: { a: { amount: 100 } } }));
     expect(await deployOnce(new Date('2026-11-02T10:30:00Z'), {
-      outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '',
+      outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => 'a'.repeat(40),
     })).toBe('ok');
     let state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
     expect(state.date).toBe('2026-11-02');
     expect(state.slot).toBe('morning');
 
     // Tras el despliegue de la mañana, el próximo run es a las 16:00Z (13:00 ART) ese mismo día
-    expect(nextRunAt(new Date('2026-11-02T12:00:00Z'), state)).toBe(Date.parse('2026-11-02T16:00:00Z'));
+    expect(nextRunAt(new Date('2026-11-02T12:00:00Z'), state)).toBe(Date.parse('2026-11-02T12:10:00Z'));
 
     // El worker termina el refresh extra y firma slot T13 con precios nuevos
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-02', slot: '2026-11-02T13', items: { a: { price: 900 } } }));
@@ -389,7 +397,7 @@ describe('deployer', () => {
       amazonOutputFile,
       workDir,
       stateFile,
-      runImpl: async (cmd: string) => { commands.push(cmd); return ''; },
+      runImpl: async (cmd: string) => { commands.push(cmd); return 'a'.repeat(40); },
       nowFn: () => new Date('2026-11-02T16:00:00Z'),
       sleepFn: async () => {},
     });
@@ -399,8 +407,8 @@ describe('deployer', () => {
     expect(state.date).toBe('2026-11-02');
     expect(state.slot).toBe('extra');
 
-    // Hecho el segundo despliegue, nextRunAt va al día siguiente a las 10:00Z
-    expect(nextRunAt(new Date('2026-11-02T17:00:00Z'), state)).toBe(Date.parse('2026-11-03T10:00:00Z'));
+    // Queda disponible una recuperación más hasta las 20 ART.
+    expect(nextRunAt(new Date('2026-11-02T17:00:00Z'), state)).toBe(Date.parse('2026-11-02T17:10:00Z'));
 
     // Reintentar el segundo despliegue el mismo día no despliega de nuevo
     const again = await deployExtraWithRetry({
@@ -408,7 +416,7 @@ describe('deployer', () => {
       amazonOutputFile,
       workDir,
       stateFile,
-      runImpl: async (cmd: string) => { commands.push(cmd); return ''; },
+      runImpl: async (cmd: string) => { commands.push(cmd); return 'a'.repeat(40); },
       nowFn: () => new Date('2026-11-02T16:30:00Z'),
       sleepFn: async () => {},
     });
@@ -473,7 +481,7 @@ describe('deployer', () => {
     expect(deploys).toBe(0);
   });
 
-  it('en día normal no hay segundo despliegue: nextRunAt va al otro día y deployExtraWithRetry no despliega', async () => {
+  it('en día normal chequea recuperaciones pero no usa la ventana de ofertas especiales', async () => {
     const outputFile = path.join(tmpDir, 'ml-prices.json');
     const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
     const workDir = path.join(tmpDir, 'work');
@@ -483,11 +491,11 @@ describe('deployer', () => {
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', slot: '2026-10-30T06', items: { a: { price: 1000 } } }));
     await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 100 } } }));
     expect(await deployOnce(new Date('2026-10-30T10:30:00Z'), {
-      outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '',
+      outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => 'a'.repeat(40),
     })).toBe('ok');
     const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
-    // Día normal: tras la mañana el próximo run es mañana a las 10:00Z
-    expect(nextRunAt(new Date('2026-10-30T12:00:00Z'), state)).toBe(Date.parse('2026-10-31T10:00:00Z'));
+    // Día normal: también chequea recuperaciones cada diez minutos.
+    expect(nextRunAt(new Date('2026-10-30T12:00:00Z'), state)).toBe(Date.parse('2026-10-30T12:10:00Z'));
 
     // Aunque ml-prices.json tuviera slot T13, en día normal no se despliega la segunda vez
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', slot: '2026-10-30T13', items: { a: { price: 900 } } }));

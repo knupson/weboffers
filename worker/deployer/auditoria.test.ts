@@ -2,7 +2,13 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { commandTimeout, deployOnce, nextRunAt, purgeLogs, run } from './deploy.mjs';
+import { commandTimeout, deployOnce as actualDeployOnce, nextRunAt, purgeLogs, run } from './deploy.mjs';
+
+async function deployOnce(now: Date, opts: any) {
+  const runImpl = opts.runImpl;
+  return actualDeployOnce(now, { ...opts, runImpl: async (cmd: string, args: string[], cwd: string) =>
+    cmd === "git" && args[0] === "rev-parse" ? "a".repeat(40) : runImpl(cmd, args, cwd) });
+}
 import { validatePriceFiles } from '../../tools/validate-price-files.mjs';
 
 let dir: string;
@@ -15,7 +21,7 @@ afterEach(async () => { vi.unstubAllEnvs(); await fs.rm(dir, { recursive: true, 
 
 it('programa la siguiente ventana despues del vencimiento', () => {
   expect(nextRunAt(new Date('2026-11-05T14:00:00Z'), null)).toBe(Date.parse('2026-11-06T10:00:00Z'));
-  expect(nextRunAt(new Date('2026-11-04T18:00:00Z'), { date: '2026-11-04' })).toBe(Date.parse('2026-11-05T10:00:00Z'));
+  expect(nextRunAt(new Date('2026-11-04T23:00:00Z'), { date: '2026-11-04' })).toBe(Date.parse('2026-11-05T10:00:00Z'));
 });
 
 it('aplica timeout por comando e identifica el comando colgado', async () => {
@@ -30,6 +36,8 @@ it('aplica timeout por comando e identifica el comando colgado', async () => {
 
 it.each([0, 49, 50, 75])('bloquea solo el catalogo vacio; con menos productos publica igual (regla del user): %s', async publicados => {
   await fs.mkdir(path.join(dir, 'work', 'dist'), { recursive: true });
+  await fs.mkdir(path.join(dir, 'work', 'data'), { recursive: true });
+  await fs.writeFile(path.join(dir, 'work', 'data', 'catalog.json'), '[]');
   await fs.writeFile(path.join(dir, 'work', 'dist', 'estado.json'), JSON.stringify({ publicados }));
   const stateFile = path.join(dir, 'last-deploy.json');
   const original = { date: '2026-11-04', publicados: 100 };

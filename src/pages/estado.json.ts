@@ -2,7 +2,7 @@
 // precios de Amazon. Lo lee `tools/recordatorio_franquicia.py --control sitio` a las 7:30.
 import fs from "node:fs";
 import path from "node:path";
-import { isComparable, loadAmazonPrices, loadProducts } from "../lib/data";
+import { isComparable, loadAmazonPrices, loadMlPrices, loadProducts } from "../lib/data";
 
 // Búsqueda semanal de productos (worker/catalog_auto.py); el deployer copia el estado a data/.
 function readCatalogState() {
@@ -18,6 +18,7 @@ export async function GET() {
   const amazon = loadAmazonPrices();
   const body = {
     publicados: products.filter((p) => isComparable(p)).length,
+    slot: loadMlPrices()?.slot ?? null,
     preciosDe: amazon?.date ?? null,
     amazon: amazon?.run ?? null,
     ritmo: amazon?.pace ?? null,
