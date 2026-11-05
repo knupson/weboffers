@@ -1,3 +1,4 @@
+import { fetchJsonWithRetry } from "./dolar";
 import fs from "node:fs";
 import path from "node:path";
 import type { Store } from "../config";
@@ -103,6 +104,7 @@ export interface MlPriceItem {
 }
 
 export interface MlPrices {
+  slot?: string;
   generatedAt: string;
   /** Fecha (AAAA-MM-DD) de la corrida. */
   date: string;
@@ -445,9 +447,7 @@ export async function loadOffers(): Promise<Offers> {
   const url = import.meta.env?.OFFERS_URL ?? process.env.OFFERS_URL;
   if (url) {
     try {
-      const res = await fetch(url);
-      if (res.ok) return (await res.json()) as Offers;
-      console.warn(`[data] OFFERS_URL respondió ${res.status}, uso archivo local`);
+      return await fetchJsonWithRetry(url) as Offers;
     } catch (err) {
       console.warn("[data] No pude leer OFFERS_URL, uso archivo local", err);
     }
@@ -473,7 +473,7 @@ export async function loadProducts(now = Date.now()) {
   const fallbackAge = now - Date.parse(offers.rates?.fetchedAt ?? "");
   const mep = quotes.mep ?? (fallbackAge >= 0 && fallbackAge <= 3 * 86400e3 ? offers.rates?.mep : null) ?? null;
   if (typeof mep !== "number" || !Number.isFinite(mep) || mep <= 0) {
-    throw new Error("Sin cotización MEP válida: no se puede publicar el sitio.");
+    throw new Error("Sin cotización MEP válida de dolarapi.com ni respaldo vigente: no se puede publicar el sitio.");
   }
   const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd, now);
   const byKey = new Map(offers.items.map((i) => [`${i.store}:${i.asin}`, i]));
@@ -488,5 +488,5 @@ export async function loadProducts(now = Date.now()) {
     logIfFewProducts(comparableCount);
   }
 
-  return { products, offers };
+  return { products, offers, buildMep: mep };
 }

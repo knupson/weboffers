@@ -6,11 +6,26 @@ type FetchedRates = {
   source: 'dolarapi.com';
 };
 
+/** Dos intentos por fuente; el plazo incluye la lectura del cuerpo. */
+export async function fetchJsonWithRetry(url: string, fetchImpl: typeof fetch = fetch): Promise<any> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const response = await fetchImpl(url, { signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      if (attempt === 1) throw new Error(`Falló la fuente ${url}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
 export async function fetchRates(fetchImpl: typeof fetch = fetch): Promise<FetchedRates | null> {
   try {
-    const response = await fetchImpl('https://dolarapi.com/v1/dolares');
-    if (!response.ok) return null;
-    const data: unknown = await response.json();
+    const data: unknown = await fetchJsonWithRetry('https://dolarapi.com/v1/dolares', fetchImpl);
     if (!Array.isArray(data)) return null;
 
     const venta = (casa: string): number | null => {
@@ -23,7 +38,8 @@ export async function fetchRates(fetchImpl: typeof fetch = fetch): Promise<Fetch
     if (mep === null || tarjeta === null || oficial === null) return null;
 
     return { mep, tarjeta, oficial, fetchedAt: new Date().toISOString(), source: 'dolarapi.com' };
-  } catch {
+  } catch (error) {
+    console.warn(String(error));
     return null;
   }
 }
@@ -32,14 +48,15 @@ export async function fetchRates(fetchImpl: typeof fetch = fetch): Promise<Fetch
 export async function fetchEurUsd(fetchImpl: typeof fetch = fetch): Promise<number | null> {
   try {
     const [eur, usd] = await Promise.all([
-      fetchImpl('https://dolarapi.com/v1/cotizaciones/eur').then((r) => (r.ok ? r.json() : null)),
-      fetchImpl('https://dolarapi.com/v1/dolares/oficial').then((r) => (r.ok ? r.json() : null)),
+      fetchJsonWithRetry('https://dolarapi.com/v1/cotizaciones/eur', fetchImpl),
+      fetchJsonWithRetry('https://dolarapi.com/v1/dolares/oficial', fetchImpl),
     ]);
     const e = eur?.venta;
     const u = usd?.venta;
     if (typeof e !== 'number' || typeof u !== 'number' || !(e > 0) || !(u > 0)) return null;
     return e / u;
-  } catch {
+  } catch (error) {
+    console.warn(String(error));
     return null;
   }
 }

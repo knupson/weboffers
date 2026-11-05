@@ -6,7 +6,7 @@ import { SITE, SOCIAL, UMAMI } from "../config";
 import { siInstagram, siTelegram, siYoutube } from "simple-icons";
 
 const socialIcon = { YouTube: siYoutube, Telegram: siTelegram, Instagram: siInstagram };
-import { loadOffers, loadPricesDate } from "../lib/data";
+import { loadProducts, loadPricesDate } from "../lib/data";
 
 interface Props {
   title?: string;
@@ -20,11 +20,10 @@ const fullTitle = title ? `${title} | ${SITE.name}` : `${SITE.name}: ¿Amazon o 
 const canonical = new URL(Astro.url.pathname, SITE.url).toString();
 const path = Astro.url.pathname;
 
-const { rates, items } = await loadOffers();
+const { offers: { items }, buildMep } = await loadProducts();
 const pricesDate = loadPricesDate();
 const hasPrices = items.some((i) => i.priceUsd != null);
-const stamp = rates ? new Date(rates.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" }) : "";
-const mep = rates ? `$${Math.round(rates.mep).toLocaleString("es-AR")}` : "...";
+const mep = `$${Math.round(buildMep).toLocaleString("es-AR")}`;
 
 const nav = [
   ["/productos/", "Productos"],
@@ -71,7 +70,7 @@ const nav = [
             <a href={href} class={href === "/guias/" ? "hide-sm" : undefined} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
           ))}
         </nav>
-        <span class="rate-pill">MEP <b class="num" data-rate="mep">{mep}</b> <small data-rate-time>{stamp}</small></span>
+        <span class="rate-pill">MEP usado en cálculos <b class="num" data-build-mep>{mep}</b></span>
       </div>
     </header>
 
@@ -203,21 +202,6 @@ const nav = [
         });
         window.addEventListener("pageshow", refreshGuard);
       })();
-    </script>
-
-    <script>
-      import { fetchRates } from "../lib/dolar";
-      // Actualiza las cotizaciones impresas en la página con el valor del momento.
-      fetchRates().then((r) => {
-        if (!r) return;
-        document.querySelectorAll<HTMLElement>("[data-rate]").forEach((el) => {
-          const key = el.dataset.rate as "mep" | "tarjeta";
-          el.textContent = `$${Math.round(r[key]).toLocaleString("es-AR")}`;
-        });
-        const hora = new Date(r.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
-        document.querySelectorAll<HTMLElement>("[data-rate-time]").forEach((el) => (el.textContent = hora));
-        document.querySelectorAll<HTMLElement>("[data-rate-when]").forEach((el) => (el.textContent = `de las ${hora}`));
-      });
     </script>
   </body>
 </html>

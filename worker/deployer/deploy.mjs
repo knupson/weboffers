@@ -1,5 +1,5 @@
 // Despliegue diario de Franquicia 400 a Cloudflare con los precios de Mercado Libre y Amazon.
-// Corre desde las 07:00 ART esperando que ambos archivos de precios sean del día (reintenta cada 10 min hasta las 11:00 ART).
+// Espera precios del día de 07:00 a 11:00 ART; luego chequea recuperaciones cada 10 min hasta las 20:00 ART.
 // Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_WAIT / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -74,20 +74,28 @@ function extraSlotId(dateStr) {
   return `${dateStr}T${String(EXTRA_SLOT_HOUR).padStart(2, '0')}`;
 }
 
+function redeployCount(state) {
+  // Compatibilidad con despliegues previos al contador persistido.
+  return state?.redeploys ?? (state?.slot === 'extra' ? 1 : 0);
+}
+
 function nextRunAt(now, lastState) {
   const today = artDate(now);
+  if (lastState?.date === today && redeployCount(lastState) < 2 && now.getTime() < recoveryDeadlineAt(now)) {
+    return Math.min(now.getTime() + RETRY_INTERVAL_MS, recoveryDeadlineAt(now));
+  }
   let target = startAt(now);
   if (target <= now.getTime()) {
     if (lastState !== undefined && lastState?.date !== today && now.getTime() < deadlineAt(now)) {
       return now.getTime();
     }
-    if (isExtraDate(today) && lastState?.date === today && (lastState?.slot ?? 'morning') !== 'extra' && now.getTime() < extraDeadlineAt(now)) {
-      const extra = extraStartAt(now);
-      return extra > now.getTime() ? extra : now.getTime();
-    }
     target += ONE_DAY_MS;
   }
   return target;
+}
+
+function recoveryDeadlineAt(now) {
+  return Date.parse(`${artDate(now)}T23:00:00Z`); // 20:00 ART
 }
 
 function deadlineAt(now) {
@@ -288,9 +296,12 @@ async function deployOnce(now = new Date(), opts = {}) {
   const hashInput = [raw ?? '', amazonRaw ?? ''].join('\n');
   const hash = createHash('sha256').update(hashInput).digest('hex');
   const last = await readState(stateFile);
-  // Sólo omitir cuando coincidan el hash, la fecha ART y el slot del último despliegue.
-  if (last?.hash === hash && last?.date === today && (last?.slot ?? 'morning') === slot) {
-    log('DEPLOY_SKIP los precios y la fecha no cambiaron desde el último despliegue.');
+  const recovery = last?.date === today;
+  const skipReason = recovery && (last.hash === hash ? 'los precios no cambiaron desde el último despliegue'
+    : redeployCount(last) >= 2 ? 'ya se hicieron dos redespliegues hoy'
+    : now.getTime() >= recoveryDeadlineAt(now) ? 'cerró la ventana de recuperaciones de las 20:00 ART' : null);
+  if (skipReason) {
+    log(`DEPLOY_SKIP ${skipReason}.`);
     return 'skip';
   }
   try {
@@ -314,6 +325,10 @@ async function deployOnce(now = new Date(), opts = {}) {
     } else {
       await fs.rm(amazonDest, { force: true });
     }
+    const sha = (await runImpl('git', ['rev-parse', 'HEAD'], workDir)).trim();
+    if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('SHA de main inválido');
+    const catalogHash = createHash('sha256').update(await fs.readFile(path.join(workDir, 'data', 'catalog.json'))).digest('hex');
+    const version = { sha, catalogHash };
     await runImpl('npm', ['ci'], workDir);
     await runImpl('npm', ['run', 'build'], workDir);
     const buildState = JSON.parse(await fs.readFile(path.join(workDir, 'dist', 'estado.json'), 'utf8'));
@@ -323,11 +338,14 @@ async function deployOnce(now = new Date(), opts = {}) {
     if (typeof last?.publicados === 'number' && publicados < last.publicados * 0.5) {
       log(`DEPLOY_FAIL caída brusca: ${publicados} comparables contra ${last.publicados} del último despliegue (se publica igual).`);
     }
+    buildState.version = version;
+    buildState.slot = JSON.parse(raw).slot ?? null;
+    await fs.writeFile(path.join(workDir, 'dist', 'estado.json'), JSON.stringify(buildState, null, 1) + '\n');
     await runImpl('npx', ['--yes', 'wrangler', 'deploy'], workDir);
     await fs.mkdir(path.dirname(stateFile), { recursive: true });
-    await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, publicados, deployedAt: now.toISOString() }));
+    await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, priceSlot: buildState.slot, version, redeploys: recovery ? redeployCount(last) + 1 : 0, publicados, deployedAt: now.toISOString() }));
     await saveResult('ok', `Publicado con precios del ${today}`, now, opts);
-    log(`DEPLOY_OK publicado con precios del ${today}${slot === 'extra' ? ' (segundo despliegue de las 13:00 ART)' : ''}.`);
+    log(`DEPLOY_OK publicado con precios del ${today}${recovery ? ' (redespliegue por precios recuperados)' : ''}.`);
     return 'ok';
   } catch (error) {
     log(`DEPLOY_FAIL ${redact(error.message)}`);
@@ -451,13 +469,9 @@ async function main() {
     if (stopRequested) break;
     const wake = new Date();
     const today = artDate(wake);
-    const extraDue = isExtraDate(today)
-      && wake.getTime() >= extraStartAt(wake)
-      && state?.date === today
-      && (state?.slot ?? 'morning') !== 'extra';
     try {
-      if (extraDue) {
-        await deployExtraWithRetry();
+      if (state?.date === today) {
+        await deployOnce(wake, { slot: state.slot ?? 'morning' });
       } else {
         await deployWithRetry();
       }

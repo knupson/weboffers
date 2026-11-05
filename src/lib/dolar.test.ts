@@ -15,7 +15,7 @@ describe('fetchRates', () => {
     const fetchImpl = mockFetch(payload);
     const before = Date.now();
     const result = await fetchRates(fetchImpl);
-    expect(fetchImpl).toHaveBeenCalledWith('https://dolarapi.com/v1/dolares');
+    expect(fetchImpl).toHaveBeenCalledWith('https://dolarapi.com/v1/dolares', { signal: expect.any(AbortSignal) });
     expect(result).toEqual({
       mep: 1200, tarjeta: 1500, oficial: 1000,
       fetchedAt: expect.any(String), source: 'dolarapi.com',
