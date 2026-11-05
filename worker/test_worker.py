@@ -216,3 +216,15 @@ def test_catalog_entries_are_complete_and_unique():
     # Sin ASIN = no está en Amazon con envío a Argentina; los visibles con ASIN no se repiten.
     with_asin = [item for item in catalog if item["verified"] and item["asin"]]
     assert len({(item["store"], item["asin"]) for item in with_asin}) == len(with_asin)
+
+
+def test_daily_log_survives_in_output_dir(tmp_path):
+    """El log del worker queda en output/logs (volumen): sobrevive a recrear el contenedor (05/11)."""
+    import io
+    stream = io.StringIO()
+    log = worker.DailyLog(tmp_path / "logs", stream)
+    print("Mercado Libre: no se pudo consultar x (HTTPError); se omite.", file=log, flush=True)
+    assert "no se pudo consultar x" in stream.getvalue()
+    files = list((tmp_path / "logs").glob("worker-*.log"))
+    assert len(files) == 1
+    assert "no se pudo consultar x" in files[0].read_text(encoding="utf-8")

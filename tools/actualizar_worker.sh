@@ -3,6 +3,8 @@
 # Uso (Git Bash, desde la raíz del repo): bash tools/actualizar_worker.sh [--reintentar]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# El deployer de la VM clona `main`: si main queda atrás, el despliegue diario publica un catálogo viejo (05/11).
+git push origin HEAD:main
 git archive HEAD worker tools data/catalog.json | ssh docker "tar -x -C /opt/docker/franquicia400"
 ssh docker "cd /opt/docker/franquicia400/worker && docker compose -p franquicia400 up -d --build weboffers-worker weboffers-amazon-ar weboffers-deployer 2>&1 | tail -4"
 if [ "${1:-}" = "--reintentar" ]; then

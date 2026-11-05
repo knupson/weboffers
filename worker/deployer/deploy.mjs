@@ -3,7 +3,7 @@
 // Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_WAIT / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { promises as fs } from 'node:fs';
+import { appendFileSync, mkdirSync, promises as fs } from 'node:fs';
 import path from 'node:path';
 
 const REPO_URL = 'https://github.com/knupson/weboffers.git';
@@ -26,8 +26,19 @@ const MAX_SLEEP_MS = 60e3;
 
 let stopRequested = false;
 
+// `docker logs` se pierde al recrear el contenedor; /state es un volumen con nombre y sobrevive (05/11).
+const LOG_DIR = process.env.DEPLOYER_LOG_DIR ?? '/state/logs';
+
 function log(line) {
-  process.stdout.write(`${new Date().toISOString()} ${line}\n`);
+  const now = new Date();
+  const text = `${now.toISOString()} ${line}\n`;
+  process.stdout.write(text);
+  try {
+    mkdirSync(LOG_DIR, { recursive: true });
+    appendFileSync(path.join(LOG_DIR, `deployer-${artDate(now)}.log`), text);
+  } catch {
+    // El log en disco nunca frena un despliegue.
+  }
 }
 
 function artDate(date) {

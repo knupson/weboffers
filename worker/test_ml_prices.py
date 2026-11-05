@@ -126,6 +126,31 @@ def test_confirmed_absence_completes_slot(tmp_path, monkeypatch):
     assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
 
 
+def _http_error(status, body):
+    response = requests.Response()
+    response.status_code = status
+    response._content = json.dumps(body).encode()
+    return requests.HTTPError(str(status), response=response)
+
+
+def test_no_winners_404_is_absence_not_failure(monkeypatch):
+    """ML responde 404 "No winners found" cuando el producto no tiene vendedores activos (05/11, 7 productos)."""
+    def raise_no_winners(_path, params=None):
+        raise _http_error(404, {"message": "No winners found", "error": "not_found", "status": 404, "cause": []})
+    monkeypatch.setattr(ml_prices, "get_json", raise_no_winners)
+    assert ml_prices.fetch_items("MLA123") == []
+
+
+@pytest.mark.parametrize("status,body", [(404, {"message": "Product not found", "error": "not_found"}),
+                                         (500, {"message": "No winners found", "error": "not_found"})])
+def test_other_http_errors_still_fail(monkeypatch, status, body):
+    def raise_error(_path, params=None):
+        raise _http_error(status, body)
+    monkeypatch.setattr(ml_prices, "get_json", raise_error)
+    with pytest.raises(requests.HTTPError):
+        ml_prices.fetch_items("MLA123")
+
+
 @pytest.mark.parametrize("payload", [{}, {"results": None}, {"results": {}}, []])
 def test_malformed_response_is_not_absence(monkeypatch, payload):
     monkeypatch.setattr(ml_prices, "get_json", lambda _: payload)

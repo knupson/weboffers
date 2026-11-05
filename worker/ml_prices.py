@@ -73,10 +73,28 @@ def search_products(query):
     return get_json("/products/search", {"status": "active", "site_id": SITE_ID, "q": query}).get("results", [])
 
 
+def is_no_winners(response):
+    if response is None or response.status_code != 404:
+        return False
+    try:
+        body = response.json()
+    except ValueError:
+        return False
+    return isinstance(body, dict) and body.get("error") == "not_found" \
+        and "no winners" in str(body.get("message", "")).lower()
+
+
 def fetch_items(catalog_id):
     if not re.fullmatch(r"[A-Za-z0-9]+", str(catalog_id)):
         raise ValueError("catalogId inválido")
-    payload = get_json(f"/products/{catalog_id}/items")
+    try:
+        payload = get_json(f"/products/{catalog_id}/items")
+    except requests.HTTPError as exc:
+        # 404 "No winners found": el producto de catálogo existe pero hoy no tiene vendedores activos.
+        # Es ausencia confirmada, no una falla de la consulta.
+        if is_no_winners(exc.response):
+            return []
+        raise
     if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
         raise ValueError("Respuesta de ML sin resultados válidos")
     return payload["results"]

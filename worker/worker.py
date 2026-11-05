@@ -1,11 +1,12 @@
 """Daemon de actualización del catálogo público."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import math
 import os
 from pathlib import Path
 import signal
+import sys
 import time
 
 import amazon_prices
@@ -107,7 +108,52 @@ def with_ar_shipping(products, amazon_prices_path, now=None):
     return out
 
 
+class DailyLog:
+    """Copia todo lo que el worker imprime a output/logs/worker-AAAA-MM-DD.log (fecha ART).
+
+    `docker logs` se pierde cada vez que se recrea el contenedor; output/ es un volumen y sobrevive.
+    """
+
+    KEEP_DAYS = 30
+
+    def __init__(self, logs_dir, stream):
+        self.dir = Path(logs_dir)
+        self.stream = stream
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self._purge()
+
+    def _now_art(self):
+        return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-3)))
+
+    def _purge(self):
+        cutoff = time.time() - self.KEEP_DAYS * 86400
+        for old in self.dir.glob("worker-*.log"):
+            try:
+                if old.stat().st_mtime < cutoff:
+                    old.unlink()
+            except OSError:
+                pass
+
+    def write(self, text):
+        self.stream.write(text)
+        if text.strip():
+            now = self._now_art()
+            try:
+                with open(self.dir / f"worker-{now:%Y-%m-%d}.log", "a", encoding="utf-8") as fh:
+                    for line in text.splitlines():
+                        if line.strip():
+                            fh.write(f"{now:%H:%M:%S} {line}\n")
+            except OSError:
+                pass  # El log en disco nunca tumba al worker.
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+
+
 def main():
+    output_dir = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
+    sys.stdout = DailyLog(output_dir / "logs", sys.stdout)
     interval = float(os.environ.get("CHECK_INTERVAL_SECONDS", "3600"))
     if not math.isfinite(interval) or interval <= 0:
         raise ValueError("CHECK_INTERVAL_SECONDS debe ser un número positivo")
