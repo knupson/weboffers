@@ -541,6 +541,8 @@ def fetch_prices(base_url, products, today):
                 if parsed is not None:
                     amount, currency = parsed
                     items[slug] = {"asin": product["asin"], "amount": amount, "currency": currency, "checked": today}
+                    if isinstance(raw, dict) and isinstance(raw.get("title"), str):
+                        items[slug]["title"] = raw["title"][:300]  # para el control diario de variantes (05/11)
                     ok += 1
                 else:
                     missing += 1

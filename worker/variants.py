@@ -16,6 +16,9 @@ def _attributes(title):
         ("mm", r"\b(\d+(?:[.,]\d+)?)\s*(mm)\b", None),
     ):
         values = {round(float(n.replace(",", ".")) * (factor[u] if factor else 1), 4) for n, u in re.findall(pattern, text)}
+        if values and key == "capacidad":
+            # La capacidad del producto es la mayor (8 GB RAM + 128 GB -> 128; 8 TB + 256 MB de caché -> 8 TB). 05/11.
+            values = {max(values)}
         if values:
             out[key] = values
     groups = {

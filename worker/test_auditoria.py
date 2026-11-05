@@ -138,3 +138,22 @@ def test_daily_log_purges_on_day_change(tmp_path, monkeypatch):
     log.write("otro\n")
     purge.assert_called_once()
     assert not old.exists()
+
+
+def test_capacidad_compara_la_mayor_no_la_ram():
+    from variants import variant_conflicts
+    assert variant_conflicts("Lenovo Idea Tab 11 | 128GB, WiFi", "Lenovo Idea Tab 11 8 GB RAM 128 GB") == []
+    assert variant_conflicts("Seagate 8TB BarraCuda", "Seagate 8tb Barracuda 256mb") == []
+    assert variant_conflicts("Redmi Pad 2 (256GB + 8GB)", "Redmi Pad 2 256gb 8 Ram") == []
+    assert variant_conflicts("Galaxy Tab 128GB", "Galaxy Tab 256GB") == ["capacidad"]
+
+
+def test_ml_no_publica_pares_con_variante_funcional_distinta():
+    import ml_prices
+    g915 = {"slug": "g915", "amazonTitle": "Logitech G915 X Lightspeed Wireless Keyboard, Clicky",
+            "ml": {"name": "Teclado Logitech G915 X Inalámbrico GL Tactile"}}
+    assert ml_prices.functional_conflicts(g915, {}) == ["switch"]
+    color = {"slug": "xm6", "amazonTitle": "Sony WH-1000XM6, Black", "ml": {"name": "Sony WH-1000XM6 Rosa"}}
+    assert ml_prices.functional_conflicts(color, {}) == []
+    hoy = {"g915": {"title": "Logitech G915 X Lightspeed Wireless Keyboard, Tactile"}}
+    assert ml_prices.functional_conflicts(g915, hoy) == []  # manda el título de hoy

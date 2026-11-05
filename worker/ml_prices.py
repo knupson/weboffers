@@ -11,6 +11,7 @@ import time
 import requests
 
 import publish
+from variants import variant_conflicts
 
 
 API_BASE_URL = "https://api.mercadolibre.com"
@@ -276,6 +277,18 @@ def estimate_amazon_ars(product, amazon_items, mep, eur_usd=None):
     return round_ars_10k(estimate_from_amazon(usd, mep)), source, checked
 
 
+def functional_conflicts(product, amazon_items):
+    """Diferencias de variante funcionales entre el título de Amazon (de hoy o del catálogo) y el nombre de ML.
+
+    El color no frena la publicación (mismo modelo); switch, capacidad, tamaño, layout o conexión sí.
+    """
+    ml_name = (product.get("ml") or {}).get("name")
+    amazon_title = (amazon_items.get(product.get("slug")) or {}).get("title") or product.get("amazonTitle")
+    if not ml_name or not amazon_title:
+        return []
+    return [c for c in variant_conflicts(amazon_title, ml_name) if c != "color"]
+
+
 def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None):
     """Recalcula precios y veredictos una vez por día desde las 06:00 ART y, en los días de
     EXTRA_REFRESH_DATES, una vez más desde las 13:00 ART. Devuelve True si corrió."""
@@ -302,6 +315,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     items = dict(previous.get("items") or {}) if retry else {}
     absent = list(previous.get("absent") or []) if retry else []
     failed = []
+    variant_conflict = []
     attempts = previous.get("attempts", 1) + 1 if retry else 1
     for product in catalog:
         ml = product.get("ml") or {}
@@ -310,6 +324,12 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
             continue
         slug = product["slug"]
         if retry and slug not in previous.get("failed", []):
+            continue
+        conflicto = functional_conflicts(product, amazon_items)
+        if conflicto:
+            # Par mal emparejado (p. ej. G915 X Clicky vs Tactile, 05/11): no se publica y queda registrado.
+            variant_conflict.append(slug)
+            print(f"VARIANTE_DISTINTA {slug}: {', '.join(conflicto)} (Amazon vs ML); no se publica.", flush=True)
             continue
         try:
             best = cheapest_new(fetch_items(catalog_id))
@@ -338,7 +358,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         items[slug] = entry
         pause()
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items,
-                                       "absent": absent, "failed": failed, "attempts": attempts, "attemptHour": local.hour})
+                                       "absent": absent, "failed": failed, "variantConflict": variant_conflict, "attempts": attempts, "attemptHour": local.hour})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
     return True
 

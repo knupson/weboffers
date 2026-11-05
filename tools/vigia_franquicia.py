@@ -27,7 +27,7 @@ DEPLOYER = "franquicia400-weboffers-deployer-1"
 CONTENEDORES = [WORKER, DEPLOYER, "franquicia400-weboffers-amazon-ar-1", "franquicia400-weboffers-amazon-scraper-1"]
 LOGS_WORKER = "/opt/docker/franquicia400/worker/output/logs"
 # Líneas del log del worker que son fallas reales (no ruido esperado).
-MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100")
+MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA")
 ML_FALLAS_TOLERADAS = 3  # "no se pudo consultar" sueltas por día antes de avisar
 SIN_LATIDO_MIN = 75      # el worker imprime al menos una vez por hora
 
