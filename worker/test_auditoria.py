@@ -157,3 +157,24 @@ def test_ml_no_publica_pares_con_variante_funcional_distinta():
     assert ml_prices.functional_conflicts(color, {}) == []
     hoy = {"g915": {"title": "Logitech G915 X Lightspeed Wireless Keyboard, Tactile"}}
     assert ml_prices.functional_conflicts(g915, hoy) == []  # manda el título de hoy
+
+
+def test_dockerfile_copia_todos_los_modulos_del_worker():
+    """05/11: variants.py nuevo no entró en la imagen y el worker quedó reiniciándose en bucle."""
+    import ast
+    import pathlib
+    here = pathlib.Path(__file__).resolve().parent
+    copiados = set(next(l for l in (here / "Dockerfile").read_text().splitlines() if l.startswith("COPY")).split()[1:-1])
+    pendientes, vistos = ["worker.py"], set()
+    while pendientes:
+        f = pendientes.pop()
+        if f in vistos:
+            continue
+        vistos.add(f)
+        for node in ast.walk(ast.parse((here / f).read_text(encoding="utf-8"))):
+            nombres = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module] if isinstance(node, ast.ImportFrom) and node.module else []
+            for n in nombres:
+                if (here / f"{n}.py").exists():
+                    pendientes.append(f"{n}.py")
+    faltan = vistos - copiados
+    assert not faltan, f"faltan en el COPY del Dockerfile: {sorted(faltan)}"
