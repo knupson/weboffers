@@ -716,3 +716,19 @@ def test_refresh_ar_shipping_anota_sin_oferta(monkeypatch):
     products = [{"slug": "s1", "asin": "B1", "store": "US"}, {"slug": "s2", "asin": "B2", "store": "US"}]
     amazon_prices.refresh_ar_shipping(products, {}, "2026-11-05", no_offer=no_offer)
     assert no_offer == ["s1"]
+
+
+def test_force_adelanta_sin_repetir_corrida_ni_cambiar_reintentos(tmp_path, monkeypatch):
+    now = AFTER_SEVEN.replace(hour=6, minute=50)  # 03:50 ART
+    path = tmp_path / "amazon-prices.json"
+    monkeypatch.setattr(amazon_prices, "prices_with_chrome", lambda *a: ({}, 0, 0))
+    monkeypatch.setattr(amazon_prices, "refresh_ar_shipping", lambda *a, **kw: {})
+    assert not amazon_prices.maybe_refresh([], path, now)
+    assert amazon_prices.maybe_refresh([], path, now, force=True)
+    assert json.loads(path.read_text())["date"] == "2026-10-30"
+    retry = Mock(return_value=False)
+    monkeypatch.setattr(amazon_prices, "retry_missing", retry)
+    assert not amazon_prices.maybe_refresh([], path, now, force=True)
+    retry.assert_called_once()
+    assert not amazon_prices.maybe_refresh([], path, now)
+    assert retry.call_count == 1

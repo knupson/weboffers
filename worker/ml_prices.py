@@ -1,5 +1,8 @@
 """Precios de Mercado Libre y veredicto diario frente a Amazon."""
 
+from refresh_lock import locked_refresh
+from article_log import ml_line
+
 from datetime import date, datetime, timedelta, timezone
 import json
 import math
@@ -289,12 +292,13 @@ def functional_conflicts(product, amazon_items):
     return [c for c in variant_conflicts(amazon_title, ml_name) if c != "color"]
 
 
-def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None):
-    """Recalcula precios y veredictos una vez por día desde las 06:00 ART y, en los días de
+@locked_refresh
+def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None, *, force=False):
+    """Recalcula al encadenar (force) o desde las 06:00 ART y, en los días de
     EXTRA_REFRESH_DATES, una vez más desde las 13:00 ART. Devuelve True si corrió."""
     local = now.astimezone(ART)
     today = local.date().isoformat()
-    if local.hour < START_HOUR:
+    if not force and local.hour < START_HOUR:
         return False
     extra_slot = _slot_id(today, EXTRA_REFRESH_HOUR) if today in EXTRA_REFRESH_DATES else None
     previous = load_json(prices_path, None)
@@ -303,12 +307,19 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         slot = extra_slot
     elif done_slot is not None:
         if not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
+            for p in catalog:
+                slug = p["slug"]
+                item = (previous.get("items") or {}).get(slug)
+                status = "ok" if item else next((s for s in ("absent", "failed", "variantConflict") if slug in previous.get(s, [])), "omitido")
+                print(ml_line(p, status, item, "sin_reconsulta_slot_ya_ejecutado"), flush=True)
             return False
         slot = done_slot
     else:
         slot = _slot_id(today, START_HOUR)
     if not is_configured():
         print("Mercado Libre: faltan ML_CLIENT_ID o ML_CLIENT_SECRET; se omite.", flush=True)
+        for p in catalog:
+            print(ml_line(p, "omitido", reason="credenciales_ml_ausentes"), flush=True)
         return False
     amazon_items = load_amazon_prices(amazon_prices_path, local.date())
     retry = done_slot == slot
@@ -321,25 +332,31 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         ml = product.get("ml") or {}
         catalog_id = ml.get("catalogId")
         if not product.get("verified") or not catalog_id:
+            print(ml_line(product, "omitido", reason="sin_verificar" if not product.get("verified") else "sin_catalog_id"), flush=True)
             continue
         slug = product["slug"]
         if retry and slug not in previous.get("failed", []):
+            status = "ok" if slug in items else "absent" if slug in absent else "omitido"
+            print(ml_line(product, status, items.get(slug), "sin_reconsulta_en_este_reintento"), flush=True)
             continue
         conflicto = functional_conflicts(product, amazon_items)
         if conflicto:
             # Par mal emparejado (p. ej. G915 X Clicky vs Tactile, 05/11): no se publica y queda registrado.
             variant_conflict.append(slug)
+            print(ml_line(product, "variantConflict", reason=", ".join(conflicto)), flush=True)
             print(f"VARIANTE_DISTINTA {slug}: {', '.join(conflicto)} (Amazon vs ML); no se publica.", flush=True)
             continue
         try:
             best = cheapest_new(fetch_items(catalog_id))
             if best is None:
                 absent.append(slug)
+                print(ml_line(product, "absent", reason="sin_oferta_local_nueva"), flush=True)
                 pause()
                 continue
             price, item_id = best
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
             failed.append(slug)
+            print(ml_line(product, "failed", reason=f"consulta_{type(exc).__name__}"), flush=True)
             print(f"Mercado Libre: no se pudo consultar {slug} ({type(exc).__name__}); se omite.", flush=True)
             pause()
             continue
@@ -356,6 +373,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         if source:
             entry["amazonSource"] = source
         items[slug] = entry
+        print(ml_line(product, "ok", entry), flush=True)
         pause()
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items,
                                        "absent": absent, "failed": failed, "variantConflict": variant_conflict, "attempts": attempts, "attemptHour": local.hour})

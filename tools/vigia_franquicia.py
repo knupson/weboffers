@@ -7,6 +7,7 @@ por día; si el aviso no sale (p. ej. sin internet) queda pendiente y se reinten
 
 Cron (VM docker, hora ART):
   */15 * * * * /usr/bin/python3 /opt/docker/blackseam/soporte/vigia_franquicia.py >> /home/claude/logs/vigia_franquicia.log 2>&1
+Desde las 05:30 ART controla también el resumen de la cadena iniciada a las 03:30.
 Logs: VIGIA_OK / VIGIA_AVISO <claves> / VIGIA_PENDIENTE (no se pudo mandar).
 """
 import datetime
@@ -62,10 +63,12 @@ def chequeos(ahora, **kw):
         return {"vigia-error": f"el vigía falló al revisar ({type(e).__name__}: {str(e)[:80]})"}
 
 
-def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, bajar=rf.bajar, logs_dir=LOGS_WORKER):
+def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, bajar=rf.bajar, logs_dir=LOGS_WORKER, cadena_dir="/home/claude/logs"):
     """Devuelve {clave: texto} con cada problema encontrado ahora."""
     hoy = ahora.date().isoformat()
     problemas = {}
+    if (ahora.hour, ahora.minute) >= (5, 30):
+        problemas.update(chequear_cadena(hoy, cadena_dir))
     if not internet():
         problemas["internet"] = "la VM docker no tiene salida a internet, revisá la ruta por defecto"
         return problemas  # sin internet el resto da falsos positivos
@@ -107,14 +110,14 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
             problemas["deploy:" + linea[25:90]] = f"el despliegue falló: {linea[25:180]}"
 
     if (ahora.hour, ahora.minute) >= (4, 30):
-        # Relevamiento del envío AR con Chrome (cron 03:30): sin él, los envíos no se confirman (REGLA 0).
+        # Relevamiento del envío AR con Chrome (cadena 03:30): sin él no se confirman envíos (REGLA 0).
         try:
             envio = leer(WORKER, f"/app/output/ar-chrome-{hoy}.json")
         except Exception:  # noqa: BLE001
             envio = None
         items = (envio or {}).get("items") or {}
         if not items:
-            problemas["envio-chrome"] = "no corrió el relevamiento del envío a Argentina con Chrome (cron 03:30)"
+            problemas["envio-chrome"] = "no corrió el relevamiento del envío a Argentina con Chrome (cadena 03:30)"
         elif sum(1 for x in items.values() if isinstance(x, dict) and x.get("ships") is True) == 0:
             problemas["envio-chrome-cero"] = f"el relevamiento con Chrome no confirmó ningún envío ({len(items)} productos)"
 
@@ -128,6 +131,27 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
                 problemas["fresco:" + nombre] = f"{nombre} no tiene la fecha de hoy"
         # Fecha, mínimo de productos y sitio caído los controla `recordatorio_franquicia.py --control sitio`
         # a las 7:30 con más detalle; repetirlos acá mandaba dos WhatsApp por lo mismo (06/11).
+    return problemas
+
+
+def chequear_cadena(hoy, logs_dir):
+    """Lee el resumen local del host; detecta también una cadena interrumpida."""
+    try:
+        with open(os.path.join(logs_dir, f"cadena-{hoy}.json"), encoding="utf-8") as fh:
+            resumen = json.load(fh)
+        if not isinstance(resumen, dict) or resumen.get("fecha") != hoy or not isinstance(resumen.get("pasos"), list):
+            raise ValueError("resumen inválido")
+        if any(not isinstance(p, dict) or not isinstance(p.get("paso"), str) for p in resumen["pasos"]):
+            raise ValueError("pasos inválidos")
+    except (OSError, ValueError, TypeError) as exc:
+        return {"cadena": f"falta el resumen válido de la cadena de madrugada ({exc})"}
+    problemas = {}
+    pasos = {p["paso"]: p for p in resumen["pasos"]}
+    for nombre in ("chrome", "amazon", "ml", "deploy"):
+        paso = pasos.get(nombre, {})
+        if paso.get("estado") != "ok":
+            motivo = paso.get("motivo") or paso.get("estado") or "paso sin ejecutar"
+            problemas[f"cadena:{nombre}"] = f"la cadena de madrugada falló en {nombre} ({motivo})"
     return problemas
 
 

@@ -16,6 +16,10 @@ import re
 import sys
 import time
 import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "worker"))
+from article_log import chrome_line
 
 import websockets
 
@@ -115,6 +119,12 @@ async def leer_producto(c, s, asin):
 
 
 async def main(asins):
+    # También acepta ASIN:slug1,slug2 para conservar la relación con el catálogo.
+    slugs = {}
+    for argument in asins:
+        asin, _, names = argument.partition(":")
+        slugs.setdefault(asin, []).extend(names.split(",") if names else [])
+    asins = list(slugs)
     ver = json.load(urllib.request.urlopen(CDP + "/json/version"))
     items, inicio = {}, time.time()
     async with websockets.connect(ver["webSocketDebuggerUrl"], max_size=2**24) as ws:
@@ -139,7 +149,7 @@ async def main(asins):
                     except Exception:  # noqa: BLE001
                         pass
                     tid, s = await nueva_pestana(c, ctx)
-                print(f"{asin} {items[asin]['ships']} {items[asin]['free']} {items[asin]['motivo']}", file=sys.stderr, flush=True)
+                print(chrome_line(slugs[asin], asin, items[asin]), file=sys.stderr, flush=True)
         finally:
             try:
                 await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)

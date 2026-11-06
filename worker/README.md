@@ -67,7 +67,8 @@ sin secretos, sin volúmenes montados del host, sin puertos publicados al
 exterior y con límite de memoria de 256 MB; sólo el worker puede consultarlo en
 la red interna de Compose (`http://weboffers-amazon-scraper:8000`).
 
-Una vez por día, desde las 07:00 ART, `amazon_prices.py` consulta `/products/bulk`
+La cadena de las 03:30 ART ejecuta `amazon_prices.py` después de Chrome;
+el ciclo horario conserva las 04:00 ART como respaldo. Consulta `/products/bulk`
 en tandas de hasta 10 ASINs para los productos verificados que tienen `asin` y
 bloque `ml`, y escribe `output/amazon-prices.json`. Si un producto falla, se
 conserva el precio anterior hasta 3 días. Si ningún producto responde bien, se
@@ -109,7 +110,7 @@ posible).
 ## Precios de Mercado Libre y deployer
 
 `ml_prices.py` consulta la API de Mercado Libre con client_credentials. Una vez
-por día, desde las 07:00 ART (después de `amazon_prices.py`), recalcula
+por día, después de Amazon en la cadena (respaldo a las 06:00 ART), recalcula
 `output/ml-prices.json` para los productos verificados que tienen `ml.catalogId`.
 El total de Amazon en USD se calcula con la misma fórmula del sitio (envío,
 derechos e impuestos sobre el precio diario de `amazon-prices.json`, o sobre el
@@ -132,8 +133,9 @@ docker compose -p franquicia400 exec weboffers-worker python /app/tools/ml_catal
 El `catalogId` elegido se copia a mano en `data/catalog.json` (`ml.catalogId`); el
 script no escribe el catálogo.
 
-El servicio `weboffers-deployer` corre a las 07:30 ART. Si `ml-prices.json` es de
-hoy y cambió (o cambió `amazon-prices.json`), clona `main` de GitHub en el volumen
+El servicio `weboffers-deployer` publica al ver `output/cadena-AAAA-MM-DD.json`
+y ambos archivos de precios del día; revisa el marcador cada minuto. Conserva
+las 07:00 ART como respaldo. Si los precios de hoy cambiaron, clona `main` de GitHub en el volumen
 `deployer-work`, copia `ml-prices.json` y `amazon-prices.json` a `data/`, hace
 `npm ci`, `npm run build` y `npx wrangler deploy`.
 Logs: `DEPLOY_OK`, `DEPLOY_SKIP`, `DEPLOY_FAIL`, `DEPLOY_OFF`. Límite de memoria
@@ -142,3 +144,40 @@ el límite o hacer el build en otra máquina.
 
 Despliegue manual desde Windows: `tools/deploy.sh` (baja `ml-prices.json` y
 `amazon-prices.json` del Pi, hace build y deploy).
+
+## Cadena nocturna en el host
+
+Cron (hora ART, reemplaza el cron independiente de Chrome):
+
+```cron
+30 3 * * * /usr/bin/python3 /opt/docker/franquicia400/tools/cadena.py
+```
+
+Ejecuta Chrome → Amazon → ML → marcador y espera del deployer. Los límites por
+paso son 3000/5400/1800/1800 segundos; el límite global es 12000 segundos.
+Una falla queda registrada y no bloquea los pasos siguientes. Los refresh usan
+un bloqueo exclusivo por archivo en output, también respetado por el ciclo horario.
+`force=True` adelanta el inicio; conserva fecha diaria, reintentos, slots y ritmo.
+Los logs del host están en `/home/claude/logs/cadena-AAAA-MM-DD.log` y `.json`;
+el JSON se guarda atómicamente al iniciar y al terminar cada paso. El vigía lo
+controla desde las 05:30 ART. El worker registra las ejecuciones forzadas con
+DailyLog y el deployer informa inicio, fin y duración de sus fases.
+
+El log detalla cada artículo: Chrome registra ASIN, slugs, envío, gratuidad,
+precio y evidencia; Amazon registra fuente, precio o motivo de omisión/falla;
+ML registra precio y fecha, ausencia, falla o conflicto de variantes. Estas
+líneas también quedan en DailyLog, con fecha y hora ART completas.
+
+Durante el build, el endpoint `estado.json` genera un informe privado usando
+los mismos productos de `loadProducts`, las mismas cotizaciones y el mismo
+instante que usa para contar `publicados`. `comparableChecks` es la única
+fuente de filtros; evalúa todos aunque fallen los primeros. El deployer guarda
+el informe en `/state/logs/desglose-AAAA-MM-DD-HHMM.log`, compara el total con
+`estado.json` y emite `DEPLOY_ALERT` si difieren. El origen repo/auto sale del
+overlay efectivo, con prioridad del repo. No se agregan consultas de precios
+ni dependencias para generar el desglose.
+
+`DEPLOY_OK/FAIL` incluye la ruta del informe de ese intento. La cadena copia
+su contenido completo después del resultado, conservando los horarios ART.
+Si el build no llegó a generar el informe, se registra
+`DESGLOSE_NO_DISPONIBLE`; nunca se toma el informe de un build anterior.

@@ -31,7 +31,10 @@ def log(tmp_path, *lineas):
 
 
 def correr(tmp_path, **kw):
-    args = dict(internet=lambda: True, sh=fake_sh(), leer=leer_ok, bajar=bajar_ok, logs_dir=str(tmp_path))
+    (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({
+        "fecha": "2026-11-05", "pasos": [{"paso": p, "estado": "ok"} for p in ("chrome", "amazon", "ml", "deploy")]
+    }), encoding="utf-8")
+    args = dict(cadena_dir=str(tmp_path), internet=lambda: True, sh=fake_sh(), leer=leer_ok, bajar=bajar_ok, logs_dir=str(tmp_path))
     args.update(kw)
     return v.chequeos(HOY, **args)
 
@@ -122,3 +125,20 @@ def test_avisa_si_no_corrio_el_relevamiento_con_chrome(tmp_path):
     log(tmp_path, "09:16:05 ok")
     p = correr(tmp_path, leer=lambda c, r: None if "ar-chrome" in r else {"date": "2026-11-05"})
     assert "envio-chrome" in p
+
+
+def test_cadena_faltante_fallida_e_interrumpida(tmp_path):
+    hoy = "2026-11-05"
+    assert "cadena" in v.chequear_cadena(hoy, tmp_path)
+    p = tmp_path / f"cadena-{hoy}.json"
+    p.write_text(json.dumps({"fecha": hoy, "pasos": [
+        {"paso": "chrome", "estado": "ok"},
+        {"paso": "amazon", "estado": "fail", "motivo": "timeout"},
+        {"paso": "ml", "estado": "en_curso"}]}), encoding="utf-8")
+    problemas = v.chequear_cadena(hoy, tmp_path)
+    assert set(problemas) == {"cadena:amazon", "cadena:ml", "cadena:deploy"}
+    assert problemas["cadena:amazon"] == "la cadena de madrugada falló en amazon (timeout)"
+    assert "cadena" not in v.chequeos(HOY.replace(hour=5, minute=29), internet=lambda: True,
+        sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path / "ausente"))
+    assert "cadena" in v.chequeos(HOY.replace(hour=5, minute=30), internet=lambda: True,
+        sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path / "ausente"))

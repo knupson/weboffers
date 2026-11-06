@@ -332,54 +332,50 @@ export function mergeAmazonPrices(
  *   - tiene precio en Mercado Libre relevado hoy (fecha ART == hoy ART), y
  *   - tiene precio en Amazon relevado hoy (fecha ART == hoy ART) convertido a ARS.
  */
-export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now(), eurUsd = 1.08): boolean {
+export interface ComparableCheck { filtro: string; ok: boolean; valor: string }
+
+/** Evalúa todos los filtros en orden, aunque alguno falle. */
+export function comparableChecks(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now(), eurUsd = 1.08): ComparableCheck[] {
+  const value = (v: unknown) => v == null ? "ausente" : String(v).replace(/[\r\n]+/g, " ");
+  const check = (filtro: string, ok: boolean, valor: unknown): ComparableCheck => ({ filtro, ok, valor: value(valor) });
   const today = artDate(now);
-  // Amazon no envía este producto a Argentina (relevamiento vigente): no hay comparación posible.
-  if (entry.shipsToArToday === false) {
-    return false;
-  }
-  // REGLA 0 del user (03/11): un comparador necesita los dos lados completos. El de Amazon es «puesto en tu casa»:
-  // sin envío gratis a Argentina confirmado (catálogo o relevamiento de ≤14 días) no hay total, y no se publica.
-  if (entry.shipsToAr?.freeShipping !== true || !isFreshArShippingDate(entry.shipsToAr.checked, now)) {
-    return false;
-  }
-  if (
-    !entry.verified ||
-    !entry.asin ||
-    // Regla del user: producto sin foto no se publica.
-    !entry.image ||
-    !entry.ml ||
-    !Number.isFinite(entry.ml.price) ||
-    !(entry.ml.price > 0) ||
-    entry.ml.checked !== today
-  ) {
-    return false;
-  }
+  const checks = [
+    check("envia_ar", entry.shipsToArToday !== false, entry.shipsToArToday),
+    check("envio_gratis", entry.shipsToAr?.freeShipping === true && isFreshArShippingDate(entry.shipsToAr?.checked, now),
+      `${value(entry.shipsToAr?.checked)} gratis=${value(entry.shipsToAr?.freeShipping)}`),
+    check("verificado", Boolean(entry.verified), entry.verified),
+    check("asin", Boolean(entry.asin), entry.asin),
+    check("imagen", Boolean(entry.image), entry.image),
+    check("ml_presente", Boolean(entry.ml), entry.ml ? "presente" : "ausente"),
+    check("ml_precio", Number.isFinite(entry.ml?.price) && (entry.ml?.price ?? 0) > 0, entry.ml?.price),
+    check("ml_hoy", entry.ml?.checked === today, `${value(entry.ml?.checked)} $${value(entry.ml?.price)}`),
+  ];
   if ("amazonArs" in entry) {
-    return (
-      typeof entry.amazonArs === "number" &&
-      Number.isFinite(entry.amazonArs) &&
-      entry.amazonArs > 0 &&
-      typeof entry.amazonUsd === "number" &&
-      Number.isFinite(entry.amazonUsd) &&
-      entry.amazonUsd >= 100 && entry.amazonUsd <= 400 &&
-      entry.amazonSource === "amazon" &&
-      entry.amazonChecked === today
+    checks.push(
+      check("amazon_ars", typeof entry.amazonArs === "number" && Number.isFinite(entry.amazonArs) && entry.amazonArs > 0, entry.amazonArs),
+      check("amazon_usd", typeof entry.amazonUsd === "number" && Number.isFinite(entry.amazonUsd) && entry.amazonUsd > 0, `USD ${value(entry.amazonUsd)}`),
+      check("amazon_rango", typeof entry.amazonUsd === "number" && entry.amazonUsd >= 100 && entry.amazonUsd <= 400, `USD ${value(entry.amazonUsd)}`),
+      check("amazon_fuente", entry.amazonSource === "amazon", entry.amazonSource),
+      check("amazon_hoy", entry.amazonChecked === today, entry.amazonChecked),
     );
+    return checks;
   }
   const items = amazonPrices?.items ?? {};
   const raw = Object.prototype.hasOwnProperty.call(items, entry.slug) ? items[entry.slug] : undefined;
   const scraped = raw && (raw.asin === undefined || raw.asin === entry.asin) ? raw : undefined;
   const usd = scraped?.amount != null ? scraped.amount * (scraped.currency === "EUR" ? eurUsd : 1) : NaN;
-  return Boolean(
-    scraped &&
-      (scraped.currency === "USD" || scraped.currency === "EUR") &&
-      usd >= 100 && usd <= 400 &&
-      typeof scraped.amount === "number" &&
-      Number.isFinite(scraped.amount) &&
-      scraped.amount > 0 &&
-      isFreshAmazonDate(scraped.checked, now),
+  checks.push(
+    check("amazon_item", Boolean(scraped), raw ? `asin=${value(raw.asin)}` : "ausente"),
+    check("amazon_moneda", scraped?.currency === "USD" || scraped?.currency === "EUR", scraped?.currency),
+    check("amazon_rango", usd >= 100 && usd <= 400, `USD ${value(usd)}`),
+    check("amazon_precio", typeof scraped?.amount === "number" && Number.isFinite(scraped.amount) && scraped.amount > 0, scraped?.amount),
+    check("amazon_hoy", isFreshAmazonDate(scraped?.checked, now), scraped?.checked),
   );
+  return checks;
+}
+
+export function isComparable(entry: CatalogEntry, amazonPrices?: AmazonPrices | null, now = Date.now(), eurUsd = 1.08): boolean {
+  return comparableChecks(entry, amazonPrices, now, eurUsd).every((check) => check.ok);
 }
 
 export function loadMlPrices(): MlPrices | null {

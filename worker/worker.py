@@ -8,6 +8,7 @@ from pathlib import Path
 import signal
 import sys
 import time
+import traceback
 
 import amazon_prices
 import creators_api
@@ -60,6 +61,7 @@ def run_once():
         amazon_prices.maybe_refresh(catalog, amazon_prices_path, datetime.now(timezone.utc), eur_usd=eur_usd)
     except Exception as exc:
         print(f"Falló Amazon ({type(exc).__name__}).", flush=True)
+        traceback.print_exc(file=sys.stdout)
     ml_prices_path = resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json"))
     try:
         ml_prices.maybe_refresh(
@@ -72,6 +74,7 @@ def run_once():
         )
     except Exception as exc:
         print(f"Falló ML ({type(exc).__name__}).", flush=True)
+        traceback.print_exc(file=sys.stdout)
     # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
     try:
         telegram.maybe_post(
@@ -150,7 +153,7 @@ class DailyLog:
                 with open(self.dir / f"worker-{now:%Y-%m-%d}.log", "a", encoding="utf-8") as fh:
                     for line in text.splitlines():
                         if line.strip():
-                            fh.write(f"{now:%H:%M:%S} {line}\n")
+                            fh.write(f"{now:%Y-%m-%d %H:%M:%S} {line}\n")
             except OSError:
                 pass  # El log en disco nunca tumba al worker.
         return len(text)
@@ -162,6 +165,7 @@ class DailyLog:
 def main():
     output_dir = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
     sys.stdout = DailyLog(output_dir / "logs", sys.stdout)
+    sys.stderr = DailyLog(output_dir / "logs", sys.stderr)
     interval = float(os.environ.get("CHECK_INTERVAL_SECONDS", "3600"))
     if not math.isfinite(interval) or interval <= 0:
         raise ValueError("CHECK_INTERVAL_SECONDS debe ser un número positivo")

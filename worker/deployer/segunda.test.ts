@@ -20,9 +20,15 @@ beforeEach(async () => {
   vi.stubEnv('CLOUDFLARE_API_TOKEN', 'test');
   vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', 'test');
   commands = [];
-  opts = { workDir, stateFile: path.join(dir, 'state.json'), outputFile: path.join(dir, 'ml.json'),
+  opts = { workDir, logDir: path.join(dir, 'logs'), stateFile: path.join(dir, 'state.json'), outputFile: path.join(dir, 'ml.json'),
     amazonOutputFile: path.join(dir, 'amazon.json'),
-    runImpl: async (cmd: string, args: string[]) => { commands.push(`${cmd} ${args[0]}`); return sha; } };
+    runImpl: async (cmd: string, args: string[]) => {
+      commands.push(`${cmd} ${args[0]}`);
+      if (cmd === 'npm' && args[0] === 'run') {
+        await fs.writeFile(path.join(workDir, '.desglose-build.json'), JSON.stringify({ publicados: 1, content: '2026-11-06 04:00:00 TOTALES simulados\n' }));
+      }
+      return sha;
+    } };
   await prices('ml', 0);
   await prices('amazon', 0);
 });

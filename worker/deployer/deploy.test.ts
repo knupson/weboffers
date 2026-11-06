@@ -13,13 +13,23 @@ import {
   nextRunAt,
   overlayCatalog,
   runStartupIfPending,
+  runChainIfReady,
+  saveBreakdown,
   RETRY_INTERVAL_MS,
 } from './deploy.mjs';
 
 async function deployOnce(now: Date, opts: any) {
   const runImpl = opts.runImpl;
-  return actualDeployOnce(now, { ...opts, runImpl: async (cmd: string, args: string[], cwd: string) =>
-    cmd === "git" && args[0] === "rev-parse" ? "a".repeat(40) : runImpl(cmd, args, cwd) });
+  return actualDeployOnce(now, { ...opts, logDir: path.join(path.dirname(opts.stateFile), 'logs'),
+    runImpl: async (cmd: string, args: string[], cwd: string, _exec: unknown, env: any) => {
+      if (cmd === 'git' && args[0] === 'rev-parse') return 'a'.repeat(40);
+      const result = await runImpl(cmd, args, cwd);
+      if (cmd === 'npm' && args[0] === 'run') {
+        const state = JSON.parse(await fs.readFile(path.join(cwd, 'dist', 'estado.json'), 'utf8'));
+        await fs.writeFile(env.CADENA_DESGLOSE_PATH, JSON.stringify({ publicados: state.publicados, content: '2026-11-06 04:00:00 TOTALES simulados\n' }));
+      }
+      return result;
+    } });
 }
 
 describe('deployer', () => {
@@ -67,6 +77,7 @@ describe('deployer', () => {
     expect(await fs.readFile(path.join(workDir, 'public', 'products', 'a.webp'), 'utf8')).toBe('original');
     expect(await fs.readFile(path.join(workDir, 'public', 'products', 'c.webp'), 'utf8')).toBe('nueva');
     expect(await fs.readFile(path.join(workDir, 'public', 'products', 'c.jpg'), 'utf8')).toBe('telegram');
+    expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'catalog-origins.json'), 'utf8'))).toEqual({ a: 'repo', c: 'auto' });
   });
 
   it('tolera ausencia del overlay pero rechaza JSON inválido', async () => {
@@ -290,6 +301,7 @@ describe('deployer', () => {
     const sleeps: number[] = [];
 
     const pendingRes = await runStartupIfPending({
+      deployFn: deployOnce,
       outputFile,
       amazonOutputFile,
       workDir,
@@ -315,6 +327,20 @@ describe('deployer', () => {
       nowFn: () => new Date('2026-10-30T12:30:00Z'),
     });
     expect(alreadyRes).toBe('already-deployed');
+  });
+
+  it('conserva el informe del build y alerta si difiere de estado.json', async () => {
+    const workDir = path.join(tmpDir, 'work');
+    const target = path.join(tmpDir, 'desglose.log');
+    const content = '2026-11-06 12:00:00 PRODUCTO kindle asin=B0CFPJYX7P origen=repo PUBLICADO\n2026-11-06 12:00:00 TOTALES total=1 publicados=1 filtrados=0\n';
+    await fs.writeFile(path.join(workDir, '.desglose-build.json'), JSON.stringify({ publicados: 1, content }));
+    const alerts: string[] = [];
+    await saveBreakdown(workDir, target, 1, (line: string) => alerts.push(line));
+    expect(await fs.readFile(target, 'utf8')).toBe(content);
+    expect(alerts).toEqual([]);
+    await saveBreakdown(workDir, target, 2, (line: string) => alerts.push(line));
+    expect(alerts).toEqual(['DEPLOY_ALERT desglose=1 estado.json=2']);
+    expect(await fs.readFile(target, 'utf8')).toContain('DEPLOY_ALERT desglose=1 estado.json=2');
   });
 
   it('ante un fail transitorio reintenta cada 10 minutos hasta tener éxito, incluyendo el intento final de las 11:00 ART', async () => {
@@ -393,6 +419,7 @@ describe('deployer', () => {
 
     const commands: string[] = [];
     const extraRes = await deployExtraWithRetry({
+      deployFn: deployOnce,
       outputFile,
       amazonOutputFile,
       workDir,
@@ -510,4 +537,69 @@ describe('deployer', () => {
     expect(res).toBe('skip');
     expect(deploys).toBe(0);
   });
+  it('adelanta el deploy con marcador de hoy y ambos precios, conservando las validaciones', async () => {
+    const now = new Date('2026-11-06T07:00:00Z'); // 04:00 ART
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    const stateFile = path.join(tmpDir, 'state.json');
+    let calls = 0;
+    const opts = { outputFile, amazonOutputFile, stateFile, deployFn: async () => { calls++; return 'ok'; } };
+    expect(await runChainIfReady(now, opts)).toBe('no-marker');
+    const marker = path.join(tmpDir, 'cadena-2026-11-06.json');
+    await fs.writeFile(marker, JSON.stringify({ fecha: '2026-11-05' }));
+    expect(await runChainIfReady(now, opts)).toBe('no-marker');
+    await fs.writeFile(marker, JSON.stringify({ fecha: '2026-11-06' }));
+    expect(await runChainIfReady(now, opts)).toBe('waiting-prices');
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-06', items: {} }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-05', items: { a: {} } }));
+    expect(await runChainIfReady(now, opts)).toBe('waiting-prices');
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-06', items: { a: {} } }));
+    expect(await runChainIfReady(now, opts)).toBe('ok');
+    expect(calls).toBe(1);
+    await fs.writeFile(stateFile, JSON.stringify({ date: '2026-11-06' }));
+    expect(await runChainIfReady(now, opts)).toBe('already-deployed');
+    expect(calls).toBe(1);
+  });
+
+  it.each([false, true])('registra inicio, fin y duración de cada fase (falla=%s)', async (falla) => {
+    const outputFile = path.join(tmpDir, 'ml-prices.json');
+    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
+    const stateFile = path.join(tmpDir, 'state.json');
+    const workDir = path.join(tmpDir, 'work');
+    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
+    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-06', items: {} }));
+    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-06', items: { a: {} } }));
+    const lines: string[] = [];
+    const original = process.stdout.write;
+    process.stdout.write = ((text: string) => { lines.push(String(text)); return true; }) as any;
+    try {
+      let ms = 0;
+      expect(await deployOnce(new Date('2026-11-06T07:00:00Z'), {
+        outputFile, amazonOutputFile, stateFile, workDir, clockFn: () => { ms += 1000; return ms; },
+        runImpl: async (cmd: string, args: string[]) => {
+          if (falla && cmd === 'npm' && args[0] === 'run') throw new Error('compilación simulada');
+          return '';
+        },
+      })).toBe(falla ? 'fail' : 'ok');
+    } finally {
+      process.stdout.write = original;
+    }
+    const text = lines.join('');
+    expect(text).toMatch(/DEPLOY_FASE repo_sync inicio/);
+    expect(text).toMatch(/DEPLOY_FASE repo_sync ok \d+\.\ds/);
+    expect(text).toContain('DEPLOY_FASE overlay inicio');
+    expect(text).toMatch(/DEPLOY_FASE overlay ok/);
+    if (falla) {
+      expect(text).toMatch(/DEPLOY_FASE build fail \d+\.\ds compilación simulada/);
+      expect(text).toMatch(/DEPLOY_FAIL compilación simulada \d+\.\ds/);
+    } else {
+      for (const phase of ['repo_sync', 'overlay', 'dependencias', 'build', 'verificacion', 'publicacion', 'estado']) {
+        expect(text).toContain(`DEPLOY_FASE ${phase} inicio`);
+        expect(text).toMatch(new RegExp(`DEPLOY_FASE ${phase} ok \\d+\\.\\ds`));
+      }
+      expect(text).toMatch(/DEPLOY_OK .* \d+\.\ds/);
+    }
+  });
+
 });

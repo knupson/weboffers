@@ -413,3 +413,19 @@ def test_isolated_failure_still_completes_slot(tmp_path, monkeypatch):
     assert ml_prices.maybe_refresh(catalog, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
     data = json.loads(path.read_text())
     assert data["failed"] == ["p3"] and "p3" not in data["absent"] and len(data["items"]) == 9
+
+
+def test_force_adelanta_sin_repetir_slot_y_conserva_reintento(tmp_path, monkeypatch):
+    now = AFTER_SEVEN.replace(hour=7)  # 04:00 ART
+    path = tmp_path / "ml-prices.json"
+    amazon = tmp_path / "amazon-prices.json"
+    assert not ml_prices.maybe_refresh([], path, amazon, MEP, now)
+    assert ml_prices.maybe_refresh([], path, amazon, MEP, now, force=True)
+    data = json.loads(path.read_text())
+    assert data["slot"] == "2026-10-30T06"
+    assert not ml_prices.maybe_refresh([], path, amazon, MEP, now, force=True)
+    data["failed"] = ["pendiente"]
+    path.write_text(json.dumps(data))
+    assert not ml_prices.maybe_refresh([], path, amazon, MEP, now, force=True)
+    assert ml_prices.maybe_refresh([], path, amazon, MEP, now.replace(hour=8), force=True)
+    assert json.loads(path.read_text())["attempts"] == 2

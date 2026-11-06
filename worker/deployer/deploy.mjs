@@ -34,7 +34,7 @@ const LOG_DIR = process.env.DEPLOYER_LOG_DIR ?? '/state/logs';
 
 function log(line) {
   const now = new Date();
-  const text = `${now.toISOString()} ${line}\n`;
+  const text = String(line).split(/\r?\n/).map((part) => `${now.toISOString()} ${part}\n`).join('');
   process.stdout.write(text);
   try {
     mkdirSync(LOG_DIR, { recursive: true });
@@ -116,8 +116,8 @@ function commandTimeout(command) {
   return command === 'git' ? 120e3 : command === 'npm' ? 600e3 : 300e3;
 }
 
-function run(command, args, cwd, execImpl = execFile) {
-  const childEnv = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
+function run(command, args, cwd, execImpl = execFile, extraEnv = {}) {
+  const childEnv = { ...process.env, ...extraEnv, CI: '1', WRANGLER_SEND_METRICS: 'false' };
   return new Promise((resolve, reject) => {
     execImpl(command, args, {
       timeout: commandTimeout(command),
@@ -217,6 +217,11 @@ async function syncRepo(workDir = WORK_DIR, runImpl = run) {
 }
 
 async function overlayCatalog(workDir, outputDir) {
+  const catalogPath = path.join(workDir, 'data', 'catalog.json');
+  const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));
+  const origins = Object.fromEntries(repo.map((p) => [p.slug, 'repo']));
+  const saveOrigins = () => fs.writeFile(path.join(workDir, 'data', 'catalog-origins.json'), JSON.stringify(origins));
+  await saveOrigins();
   // Estado de la búsqueda semanal: lo publica /estado.json para el aviso de fallas de los lunes.
   await fs.copyFile(path.join(outputDir, 'catalog-auto-state.json'), path.join(workDir, 'data', 'catalog-auto-state.json')).catch((error) => {
     if (error.code !== 'ENOENT') throw error;
@@ -231,13 +236,12 @@ async function overlayCatalog(workDir, outputDir) {
   if (!Array.isArray(automatic) || automatic.some((p) => !p || typeof p !== 'object' || Array.isArray(p))) {
     throw new Error('catalog-auto.json debe ser una lista de productos');
   }
-  const catalogPath = path.join(workDir, 'data', 'catalog.json');
-  const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));
   const asins = new Set(repo.map((p) => p.asin).filter(Boolean));
   const slugs = new Set(repo.map((p) => p.slug).filter(Boolean));
   for (const entry of automatic) {
     if (asins.has(entry.asin) || slugs.has(entry.slug)) continue;
     repo.push(entry);
+    origins[entry.slug] = 'auto';
     if (entry.asin) asins.add(entry.asin);
     if (entry.slug) slugs.add(entry.slug);
   }
@@ -254,6 +258,20 @@ async function overlayCatalog(workDir, outputDir) {
     });
   }
   await fs.writeFile(catalogPath, JSON.stringify(repo, null, 2) + '\n');
+  await saveOrigins();
+}
+
+/** Conserva el informe privado generado por el mismo endpoint que cuenta publicados. */
+async function saveBreakdown(workDir, target, publicados, logger = log) {
+  const report = JSON.parse(await fs.readFile(path.join(workDir, '.desglose-build.json'), 'utf8'));
+  await fs.writeFile(target, report.content);
+  if (report.publicados !== publicados) {
+    const alert = `DEPLOY_ALERT desglose=${report.publicados} estado.json=${publicados}`;
+    logger(alert);
+    const stamp = new Date(Date.now() + ART_OFFSET_MS).toISOString().slice(0, 19).replace('T', ' ');
+    await fs.appendFile(target, `${stamp} ${alert}\n`);
+  }
+  return report;
 }
 
 async function saveResult(status, reason, now, opts = {}) {
@@ -269,6 +287,26 @@ async function deployOnce(now = new Date(), opts = {}) {
   const stateFile = opts.stateFile ?? STATE_FILE;
   const runImpl = opts.runImpl ?? run;
   const slot = opts.slot ?? 'morning';
+  const clock = opts.clockFn ?? (() => performance.now());
+  const started = clock();
+  const elapsed = () => ((clock() - started) / 1000).toFixed(1);
+  const reportPath = path.join(workDir, '.desglose-build.json');
+  const logDir = opts.logDir ?? LOG_DIR;
+  const stamp = new Date(now.getTime() + ART_OFFSET_MS).toISOString();
+  const breakdownPath = path.join(logDir, `desglose-${stamp.slice(0, 10)}-${stamp.slice(11, 16).replace(':', '')}.log`);
+  let breakdownReady = false;
+  let phase = null;
+  let phaseStarted = started;
+  const endPhase = () => {
+    if (phase) log(`DEPLOY_FASE ${phase} ok ${((clock() - phaseStarted) / 1000).toFixed(1)}s`);
+    phase = null;
+  };
+  const beginPhase = (name) => {
+    endPhase();
+    phase = name;
+    phaseStarted = clock();
+    log(`DEPLOY_FASE ${phase} inicio`);
+  };
 
   const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
@@ -284,7 +322,7 @@ async function deployOnce(now = new Date(), opts = {}) {
   const check = await hasBothTodayPrices(now, opts);
   if (!check.ready) {
     const expired = now.getTime() >= deadlineAt(now);
-    log(`${expired ? 'DEPLOY_FAIL' : 'DEPLOY_SKIP'} ${check.reason}; no se despliega.`);
+    log(`${expired ? 'DEPLOY_FAIL' : 'DEPLOY_SKIP'} ${check.reason}; no se despliega. ${elapsed()}s`);
     if (expired) await saveResult('fail', check.reason, now, opts);
     return expired ? 'fail' : 'skip';
   }
@@ -311,7 +349,12 @@ async function deployOnce(now = new Date(), opts = {}) {
     return 'skip';
   }
   try {
+    await fs.mkdir(logDir, { recursive: true });
+    await fs.rm(reportPath, { force: true });
+    await fs.writeFile(breakdownPath, `${stamp.slice(0, 19).replace('T', ' ')} DESGLOSE_PENDIENTE build todavía sin terminar\n`);
+    beginPhase('repo_sync');
     await syncRepo(workDir, runImpl);
+    beginPhase('overlay');
     await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
     await overlayCatalog(workDir, opts.outputDir ?? path.dirname(outputFile));
     const offersDest = path.join(workDir, 'data', 'offers.json');
@@ -335,26 +378,47 @@ async function deployOnce(now = new Date(), opts = {}) {
     if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('SHA de main inválido');
     const catalogHash = createHash('sha256').update(await fs.readFile(path.join(workDir, 'data', 'catalog.json'))).digest('hex');
     const version = { sha, catalogHash };
+    beginPhase('dependencias');
     await runImpl('npm', ['ci'], workDir);
-    await runImpl('npm', ['run', 'build'], workDir);
+    beginPhase('build');
+    await fs.rm(reportPath, { force: true });
+    // La variable llega solamente al build; no contamina otros despliegues ni procesos.
+    if (opts.runImpl) await runImpl('npm', ['run', 'build'], workDir, undefined, { CADENA_DESGLOSE_PATH: reportPath });
+    else await run('npm', ['run', 'build'], workDir, execFile, { CADENA_DESGLOSE_PATH: reportPath });
+    beginPhase('verificacion');
     const buildState = JSON.parse(await fs.readFile(path.join(workDir, 'dist', 'estado.json'), 'utf8'));
     const publicados = buildState.publicados;
+    await saveBreakdown(workDir, breakdownPath, publicados);
+    breakdownReady = true;
     if (!Number.isInteger(publicados) || publicados <= 0) throw new Error('Catálogo vacío o cantidad de comparables inválida');
     // Con menos productos se publican igual los frescos (regla del user: nunca dejar precios viejos); sólo se avisa.
     if (typeof last?.publicados === 'number' && publicados < last.publicados * 0.5) {
-      log(`DEPLOY_FAIL caída brusca: ${publicados} comparables contra ${last.publicados} del último despliegue (se publica igual).`);
+      log(`DEPLOY_ALERT caída brusca: ${publicados} comparables contra ${last.publicados} del último despliegue (se publica igual).`);
     }
     buildState.version = version;
     buildState.slot = JSON.parse(raw).slot ?? null;
     await fs.writeFile(path.join(workDir, 'dist', 'estado.json'), JSON.stringify(buildState, null, 1) + '\n');
+    beginPhase('publicacion');
     await runImpl('npx', ['--yes', 'wrangler', 'deploy'], workDir);
+    beginPhase('estado');
     await fs.mkdir(path.dirname(stateFile), { recursive: true });
     await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, priceSlot: buildState.slot, version, redeploys: recovery ? redeployCount(last) + 1 : 0, publicados, deployedAt: now.toISOString() }));
     await saveResult('ok', `Publicado con precios del ${today}`, now, opts);
-    log(`DEPLOY_OK publicado con precios del ${today}${recovery ? ' (redespliegue por precios recuperados)' : ''}.`);
+    endPhase();
+    log(`DEPLOY_OK publicado con precios del ${today}${recovery ? ' (redespliegue por precios recuperados)' : ''}. ${elapsed()}s desglose=${breakdownPath}`);
     return 'ok';
   } catch (error) {
-    log(`DEPLOY_FAIL ${redact(error.message)}`);
+    if (!breakdownReady) {
+      // Un build fallido puede haber alcanzado a generar estado.json y su desglose.
+      try {
+        const state = JSON.parse(await fs.readFile(path.join(workDir, 'dist', 'estado.json'), 'utf8'));
+        await saveBreakdown(workDir, breakdownPath, state.publicados);
+      } catch {
+        await fs.appendFile(breakdownPath, `${stamp.slice(0, 19).replace('T', ' ')} DESGLOSE_NO_DISPONIBLE build sin informe completo\n`).catch(() => {});
+      }
+    }
+    if (phase) log(`DEPLOY_FASE ${phase} fail ${((clock() - phaseStarted) / 1000).toFixed(1)}s ${redact(error.message).replace(/[\r\n]+/g, ' | ')}`);
+    log(`DEPLOY_FAIL ${redact(error.message).replace(/[\r\n]+/g, ' | ')} ${elapsed()}s desglose=${breakdownPath}`);
     await saveResult('fail', error.message, now, opts);
     return 'fail';
   }
@@ -365,6 +429,7 @@ async function deployWithRetry(opts = {}) {
   const sleepFn = opts.sleepFn ?? sleepMs;
   const deployFn = opts.deployFn ?? deployOnce;
   const retryIntervalMs = opts.retryIntervalMs ?? RETRY_INTERVAL_MS;
+  const startedAt = nowFn().getTime();
 
   while (!stopRequested) {
     const now = nowFn();
@@ -381,7 +446,7 @@ async function deployWithRetry(opts = {}) {
       continue;
     }
     if (now.getTime() >= deadline) {
-      log(`DEPLOY_FAIL son las 11:00 ART o más: ${check.reason}; no se despliega.`);
+      log(`DEPLOY_FAIL son las 11:00 ART o más: ${check.reason}; no se despliega. ${((now.getTime() - startedAt) / 1000).toFixed(1)}s`);
       await saveResult('fail', check.reason, now, opts);
       return 'fail';
     }
@@ -457,32 +522,64 @@ async function runStartupIfPending(opts = {}) {
   return await retryFn(opts);
 }
 
+async function runChainIfReady(now = new Date(), opts = {}) {
+  const today = artDate(now);
+  const markerFile = path.join(opts.outputDir ?? path.dirname(opts.outputFile ?? OUTPUT_FILE), `cadena-${today}.json`);
+  const marker = await readJsonWithDate(markerFile);
+  if (!marker.ok || marker.data?.fecha !== today) return 'no-marker';
+  const state = await readState(opts.stateFile ?? STATE_FILE);
+  if (state?.date === today) return 'already-deployed';
+  const check = await hasBothTodayPrices(now, opts);
+  if (!check.ready) return 'waiting-prices';
+  log(`DEPLOY_INFO cadena del ${today} terminada; desplegando ahora.`);
+  return await (opts.deployFn ?? deployOnce)(now, opts);
+}
+
 async function main() {
   const stop = () => { stopRequested = true; };
   process.on('SIGTERM', stop);
   process.on('SIGINT', stop);
   log('Deployer iniciado.');
+  const startupStarted = performance.now();
   try {
     await runStartupIfPending();
   } catch (error) {
-    log(`DEPLOY_FAIL ${redact(String(error.message))}`);
+    log(`DEPLOY_FAIL ${redact(String(error.message))} ${((performance.now() - startupStarted) / 1000).toFixed(1)}s`);
   }
+  let chainAttempted = null;
+  let announcedNext = null;
+  let scheduleState = null;
   while (!stopRequested) {
-    const state = await readState();
-    const next = nextRunAt(new Date(), state);
-    log(`Próximo despliegue previsto: ${new Date(next).toISOString()}.`);
-    await sleepUntil(next);
-    if (stopRequested) break;
     const wake = new Date();
     const today = artDate(wake);
+    const attemptStarted = performance.now();
     try {
+      if (chainAttempted !== today) {
+        const result = await runChainIfReady(wake);
+        if (!['no-marker', 'waiting-prices'].includes(result)) chainAttempted = today;
+      }
+      const state = await readState();
+      const stateKey = JSON.stringify(state);
+      if (announcedNext === null || scheduleState !== stateKey) {
+        announcedNext = nextRunAt(wake, state);
+        scheduleState = stateKey;
+        log(`Próximo despliegue previsto: ${new Date(announcedNext).toISOString()}.`);
+      }
+      const next = announcedNext;
+      if (next > wake.getTime()) {
+        // Revisa el marcador aunque el próximo horario fijo esté a varias horas.
+        await sleepMs(Math.min(MAX_SLEEP_MS, next - wake.getTime()));
+        continue;
+      }
+      announcedNext = null;
       if (state?.date === today) {
         await deployOnce(wake, { slot: state.slot ?? 'morning' });
       } else {
         await deployWithRetry();
       }
     } catch (error) {
-      log(`DEPLOY_FAIL ${redact(String(error.message))}`);
+      log(`DEPLOY_FAIL ${redact(String(error.message)).replace(/[\r\n]+/g, ' | ')} ${((performance.now() - attemptStarted) / 1000).toFixed(1)}s`);
+      await sleepMs(MAX_SLEEP_MS);
     }
   }
   log('Deployer detenido.');
@@ -490,17 +587,19 @@ async function main() {
 
 if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
   if (process.argv.includes('--ahora')) {
+    const manualStarted = performance.now();
     // 05/11: despliegue manual por el MISMO camino que el automático (altas de catalog-auto, fotos y validaciones).
     // tools/deploy.sh compilaba en la PC sin las altas automáticas y publicaba un catálogo incompleto.
     deployOnce(new Date(), { slot: 'manual', manual: true })
       .then((r) => { log(`DEPLOY_MANUAL ${r}`); process.exit(r === 'ok' ? 0 : 1); })
-      .catch((e) => { log(`DEPLOY_FAIL manual: ${redact(String(e.message))}`); process.exit(1); });
+      .catch((e) => { log(`DEPLOY_FAIL manual: ${redact(String(e.message))} ${((performance.now() - manualStarted) / 1000).toFixed(1)}s`); process.exit(1); });
   } else {
     main();
   }
 }
 
 export {
+  saveBreakdown,
   run,
   commandTimeout,
   purgeLogs,
@@ -519,6 +618,7 @@ export {
   deployWithRetry,
   deployExtraWithRetry,
   runStartupIfPending,
+  runChainIfReady,
   RETRY_INTERVAL_MS,
   DEADLINE_UTC,
   EXTRA_DEPLOY_AT_UTC,

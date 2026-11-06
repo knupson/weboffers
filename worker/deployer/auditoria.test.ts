@@ -6,8 +6,16 @@ import { commandTimeout, deployOnce as actualDeployOnce, nextRunAt, purgeLogs, r
 
 async function deployOnce(now: Date, opts: any) {
   const runImpl = opts.runImpl;
-  return actualDeployOnce(now, { ...opts, runImpl: async (cmd: string, args: string[], cwd: string) =>
-    cmd === "git" && args[0] === "rev-parse" ? "a".repeat(40) : runImpl(cmd, args, cwd) });
+  return actualDeployOnce(now, { ...opts, logDir: path.join(path.dirname(opts.stateFile), 'logs'),
+    runImpl: async (cmd: string, args: string[], cwd: string, _exec: unknown, env: any) => {
+      if (cmd === 'git' && args[0] === 'rev-parse') return 'a'.repeat(40);
+      const result = await runImpl(cmd, args, cwd);
+      if (cmd === 'npm' && args[0] === 'run') {
+        const state = JSON.parse(await fs.readFile(path.join(cwd, 'dist', 'estado.json'), 'utf8'));
+        await fs.writeFile(env.CADENA_DESGLOSE_PATH, JSON.stringify({ publicados: state.publicados, content: '2026-11-06 04:00:00 TOTALES simulados\n' }));
+      }
+      return result;
+    } });
 }
 import { validatePriceFiles } from '../../tools/validate-price-files.mjs';
 

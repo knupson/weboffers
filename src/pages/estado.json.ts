@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { isComparable, loadAmazonPrices, loadMlPrices, loadProducts } from "../lib/data";
+import { publicationBreakdown } from "../lib/desglose";
 
 // Búsqueda semanal de productos (worker/catalog_auto.py); el deployer copia el estado a data/.
 function readCatalogState() {
@@ -14,15 +15,21 @@ function readCatalogState() {
 }
 
 export async function GET() {
-  const { products } = await loadProducts();
+  const now = Date.now();
+  const { products } = await loadProducts(now);
   const amazon = loadAmazonPrices();
   const body = {
-    publicados: products.filter((p) => isComparable(p)).length,
+    publicados: products.filter((p) => isComparable(p, null, now)).length,
     slot: loadMlPrices()?.slot ?? null,
     preciosDe: amazon?.date ?? null,
     amazon: amazon?.run ?? null,
     ritmo: amazon?.pace ?? null,
     catalogo: readCatalogState(),
   };
+  // Archivo privado del build: el deployer lo conserva fuera del sitio público.
+  if (process.env.CADENA_DESGLOSE_PATH) {
+    const origins = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'catalog-origins.json'), 'utf8'));
+    fs.writeFileSync(process.env.CADENA_DESGLOSE_PATH, JSON.stringify(publicationBreakdown(products, origins, now)));
+  }
   return new Response(JSON.stringify(body, null, 1), { headers: { "Content-Type": "application/json; charset=utf-8" } });
 }
