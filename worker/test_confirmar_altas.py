@@ -96,7 +96,7 @@ def test_sin_dato_primera_y_tercera_noche_sin_duplicar_intentos(state, item):
 def test_no_promueve_evidencia_vieja_ni_sin_archivo(state):
     repo, output = state
     before = (output / "altas-pendientes.json").read_bytes()
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="No hay relevamiento de Chrome"):
         confirmation.confirm(repo, output, TODAY)
     save(output / f"ar-chrome-{TODAY}.json", snapshot({"NUEVO": {"ships": True, "free": True, "precio": "$150"}}, "2026-11-05"))
     with pytest.raises(ValueError, match="no es de hoy"):

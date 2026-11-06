@@ -58,7 +58,14 @@ def main():
     else:
         from worker import DailyLog
         data = json.load(sys.stdin)
-        merge_chrome(output, args.fecha, data)
+        # La fecha del archivo sale de cuándo terminó Chrome (ART), no de cuándo arrancó: una corrida que cruza la
+        # medianoche no pierde el relevamiento (06/11, revisión). --fecha queda sólo como respaldo.
+        from datetime import datetime
+        from tools.confirmar_altas import ART
+        fecha = datetime.fromisoformat(data["generado"]).astimezone(ART).date().isoformat() if data.get("generado") else args.fecha
+        if fecha != args.fecha:
+            print(f"ENVIO_AR_CHROME_AVISO el relevamiento terminó el {fecha} (arrancó el {args.fecha}); se guarda como {fecha}.", flush=True)
+        merge_chrome(output, fecha, data)
         log = DailyLog(output / "logs", io.StringIO())
         entries = load_catalog("/app/data/catalog.json", output / "catalog-auto.json")
         entries += read_json(output / "altas-pendientes.json", [])

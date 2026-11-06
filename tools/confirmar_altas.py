@@ -21,6 +21,9 @@ ART = timezone(timedelta(hours=-3))
 
 def chrome_today(data, today):
     """Rechaza evidencia de otro día aunque se haya copiado con el nombre de hoy."""
+    if not data or not data.get("generado"):
+        # Sin relevamiento (el paso chrome falló o no corrió): los pendientes quedan como están (06/11, revisión).
+        raise ValueError(f"No hay relevamiento de Chrome de {today} (ar-chrome-{today}.json); los pendientes siguen pendientes.")
     generated = datetime.fromisoformat(data["generado"])
     if generated.tzinfo is None or generated.astimezone(ART).date().isoformat() != today:
         raise ValueError("El relevamiento de Chrome no es de hoy en ART.")
