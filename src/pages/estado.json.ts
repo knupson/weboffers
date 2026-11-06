@@ -29,8 +29,12 @@ export async function GET() {
   // Archivo privado del build: el deployer lo conserva fuera del sitio público.
   if (process.env.CADENA_DESGLOSE_PATH) {
     // Sin catalog-origins.json (build a mano, sin overlay del deployer) el origen queda vacío: el build no se cae.
-    const originsPath = path.join(process.cwd(), 'data', 'catalog-origins.json');
-    const origins = fs.existsSync(originsPath) ? JSON.parse(fs.readFileSync(originsPath, 'utf8')) : {};
+    let origins: Record<string, string> = {};
+    try {
+      origins = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'catalog-origins.json'), 'utf8'));
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
     fs.writeFileSync(process.env.CADENA_DESGLOSE_PATH, JSON.stringify(publicationBreakdown(products, origins, now)));
   }
   return new Response(JSON.stringify(body, null, 1), { headers: { "Content-Type": "application/json; charset=utf-8" } });
