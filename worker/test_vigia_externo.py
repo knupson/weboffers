@@ -34,6 +34,13 @@ def test_sin_internet_y_waha_caido(tmp_path):
     assert {"internet", "waha"} <= set(p)
 
 
+def test_sitio_bajo_minimo_solo_si_la_vm_no_puede_avisar(tmp_path):
+    def bajo(url):
+        return json.dumps({"preciosDe": "2026-11-05", "publicados": 97})
+    assert ve.chequeos(AHORA, latido(tmp_path), bajo, lambda h, p: True) == {}
+    assert "sitio-minimo" in ve.chequeos(AHORA, latido(tmp_path), bajo, lambda h, p: False)
+
+
 def test_avisa_una_vez_y_cuando_se_resuelve(tmp_path):
     enviados = []
     est = str(tmp_path / "estado.json")

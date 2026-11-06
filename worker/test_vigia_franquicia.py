@@ -63,7 +63,9 @@ def test_precios_viejos_y_sitio_bajo_minimo(tmp_path):
     log(tmp_path, "09:16:05 ok")
     p = correr(tmp_path, leer=lambda c, r: {"date": "2026-11-04"},
                bajar=lambda u: json.dumps({"preciosDe": "2026-11-05", "publicados": 82}))
-    assert {"fresco:ml-prices.json", "fresco:amazon-prices.json", "sitio-minimo"} <= set(p)
+    assert {"fresco:ml-prices.json", "fresco:amazon-prices.json"} <= set(p)
+    # El mínimo lo avisa el control de las 7:30; el vigía no lo repite (06/11: llegaban dos WhatsApp).
+    assert "sitio-minimo" not in p
 
 
 def test_deploy_fail_en_log_del_deployer(tmp_path):
@@ -113,7 +115,7 @@ def test_un_chequeo_que_explota_se_reporta(tmp_path):
         raise ValueError("json roto")
     log(tmp_path, "09:16:05 ok")
     p = correr(tmp_path, leer=roto, bajar=lambda u: (_ for _ in ()).throw(RuntimeError("x")))
-    assert "fresco:ml-prices.json" in p and "sitio-caido" in p
+    assert "fresco:ml-prices.json" in p
 
 
 def test_avisa_si_no_corrio_el_relevamiento_con_chrome(tmp_path):

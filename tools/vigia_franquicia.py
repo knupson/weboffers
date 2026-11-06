@@ -126,14 +126,8 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
                 data = None
             if not data or data.get("date") != hoy:
                 problemas["fresco:" + nombre] = f"{nombre} no tiene la fecha de hoy"
-        try:
-            estado = json.loads(bajar("https://ofertas.knunet.com/estado.json"))
-            if estado.get("preciosDe") != hoy:
-                problemas["sitio-fecha"] = "el sitio no tiene los precios de hoy"
-            elif (estado.get("publicados") or 0) < rf.MINIMO_PRODUCTOS:
-                problemas["sitio-minimo"] = f"el sitio tiene {estado.get('publicados')} productos (mínimo {rf.MINIMO_PRODUCTOS})"
-        except Exception:
-            problemas["sitio-caido"] = "el sitio no responde"
+        # Fecha, mínimo de productos y sitio caído los controla `recordatorio_franquicia.py --control sitio`
+        # a las 7:30 con más detalle; repetirlos acá mandaba dos WhatsApp por lo mismo (06/11).
     return problemas
 
 

@@ -47,7 +47,9 @@ def chequeos(ahora, latido=LATIDO, bajar=None, puerto_abierto=None):
         problemas["internet"] = "la VM docker está sin internet (no pueden salir los avisos de WhatsApp)"
     if not puerto_abierto("192.168.3.251", 3010):
         problemas["waha"] = "WAHA (WhatsApp) de la VM no responde: los avisos del vigía no van a llegar"
-    if (ahora.hour, ahora.minute) >= (7, 45):
+    # El sitio sólo se revisa si la VM no puede avisar por WhatsApp: si puede, el control de las 7:30
+    # ya avisa lo mismo y llegaban dos mensajes por el mismo problema (06/11).
+    if problemas and (ahora.hour, ahora.minute) >= (7, 45):
         try:
             estado = json.loads(bajar("https://ofertas.knunet.com/estado.json"))
             if estado.get("preciosDe") != ahora.date().isoformat():
