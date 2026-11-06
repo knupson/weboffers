@@ -17,7 +17,10 @@ from tools import discover_products as discovery
 
 RAICES = ("MLA1648", "MLA1000", "MLA1051", "MLA1144", "MLA1039")  # Computación, Electrónica, Celulares, Consolas, Cámaras
 PROFUNDIDAD = 2
-ML_MIN_USD, ML_MAX_USD = 100, 1000   # precio en ML al MEP (suele ser mayor que en Amazon); el rango 100-400 se exige en Amazon
+# 05/11: el rango USD 100-400 es sobre el precio de AMAZON (franquicia) y se exige en should_keep_amazon_item.
+# Sobre ML sólo un margen coherente con el validador (ML entre 0,6 y 6 veces Amazon): 100/1,67 ~ 60 y 400*6 = 2.400.
+# Antes 100-1.000 (inventado): descartaba sin buscar productos con ML a 3,5x Amazon, como el Logitech G733.
+ML_MIN_USD, ML_MAX_USD = 60, 2400
 RESULTADOS_AMAZON = 8
 
 # 05/11: categoría del sitio desde el dominio de la ficha de ML (domain_id). Adivinarla por palabras del título de
