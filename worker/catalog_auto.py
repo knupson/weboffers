@@ -1,4 +1,8 @@
-"""Alta semanal conservadora, sin credenciales de Git ni generación con IA."""
+"""Alta en dos fases: pares validados quedan pendientes del envío gratis a AR.
+
+Sólo tools/confirmar_altas.py los promueve con evidencia de Chrome del día y
+precio USD 100–400. No modifica las altas existentes ni publica pendientes.
+"""
 from datetime import datetime, timedelta, timezone
 import json
 import io
@@ -15,6 +19,8 @@ import amazon_prices
 from catalog import load_catalog, read_catalog
 import ml_prices
 import publish
+from alta_state import read_json, rejected_asins, duplicate, update_state
+from article_log import alta_line
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import discover_products as discovery, match_candidates as matching
@@ -93,29 +99,48 @@ def mismo_producto(row, existente):
 
 
 def add_accepted(catalog, matches, output, today):
+    """Valida, obtiene la foto y persiste pendientes; nunca escribe catalog-auto."""
+    output = Path(output)
+    return update_state(catalog, output / "altas.json",
+                        lambda: _add_accepted(catalog, matches, output, today))
+
+
+def _add_accepted(catalog, matches, output, today):
+    pending_path = output / "altas-pendientes.json"
+    pending = read_catalog(pending_path) if pending_path.exists() else []
+    # Releer el automático bajo el bloqueo: Chrome pudo promover durante el descubrimiento.
+    catalog = catalog + read_json(output / "catalog-auto.json", []) + pending
+    rejected = rejected_asins(output, today)
     added, failures = [], []
     for row in matches["accepted"]:
-        if any(row.get("asin") == p.get("asin") or row.get("slug") == p.get("slug") for p in catalog + added):
-            continue
-        # El mismo producto de ML no se da de alta dos veces con ASIN distintos (05/11, flujo desde ML).
-        if row.get("catalogId") and any(row["catalogId"] == (p.get("ml") or {}).get("catalogId") for p in catalog + added):
-            continue
-        # Ni el mismo modelo en otro color (otra ficha y otro ASIN): JBL Flip 7 y Tab A11 se duplicaron el 05/11.
-        if any(mismo_producto(row, p) for p in catalog + added if p.get("verified") is not False):
-            continue
         usd = row.get("amazonPriceUsd")
-        if not matching.positive_number(usd) or not 100 <= usd <= 400:
-            continue
-        if discovery.is_excluded_title(row.get("amazonTitle")) or discovery.is_excluded_title(row.get("name")):
+        reason = None
+        if row.get("asin") in rejected:
+            reason = "rechazado_14_dias"
+        elif duplicate(row, catalog + added):
+            reason = "duplicado"
+        elif any(mismo_producto(row, p) for p in catalog + added if p.get("verified") is not False):
+            reason = "modelo_duplicado"
+        elif not matching.positive_number(usd) or not 100 <= usd <= 400:
+            reason = "precio_fuera_de_rango"
+        elif discovery.is_excluded_title(row.get("amazonTitle")) or discovery.is_excluded_title(row.get("name")):
+            reason = "titulo_excluido"
+        if reason:
+            print(alta_line(row, "descartado", reason, {"precio": usd}), flush=True)
             continue
         try:
             entry = validate_and_build_entries(catalog + added, [row], today=today)[0]
             if not fetch_photo(entry, output):
                 failures.append({"slug": row["slug"], "motivo": "sin_foto"})
+                print(alta_line(row, "descartado", "sin_foto", {"precio": usd}), flush=True)
                 continue
+            entry["pendienteDesde"] = today
             added.append(entry)
+            print(alta_line(row, "pendiente_envio", item={"precio": usd}), flush=True)
         except (requests.RequestException, OSError, ValueError, KeyError, TypeError) as exc:
             failures.append({"slug": row.get("slug"), "motivo": type(exc).__name__})
+            print(alta_line(row, "descartado", type(exc).__name__, {"precio": usd, "text": str(exc)}), flush=True)
+    publish.write_atomic(pending_path, pending + added)
     return added, failures
 
 
@@ -148,8 +173,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         if not ml_prices.is_configured() or not matching.positive_number(mep):
             raise ValueError("Faltan credenciales de ML o cotización MEP.")
         auto_path = output / "catalog-auto.json"
-        previous = read_catalog(auto_path) if auto_path.exists() else []
         catalog = load_catalog(catalog_path, auto_path)
+        pending = read_json(output / "altas-pendientes.json", [])
         run_path = output / f"amazon-run-{today}.json"
         runs = json.loads(run_path.read_text(encoding="utf-8")) if run_path.exists() else {}
         amazon_prices.configure_budget(output / "amazon-prices.json", today)
@@ -159,13 +184,13 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         scraper = PacedScraper(int(tope) if tope else 10**9)
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")
-        existing_asins = {p.get("asin") for p in catalog}
+        existing_asins = {p.get("asin") for p in catalog + pending} | rejected_asins(output, today)
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
             get=scraper.get, existing_asins=existing_asins, failures=failures)
         # 05/11: también al revés, desde lo que ML vende en Argentina (rinde mucho más que partir de Amazon).
         if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1":
             desde_ml = crecer_desde_ml.candidatos(existing_asins | {p["asin"] for p in products},
-                                                  {(p.get("ml") or {}).get("catalogId") for p in catalog},
+                                                  {(p.get("ml") or {}).get("catalogId") for p in catalog + pending},
                                                   mep, get=scraper.get, failures=failures)
             publish.write_atomic(output / "discovery-desde-ml.json", desde_ml)
             products = products + desde_ml
@@ -173,12 +198,11 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
             raise ValueError("El scraper no devolvió páginas válidas.")
         con_ids = crecer_desde_ml.agregar_identificadores(products)
         print(f"Catálogo: identificadores de Amazon para {con_ids} de {len(products)} pares.", flush=True)
-        matches = matching.match_products(products, mep, catalog)
+        matches = matching.match_products(products, mep, catalog + pending)
         publish.write_atomic(output / "match-results.json", matches)
         total = len(matches["accepted"])
         added, photo_failures = add_accepted(catalog, matches, output, today)
         failures.extend(photo_failures)
-        publish.write_atomic(auto_path, previous + added)
         if scraper.failures:
             failures.append({"motivo": "paginas_sin_datos", "total": scraper.failures})
             # Muchas páginas vacías sí es una falla de la corrida (freno o scraper roto), no un caso suelto.
@@ -195,5 +219,5 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)
     # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
     marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"
-    print(f"{marker} catálogo semanal: altas={len(added)}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
+    print(f"{marker} catálogo: pendientes={len(added)}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
     return True

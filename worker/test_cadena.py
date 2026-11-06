@@ -56,12 +56,14 @@ def test_orden_continua_tras_falla_latido_y_resumen(tmp_path):
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
     assert runner.run() == 1
     assert "envio_ar_chrome.sh" in comandos[0][-1]
-    assert [c[-1] for c in comandos[1:3]] == ["amazon", "ml"]
-    assert "cadena-2026-11-06.json" in comandos[3][-2]
+    assert comandos[1][-1] == "/app/tools/confirmar_altas.py"
+    assert [c[-1] for c in comandos[2:4]] == ["amazon", "ml"]
+    assert "cadena-2026-11-06.json" in comandos[4][-2]
     resumen = json.loads((tmp_path / "cadena-2026-11-06.json").read_text())
-    assert [p["estado"] for p in resumen["pasos"]] == ["ok", "fail", "ok", "ok"]
-    assert resumen["fin"] and resumen["segundos"] == 69
-    assert "error simulado" in resumen["pasos"][1]["motivo"]
+    assert [p["paso"] for p in resumen["pasos"]] == ["chrome", "altas", "amazon", "ml", "deploy"]
+    assert [p["estado"] for p in resumen["pasos"]] == ["ok", "ok", "fail", "ok", "ok"]
+    assert resumen["fin"] and resumen["segundos"] == 70
+    assert "error simulado" in resumen["pasos"][2]["motivo"]
     log = (tmp_path / "cadena-2026-11-06.log").read_text()
     assert "PASO_SIGUE amazon 30.0s" in log
     assert "PASO_SIGUE amazon 60.0s" in log

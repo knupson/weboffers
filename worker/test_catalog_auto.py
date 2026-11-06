@@ -57,10 +57,12 @@ def test_once_per_night_keeps_previous_and_logs(setup_job):
     assert not auto.maybe_grow(repo, output, now, mep=1000)
     assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)  # 02:59, misma noche
     assert discover.call_count == 1
-    entries = json.loads((output / "catalog-auto.json").read_text())
+    assert not (output / "catalog-auto.json").exists()
+    entries = json.loads((output / "altas-pendientes.json").read_text())
     assert len(entries) == 1
+    assert entries[0]["pendienteDesde"] == "2026-11-08"
     assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T23:30:00+00:00"), mep=1000)  # noche siguiente
-    assert json.loads((output / "catalog-auto.json").read_text()) == entries
+    assert json.loads((output / "altas-pendientes.json").read_text()) == entries
     log = json.loads((output / "amazon-run-2026-11-08.json").read_text())
     assert log["passes"][0]["kind"] == "catalogo"
     assert log["passes"][0]["ok"] == 1

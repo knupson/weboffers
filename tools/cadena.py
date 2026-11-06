@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Cadena nocturna del host: Chrome → Amazon → ML → deployer, sin horarios intermedios."""
+"""Cadena nocturna del host: Chrome → altas → Amazon → ML → deployer.
+
+Chrome releva catálogo y pendientes en una sola pasada. Altas corre en el worker
+y promueve únicamente envío gratis a Argentina y precio USD 100–400 de hoy.
+Cada paso arranca al terminar el anterior y queda en el log y JSON de la cadena.
+"""
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -13,6 +18,7 @@ import time
 import traceback
 
 CHROME_TIMEOUT = 3000
+ALTAS_TIMEOUT = 300
 AMAZON_TIMEOUT = 5400
 ML_TIMEOUT = 1800
 DEPLOY_TIMEOUT = 1800
@@ -169,12 +175,13 @@ class Cadena:
             if paso == "chrome":
                 env_timeout = max(1, int(deadline - self.clock()))
                 self.process(["env", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh")], deadline, paso)
-            elif paso in ("amazon", "ml"):
+            elif paso in ("altas", "amazon", "ml"):
                 # El timeout dentro del contenedor mata el Python aunque muera docker exec en el host.
                 seconds = max(1, int(deadline - self.clock()))
+                script = ["/app/tools/confirmar_altas.py"] if paso == "altas" else ["/app/tools/refresh_ahora.py", paso]
                 self.process(["docker", "exec", "-w", "/app/worker", WORKER,
                               "timeout", "-s", "KILL", str(seconds), "python",
-                              "/app/tools/refresh_ahora.py", paso], deadline, paso)
+                              *script], deadline, paso)
             else:
                 self.deploy(deadline)
             record["estado"] = "ok"
@@ -187,7 +194,7 @@ class Cadena:
             self.save()
 
     def run(self):
-        for paso, timeout in (("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT),
+        for paso, timeout in (("chrome", CHROME_TIMEOUT), ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT),
                               ("ml", ML_TIMEOUT), ("deploy", DEPLOY_TIMEOUT)):
             self.step(paso, timeout)
         self.summary["fin"] = self.stamp()

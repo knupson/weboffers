@@ -11,18 +11,44 @@ python -u worker.py
 Con Docker: `docker compose up -d --build`. La salida queda en
 `worker/output/offers.json`; el catálogo se monta desde `../data` como solo lectura.
 
-El domingo desde las 14:00 ART, el mismo ciclo descubre productos y agrega sólo
-matches aceptados de USD 100–400 con foto oficial de ML convertida a WebP (lado
-máximo 900). El resumen se arma con reglas, sin IA. No se presupone envío gratis:
-los nuevos productos pasan por el relevamiento habitual de envío del lunes.
-`output/catalog-auto.json` conserva las altas y `output/products/` sus fotos.
-`output/catalog-auto-state.json` registra el intento por semana ISO antes de las
-consultas; un reinicio o una falla no dispara otra corrida esa semana.
+Todas las noches, entre las 20:00 y las 03:00 ART, el ciclo descubre pares de
+Amazon y ML. El alta tiene dos fases:
 
-El tope por corrida es 150 páginas, incluidos categorías y reintentos; se reduce
-si el registro diario de Amazon deja menos presupuesto de las 650 páginas (se
-reservan dos por candidato de precios). `CATALOG_AUTO_MAX_PAGES` permite bajar
-ese tope. Se usa la pausa vigente de precios, backoff de 120 s ante vacío y una
+1. El worker valida los pares de USD 100–400, obtiene la foto oficial de ML
+   convertida a WebP (lado máximo 900) y guarda las entradas completas con
+   `pendienteDesde` en `output/altas-pendientes.json`. Deduplica ASIN, slug y
+   catalogId contra el catálogo, el automático y los pendientes. No los publica.
+2. La cadena del host incluye los pendientes en la única pasada del Chrome real
+   de la VM. Inmediatamente después, el paso `altas` ejecuta
+   `python /app/tools/confirmar_altas.py` dentro del worker. Sólo promueve a
+   `output/catalog-auto.json` si Chrome confirmó hoy envío gratis a Argentina y
+   precio USD 100–400. Guarda `shipsToAr.freeShipping` y `shipsToAr.checked`.
+   Amazon y ML relevan luego los precios para el deploy de esa misma noche.
+
+Envío pago, ausencia de envío y precio fuera de rango quitan el pendiente y
+guardan `{fecha, motivo, texto}` por ASIN en `output/altas-rechazadas.json`.
+Ambos descubrimientos saltean esos ASIN durante 14 días. Si Chrome no dio datos,
+el pendiente sigue: se cuenta una vez por fecha ART con `nochesSinDato` y
+`ultimoIntentoEnvio`; al tercer día sin dato se rechaza con `sin_dato_3_noches`.
+No se modifica ni migra ninguna entrada automática existente. Los cambios de
+estado comparten `output/altas.lock` para evitar escrituras simultáneas.
+
+Para confirmar un alta forzada con `tools/crecer_ahora.py` durante el día,
+ejecutá en el host `sh tools/confirmar_altas.sh`: releva sólo pendientes y llama
+a la misma promoción. Fusiona los resultados en `ar-chrome-AAAA-MM-DD.json`
+sin borrar los otros ASIN del día. El worker no intenta conectarse al Chrome ni
+usa amazon-ar para confirmar estas altas. La publicación sigue exigiendo los
+dos precios de hoy y envío gratis confirmado.
+
+Las fotos quedan en `output/products/`. `output/catalog-auto-state.json`
+registra el intento antes de consultar, con un slot por noche (o por alta
+forzada). `CATALOGO_OK` informa `pendientes=N`; cada par registra su decisión y
+evidencia con horario ART. La promoción resume
+`ALTAS_OK promovidas=X rechazadas=Y siguen_pendientes=Z`.
+
+`CATALOG_AUTO_MAX_PAGES` permite fijar el tope de páginas de la corrida; sin
+configurarlo, el descubrimiento termina al agotar las fuentes. Se usa la pausa
+vigente de precios, backoff de 120 s ante vacío y una
 pausa de 300 s cada 100 páginas. Las fallas salen por `DEPLOY_FAIL` y quedan en
 el registro `amazon-run-<fecha>.json`, con `kind: "catalogo"`.
 
@@ -153,8 +179,8 @@ Cron (hora ART, reemplaza el cron independiente de Chrome):
 30 3 * * * /usr/bin/python3 /opt/docker/franquicia400/tools/cadena.py
 ```
 
-Ejecuta Chrome → Amazon → ML → marcador y espera del deployer. Los límites por
-paso son 3000/5400/1800/1800 segundos; el límite global es 12000 segundos.
+Ejecuta Chrome → altas → Amazon → ML → marcador y espera del deployer. Los límites por
+paso son 3000/300/5400/1800/1800 segundos; el límite global es 12000 segundos.
 Una falla queda registrada y no bloquea los pasos siguientes. Los refresh usan
 un bloqueo exclusivo por archivo en output, también respetado por el ciclo horario.
 `force=True` adelanta el inicio; conserva fecha diaria, reintentos, slots y ritmo.

@@ -1,6 +1,8 @@
 """Corre el alta automática de productos AHORA, fuera de la ventana nocturna (05/11). Dentro del worker:
   docker exec -d -w /app/worker franquicia400-weboffers-worker-1 python /app/tools/crecer_ahora.py
 Deja el resultado en output/catalog-auto-state.json y la línea CATALOGO_OK / DEPLOY_FAIL en el log del worker.
+Los pares quedan en output/altas-pendientes.json. Para confirmar su envío durante
+el día, el host ejecuta tools/confirmar_altas.sh (Chrome → promoción).
 """
 import os
 import sys
