@@ -37,7 +37,7 @@ def test_amazon_omite_cada_producto_con_valor_y_motivo(capsys):
     assert 'motivo=omitido_sin_ml_local_ayer' in text
 
 
-def test_amazon_y_ml_detallan_los_precios_ya_relevados(tmp_path, monkeypatch, capsys):
+def test_pasada_sin_consulta_deja_una_sola_linea(tmp_path, monkeypatch, capsys):
     now = datetime(2026, 11, 6, 15, tzinfo=timezone.utc)
     product = {'slug': 'kindle', 'asin': 'B0CFPJYX7P', 'store': 'US', 'verified': True, 'ml': {'catalogId': 'MLA123'}}
     amz = tmp_path / 'amazon-prices.json'
@@ -48,8 +48,10 @@ def test_amazon_y_ml_detallan_los_precios_ya_relevados(tmp_path, monkeypatch, ca
     assert amazon.maybe_refresh([product], amz, now, force=True) is False
     assert ml.maybe_refresh([product], local, amz, 1200, now, force=True) is False
     text = capsys.readouterr().out
-    assert 'source=memoria amount=159.99 currency=USD checked=2026-11-06 motivo=precio_ya_relevado' in text
-    assert 'price=650000 checked=2026-11-06 estado=ok motivo=sin_reconsulta_slot_ya_ejecutado' in text
+    # 06/11: sin consulta no se repite el detalle por artículo cada hora (ya quedó en la corrida que consultó).
+    assert 'AMAZON_PRODUCTO' not in text and 'ML_PRODUCTO' not in text
+    assert 'Amazon: sin consulta en esta pasada' in text
+    assert 'Mercado Libre: sin consulta en esta pasada (slot 2026-11-06T06 ya ejecutado)' in text
 
 
 def test_amazon_reintento_registra_el_resultado_por_producto(tmp_path, monkeypatch, capsys):

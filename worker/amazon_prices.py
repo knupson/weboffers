@@ -384,19 +384,16 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
         p for p in catalog
         if p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY
     ]
+    if isinstance(previous, dict) and previous.get("date") == today:
+        refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
+        if not refreshed:
+            # Pasada horaria sin consulta: una sola línea (06/11: 275 líneas «ya relevado» por hora tapaban lo importante).
+            print(f"Amazon: sin consulta en esta pasada (ya relevado hoy; reintentos según RETRY_TIMES).", flush=True)
+        return refreshed
     for p in catalog:
         if not (p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY):
             reason = "sin_verificar" if p.get("verified") is not True else "sin_asin" if not p.get("asin") else "sin_ml" if not p.get("ml") else "tienda_no_admitida"
             print(amazon_line(p, "memoria", reason=f"omitido_{reason}"), flush=True)
-    if isinstance(previous, dict) and previous.get("date") == today:
-        refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
-        if not refreshed:
-            for p in candidates:
-                item = (previous.get("items") or {}).get(p["slug"])
-                memory = (previous.get("outOfRange") or {}).get(p["slug"])
-                reason = "sin_reconsulta_memoria_fuera_de_rango_o_sin_ml" if memory else "precio_ya_relevado" if is_valid_amount((item or {}).get("amount")) else "reintento_no_habilitado"
-                print(amazon_line(p, "memoria", memory or item, reason), flush=True)
-        return refreshed
     all_candidates = candidates
     candidates, skipped = in_range(candidates, previous, today_date, eur_usd, ml_prices)
     without_ml = [p["slug"] for p in all_candidates if ml_prices is not None

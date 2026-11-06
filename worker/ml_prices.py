@@ -307,11 +307,8 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         slot = extra_slot
     elif done_slot is not None:
         if not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
-            for p in catalog:
-                slug = p["slug"]
-                item = (previous.get("items") or {}).get(slug)
-                status = "ok" if item else next((s for s in ("absent", "failed", "variantConflict") if slug in previous.get(s, [])), "omitido")
-                print(ml_line(p, status, item, "sin_reconsulta_slot_ya_ejecutado"), flush=True)
+            # Pasada horaria sin consulta: una sola línea (06/11: 275 líneas por hora tapaban lo importante).
+            print(f"Mercado Libre: sin consulta en esta pasada (slot {done_slot} ya ejecutado).", flush=True)
             return False
         slot = done_slot
     else:
