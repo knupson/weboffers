@@ -209,6 +209,29 @@ def accessory(value):
     return bool(re.search(r"\b(?:case|cover|funda|protector|replacement|repuesto|cable|adapter|adaptador)\b.{0,45}\b(?:for|para|compatible)\b|\bcompatible (?:with|con)\b", text))
 
 
+def _ids(texto, solo_digitos=False):
+    """Identificadores normalizados (sin guiones ni espacios); GTIN/UPC sin ceros a la izquierda."""
+    out = set()
+    for parte in re.split(r"[,;/\s]+", str(texto or "")):
+        tok = re.sub(r"[^0-9a-z]", "", parte.lower())
+        if solo_digitos:
+            tok = tok.lstrip("0") if tok.isdigit() else ""
+        if len(tok) >= 5 and re.search(r"\d", tok):
+            out.add(tok)
+    return out
+
+
+def identificador_comun(amazon, attrs):
+    """05/11: el número de modelo, UPC o GTIN de la página de Amazon coincide con el MPN, el modelo alfanumérico o
+    el GTIN de la ficha de ML: es el mismo producto aunque el título no lo diga."""
+    ids = amazon.get("amazonIds") if isinstance(amazon.get("amazonIds"), dict) else {}
+    a_mod = _ids(ids.get("model_number")) | _ids(ids.get("model_name"))
+    a_gtin = _ids(ids.get("upc"), True) | _ids(ids.get("gtin"), True)
+    b_mod = _ids(attrs.get("MPN")) | _ids(attrs.get("ALPHANUMERIC_MODEL")) | _ids(attrs.get("PART_NUMBER"))
+    b_gtin = _ids(attrs.get("GTIN"), True) | _ids(attrs.get("UPC"), True) | _ids(attrs.get("EAN"), True)
+    return sorted((a_mod & b_mod) | (a_gtin & b_gtin))
+
+
 def evaluate(amazon, candidate, product, mep):
     """Devuelve estado, motivo y evidencia; una contradicción gana sobre una duda."""
     title = amazon.get("amazonTitle") or ""
@@ -259,6 +282,14 @@ def evaluate(amazon, candidate, product, mep):
     combo = re.compile(r"\bkit\b.*\b(?:film|prints)\b|\+\s*\d+\s*(?:photo|prints|film|sheets)|\bphoto prints\b|\+\s*accessor|\bstudio\b")
     if bool(combo.search(ascii_text(title).lower())) != bool(combo.search(ascii_text(name).lower())):
         return "rejected", "combo en un solo lado", evidence
+    comun = identificador_comun(amazon, attrs)
+    if comun:
+        # Identificador exacto en los dos lados: mismo producto. Sólo se controla que el precio sea razonable.
+        evidence["identificador"] = comun
+        price, usd = candidate.get("minPrice"), amazon.get("amazonPriceUsd")
+        if positive_number(price) and positive_number(usd) and not 0.6 <= price / (usd * mep) <= 6.0:
+            return "rejected", "precio fuera de rango", evidence
+        return "accepted", "", evidence
     if brand and attrs.get("BRAND") and brand_key(brand) != brand_key(attrs["BRAND"]):
         return "rejected", "marca distinta", evidence
     def connection(text):

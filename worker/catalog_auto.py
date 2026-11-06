@@ -171,6 +171,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
             products = products + desde_ml
         if not scraper.valid:
             raise ValueError("El scraper no devolvió páginas válidas.")
+        con_ids = crecer_desde_ml.agregar_identificadores(products)
+        print(f"Catálogo: identificadores de Amazon para {con_ids} de {len(products)} pares.", flush=True)
         matches = matching.match_products(products, mep, catalog)
         publish.write_atomic(output / "match-results.json", matches)
         total = len(matches["accepted"])

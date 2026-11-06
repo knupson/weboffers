@@ -154,6 +154,18 @@ def apply_ar_location():
     fetch.set_location = set_ar
 
 
+def identificadores(details):
+    """Número de modelo, UPC y GTIN de la página de Amazon (05/11): permiten emparejar con el MPN/GTIN de la ficha
+    de ML aunque el título no diga el modelo («Logitech 4k Webcam» = 960-001105 = Brio C1000E)."""
+    ids = details.get("identifiers") if isinstance(details, dict) else None
+    ids = ids if isinstance(ids, dict) else {}
+    extra = details.get("details") if isinstance(details, dict) and isinstance(details.get("details"), dict) else {}
+    return {k: str(v)[:300] for k, v in {"model_number": ids.get("model_number") or extra.get("model_number"),
+                                         "upc": ids.get("upc") or extra.get("upc"),
+                                         "gtin": ids.get("gtin") or extra.get("global_trade_identification_number"),
+                                         "model_name": extra.get("model_name")}.items() if v}
+
+
 def sesion_confirmada_ar(store="US"):
     """True si la sesión de la tienda `store` en este hilo quedó confirmada con ubicación en Argentina."""
     from amazon import fetch, sites
@@ -207,7 +219,8 @@ class ArShippingHandler(BaseHTTPRequestHandler):
                 try:
                     details = fetch_details(asin, store)
                     located = sesion_confirmada_ar(store)
-                    products.append({"asin": asin, **parse_delivery(details, located=located)})
+                    products.append({"asin": asin, **parse_delivery(details, located=located),
+                                     "identifiers": identificadores(details)})
                 except Exception as exc:  # por ASIN: un error no tumba al resto del lote; queda desconocido
                     products.append({"asin": asin, "ships": None, "free": None, "error": type(exc).__name__})
             self._send_json(200, {"products": products})

@@ -524,3 +524,19 @@ def test_capacidad_sin_confirmar_no_frena_fuera_de_categorias_de_capacidad():
     # En almacenamiento la capacidad ES la variante: sin confirmar en un lado sigue frenando.
     ssd = cached_product("Samsung T9 SSD", "Samsung", "T9")
     assert cached_match("Samsung T9 Portable SSD 2TB", ssd)["doubtful"]
+
+
+def test_identificador_comun_acepta_aunque_el_titulo_no_diga_el_modelo():
+    """05/11: «Logitech 4k Webcam» (960-001105) es la Brio C1000E de ML (MPN 960-001105 entre otros)."""
+    from tools import match_candidates as m
+    amazon_row = {"asin": "B01N5UOYC4", "store": "US", "amazonTitle": "Logitech 4k Webcam", "brand": "Logitech",
+                  "amazonPriceUsd": 139.8, "amazonCategory": "webcam",
+                  "amazonIds": {"model_number": "960-001105", "upc": "097855125620"}}
+    cand = {"catalogId": "MLA18932094", "name": "Cámara web Logitech Brio 4K", "minPrice": 253948, "itemId": "MLA1"}
+    prod = {"name": cand["name"], "attributes": [{"id": "BRAND", "value_name": "Logitech"}, {"id": "MODEL", "value_name": "Brio"},
+            {"id": "ALPHANUMERIC_MODEL", "value_name": "c1000e"}, {"id": "MPN", "value_name": "960-001106, 960-001105"}]}
+    estado, motivo, ev = m.evaluate(amazon_row, cand, prod, 1588)
+    assert estado == "accepted" and ev["identificador"] == ["960001105"]
+    # Sin identificador común, el título solo sigue sin alcanzar.
+    sin = dict(amazon_row, amazonIds={"model_number": "999-999999"})
+    assert m.evaluate(sin, cand, prod, 1588)[0] != "accepted"

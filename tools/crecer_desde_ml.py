@@ -88,6 +88,26 @@ def mas_vendidos_ml(catalog_ids_existentes):
     return vistos
 
 
+def agregar_identificadores(filas, consulta_ar=None, lote=5):
+    """Suma a cada par el número de modelo, UPC y GTIN de la página de Amazon (servicio amazon-ar, la misma
+    consulta de página que ya usa el envío) para que el validador compare identificadores exactos (05/11)."""
+    import amazon_prices
+    consulta_ar = consulta_ar or (lambda asins: amazon_prices.fetch_ar_shipping(amazon_prices.ar_url(), asins, "US"))
+    asins = list(dict.fromkeys(f["asin"] for f in filas if f.get("store", "US") == "US"))
+    ids = {}
+    for i in range(0, len(asins), lote):
+        try:
+            for asin, item in (consulta_ar(asins[i:i + lote]) or {}).items():
+                if isinstance(item, dict) and isinstance(item.get("identifiers"), dict):
+                    ids[asin] = item["identifiers"]
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            continue
+    for f in filas:
+        if f["asin"] in ids:
+            f["amazonIds"] = ids[f["asin"]]
+    return len(ids)
+
+
 def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=None, limite=None):
     """Lista en el formato de discover_products: [{asin, amazonTitle, brand, amazonPriceUsd, ml: [...]}]."""
     out, vistos_asin = [], set()
@@ -115,6 +135,15 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
         # 05/11: dos búsquedas (nombre comercial y marca + modelo); la prueba A/B mostró que cada una encuentra
         # productos que la otra no (sobre 219 productos: 0 vs 2 aceptados, y la de nombre encontró otros 5).
         consultas = [nombre] + ([marca_modelo] if marca_modelo and marca_modelo.lower() != nombre.lower() else [])
+        # 05/11: tercera búsqueda por el CÓDIGO de modelo de la ficha (Galaxy A17 4G = SM-A175F): el nombre y la
+        # marca+modelo traían sólo la versión 5G; el código lleva directo al ASIN correcto (B0FRYP55LB).
+        codigo = (attrs.get("ALPHANUMERIC_MODEL") or (attrs.get("MPN") or "").split(",")[0]).strip()
+        if codigo and len(codigo) >= 4 and any(ch.isdigit() for ch in codigo):
+            consultas.append(f"{attrs.get('BRAND', '')} {codigo}".strip())
+        # Cuarta: código de barras de la ficha (GTIN/EAN); el buscador de Amazon también encuentra por UPC/EAN.
+        gtin = (attrs.get("GTIN") or "").split(",")[0].strip()
+        if gtin.isdigit() and len(gtin) >= 8:
+            consultas.append(gtin)
         resultados, cortar = [], False
         for consulta in consultas:
             try:
