@@ -8,6 +8,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-push-tests.mjs\"",
             "timeout": 300
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/scraper-solo-con-herramienta.mjs\"",
+            "timeout": 10
           }
         ]
       }
