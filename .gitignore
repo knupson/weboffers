@@ -9,6 +9,7 @@ dist/
 .DS_Store
 Thumbs.db
 worker/output/
+worker/warp-data/
 data/ml-prices.json
 data/amazon-prices.json
 .pytest_cache/

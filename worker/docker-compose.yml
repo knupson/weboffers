@@ -43,17 +43,41 @@ services:
     build:
       context: .
       dockerfile: barrido/Dockerfile
-        args:
-          BARRIDO_GIT_COMMIT: ${BARRIDO_GIT_COMMIT:-no_disponible}
+      args:
+        BARRIDO_GIT_COMMIT: ${BARRIDO_GIT_COMMIT:-no_disponible}
     restart: unless-stopped
     mem_limit: 512m
     environment:
       ML_CLIENT_ID: ${ML_CLIENT_ID:-}
       ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
       BARRIDO_OUTPUT: /app/output/barrido
+      # Salida a Amazon por WARP: la IP de la VM recibe 503 en /s (medido 07/11).
+      BARRIDO_AMAZON_PROXY: socks5h://weboffers-warp:1080
+    depends_on:
+      - weboffers-warp
     volumes:
       - ./output:/app/output
       - ../data:/app/data:ro
+
+  # Cloudflare WARP como proxy SOCKS5/HTTP en :1080, sólo dentro de la red del compose (sin puertos al host).
+  # Imagen comunitaria (github.com/cmj2002/warp-docker), fijada por digest; medido 07/11: 82,6 MiB.
+  weboffers-warp:
+    image: caomingjun/warp@sha256:2891b92420a193a49c74cbd4387bee91f5c35fbc487fca8e8f739baed52c1d2b
+    restart: unless-stopped
+    mem_limit: 256m
+    device_cgroup_rules:
+      - 'c 10:200 rwm'
+    environment:
+      - WARP_SLEEP=2
+    cap_add:
+      - MKNOD
+      - AUDIT_WRITE
+      - NET_ADMIN
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv4.conf.all.src_valid_mark=1
+    volumes:
+      - ./warp-data:/var/lib/cloudflare-warp
 
   weboffers-deployer:
     build: ./deployer
