@@ -1951,7 +1951,7 @@
     "brand": "Garmin",
     "category": "Relojes",
     "summary": "Reloj GPS para running con música almacenada, monitoreo de salud y métricas de entrenamiento.",
-    "verified": true,
+    "verified": false,
     "image": "/products/garmin-forerunner-170-music.webp",
     "imageSource": "https://www.garmin.com/en-US/p/2014513",
     "listPrice": {
@@ -1973,7 +1973,8 @@
       "note": "05/11: antes MLA70715360 (otro color)"
     },
     "verdict": "ml",
-    "amazonTitle": "Garmin Forerunner® 170 Music, 43mm, Black/Amp Yellow"
+    "amazonTitle": "Garmin Forerunner® 170 Music, 43mm, Black/Amp Yellow",
+    "note": "07/11: no publicar. Amazon B0H1F79N52 es Forerunner 170 Music; el catálogo ML MLA70054762 es la versión Estándar (verificado en las dos páginas). Re-emparejar con el ASIN no Music o con el catálogo ML Music."
   },
   {
     "asin": "B0H1FBRQD9",
@@ -2930,7 +2931,7 @@
     "brand": "Lenovo",
     "category": "Tablets y lectores",
     "summary": "Tablet de 11\" con pantalla de 90 Hz, 8 GB de RAM y 128 GB de almacenamiento, ideal para estudio y entretenimiento.",
-    "verified": true,
+    "verified": false,
     "hot": "2026-11-02",
     "image": "/products/lenovo-idea-tab-11.webp",
     "imageSource": "https://www.lenovo.com/ar/es/p/tablets/lenovo-tab-series/lenovo-idea-tab/len103l0028",
@@ -2947,7 +2948,8 @@
     },
     "verdict": "amazon",
     "verdictReason": "precio",
-    "amazonTitle": "Lenovo Idea Tab 11\" 2025 | 128GB, WiFi | 11\" 90Hz 2.5K IPS Display, Android 15 Tablet, Quad Speakers, Dimensity 6300, US Model | 20W Fast Charge Cube Bundle, Luna Grey"
+    "amazonTitle": "Lenovo Idea Tab 11\" 2025 | 128GB, WiFi | 11\" 90Hz 2.5K IPS Display, Android 15 Tablet, Quad Speakers, Dimensity 6300, US Model | 20W Fast Charge Cube Bundle, Luna Grey",
+    "note": "07/11: no publicar. ML MLA69276405 incluye Tab Pen Plus + funda folio; Amazon B0G4NS8NTX es el bundle con cargador 20 W (verificado en las dos páginas). Re-emparejar con publicaciones del mismo contenido."
   },
   {
     "asin": "",
