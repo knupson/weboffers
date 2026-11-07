@@ -26,7 +26,7 @@ from tools.apply_candidates import candidate_summary  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
 VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
-UNIT_RE = re.compile(r'\b(\d+(?:[.,]\d+)?)\s*-?\s*(tb|gb|mb|mah|mm|inches|inch|in|pulgadas|pulgada|w|\")(?=$|[^a-z])')
+UNIT_RE = re.compile(r'\b(\d+(?:[.,]\d+)?)\s*-?\s*(tb|gb|mb|mah|mm|inches|inch|in|pulgadas|pulgada|pulg|w|\")(?=$|[^a-z])')
 ALIASES = {"wd": "western digital", "wd black": "western digital", "wdblack": "western digital",
            "hewlett packard": "hp", "hewlett packard hp": "hp", "hp inc": "hp",
            "tp": "tp link", "tplink": "tp link", "gl inet": "glinet", "gl.inet": "glinet",
@@ -46,9 +46,9 @@ CATEGORY_RULES = (
     ("Carga y energía", "power bank|power banks|portable charger|battery pack|chargers|carga y energia"),
     ("Redes", "networking|router|routers|modem|mesh|redes|wireless access"),
     ("Cámaras", "camera|cameras|camcorder|lenses|camaras"),
-    ("Audio y video", "audio|television|headphones|earbuds|speaker|speakers|soundbar|microphone"),
+    ("Audio y video", "audio|television|headphones|earbuds|speaker|speakers|loudspeaker|soundbar|microphone|voice recorder|tv box"),
     ("Componentes", "components|componentes|processor|cpu|gpu|motherboard|ram|computer memory|cooling|power supplies"),
-    ("Gaming", "gaming|video games|videogames|controller|gamepad|playstation|xbox|nintendo"),
+    ("Gaming", "gaming|video games|videogames|controller|gamepad|playstation|xbox|nintendo|racing wheel"),
     ("Cocina", "kitchen|cocina|dining|coffee maker|cookware"),
     ("Cuidado personal", "personal care|cuidado personal|shaver|toothbrush|hair dryer"),
     ("Herramientas", "tools|herramientas|home improvement"),
@@ -81,7 +81,7 @@ def normalize(value):
         amount, suffix = float(match[1].replace(",", ".")), match[2]
         if suffix == "tb":
             amount, suffix = amount * 1000, "gb"
-        elif suffix in ('"', "inches", "inch", "pulgadas", "pulgada"):
+        elif suffix in ('"', "inches", "inch", "pulgadas", "pulgada", "pulg"):
             suffix = "in"
         return f"{amount:g}{suffix}"
 
@@ -106,11 +106,29 @@ def category_for(value):
     return None
 
 
+def memory_text(value):
+    """En «4+64GB» el primer número es RAM y el segundo almacenamiento."""
+    return re.sub(r"\b(\d+)\s*\+\s*(\d+)\s*(gb|tb)\b", r"\1\3 RAM \2\3", ascii_text(value))
+
+
 def quantities(value):
     result = {}
-    for amount, unit in re.findall(r"\b(\d+(?:\.\d+)?)(gb|mb|mah|mm|in|w)\b", normalize(value)):
+    for amount, unit in re.findall(r"\b(\d+(?:\.\d+)?)(gb|mb|mah|mm|in|w)\b", normalize(memory_text(value))):
         result.setdefault(unit, set()).add(float(amount))
     return result
+
+
+def ram_quantities(value):
+    """Conserva el rol de la memoria: 4 GB de RAM no equivalen a 4 GB de disco."""
+    text = normalize(memory_text(re.sub(r"[,;•|]", " separador ", value)))
+    matches = re.findall(r"\b(\d+(?:\.\d+)?gb)\s+(?:de )?ram\b|\bram\s+(\d+(?:\.\d+)?gb)\b"
+                         r"(?!\s*(?:ssd|hdd|storage|rom|almacenamiento)\b)", text)
+    return {float((left or right)[:-2]) for left, right in matches}
+
+
+def own_description(value):
+    """La compatibilidad nombra otros productos, no el modelo ni el paquete vendido."""
+    return re.split(r"\b(?:for|para|compatible (?:with|con))\b", ascii_text(value), maxsplit=1)[0]
 
 
 def model_tokens(value):
@@ -126,12 +144,19 @@ def model_tokens(value):
             token = raw.split("/")[0]
         if len(token) < 2 or not re.search(r"[a-z]", token) or not re.search(r"\d", token):
             continue
+        # «5th» y «5ta» son la misma generación, no códigos contradictorios.
+        if (re.fullmatch(r"\d+(?:st|nd|rd|th|er|ra|ta|to|a|o)", token)
+                and re.search(r"\b" + re.escape(raw) + r"\s+gen(?:eration|eracion)?\b", text)):
+            continue
         # Plataformas y especificaciones compartidas no prueban identidad.
         if re.fullmatch(r"(?:ps[345]|4k|8k|\d+(?:mp|fps|ms|x|axis|eje)|f\d+|hdr\d+|\d+x\d+)", token):
             continue
         if quantities(raw) or re.fullmatch(r"(?:pcie|usb|ddr|wifi|wi-fi|bluetooth|bt|gen)\d+[a-z]*", token):
             continue
         if re.fullmatch(r"\d+(?:hz|khz|mhz|ghz|k|p|mbps|gbps)", token):
+            continue
+        # Duración, protección y canales de audio son especificaciones, no códigos.
+        if re.fullmatch(r"(?:\d+(?:hour|hours|hr|hrs|ch)|ip\d{2})", token):
             continue
         tokens.add(token)
     # Familias numéricas (990 PRO) también identifican un modelo concreto.
@@ -162,19 +187,103 @@ def family_conflict(left, right):
     return False
 
 
-def variant_words(value):
-    text = re.split(r"\b(?:for|para)\b|[|]", ascii_text(value), maxsplit=1)[0]
-    text = re.sub(r"\bultra[ -](?:portable|slim)\b|\bpro[ -]level\b", "", text)
+def variant_words(value, textual_model=""):
+    owned = own_description(value)
+    text = owned.split("|", 1)[0]
+    text = re.sub(r"\bultra[ -](?:portable|slim|hd)\b|\bpro[ -]level\b", "", text)
     words = normalize(text).split()
-    anchors = [i for i, word in enumerate(words) if model_tokens(word) or (word.isdigit() and len(word) <= 4)]
+    model_words = set(normalize(textual_model).split()) - VARIANTS
+    anchors = [i for i, word in enumerate(words) if model_tokens(word) or word in model_words
+               or (word.isdigit() and len(word) <= 4)]
     found = {word for i, word in enumerate(words) if word in VARIANTS and any(abs(i - j) <= 3 for j in anchors)}
     # Estado y cantidad del paquete importan aunque estén lejos del modelo.
     found.update(set(words) & {"hero", "lightspeed", "signature", "music", "paperwhite", "colorsoft", "scribe", "floodlight"})
-    found.update(set(normalize(value).split()) & {"kit", "bundle", "combo", "pack", "refurbished", "renewed", "reacondicionado", "usado"})
+    found.update(set(normalize(value).split()) & {"kit", "bundle", "combo", "pack"})
+    found.update("propio " + word for word in set(normalize(owned).split()) & {"kit", "bundle", "combo", "pack"})
+    found.update(set(normalize(value).split()) & {"refurbished", "renewed", "reacondicionado", "usado"})
     found.update(re.findall(r"\b\d+ pack\b", normalize(value)))
     if re.search(r"\b(?:lens|lente)\b", normalize(value)):
         found.discard("fe")
+    for negated in re.findall(r"\b(?:non|no|sin)[ -]+(pro|plus|ultra|mini|kit)\b", owned):
+        found.discard(negated)
+        found.add("non " + negated)
     return found
+
+
+def textual_model_matches(model, title, name):
+    """Un modelo textual completo puede cambiar el orden de sus palabras en la ficha."""
+    words = normalize(model).split()
+    generic = set("otros other generic generico wireless controller headphones headset tablet camera digital gaming ultra hd boombox".split())
+    if not words or all(word in generic for word in words):
+        return False
+    a, b = normalize(own_description(title)), normalize(own_description(name))
+    if len(words) > 1:
+        def contains(source):
+            tokens = source.split()
+            return any(sorted(tokens[i:i + len(words)]) == sorted(words)
+                       for i in range(len(tokens) - len(words) + 1))
+        return contains(a) and contains(b)
+    # Nombres cortos requieren un calificador explícito igual: «Brio 4K», nunca «Brio 500».
+    if len(words[0]) == 4 and words[0].isalpha():
+        pattern = r"\b" + re.escape(words[0]) + r"\s+(\d+[a-z]*)\b"
+        left, right = re.search(pattern, a), re.search(pattern, b)
+        return bool(left and right and left[1] == right[1])
+    pattern = r"\b" + re.escape(words[0]) + r"\b"
+    return len(words[0]) >= 5 and bool(re.search(pattern, a) and re.search(pattern, b))
+
+
+def identity_qualifiers(value, textual_model):
+    """Calificadores del producto propio, sin completar silencios con atributos ML.
+
+    Los números de generación conservan su rol; pulgadas, memoria y potencia no
+    son versiones. Los signos + sólo califican un modelo, nunca sumas de RAM o
+    nombres ajenos (por ejemplo, una plataforma mencionada en la descripción).
+    """
+    text = own_description(memory_text(value))
+    text = UNIT_RE.sub(" ", text)
+    text = re.sub(r"\bultra[ -](?:portable|slim|hd)\b|\bpro[ -]level\b", "", text)
+    text = re.sub(r"\b(?:with (?:a )?clock|con reloj)\b", " clock ", text)
+    text = re.sub(r"\b(?:ninos|infantil)\b", " kids ", text)
+    text = re.sub(r"\b(?:full hd|fullhd)\b", " fhd ", text)
+    text = re.sub(r"\b(?:plus|mas)\b", " plus ", text)
+    editions = VARIANTS | set("kids xl edge oled active play 4k 8k hd fhd power neo clock".split())
+    model_words = set(normalize(textual_model).split())
+    # A9+ y A9 Plus son lo mismo; 4+64GB ya fue retirado como memoria.
+    text = re.sub(r"\b([a-z0-9]+)\s*\+(?!\s*\d)",
+                  lambda m: m[1] + (" plus " if m[1] in model_words or model_tokens(m[1]) else " "), text)
+    words = normalize(text).split()
+    anchors = [i for i, word in enumerate(words)
+               if model_tokens(word) or word in model_words - editions]
+    # Un modelo completamente textual puede incluir un calificador (Fire HD).
+    anchors += [i for i, word in enumerate(words) if word in model_words & editions]
+    result = {"edición": {w for i, w in enumerate(words) if w in editions
+                         and any(abs(i - j) <= 3 for j in anchors)}}
+    # La resolución puede estar explícita aun cuando sólo el MPN identifica el
+    # modelo (p. ej. una webcam); nunca usarla por sí sola para probar identidad.
+    result["edición"].update(set(words) & {"4k", "8k", "hd", "fhd"})
+    if re.search(r"\b(?:lens|lente)\b", text):
+        result["edición"].discard("fe")
+    roman = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6",
+             "vii": "7", "viii": "8", "ix": "9", "x": "10"}
+    # «5th Gen», «5.ª generación», «gen 5» y «Series 5» comparten representación.
+    number = r"(\d+|viii|vii|iii|vi|iv|ii|ix|v|i|x)"
+    marker = r"(?:gen(?:eracion|eration)?|serie[s]?|version)"
+    generations = set()
+    for pattern in (rf"\b{number}\s*(?:st|nd|rd|th|er|ra|ta|to|a|o|[.°ªº])*\s*{marker}\b",
+                    rf"\b{marker}\s*{number}\b"):
+        generations.update(roman.get(n, str(int(n)) if n.isdigit() else n) for n in re.findall(pattern, text))
+    # Números/romanos inmediatamente después de una palabra del modelo: Cloud II,
+    # Buds 6, Fire HD 8. No confundir WiFi 6, USB 3 o tiempo de batería con modelo.
+    for i in anchors:
+        if not words[i].isalpha() or words[i] not in model_words:
+            continue
+        if i + 1 < len(words):
+            following = words[i + 1]
+            if following.isdigit() or following in roman:
+                generations.add(roman.get(following, following))
+    result["generación"] = generations
+    result["año"] = set(re.findall(r"\b(20\d{2})\s*(?:model|modelo|release)\b", text))
+    return result
 
 
 def attributes(product):
@@ -258,13 +367,12 @@ def evaluate(amazon, candidate, product, mep):
     if brand_key(brand) in {"tp link", "asus", "netgear"}:
         a_models = {token for token in a_models if not re.fullmatch(r"(?:axe?|be)\d{3,}", token)}
         b_models = {token for token in b_models if not re.fullmatch(r"(?:axe?|be)\d{3,}", token)}
-    shared = a_models & b_models
+    shared = a_models & b_models & model_tokens(own_description(title)) & model_tokens(own_description(name + " " + model))
     # Un modelo textual completo sirve si es específico y no contradice códigos.
     textual = normalize(attrs.get("MODEL", ""))
-    generic_models = {"otros", "other", "generic", "generico", "wireless", "controller", "headphones", "headset", "tablet", "camera", "digital", "gaming"}
-    if (not shared and len(textual) >= 5 and textual not in generic_models
+    if (not shared and textual_model_matches(textual, title, name)
+            and textual not in {normalize(brand), normalize(brand_ml)}
             and not re.fullmatch(r"(?:axe?|be)\d{3,}", textual)
-            and re.search(r"\b" + re.escape(textual) + r"\b(?! \d)", normalize(title))
             and not (a_models and b_models and not shared)):
         shared.add(textual)
 
@@ -282,14 +390,17 @@ def evaluate(amazon, candidate, product, mep):
     combo = re.compile(r"\bkit\b.*\b(?:film|prints)\b|\+\s*\d+\s*(?:photo|prints|film|sheets)|\bphoto prints\b|\+\s*accessor|\bstudio\b")
     if bool(combo.search(ascii_text(title).lower())) != bool(combo.search(ascii_text(name).lower())):
         return "rejected", "combo en un solo lado", evidence
+    # Compartir el modelo base no vuelve intercambiables las versiones de red celular.
+    a_network = set(re.findall(r"\b[345]g\b", normalize(own_description(title))))
+    b_network = set(re.findall(r"\b[345]g\b", normalize(own_description(name))))
+    if a_network and b_network and a_network != b_network:
+        return "rejected", "generación de red distinta", evidence
+    if a_network != b_network:
+        doubts.append("red celular sin confirmar")
     comun = identificador_comun(amazon, attrs)
     if comun:
-        # Identificador exacto en los dos lados: mismo producto. Sólo se controla que el precio sea razonable.
+        # Un identificador aporta identidad, pero no tapa variantes ni códigos contradictorios.
         evidence["identificador"] = comun
-        price, usd = candidate.get("minPrice"), amazon.get("amazonPriceUsd")
-        if positive_number(price) and positive_number(usd) and not 0.6 <= price / (usd * mep) <= 6.0:
-            return "rejected", "precio fuera de rango", evidence
-        return "accepted", "", evidence
     if brand and attrs.get("BRAND") and brand_key(brand) != brand_key(attrs["BRAND"]):
         return "rejected", "marca distinta", evidence
     def connection(text):
@@ -313,9 +424,11 @@ def evaluate(amazon, candidate, product, mep):
         doubts.append("plataforma contradictoria entre nombre y atributos")
     if not evidence["brand"]:
         doubts.append("marca ausente")
+    a_ram, b_ram = ram_quantities(title), ram_quantities(ml_text)
+    if a_ram and b_ram and a_ram != b_ram:
+        return "rejected", "memoria RAM distinta", evidence
     for unit in a_caps.keys() & b_caps.keys():
-        # 05/11: «4+64GB» vs «4 GB Ram 64 GB» comparten 64: no es otra capacidad. Sólo si no comparten ninguna.
-        # Pero si los dos lados informan varios valores (RAM + almacenamiento), tienen que coincidir todos:
+        # Si los dos lados informan varios valores (RAM + almacenamiento), tienen que coincidir todos:
         # IdeaPad 1 «8GB RAM, 128GB» vs «4GB 128gB» comparte 128 y es otra configuración.
         if a_caps[unit].isdisjoint(b_caps[unit]) or (len(a_caps[unit]) > 1 and len(b_caps[unit]) > 1
                                                      and a_caps[unit] != b_caps[unit]):
@@ -327,19 +440,26 @@ def evaluate(amazon, candidate, product, mep):
         doubts.append("edición sin confirmar")
     if family_conflict(a_models, b_models):
         return "rejected", "modelo de otra familia o edición", evidence
-    variants_differ = variant_words(title) != variant_words(name + " " + model + " " + attrs.get("LINE", ""))
-    if a_models and b_models and not shared:
+    a_qualifiers = identity_qualifiers(title, textual)
+    b_qualifiers = identity_qualifiers(name, textual)
+    for key in a_qualifiers:
+        left, right = a_qualifiers[key], b_qualifiers[key]
+        if left != right:
+            # Una omisión no prueba una contradicción; dos versiones explícitas sí.
+            if left - right and right - left:
+                return "rejected", "variante distinta", evidence
+            reason = "variante sin confirmar" if key == "edición" else "generación sin confirmar"
+            if reason not in doubts:
+                doubts.append(reason)
+    # «+» y «Plus» ya se compararon con la misma representación arriba.
+    variants_differ = (variant_words(title, textual) - {"plus"}
+                       != variant_words(name + " " + model + " " + attrs.get("LINE", ""), textual) - {"plus"})
+    if a_models and b_models and a_models.isdisjoint(b_models):
         return "rejected", "modelo distinto", evidence
-    if not shared and (not a_models or not b_models):
+    if a_models & b_models and not shared and not comun:
+        doubts.append("modelo propio sin confirmar")
+    if not shared and not comun and (not a_models or not b_models):
         doubts.append("modelo ausente")
-    if re.search(r"\b(?:headset|headphones|earbuds)\b", normalize(title)):
-        a_gen = re.findall(r"\bgen(?:eration)? (\d+)\b", normalize(title))
-        b_gen = re.findall(r"\bgen(?:eration)? (\d+)\b", normalize(name + " " + model))
-        if set(a_gen) != set(b_gen):
-            doubts.append("generación sin confirmar")
-    # Un número de versión adyacente al modelo textual no puede quedar implícito.
-    if textual and re.search(r"\b" + re.escape(textual) + r" \d+\b", normalize(title)) and not shared:
-        doubts.append("generación sin confirmar")
     if variants_differ:
         doubts.append("variante distinta")
     colors = {"black": "negro", "white": "blanco", "blue": "azul", "red": "rojo", "green": "verde", "silver": "plata", "gold": "dorado", "pink": "rosa",
@@ -376,7 +496,7 @@ def evaluate(amazon, candidate, product, mep):
     if category_for(amazon.get("amazonCategory")) not in {"Almacenamiento", "Celulares", "Tablets y lectores",
                                                           "Monitores", "Componentes", "Mini PCs"}:
         leves = leves | {"capacidad o tamaño sin confirmar"}
-    if doubts and evidence["brand"] and evidence["model"] and set(doubts) <= leves:
+    if doubts and evidence["brand"] and (evidence["model"] or comun) and set(doubts) <= leves:
         evidence["dudasLeves"] = doubts
         return "accepted", "", evidence
     return ("doubtful", "; ".join(doubts), evidence) if doubts else ("accepted", "", evidence)

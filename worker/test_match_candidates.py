@@ -540,3 +540,181 @@ def test_identificador_comun_acepta_aunque_el_titulo_no_diga_el_modelo():
     # Sin identificador común, el título solo sigue sin alcanzar.
     sin = dict(amazon_row, amazonIds={"model_number": "999-999999"})
     assert m.evaluate(sin, cand, prod, 1588)[0] != "accepted"
+
+
+@pytest.mark.parametrize("suffix", ["for Gen 3, Gen4 4X V4, and Mini Kit Satellite", "para kit V4"])
+def test_modelo_compatible_no_es_el_producto_vendido(suffix):
+    ml = cached_product("Kit Starlink De Internet Vía Satélite Estándar V4", "Starlink", "Antena Gen3")
+    result = cached_match(f"Gen 3 Wi-Fi Router WiFi 6 Wireless {suffix}", ml, "Starlink", "Routers")
+    assert not result["accepted"]
+
+
+def test_kit_propio_no_se_confunde_con_compatibilidad():
+    ml = cached_product("Starlink V4 Kit", "Starlink", "V4")
+    assert cached_match("Starlink V4 Kit", ml, "Starlink", "Routers")["accepted"]
+    assert not cached_match("Starlink V4 Router for Kit", ml, "Starlink", "Routers")["accepted"]
+
+
+@pytest.mark.parametrize("title,name,model,brand,category", [
+    ('Clara BW eReader 6" 16GB', 'Kobo Clara BW 6" 16GB', 'BW Clara', 'Kobo', 'eReader'),
+    ('Brio 4K Ultra HD Webcam', 'Logitech Brio 4K', 'Brio', 'Logitech', 'webcam'),
+    ('Sound Party Speaker 50W 26-Hour Playtime', 'Xiaomi Sound Party 50W IP67', 'Sound Party', 'Xiaomi', 'Audio'),
+])
+def test_modelo_textual_completo(title, name, model, brand, category):
+    ml = cached_product(name, brand, model, ALPHANUMERIC_MODEL="ZX100")
+    assert cached_match(title, ml, brand, category)["accepted"]
+
+
+@pytest.mark.parametrize("title,name,model", [
+    ('Clara BW eReader 16GB', 'Kobo Clara Colour 16GB', 'Clara Colour'),
+    ('Brio 4K Webcam', 'Logitech Brio 500', 'Brio'),
+    ('Brio 4K Webcam', 'Logitech Brio 4K ZX200', 'Brio ZX200'),
+    ('Sound Party ZX100 Speaker', 'Xiaomi Sound Party ZX200 Speaker', 'Sound Party'),
+    ('Wireless Headphones', 'Wireless Headphones', 'Wireless Headphones'),
+])
+def test_modelo_textual_no_tapa_diferencias(title, name, model):
+    assert not cached_match(title, cached_product(name, "Marca", model), "Marca", "Audio")["accepted"]
+
+
+@pytest.mark.parametrize("category,expected", [
+    ('TV Box S 3rd Gen', 'Audio y video'), ('Voice Recorder', 'Audio y video'),
+    ('Powered Loudspeaker', 'Audio y video'), ('Racing Wheel and Pedals', 'Gaming'),
+    ('Productos varios', None),
+])
+def test_categoria_por_tipo_de_producto(category, expected):
+    assert match.category_for(category) == expected
+
+
+def test_pulg_abrevia_pulgadas_sin_ocultar_diferencias():
+    ml = cached_product('Eviva 12p Loudspeaker 12 PuLG 1000W', 'Electro-Voice', 'Eviva-12P')
+    assert cached_match('EVIVA12P Loudspeaker 12 Inch', ml, 'Electro-Voice', 'Audio')["accepted"]
+    assert not cached_match('EVIVA12P Loudspeaker 10 Inch', ml, 'Electro-Voice', 'Audio')["accepted"]
+
+
+@pytest.mark.parametrize("left,right", [
+    ('HW-B550', 'HW-B555'), ('ZX100', 'ZX100A'), ('A17 4G 128GB 4GB RAM', 'A17 5G 128GB 4GB RAM'),
+    ('A17 5G 128GB 4GB RAM', 'A17 5G 128GB 8GB RAM'),
+])
+def test_codigos_y_configuraciones_distintos_siguen_frenando(left, right):
+    ml = cached_product(right, 'Marca', right)
+    assert not cached_match(left, ml, 'Marca', 'Celulares')["accepted"]
+
+
+@pytest.mark.parametrize("title,name,model,category", [
+    ('Plaud Note AI Voice Recorder Non-Pro Version', 'Plaud Note Pro 64GB', 'Note Pro', 'Audio'),
+    ('Logitech Brio 4K Pro Webcam', 'Logitech Brio 4K', 'Brio', 'webcam'),
+    ('Lenovo Idea Tab 11" 8GB 256GB', 'Lenovo Idea Tab 11" 8GB 256GB 5G', 'Idea Tab', 'Tablets'),
+])
+def test_modelo_textual_exige_confirmar_variante_funcional(title, name, model, category):
+    assert not cached_match(title, cached_product(name, 'Marca', model), 'Marca', category)["accepted"]
+
+
+def test_bundle_despues_de_compatibilidad_sigue_frenando():
+    ml = cached_product('Drone DJI Lito 1 Fly More Combo RC-N3', 'DJI', 'Lito 1', ALPHANUMERIC_MODEL='CP-MA-991')
+    title = 'Neo Drone Fly More Combo RC-N3 for Beginners CP-FP-185 + 64GB + Backpack 24pc Bundle'
+    assert not cached_match(title, ml, 'DJI', 'Cameras')["accepted"]
+
+
+def test_modelo_generico_boombox_no_prueba_identidad():
+    ml = cached_product('Philips Boombox TAX400B', 'Philips', 'Boombox', ALPHANUMERIC_MODEL='TAX400B')
+    assert not cached_match('Philips Boombox CD Player for Home MP3', ml, 'Philips', 'Audio')["accepted"]
+
+
+def test_codigos_propios_al_final_no_se_pierden():
+    assert 'stjl4000400' in match.model_tokens('Basic 4TB for PC Laptop (STJL4000400)')
+
+
+@pytest.mark.parametrize("title,name,model", [
+    ('Marca ZX100', 'Marca ZX200', 'ZX200'),
+    ('Marca A17 4GB RAM 128GB', 'Marca A17 8GB RAM 128GB', 'A17'),
+    ('Marca ZX100', 'Marca ZX100 Kit', 'ZX100'),
+])
+def test_identificador_compartido_no_tapa_contradicciones(title, name, model):
+    row = amazon(amazonTitle=title, brand='Marca', amazonCategory='Celulares',
+                 amazonIds={'model_number': 'ABC-12345'})
+    ml = cached_product(name, 'Marca', model, MPN='ABC-12345')
+    assert match.evaluate(row, row['ml'][0], ml, 1575)[0] != 'accepted'
+
+
+def test_la_marca_sola_no_es_modelo_textual():
+    ml = cached_product('Acer 4K Monitor', 'Acer', 'Acer')
+    assert not cached_match('Acer 4K Monitor', ml, 'Acer', 'Monitors')["accepted"]
+
+
+@pytest.mark.parametrize("title,name,accepted", [
+    ('Marca A17 4+64GB', 'Marca A17 4GB RAM 64GB', True),
+    ('Marca A17 4+64GB', 'Marca A17 8GB RAM 64GB', False),
+    ('Marca A17 4GB RAM 128GB', 'Marca A17 128GB RAM 4GB', False),
+])
+def test_ram_compacta_y_roles_no_son_intercambiables(title, name, accepted):
+    result = cached_match(title, cached_product(name, 'Marca', 'A17'), 'Marca', 'Celulares')
+    assert bool(result['accepted']) == accepted
+
+
+def test_ram_no_toma_el_ssd_de_la_frase_siguiente():
+    ml = cached_product('Notebook ZX100 8GB RAM y 128GB SSD', 'Marca', 'ZX100')
+    assert cached_match('ZX100 DDR5 RAM • 128GB SSD', ml, 'Marca', 'Mini PCs')["accepted"]
+    assert not match.ram_quantities('DDR5 RAM 128GB SSD')
+
+
+IDENTITY_REGRESSIONS = json.loads((ROOT / 'eval/regresiones-identidad.json').read_text(encoding='utf-8'))
+
+
+@pytest.mark.parametrize('case', IDENTITY_REGRESSIONS, ids=lambda case: case['id'])
+def test_calificadores_no_publican_productos_distintos(case):
+    row = amazon(amazonTitle=case['title'], brand=case['amazon_brand'], amazonCategory=case['category'])
+    ml = cached_product(case['name'], case['brand'], case['model'])
+    status, reason, _ = match.evaluate(row, row['ml'][0], ml, 1575)
+    assert status != 'accepted', (case['id'], reason)
+
+
+@pytest.mark.parametrize('title,name,model,brand,category', [
+    ('Logitech G29 Driving Force Racing Wheel and Floor pedals for PC/Mac - Black',
+     'Volante Logitech G29 Con Pedalera Ps 5 Ps 4 Pc 1 Color Negro', 'G29', 'Logitech', 'Racing Wheel'),
+    ('Brio 4K Ultra HD Webcam', 'Cámara web Logitech Brio 4K 90FPS color negro', 'Brio', 'Logitech', 'webcam'),
+    ('Clara BW eReader, 6” Touchscreen, Waterproof, 16GB, Black',
+     'E-reader Kobo Clara BW de 6" con 16GB, Resistente al Agua y Bluetooth', 'BW Clara', 'Kobo', 'eReader'),
+    ('Echo Dot Max (newest model), Alexa speaker with room-filling sound and nearly 2x bass, '
+     'Great for living rooms and medium-sized spaces, Designed for Alexa+, Amethyst',
+     'Alexa+ Echo Dot Max Sonido Envolvente, Color Grafito Graphite', 'Echo Dot Max', 'Amazon', 'Audio'),
+    ('Echo Dot Max (newest model), Alexa speaker with room-filling sound and nearly 2x bass, '
+     'Great for living rooms and medium-sized spaces, Designed for Alexa+, Glacier White',
+     'Alexa+ Echo Dot Max Sonido Envolvente, Color Grafito Graphite', 'Echo Dot Max', 'Amazon', 'Audio'),
+    ('Sound Party, Portable Waterproof Bluetooth Speaker with 50W Power, 26-Hour Playtime '
+     'for Outdoor Party, Award-Winning Design with 100 Speaker Sync, Black Orange',
+     'Parlante Xiaomi Sound Party 50 W Bluetooth 5.4 IP67 Negro', 'Sound Party', 'Xiaomi', 'Audio'),
+])
+def test_aceptados_nocturnos_conservan_identidad(title, name, model, brand, category):
+    ml = cached_product(name, brand, model)
+    assert cached_match(title, ml, brand, category)['accepted']
+
+
+@pytest.mark.parametrize('left,right,model', [
+    ('Echo Dot 5th Gen', 'Echo Dot 5ta generación', 'Echo Dot'),
+    ('Echo Dot gen 3', 'Echo Dot 3rd Gen', 'Echo Dot'),
+    ('Cloud II', 'Cloud 2', 'Cloud'),
+    ('Galaxy Tab A9+', 'Galaxy Tab A9 Plus', 'Galaxy Tab A9'),
+    ('Echo Dot with clock', 'Echo Dot con reloj', 'Echo Dot'),
+    ('Echo Dot Kids', 'Echo Dot infantil', 'Echo Dot'),
+])
+def test_calificadores_equivalentes_entre_idiomas(left, right, model):
+    ml = cached_product('Marca ' + right, 'Marca', model)
+    assert cached_match('Marca ' + left, ml, 'Marca', 'Audio')['accepted']
+
+
+@pytest.mark.parametrize('left,right,model', [
+    ('Echo Dot gen 3', 'Echo Dot gen 4', 'Echo Dot'),
+    ('Cloud II', 'Cloud III', 'Cloud'),
+    ('Streaming Stick 4K', 'Streaming Stick HD', 'Streaming Stick'),
+    ('Watch Series 10', 'Watch Series 9', 'Watch'),
+])
+def test_calificadores_explicitamente_distintos_se_rechazan(left, right, model):
+    row = amazon(amazonTitle='Marca ' + left, brand='Marca', amazonCategory='Audio')
+    ml = cached_product('Marca ' + right, 'Marca', model)
+    assert match.evaluate(row, row['ml'][0], ml, 1575)[:2] == ('rejected', 'variante distinta')
+
+
+def test_sufijo_de_codigo_no_se_confunde_con_ordinal():
+    assert match.model_tokens('Comfort 552A') == {'552a'}
+    ml = cached_product('Marca Comfort 552B', 'Marca', 'Comfort')
+    assert not cached_match('Marca Comfort 552A', ml, 'Marca', 'Audio')['accepted']

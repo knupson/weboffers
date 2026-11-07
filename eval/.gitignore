@@ -1,0 +1,10 @@
+# Temporales locales de pytest y Python; no forman parte del banco de evaluación.
+tmp-*/
+__pycache__/
+# Cachés y corridas grandes (≈7 MB): copia en E:/Repositorios/Personal/_datos/weboffers/eval-validador/
+ml-products-cache*.json
+discovery-*.json
+match-results-*.json
+evaluacion-*.txt
+comparacion-*.txt
+pytest-*.txt

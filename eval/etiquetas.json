@@ -1,0 +1,752 @@
+[
+    {
+        "id":  1,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma IdeaPad Slim 3, Intel N100, pantalla de 15,6 pulgadas y SSD de 128 GB."
+    },
+    {
+        "id":  2,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Galaxy Tab A11 Wi-Fi de 64 GB; variante regional y color."
+    },
+    {
+        "id":  3,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo JBL Charge 6."
+    },
+    {
+        "id":  4,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo JBL Flip 7; color."
+    },
+    {
+        "id":  5,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Google TV Streamer 4K de 32 GB; color."
+    },
+    {
+        "id":  6,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo AMD Ryzen 5 5600XT."
+    },
+    {
+        "id":  7,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Pioneer DDJ-FLX4; color."
+    },
+    {
+        "id":  8,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Toshiba Canvio Basics de 1 TB, código HDTB510XK3AA."
+    },
+    {
+        "id":  9,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Pioneer DDJ-FLX4; grafito y negro describen el mismo color oscuro."
+    },
+    {
+        "id":  10,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Redmi Note 15 Pro 4G, 8/256 GB; color."
+    },
+    {
+        "id":  11,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Pioneer DDJ-FLX4; color."
+    },
+    {
+        "id":  12,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Redmi Pad 2 Wi-Fi de 11 pulgadas, 4/128 GB."
+    },
+    {
+        "id":  13,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Redmi Note 15 Pro 4G, 8/256 GB."
+    },
+    {
+        "id":  14,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Google TV Streamer 4K de 32 GB."
+    },
+    {
+        "id":  15,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Xiaomi TV Box S de tercera generación, 2/32 GB."
+    },
+    {
+        "id":  16,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo JBL Charge 6; ML no especifica color."
+    },
+    {
+        "id":  17,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Harman Kardon Aura Studio 4."
+    },
+    {
+        "id":  18,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Xiaomi TV Box S de tercera generación, 2/32 GB."
+    },
+    {
+        "id":  19,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Redmi Pad 2 Wi-Fi, 4/128 GB; color."
+    },
+    {
+        "id":  20,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Redmi Note 15 Pro 4G, 8/256 GB; color."
+    },
+    {
+        "id":  21,
+        "etiqueta":  "distinto",
+        "por_que":  "Galaxy A17 5G frente a Galaxy A17 4G según modelo de ML."
+    },
+    {
+        "id":  22,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Xiaomi TV Box S de tercera generación y 32 GB."
+    },
+    {
+        "id":  23,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo TCL 32S5K QLED de 32 pulgadas."
+    },
+    {
+        "id":  24,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon incluye timbre Ring junto al Echo Show 11; ML solamente el Echo."
+    },
+    {
+        "id":  25,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Kindle Paperwhite Signature de 32 GB, edición 2024 y duodécima generación."
+    },
+    {
+        "id":  26,
+        "etiqueta":  "distinto",
+        "por_que":  "HP Smart Tank 5003 frente a Smart Tank 580."
+    },
+    {
+        "id":  27,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Galaxy Tab A11 Wi-Fi, 4/64 GB; color."
+    },
+    {
+        "id":  28,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma grabadora Plaud Note Pro."
+    },
+    {
+        "id":  29,
+        "etiqueta":  "distinto",
+        "por_que":  "HP Smart Tank 6001 frente a Smart Tank 585."
+    },
+    {
+        "id":  30,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo TP-Link Deco X50-Outdoor AX3000."
+    },
+    {
+        "id":  31,
+        "etiqueta":  "distinto",
+        "por_que":  "EasySing Mics y PartyBox Wireless Mic son modelos diferentes."
+    },
+    {
+        "id":  32,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Canon RF-S 10-18mm f/4.5-6.3 IS STM."
+    },
+    {
+        "id":  33,
+        "etiqueta":  "distinto",
+        "por_que":  "Galaxy A17 5G frente a Galaxy A17 4G según modelo de ML."
+    },
+    {
+        "id":  34,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Kodak PIXPRO FZ55; color."
+    },
+    {
+        "id":  35,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Logitech G29 con pedalera."
+    },
+    {
+        "id":  36,
+        "etiqueta":  "distinto",
+        "por_que":  "Montura Canon EF en Amazon frente a Nikon F en ML."
+    },
+    {
+        "id":  37,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Kindle Paperwhite Signature de 32 GB y generación; color."
+    },
+    {
+        "id":  38,
+        "etiqueta":  "duda",
+        "por_que":  "Amazon solamente dice webcam 4K; faltan marca y modelo."
+    },
+    {
+        "id":  39,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Kodak PIXPRO FZ55; color."
+    },
+    {
+        "id":  40,
+        "etiqueta":  "distinto",
+        "por_que":  "Router solamente frente a kit satelital Starlink completo."
+    },
+    {
+        "id":  41,
+        "etiqueta":  "distinto",
+        "por_que":  "Ryzen 5 7600X3D frente a Ryzen 5 9600X."
+    },
+    {
+        "id":  42,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon indica SanDisk Extreme; ML identifica SDSSDE30, otra línea de SSD portátil."
+    },
+    {
+        "id":  43,
+        "etiqueta":  "mismo",
+        "por_que":  "Ambas fichas identifican el kit MOZA R5 Bundle."
+    },
+    {
+        "id":  44,
+        "etiqueta":  "distinto",
+        "por_que":  "Forerunner 165 estándar frente a edición 165 Music."
+    },
+    {
+        "id":  45,
+        "etiqueta":  "distinto",
+        "por_que":  "Powerbeats Pro 2 frente a Powerbeats Pro de primera generación."
+    },
+    {
+        "id":  46,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon incluye funda; ML ofrece solamente el lector Kobo Clara BW."
+    },
+    {
+        "id":  47,
+        "etiqueta":  "distinto",
+        "por_que":  "Fitbit Charge 6 y Google Fitbit Air son productos diferentes."
+    },
+    {
+        "id":  48,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Kobo Clara BW de 6 pulgadas y 16 GB."
+    },
+    {
+        "id":  49,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma webcam Logitech Brio 4K."
+    },
+    {
+        "id":  50,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon especifica Plaud Note no Pro; ML ofrece Note Pro."
+    },
+    {
+        "id":  51,
+        "etiqueta":  "distinto",
+        "por_que":  "HP Smart Tank 7603 frente a Smart Tank 583."
+    },
+    {
+        "id":  52,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Kindle Paperwhite Signature de 32 GB y generación; color."
+    },
+    {
+        "id":  53,
+        "etiqueta":  "distinto",
+        "por_que":  "ML incluye teclado y lápiz; Amazon no indica esos accesorios."
+    },
+    {
+        "id":  54,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon incluye cámara Blink junto al Echo Show 11; ML solamente el Echo."
+    },
+    {
+        "id":  55,
+        "etiqueta":  "distinto",
+        "por_que":  "ML identifica una funda transparente; Amazon ofrece el lector Kobo Clara BW."
+    },
+    {
+        "id":  56,
+        "etiqueta":  "distinto",
+        "por_que":  "Moto G edición estadounidense 2026 y Moto G06 son modelos diferentes."
+    },
+    {
+        "id":  57,
+        "etiqueta":  "duda",
+        "por_que":  "Falta la generación de los Bose QuietComfort de ML para confirmar segunda generación."
+    },
+    {
+        "id":  58,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon incluye cámara Blink junto al Echo Show 11; ML solamente el Echo."
+    },
+    {
+        "id":  59,
+        "etiqueta":  "distinto",
+        "por_que":  "Work Smart 1360 y Brother DCP-T430W son modelos diferentes."
+    },
+    {
+        "id":  60,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo bafle Electro-Voice EVIVA 12P de 12 pulgadas."
+    },
+    {
+        "id":  61,
+        "etiqueta":  "distinto",
+        "por_que":  "Marcas diferentes y salida eléctrica de 120 V frente a 220 V."
+    },
+    {
+        "id":  62,
+        "etiqueta":  "duda",
+        "por_que":  "Faltan marca y modelo de la cámara 360 de Amazon para confirmar Insta360 X3."
+    },
+    {
+        "id":  63,
+        "etiqueta":  "distinto",
+        "por_que":  "Prime R2-1200X1 y Lexsen LXA-1200 son amplificadores diferentes."
+    },
+    {
+        "id":  64,
+        "etiqueta":  "distinto",
+        "por_que":  "Gemini GPK-200PK y Noblex MNT2X son productos diferentes."
+    },
+    {
+        "id":  65,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo AMD Ryzen 5 5600 de 3,5 GHz."
+    },
+    {
+        "id":  66,
+        "etiqueta":  "distinto",
+        "por_que":  "TV F40 de 40 pulgadas frente a Philips 43PFD6910 de 43 pulgadas."
+    },
+    {
+        "id":  67,
+        "etiqueta":  "duda",
+        "por_que":  "Faltan marca y modelo de la silla de Amazon para confirmar Cougar Speeder One."
+    },
+    {
+        "id":  68,
+        "etiqueta":  "duda",
+        "por_que":  "Falta identificar la generación del Xbox Wireless Headset de Amazon."
+    },
+    {
+        "id":  69,
+        "etiqueta":  "distinto",
+        "por_que":  "Brillo de 1500 frente a 400 ANSI y parlantes de distinta potencia."
+    },
+    {
+        "id":  70,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon especifica almacenamiento eMMC; ML indica SSD."
+    },
+    {
+        "id":  71,
+        "etiqueta":  "distinto",
+        "por_que":  "VFD40M-08 y Philips 40PFD6920/77 son modelos diferentes."
+    },
+    {
+        "id":  72,
+        "etiqueta":  "distinto",
+        "por_que":  "Mini PC SER3 y Solarmax SXMP-1R33200 son modelos diferentes."
+    },
+    {
+        "id":  73,
+        "etiqueta":  "duda",
+        "por_que":  "Faltan marca y modelo de la silla de Amazon para confirmar Dyvan 73210."
+    },
+    {
+        "id":  74,
+        "etiqueta":  "distinto",
+        "por_que":  "GoPro HERO compacta y HERO 13 Black son cámaras diferentes, con combos diferentes."
+    },
+    {
+        "id":  75,
+        "etiqueta":  "distinto",
+        "por_que":  "ASUS L510MA y EXO Smart T38 difieren en marca y modelo."
+    },
+    {
+        "id":  76,
+        "etiqueta":  "distinto",
+        "por_que":  "ORDRO M5 y Gadnic CAMD0004 son cámaras diferentes."
+    },
+    {
+        "id":  77,
+        "etiqueta":  "distinto",
+        "por_que":  "N-GEN Gaming y Cougar Fusion EX son sillas diferentes."
+    },
+    {
+        "id":  78,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon ofrece Audiobox; ML ofrece Noblex MNT290."
+    },
+    {
+        "id":  79,
+        "etiqueta":  "distinto",
+        "por_que":  "Mini PC E7 con Core 3 100U frente a Bmax B6 Turbo con i5-8257U."
+    },
+    {
+        "id":  80,
+        "etiqueta":  "distinto",
+        "por_que":  "Pyle PPHP1044B y Aiwa AW-T365 son parlantes diferentes."
+    },
+    {
+        "id":  81,
+        "etiqueta":  "distinto",
+        "por_que":  "Revvl 7 Pro 5G de 256 GB frente a ZTE A56 Pro de 128 GB."
+    },
+    {
+        "id":  82,
+        "etiqueta":  "distinto",
+        "por_que":  "B1 Plus y B3 Pro difieren en modelo, procesador, RAM y almacenamiento."
+    },
+    {
+        "id":  83,
+        "etiqueta":  "distinto",
+        "por_que":  "MSI MAG 274CF X24 de 27 pulgadas frente a MAG 255F de 25 pulgadas."
+    },
+    {
+        "id":  84,
+        "etiqueta":  "distinto",
+        "por_que":  "Beelink SER3 de 256 GB frente a CX Performance de 480 GB."
+    },
+    {
+        "id":  85,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Bmax B3 Pro con N4500, RAM de 8 GB y SSD de 256 GB."
+    },
+    {
+        "id":  86,
+        "etiqueta":  "distinto",
+        "por_que":  "ASUS VG259QMR5A y X-Micro X24CFE difieren en marca, modelo, tamaño y frecuencia."
+    },
+    {
+        "id":  87,
+        "etiqueta":  "distinto",
+        "por_que":  "Galaxy A37 de 128 GB frente a Galaxy A37 de 256 GB."
+    },
+    {
+        "id":  88,
+        "etiqueta":  "distinto",
+        "por_que":  "Intel N250 con 128 GB frente a HP Core 5 con 512 GB."
+    },
+    {
+        "id":  89,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon agrega filtro UV, sujetatapa y paño; ML ofrece solamente el lente."
+    },
+    {
+        "id":  90,
+        "etiqueta":  "distinto",
+        "por_que":  "Note56X Pro y ZTE Blade A56 Pro son modelos diferentes."
+    },
+    {
+        "id":  91,
+        "etiqueta":  "distinto",
+        "por_que":  "Getorli y Acemagic difieren en marca, RAM y almacenamiento: 16/512 GB frente a 8/256 GB."
+    },
+    {
+        "id":  92,
+        "etiqueta":  "distinto",
+        "por_que":  "S26 Ultra de 1 TB frente a ZTE Blade A56 Pro de 128 GB."
+    },
+    {
+        "id":  93,
+        "etiqueta":  "distinto",
+        "por_que":  "MSI MAG 274QF E20 de 27 pulgadas frente a MAG 255F de 25 pulgadas."
+    },
+    {
+        "id":  94,
+        "etiqueta":  "distinto",
+        "por_que":  "Redmi Pad 2 de 256 GB frente a Redmi Pad 2 de 128 GB."
+    },
+    {
+        "id":  95,
+        "etiqueta":  "distinto",
+        "por_que":  "Difieren procesador, RAM y almacenamiento; además ML incluye mochila."
+    },
+    {
+        "id":  96,
+        "etiqueta":  "distinto",
+        "por_que":  "Redmi Pad 2 con 8/256 GB frente a 4/128 GB."
+    },
+    {
+        "id":  97,
+        "etiqueta":  "distinto",
+        "por_que":  "Getorli de 512 GB frente a CX de 480 GB; cambia la marca."
+    },
+    {
+        "id":  98,
+        "etiqueta":  "duda",
+        "por_que":  "Frameo identifica la aplicación; faltan marca y modelo de Amazon para confirmar COMPIC."
+    },
+    {
+        "id":  99,
+        "etiqueta":  "distinto",
+        "por_que":  "Echo Show 8 con pantalla de 8,7 pulgadas frente a Echo Show 11."
+    },
+    {
+        "id":  100,
+        "etiqueta":  "distinto",
+        "por_que":  "Vivobook Go 15 Intel N150 4/128 GB frente a Ryzen 5 8/512 GB."
+    },
+    {
+        "id":  101,
+        "etiqueta":  "distinto",
+        "por_que":  "Brother QL-810Wc imprime etiquetas; DCP-T430W es una multifunción diferente."
+    },
+    {
+        "id":  102,
+        "etiqueta":  "distinto",
+        "por_que":  "Samsung Odyssey LC34G55T y LS34A650 son modelos diferentes."
+    },
+    {
+        "id":  103,
+        "etiqueta":  "distinto",
+        "por_que":  "Brother DCP-L2640DW y HL-1212W son modelos diferentes."
+    },
+    {
+        "id":  104,
+        "etiqueta":  "distinto",
+        "por_que":  "My Passport WDBYVG y WDBLPG difieren en modelo y conexión; ML especifica USB-C."
+    },
+    {
+        "id":  105,
+        "etiqueta":  "distinto",
+        "por_que":  "Epson ET-2410 multifunción frente a L1250, otro modelo sin escáner."
+    },
+    {
+        "id":  106,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma barra Samsung HW-B400F de 2.0 canales."
+    },
+    {
+        "id":  107,
+        "etiqueta":  "distinto",
+        "por_que":  "Epson WorkForce WF-4930 y EcoTank L4360 son modelos diferentes."
+    },
+    {
+        "id":  108,
+        "etiqueta":  "distinto",
+        "por_que":  "Brother MFC-T580DW y DCP-T730DW son modelos diferentes."
+    },
+    {
+        "id":  109,
+        "etiqueta":  "distinto",
+        "por_que":  "Seagate Expansion Desktop STKP4000400 y STKM4000400 corresponden a formatos y modelos diferentes."
+    },
+    {
+        "id":  110,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Xiaomi Sound Party de 50 W."
+    },
+    {
+        "id":  111,
+        "etiqueta":  "distinto",
+        "por_que":  "Epson WorkForce WF-2830 y EcoTank L4360 son modelos diferentes."
+    },
+    {
+        "id":  112,
+        "etiqueta":  "distinto",
+        "por_que":  "Altavoz EVM12L para guitarra frente a bafle activo EVIVA 12P."
+    },
+    {
+        "id":  113,
+        "etiqueta":  "distinto",
+        "por_que":  "Scarlett 2i2 cuarta generación frente a Scarlett Solo tercera generación."
+    },
+    {
+        "id":  114,
+        "etiqueta":  "distinto",
+        "por_que":  "Ryzen 7 5800XT y Ryzen 7 5700X son procesadores diferentes."
+    },
+    {
+        "id":  115,
+        "etiqueta":  "duda",
+        "por_que":  "Falta la montura del lente de Amazon; ML especifica Nikon F."
+    },
+    {
+        "id":  116,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Samsung Galaxy A17 5G, 128 GB y RAM de 4 GB."
+    },
+    {
+        "id":  117,
+        "etiqueta":  "distinto",
+        "por_que":  "Audio-Technica AT-LP120XUSB y AT-LP70X son tocadiscos diferentes."
+    },
+    {
+        "id":  118,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo TCL 50S5K QLED de 50 pulgadas; sufijo regional."
+    },
+    {
+        "id":  119,
+        "etiqueta":  "distinto",
+        "por_que":  "Maono PD200W inalámbrico frente a PD200X con soporte articulado incluido."
+    },
+    {
+        "id":  120,
+        "etiqueta":  "distinto",
+        "por_que":  "MSI MAG 274QRFW X32 de 320 Hz frente a MAG 274QF X24 de 240 Hz."
+    },
+    {
+        "id":  121,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon ofrece G923 con palanca adicional; ML ofrece G29 con pedalera."
+    },
+    {
+        "id":  122,
+        "etiqueta":  "distinto",
+        "por_que":  "LG 24G414B de 144 Hz y 24GS60F de 180 Hz son modelos diferentes."
+    },
+    {
+        "id":  123,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma Kodak PIXPRO FZ45 de 16 MP y zoom óptico 4x."
+    },
+    {
+        "id":  124,
+        "etiqueta":  "distinto",
+        "por_que":  "Andonstar AD246-M y AD106S son microscopios diferentes."
+    },
+    {
+        "id":  125,
+        "etiqueta":  "distinto",
+        "por_que":  "TCL 43F7D 4K y 43S5K Full HD son modelos diferentes."
+    },
+    {
+        "id":  126,
+        "etiqueta":  "distinto",
+        "por_que":  "Philips TAX5000 y TAX400B son parlantes diferentes."
+    },
+    {
+        "id":  127,
+        "etiqueta":  "mismo",
+        "por_que":  "Misma barra Samsung B550/B555 de 2.1 canales con subwoofer; denominación regional."
+    },
+    {
+        "id":  128,
+        "etiqueta":  "distinto",
+        "por_que":  "Ryzen 5 5600T y Ryzen 5 5600XT son procesadores diferentes."
+    },
+    {
+        "id":  129,
+        "etiqueta":  "distinto",
+        "por_que":  "Andonstar AD246S-M y AD106S son microscopios diferentes."
+    },
+    {
+        "id":  130,
+        "etiqueta":  "distinto",
+        "por_que":  "Canon G6020 multifunción y G1110 monofunción son modelos diferentes."
+    },
+    {
+        "id":  131,
+        "etiqueta":  "distinto",
+        "por_que":  "Samsung D402 S40GD y D300 son series de monitores diferentes."
+    },
+    {
+        "id":  132,
+        "etiqueta":  "mismo",
+        "por_que":  "Mismo Samsung Galaxy A17 5G, 128 GB y RAM de 4 GB."
+    },
+    {
+        "id":  133,
+        "etiqueta":  "distinto",
+        "por_que":  "LG 32MR50C de 32 pulgadas frente a 27GS60F de 27 pulgadas."
+    },
+    {
+        "id":  134,
+        "etiqueta":  "distinto",
+        "por_que":  "Monitor Samsung de 24 pulgadas frente a 22 pulgadas."
+    },
+    {
+        "id":  135,
+        "etiqueta":  "distinto",
+        "por_que":  "MSI PRO MP275PG de 27 pulgadas frente a G242L de 23,8 pulgadas."
+    },
+    {
+        "id":  136,
+        "etiqueta":  "distinto",
+        "por_que":  "Moto G57 5G con RAM de 8 GB frente a Moto G06 con 4 GB."
+    },
+    {
+        "id":  137,
+        "etiqueta":  "distinto",
+        "por_que":  "IdeaPad 1 con RAM de 8 GB y SSD frente a 4 GB y eMMC."
+    },
+    {
+        "id":  138,
+        "etiqueta":  "distinto",
+        "por_que":  "Moto G17 Power con RAM de 8 GB frente a Moto G06 con 4 GB."
+    },
+    {
+        "id":  139,
+        "etiqueta":  "distinto",
+        "por_que":  "Edifier M60 y MR3 son parlantes de modelos y potencias diferentes."
+    },
+    {
+        "id":  140,
+        "etiqueta":  "distinto",
+        "por_que":  "Samsung F6000 de 40 pulgadas frente a F6000 de 43 pulgadas."
+    },
+    {
+        "id":  141,
+        "etiqueta":  "distinto",
+        "por_que":  "Harman Kardon SoundSticks 4 y Aura Studio 4 son sistemas diferentes."
+    },
+    {
+        "id":  142,
+        "etiqueta":  "distinto",
+        "por_que":  "Scarlett Solo Studio cuarta generación con accesorios frente a Solo tercera generación sin combo."
+    },
+    {
+        "id":  143,
+        "etiqueta":  "distinto",
+        "por_que":  "HP Sprocket Studio Plus y Xiaomi 1S son impresoras diferentes."
+    },
+    {
+        "id":  144,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon incluye micrófono y auriculares; ML ofrece solamente la interfaz Scarlett Solo."
+    },
+    {
+        "id":  145,
+        "etiqueta":  "distinto",
+        "por_que":  "Edifier MR4 y MR3 son modelos diferentes."
+    },
+    {
+        "id":  146,
+        "etiqueta":  "distinto",
+        "por_que":  "Canon imageFORMULA R10 y CanoScan LiDE 300 son escáneres diferentes."
+    },
+    {
+        "id":  147,
+        "etiqueta":  "distinto",
+        "por_que":  "Cámara Insta360 X3 con accesorios frente a un adaptador de micrófono solamente."
+    },
+    {
+        "id":  148,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon vende dos JBL Flip 7; ML vende una unidad."
+    },
+    {
+        "id":  149,
+        "etiqueta":  "distinto",
+        "por_que":  "Ring Floodlight Cam 4K Pro y Wired Plus son versiones diferentes."
+    },
+    {
+        "id":  150,
+        "etiqueta":  "distinto",
+        "por_que":  "Amazon ofrece solamente un control DualSense; ML vende PS5 Slim con control extra."
+    }
+]
