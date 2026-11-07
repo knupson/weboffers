@@ -425,5 +425,53 @@
     "related": [
       "asus-tuf-gaming-vg27aq3a"
     ]
+  },
+  {
+    "slug": "garantia-mercado-libre-o-amazon",
+    "title": "Garantía: comprar en Mercado Libre o traer de Amazon",
+    "description": "Qué garantía tenés si comprás en Mercado Libre y qué pasa si lo traés de Amazon por courier: ley 24.240, devoluciones de Amazon y qué mirar antes de decidir.",
+    "h1": "Garantía: qué cambia entre comprar en Mercado Libre y traerlo de Amazon",
+    "intro": "Cuando el sitio te dice que algo sale más barato en Amazon, la diferencia de precio no es lo único que cambia. También cambia a quién le reclamás si el producto falla. Esta guía explica qué garantía tenés en cada caso, según la ley argentina y las reglas de Amazon, para que sepas qué estás resignando cuando elegís el precio más bajo.",
+    "sections": [
+      {
+        "heading": "Si lo comprás en Mercado Libre",
+        "paragraphs": [
+          "Un vendedor que comercializa productos en Argentina es proveedor según el artículo 2 de la ley 24.240 de Defensa del Consumidor, y está obligado a cumplirla.",
+          "El artículo 11 te da garantía legal por defectos de cualquier tipo que afecten el funcionamiento o la identidad entre lo que te ofrecieron y lo que te entregaron: 6 meses para productos nuevos y 3 para usados, contados desde la entrega. El vendedor puede ofrecerte más plazo, nunca menos.",
+          "El artículo 13 hace responsables a la vez al productor, al importador, al distribuidor y al vendedor. Si el vendedor te manda a hablar con la marca, igual podés reclamarle a él."
+        ]
+      },
+      {
+        "heading": "Si lo traés de Amazon por courier",
+        "paragraphs": [
+          "Amazon no tiene una empresa que venda en Argentina: le comprás a Amazon de Estados Unidos o de España y el producto entra por courier. La garantía legal de la ley 24.240 está pensada para proveedores que operan en el país, así que no cuentes con poder reclamarla acá como en una compra local.",
+          "Lo que sí tenés son las reglas de Amazon. Según su página de devoluciones internacionales, los artículos enviados por Amazon se pueden devolver dentro de los 30 días desde que los recibís. Si el producto llegó fallado, dañado o no es el que pediste, Amazon dice que te reintegra el envío de vuelta completo y el depósito de impuestos de importación. Igual tenés que mandarlo de nuevo a Estados Unidos o a España, y eso lleva días.",
+          "Pasados esos 30 días queda la garantía del fabricante. Algunas marcas la cumplen en cualquier país y otras sólo en la región donde se vendió el producto. Eso depende de cada marca y no lo podemos confirmar por vos: revisalo en la web oficial antes de comprar."
+        ]
+      },
+      {
+        "heading": "Cómo decidir",
+        "paragraphs": [
+          "Si la diferencia de precio es chica, la garantía local suele valer más que el ahorro: un reclamo en el país no te obliga a mandar el producto de vuelta al exterior.",
+          "Si la diferencia es grande, traerlo de Amazon puede compensar lo que resignás. Depende de cuánto te cueste quedarte sin el producto si falla.",
+          "En cada ficha del sitio ves el ahorro del día en pesos. Usalo para pesar cuánto te cuesta quedarte con la garantía local."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Cuánto dura la garantía legal en Argentina?",
+        "a": "6 meses para productos nuevos y 3 meses para usados, desde la entrega (artículo 11 de la ley 24.240). El vendedor puede darte más plazo, no menos."
+      },
+      {
+        "q": "Si compro en Mercado Libre y el vendedor me deriva a la marca, ¿qué hago?",
+        "a": "Podés reclamarle igual al vendedor. El artículo 13 de la ley 24.240 hace responsables a la vez al productor, al importador, al distribuidor y al vendedor."
+      },
+      {
+        "q": "¿Puedo devolver algo que traje de Amazon?",
+        "a": "Los artículos enviados por Amazon se pueden devolver dentro de los 30 días desde que los recibís, según su página de devoluciones internacionales. Si el producto vino fallado, Amazon dice que te reintegra el envío de vuelta; si no, ese costo puede correr por tu cuenta. Si lo vende otro vendedor, la devolución va a ese vendedor."
+      }
+    ],
+    "related": []
   }
 ]
