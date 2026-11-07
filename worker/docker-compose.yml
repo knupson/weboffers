@@ -33,9 +33,24 @@ services:
     mem_limit: 512m
 
   weboffers-amazon-ar:
-    build: ./amazon-ar
+    build:
+      context: .
+      dockerfile: amazon-ar/Dockerfile
     restart: unless-stopped
     mem_limit: 256m
+
+  weboffers-barrido:
+    build:
+      context: .
+      dockerfile: barrido/Dockerfile
+    restart: unless-stopped
+    environment:
+      ML_CLIENT_ID: ${ML_CLIENT_ID:-}
+      ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
+      BARRIDO_OUTPUT: /app/output/barrido
+    volumes:
+      - ./output:/app/output
+      - ../data:/app/data:ro
 
   weboffers-deployer:
     build: ./deployer
