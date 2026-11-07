@@ -86,6 +86,10 @@ def main(argv):
     if isinstance(lista, list):
         nuevos = set()
         print(f"resultados={len(lista)} total_pages={d.get('total_pages')} count={d.get('count')}")
+        # Filtros de la barra lateral de Amazon para esta búsqueda (p. ej. si existe «envía a Argentina»).
+        for f in d.get("refinements") or []:
+            opciones = [o.get("name") for o in f.get("options") or []]
+            print(f"FILTRO {f.get('id')} | {f.get('name')} | {opciones[:8]}")
         for x in lista:
             asin = x.get("asin")
             nuevos.add(asin)
