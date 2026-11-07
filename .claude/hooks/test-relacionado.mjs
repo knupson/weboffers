@@ -16,6 +16,8 @@ if (!file) process.exit(0);
 const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 const rel = path.relative(root, path.resolve(file)).split(path.sep).join('/');
 if (rel.startsWith('..') || rel.startsWith('node_modules/')) process.exit(0);
+// En Windows spawnSync va con shell: sólo rutas con caracteres seguros (evita inyección por nombre de archivo).
+if (!/^[\w\/.-]+$/.test(rel)) process.exit(0);
 
 const ext = path.extname(rel);
 let run = null;
