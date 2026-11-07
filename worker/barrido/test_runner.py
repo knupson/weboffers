@@ -91,13 +91,6 @@ def test_tope_variantes_persistido(tmp_path, fixture_dir):
     assert calls == ["FIXTURE1"] and rows[0]["variations"] and rows[1]["variations"] is None
 
 
-def test_no_red_si_tasa_ausente(tmp_path):
-    def failure(*args):
-        raise ValueError("Cotización de hoy ausente fixture")
-    result = run_store("ML", {"nodes": []}, Config(), tmp_path, now_art().date().isoformat(), rate_loader=failure)
-    assert result["status"] == "failed" and result["error"] == "Cotización de hoy ausente fixture"
-
-
 def test_cambio_de_dia_no_confirma_pagina(tmp_path, monkeypatch):
     from datetime import timedelta
     from . import runner

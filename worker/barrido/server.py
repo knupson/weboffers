@@ -10,8 +10,8 @@ from .runner import run_all
 
 def handle_probe(params):
     store = params.get("country", "US").upper()
-    if store not in ("US", "ES", "ML"):
-        raise ValueError("country debe ser US, ES o ML")
+    if store not in ("US", "ES"):
+        raise ValueError("country debe ser US o ES")
     categories = load_config()
     node = params.get("node")
     if node:

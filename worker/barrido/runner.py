@@ -9,7 +9,6 @@ from .amazon_source import AmazonSource, SourceError, next_page
 from .config import Config
 from .currency import load_daily_rates, validate_rate, StaleRate
 from .events import emit_event, now_art
-from .ml_source import MLSource
 from .state import State, acquire_run_lock, write_summary
 
 
@@ -89,6 +88,8 @@ def category_metrics(state, category):
 
 def run_store(store, definition, config, output, date, *, dry_run=False, refresh=False,
               max_pages=None, source_factory=None, rate_loader=load_daily_rates, known=(), sleep=time.sleep):
+    if store not in ("US", "ES"):
+        raise ValueError("El barrido por categorías sólo admite US y ES")
     if not dry_run and (config.min_usd, config.max_usd) != (Config().min_usd, Config().max_usd):
         raise ValueError("El rango real debe ser 100–400 USD; usá --dry-run para otro rango")
     state = None if dry_run else State(output, date, store)
@@ -108,23 +109,19 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
             state.freeze({**context, "rate": rate})
         if source_factory:
             source = source_factory(store, date, rate)
-        elif store == "ML":
-            source = MLSource(date, rate, config, known=known, sleep=sleep)
         else:
             source = AmazonSource(store, date, rate, config, Path(output) / "refinements", refresh=refresh, known=known, sleep=sleep)
-        categories = source.walk_categories(definition) if store == "ML" else [
+        categories = [
             node for node in definition["nodes"] if node["id"] not in definition.get("exclude", [])]
         emit_event("BARRIDO_CATEGORIAS", tienda=store, cantidad=len(categories), dry_run=dry_run)
         for category in categories:
             category_id = category["id"]
             try:
-                if '_discovery_error' in category:
-                    raise category['_discovery_error']
                 page = 1 if dry_run else state.load_checkpoint(category_id)
                 signatures = {tuple(row["id"] for row in p["products"]) for p in state.pages(category_id)} if state else set()
                 fetched = 0
                 if page is not None:
-                    sleep(config.ml_pause if store == "ML" else config.pause)
+                    sleep(config.pause)
                 while page is not None:
                     if now_art().date().isoformat() != date:
                         raise SourceError("Cambió el día ART: se detiene para no mezclar fechas")
@@ -169,7 +166,7 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                         emit_event("BARRIDO_LIMITE", tienda=store, categoria=category_id, pagina=page)
                         break
                     if page is not None:
-                        sleep(config.ml_pause if store == "ML" else config.pause)
+                        sleep(config.pause)
                 if state:
                     result["categories"][category_id] = category_metrics(state, category_id)
             except Exception as exc:

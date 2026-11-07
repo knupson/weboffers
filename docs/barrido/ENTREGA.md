@@ -29,12 +29,12 @@ El bloqueo de búsqueda medido por Alejandro no se da por resuelto.
 - docs/barrido/{TAREAS,OPERACION,ENTREGA}.md.
 - worker/amazon_shipping.py.
 - worker/barrido/{__init__,config,models,bootstrap,shipping,currency,refinements,amazon_source,
-  ml_source,state,events,runner,__main__,server}.py.
+  ml_lookup,state,events,runner,__main__,server}.py.
 - worker/barrido/{categorias.json,requirements.txt,Dockerfile}.
 - worker/barrido/{conftest,test_config,test_currency,test_refinements,test_shipping,
-  test_amazon_source,test_vendor,test_state,test_ml_source,test_runner,test_acceptance}.py.
+  test_amazon_source,test_vendor,test_state,test_ml_lookup,test_runner,test_acceptance}.py.
 - worker/barrido/fixtures/{README.md,us_search.html,es_search.html,dogs_503.html,
-  ml_highlights.json,ml_product.json,ml_items.json,variations.json}.
+  ml_lookup.json,ml_items.json,variations.json}.
 - worker/barrido/vendor/: módulos de ejecución del commit fijado, licencia, requisitos originales,
   UPSTREAM.md y manifiestos SHA-256. Única modificación de código upstream: amazon/fetch.py.
 - worker/test_probar_scraper.py.
@@ -56,8 +56,8 @@ Trailer para cada mensaje: `Co-Authored-By: GPT-6 (Codex) <noreply@openai.com>`.
    Archivos: worker/amazon_shipping.py; worker/amazon-ar/{ar_server.py,Dockerfile};
    worker/barrido/{shipping,test_shipping}.py.
 4. **Agregá adquisición diaria, reanudación y control de bloqueos**
-   Archivos: worker/barrido/{currency,refinements,amazon_source,ml_source,state,events,runner,__main__}.py;
-   worker/barrido/{conftest,test_currency,test_refinements,test_amazon_source,test_ml_source,
+   Archivos: worker/barrido/{currency,refinements,amazon_source,ml_lookup,state,events,runner,__main__}.py;
+   worker/barrido/{conftest,test_currency,test_refinements,test_amazon_source,test_ml_lookup,
    test_state,test_runner,test_acceptance}.py; worker/barrido/fixtures/.
 5. **Sumá el servicio interno, la prueba manual y la guía de operación**
    Archivos: worker/barrido/{Dockerfile,server.py}; worker/docker-compose.yml;

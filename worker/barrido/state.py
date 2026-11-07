@@ -173,6 +173,32 @@ class State:
         return body.get(identity, {}).get("value")
 
 
+class LookupState(State):
+    """Un registro atómico por tienda/ASIN; los errores se reintentan al reanudar."""
+
+    def __init__(self, output, date):
+        super().__init__(output, date, "ml-lookup")
+
+    def records(self):
+        return [json.loads(path.read_text(encoding="utf-8"))
+                for path in sorted((self.root / "records").glob("*.json"))]
+
+    def commit_lookup(self, row):
+        key = context_key([row["store"], row["asin"]])
+        path = self.root / "records" / f"{key}.json"
+        if path.exists():
+            previous = json.loads(path.read_text(encoding="utf-8"))
+            if previous["lookup_status"] != "error" and previous != row:
+                raise ValueError("Consulta diaria ya confirmada")
+        write_atomic(path, row)
+
+    def materialize_jsonl(self):
+        rows = self.records()
+        write_atomic(self.output / f"ml-candidatos-{self.date}.jsonl",
+                     "".join(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n" for row in rows), text=True)
+        return rows
+
+
 def write_summary(output, date, stores):
     path = Path(output) / f"resumen-{date}.json"
     previous = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"date": date, "stores": {}}

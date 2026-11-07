@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Adquisición diaria independiente US, ES y ML. «Todos» significa resultados accesibles de nodos
+Adquisición diaria Amazon US y ES, seguida de lookup ML. «Todos» significa resultados accesibles de nodos
 configurados, no exhaustividad de catálogo. Nuevo es condición nueva; conocidos también se guardan.
 No publica ni modifica el catálogo actual. Tareas 1–9 y 11; integración (tarea 10) pendiente.
 Medido 07/11: ML highlights y products/search 200, sites/MLA/search categoría+precio 403;
@@ -10,15 +10,15 @@ Amazon /s desde VM: `503 dogs page (after 4 sessions)`; /dp funciona. No eludimo
 
 ## Configuración
 
-`categorias.json`: `{version:1, stores:{US:{nodes:[{id,name,kind:"root"|"leaf"}],exclude:[id]},ES:...,ML:...}}`.
+`categorias.json`: `{version:1, stores:{US:{nodes:[{id,name,kind:"root"|"leaf"}],exclude:[id]},ES:...}}`.
 Nodos Amazon explícitos: root se consulta tal cual, SIN expansión implícita. Para particionar se
-versionan hojas. ML expande raíces por /categories/{id} hasta hojas, excluye subárboles y deduplica.
+versionan hojas. ML no tiene nodos ni barrido de categorías o destacados.
 La lista inicial es configurable y no garantiza cobertura total. Los nodos iniciales US/ES deben
 validarse en la primera consulta real; los refinamientos se descubren en ejecución, nunca se inventan.
 Rango real fijo USD 100–400; `--min-usd`/`--max-usd` sólo se admiten con `--dry-run`.
 US USD; ES EUR con límites locales redondeados hacia afuera al centavo
-y validación final USD; ML ARS/MEP, filtro después de ofertas. La fuente vieja ML abarca 60–2400:
-medir cobertura antes de retirarla. Cotizaciones positivas, finitas y de HOY ART con fuente/fecha.
+y validación final USD. El rango define los productos Amazon a comparar; no limita el precio ML.
+ML convierte ARS a USD con MEP. Cotizaciones positivas, finitas y de HOY ART con fuente/fecha.
 Sin tasa del día falla ML; ES queda `skipped` con `BARRIDO_ES_SIN_COTIZACION` y
 `fecha_recibida` literal. ES corre sólo los días con cotizaciones oficial y EUR del mismo día ART;
 no se reutilizan tasas del último día hábil durante fines de semana o feriados. US no necesita tasas externas.
@@ -36,10 +36,10 @@ diarios por tienda persistidos ANTES de consultar. Todo configurable, no es un r
 | Campo | Tipo y significado |
 |---|---|
 | schema_version | entero 1 |
-| store, id | US/ES/ML, ASIN o ID catálogo ML |
+| store, id | US/ES, ASIN |
 | observed_at, date | timestamp ISO -03:00 y fecha ART |
 | title | string o null |
-| currency | USD/EUR/ARS |
+| currency | USD/EUR |
 | price, price_usd | número positivo local/convertido o null |
 | exchange_rate | {value,source,observed_at}; USD identidad 1 |
 | condition | new o null; Amazon evidencia del filtro nuevo aplicado |
@@ -56,8 +56,7 @@ diarios por tienda persistidos ANTES de consultar. Todo configurable, no es un r
 
 raw conserva marca, lista, cupón, opciones, reseñas, estrellas, comprados, patrocinado, imagen y links
 si existen. HTML evita pérdidas del parser. Precio ausente/fuera de rango, moneda errónea, condición
-no nueva o envío desconocido deja eligible=false y motivo; se conserva como evidencia. ML exige
-oferta ARS explícita, condition=new, sin CBT; shipping_class sale de shipping de oferta local.
+no nueva o envío desconocido deja eligible=false y motivo; se conserva como evidencia.
 Ausencia de has_variations es null. Variantes sólo si eligible y hay indicio; cap persistente diario.
 
 ## Ubicación y envío compartidos
@@ -84,11 +83,54 @@ ni exhaustividad. total_pages es máximo visible, no total independiente. Seguir
 Sin paginación ni next, la página de resultados es la última; cero resultados registra
 `BARRIDO_CATEGORIA_VACIA`. Repetición de secuencia ASIN/página incorrecta → parcial con error explícito.
 No fijar límite arbitrario de páginas. Tope de operador → parcial, nunca completo.
-ML: highlights/MLA/category/{cat} → PRODUCT → products/{id} y products/{id}/items paginado.
-No sites/MLA/search. products/search queda para matching futuro. Conservar respuestas, deduplicar
-IDs y procedencias. La respuesta highlights completa se guarda una vez por página; cada fila guarda
-sólo su entrada propia. Highlights no es catálogo exhaustivo. 401/403/429/error: falla visible con cuerpo
-literal, no lista vacía. Sin MEP de hoy falla ML; no se prueba cuota real desde fixtures.
+## Paso ML: `ml-lookup` (R6)
+
+Se ejecuta después de Amazon US y ES (ES sólo con tasas del mismo día). Lee exclusivamente
+`US-AAAA-MM-DD.jsonl` y `ES-AAAA-MM-DD.jsonl` del día ART actual, nunca archivos anteriores.
+Deduplica por (store, ASIN), exige fecha/tienda coincidentes, `price_usd` finito en 100–400
+(inclusive) y `shipping_class` en `gratis` o `desconocido`. Se incluye `desconocido` porque la tarjeta
+de búsqueda puede omitir el envío: buscar una contraparte no confirma elegibilidad. Sólo `gratis`
+sigue siendo elegible y la confirmación posterior de envío a Argentina sigue siendo obligatoria.
+Se omiten `pago`, `no_envia`, `envia_costo_desconocido` y precios ausentes/fuera de rango.
+
+Consulta la API oficial `/products/search?status=active&site_id=MLA&q=<consulta>`:
+primero marca + código de modelo extraído del título completo (incluye paréntesis como S36GD),
+y, si no hay candidatos con oferta local, título limpio. Consultas repetidas se deduplican.
+Máximo cinco productos de catálogo distintos consultados por fila Amazon, entre ambas consultas.
+Para cada uno recorre `/products/{id}/items`, elige la oferta más barata con `condition=new`,
+`currency_id=ARS`, precio positivo finito y sin CBT/internacional. Usa `get_json`, `cheapest_new`
+y `is_international` compartidos de `ml_prices`; no usa `find_ml_candidates` porque oculta errores
+ni `clean_title_for_ml` porque elimina el modelo entre paréntesis y vive fuera de la imagen worker.
+El precio USD es ARS multiplicado por la tasa inversa MEP validada y congelada para el día.
+404 «no winners» significa sin oferta; otros errores conservan el literal, nunca simulan vacío.
+
+Salida `output/barrido/ml-candidatos-AAAA-MM-DD.jsonl`, una fila por (store, ASIN):
+
+```json
+{"store":"US","asin":"B0EJEMPLO1","amazon_title":"Samsung S36GD","amazon_price_usd":200,"shipping_class":"desconocido","queries_used":["Samsung S36GD"],"candidates":[{"catalogId":"MLAEJEMPLO","name":"Samsung S36GD","price_ars":200000,"price_usd":200,"itemId":"MLA1001","condition":"new"}],"lookup_status":"ok","error":null}
+```
+
+Ejemplo sintético, no precio medido. `lookup_status`: `ok`, `sin_resultados` o `error`;
+`error` contiene el literal completo en fallas y null en los otros estados. Una falla descarta
+candidatos parciales de esa fila. Estado en `state/AAAA-MM-DD/ml-lookup/records`, usando el módulo
+`state`: registro atómico antes de reconstruir el JSONL atómico, sin append ni duplicados.
+Filas `ok`/`sin_resultados` no se reconsultan; `error` se reemplaza al reintentar ese ASIN.
+Un corte entre registro y materialización se recupera sin nueva consulta. El mismo ASIN de US y ES
+conserva dos filas. El archivo es entrada futura del matcher (tarea 10), sin conectar todavía.
+
+`--step ml-lookup [--date AAAA-MM-DD] [--limit N] [--dry-run]`. La fecha sólo puede ser hoy ART;
+se comprueba también durante las consultas. `--limit` limita productos pendientes por ejecución;
+con `--dry-run` toma sólo las primeras N filas filtradas (5 por defecto), imprime consultas y
+cantidades, sin crear lock, estado ni archivo oficial y sin usar checkpoints de producción.
+Pausa `ml_pause` antes de cada pedido. 403/429 corta inmediatamente todo el paso, registra la fila
+con error y permite reanudarla. Sin reintentos internos ante bloqueo.
+
+Cada línea lleva hora ART: `BARRIDO_ML_BUSQUEDA` (asin, consulta, candidatos de búsqueda,
+segundos), `BARRIDO_ML_ERROR` (asin, motivo literal, http), `BARRIDO_ML_BLOQUEADO` (mismos campos)
+y al terminar `BARRIDO_ML_OK` (total, con_candidatos, sin_resultados, errores), incluso si hubo
+fallas. Este evento resume contadores: el estado y el código de salida determinan el resultado.
+Bloqueo, errores pendientes o límite con filas pendientes producen salida no cero; el límite
+registra `BARRIDO_ML_LIMITE`. No se afirma cuota real desde fixtures.
 
 ## Persistencia y observabilidad
 

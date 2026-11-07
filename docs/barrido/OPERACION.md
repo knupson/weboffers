@@ -59,3 +59,44 @@ pytest tampoco puede leer el directorio temporal predeterminado. Esto no cambia 
 Pendiente de aceptación real A6: build en VM, US completo, ES, reinicio real, verificar cinco pares
 tarjeta/ficha y procedencia/alcance de nodos iniciales. Los fixtures son sintéticos rotulados.
 La cuota ML, cobertura de nodos, tasa tolerable y coincidencia tarjeta/ficha no se deducen de tests.
+
+## R6 — ML busca contrapartes de Amazon (decisión 07/11)
+
+Ya no se ejecuta `--store ML`: no hay categorías ni destacados de ML en este barrido.
+El producto se compara porque existe en Amazon entre USD 100 y 400. Orden completo, ejecutando
+cada paso cuando termina el anterior: Amazon US, Amazon ES si hay cotizaciones del día, `ml-lookup`.
+Desde worker (o dentro del servicio `weboffers-barrido`):
+
+```sh
+python -m barrido --store US
+python -m barrido --store ES
+python -m barrido --step ml-lookup
+python -m barrido --step ml-lookup --date 2026-11-07 --limit 5 --dry-run
+```
+
+La fecha de ejemplo debe reemplazarse por hoy ART. ES sin tasas del día queda `skipped`;
+ML exige MEP del día aunque ES se omita. Los comandos no instalan scheduler ni conectan tarea 10.
+Mediciones del 07/11 conservadas: `/highlights/MLA/category/...` y `/products/search` dieron 200;
+`/sites/MLA/search` con categoría+precio dio 403. El primer endpoint deja de usarse por decisión
+de diseño. Amazon `/s` desde VM dio `503 dogs page (after 4 sessions)` y `/dp` funcionó.
+Estos hechos no establecen una cuota ni garantizan disponibilidad actual.
+
+Entrada: JSONL Amazon US/ES de hoy. Sólo USD 100–400 y envío `gratis` o `desconocido`.
+`desconocido` entra porque la tarjeta puede omitir el envío; sólo `gratis` sigue siendo elegible
+más adelante. No se publican candidatos por haber encontrado una oferta ML.
+Salida: `ml-candidatos-AAAA-MM-DD.jsonl`. Revisar consultas/modelos, precio ARS, conversión MEP,
+identidad de oferta y estado por fila. Máximo cinco catálogos distintos por producto Amazon.
+`--limit N` procesa N pendientes; repetir sin límite continúa. Si quedan filas, el estado es
+parcial y devuelve código no cero. El dry-run usa primeras N filas
+filtradas (5 por defecto), hace consultas reales y no escribe el archivo oficial ni checkpoints.
+
+Reanudar con el mismo comando, directorio y fecha: conserva ?xitos y ausencias confirmadas,
+reintenta errores y reconstruye sin duplicados. Un 403/429 corta el paso con
+`BARRIDO_ML_BLOQUEADO`, cuerpo literal y HTTP. Resolver el bloqueo antes de reanudar; nunca
+interpretarlo como cero resultados. `--ml-pause` controla la pausa entre pedidos.
+Los logs llevan hora ART y terminan con contadores de productos con candidatos, sin resultados
+y errores; un paso bloqueado o con errores devuelve código no cero.
+
+Pruebas en este entorno Windows: usar el PYTHONPATH de dependencias provisto y TEMP/TMP en
+`E:/Repositorios/.barrido-test-tmp` para evitar el temporal restringido. No se instala ni cambia
+ninguna dependencia de producción por esta validación.

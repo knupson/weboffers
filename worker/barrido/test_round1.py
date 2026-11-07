@@ -176,26 +176,6 @@ def test_reintentos_bloqueos_y_transitorios_independientes():
     assert data['block_failures'] == data['transient_failures'] == 2
 
 
-def test_descubrimiento_ml_falla_sigue_otro_nodo(tmp_path, capsys):
-    import requests
-    from .ml_source import MLSource
-    response = requests.Response()
-    response.status_code, response._content = 404, b'categoria inexistente literal'
-    def get(path, params=None):
-        if path.endswith('A'):
-            raise requests.HTTPError('404 literal', response=response)
-        return {'children_categories': []} if path.startswith('/categories') else {'content': []}
-    source = MLSource('fixture', {}, Config(ml_pause=0), get=get, sleep=lambda _: None)
-    nodes = definition('A', 'B')
-    for node in nodes['nodes']:
-        node['kind'] = 'root'
-    result = run_store('ML', nodes, Config(ml_pause=0), tmp_path, now_art().date().isoformat(), **options(source))
-    assert result['status'] == 'partial'
-    assert result['categories']['A']['status'] == 'failed'
-    assert result['categories']['B']['paginas'] == 1
-    assert 'categoria inexistente literal' in capsys.readouterr().out
-
-
 def test_fuentes_puras_corren_sin_curl_cffi():
     import subprocess
     import sys

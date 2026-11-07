@@ -5,7 +5,7 @@
 - [x] 3. Envío compartido: compatibilidad amazon-ar y fixtures ES.
 - [x] 4. Tasas diarias y refinamientos cacheados probados.
 - [x] 5. Páginas Amazon: filtros, evidencia y avance probados.
-- [x] 6. ML: destacados y ofertas locales nuevas probados.
+- [x] 6. ML: lookup desde Amazon del día, ofertas locales nuevas y reanudación probados (decisión 07/11).
 - [x] 7. Estado: atomicidad, reanudación y lock probados.
 - [x] 8. Runner: bloqueo aislado y variantes persistidas probados.
 - [x] 9. Servicio y herramienta: configuración y pruebas locales; build VM pendiente.

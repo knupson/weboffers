@@ -35,7 +35,7 @@ def validate_categories(body):
     if body.get("version") != 1 or not isinstance(body.get("stores"), dict):
         raise ValueError("Categorías: se requiere version=1 y stores")
     for store, definition in body["stores"].items():
-        if store not in ("US", "ES", "ML"):
+        if store not in ("US", "ES"):
             raise ValueError(f"Tienda inválida: {store}")
         seen = set()
         for node in definition["nodes"]:

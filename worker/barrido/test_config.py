@@ -5,7 +5,7 @@ from .models import normalize_product
 
 def test_exclusiones_y_raices():
     body = load_config()
-    assert set(body["stores"]) == {"US", "ES", "ML"}
+    assert set(body["stores"]) == {"US", "ES"}
     assert body["stores"]["US"]["nodes"][0]["kind"] == "root"
     assert validate_categories({"version": 1, "stores": {"US": {"nodes": [], "exclude": ["123"]}}})
 

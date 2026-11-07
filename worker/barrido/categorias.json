@@ -1,14 +1,25 @@
 {
   "version": 1,
   "stores": {
-    "US": {"nodes": [{"id": "541966", "name": "Computadoras y accesorios", "kind": "root"}], "exclude": []},
-    "ES": {"nodes": [{"id": "667049031", "name": "Informática", "kind": "root"}], "exclude": []},
-    "ML": {"nodes": [
-      {"id": "MLA1648", "name": "Computación", "kind": "root"},
-      {"id": "MLA1000", "name": "Electrónica", "kind": "root"},
-      {"id": "MLA1051", "name": "Celulares", "kind": "root"},
-      {"id": "MLA1144", "name": "Consolas", "kind": "root"},
-      {"id": "MLA1039", "name": "Cámaras", "kind": "root"}
-    ], "exclude": []}
+    "US": {
+      "nodes": [
+        {
+          "id": "541966",
+          "name": "Computadoras y accesorios",
+          "kind": "root"
+        }
+      ],
+      "exclude": []
+    },
+    "ES": {
+      "nodes": [
+        {
+          "id": "667049031",
+          "name": "Informática",
+          "kind": "root"
+        }
+      ],
+      "exclude": []
+    }
   }
 }
