@@ -153,3 +153,32 @@ def test_cadena_faltante_fallida_e_interrumpida(tmp_path):
         sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path / "ausente"))
     assert "cadena" in v.chequeos(HOY.replace(hour=5, minute=30), internet=lambda: True,
         sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path / "ausente"))
+
+
+def test_tras_alta_sin_archivo_ok_fallida_e_interrumpida(tmp_path):
+    hoy = "2026-11-05"
+    ahora = HOY.replace(hour=9, minute=0)
+    # Sin alta nocturna no hay archivo: no es un problema.
+    assert v.chequear_tras_alta(hoy, tmp_path, ahora) == {}
+    p = tmp_path / f"tras-alta-{hoy}.json"
+    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T07:49:47-03:00", "fin": "2026-11-05T07:49:48-03:00",
+        "pasos": [{"paso": "chrome", "estado": "ok"}, {"paso": "altas", "estado": "ok"}]}), encoding="utf-8")
+    assert v.chequear_tras_alta(hoy, tmp_path, ahora) == {}
+    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T07:49:47-03:00", "fin": "2026-11-05T08:10:00-03:00",
+        "pasos": [{"paso": "chrome", "estado": "ok"}, {"paso": "altas", "estado": "ok"},
+                  {"paso": "amazon", "estado": "fail", "motivo": "timeout"}]}), encoding="utf-8")
+    problemas = v.chequear_tras_alta(hoy, tmp_path, ahora)
+    assert problemas == {"tras-alta:amazon": "la confirmación de altas tras el alta nocturna falló en amazon (timeout)"}
+    # Sin «fin» y pasado el tope global de la cadena: se cortó a mitad.
+    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T04:00:00-03:00",
+        "pasos": [{"paso": "chrome", "estado": "en_curso"}]}), encoding="utf-8")
+    assert "tras-alta:interrumpida" in v.chequear_tras_alta(hoy, tmp_path, ahora)
+    # Todavía dentro del tope: está corriendo, no se avisa.
+    assert v.chequear_tras_alta(hoy, tmp_path, HOY.replace(hour=5, minute=0)) == {}
+    p.write_text("{roto", encoding="utf-8")
+    assert "tras-alta" in v.chequear_tras_alta(hoy, tmp_path, ahora)
+    # Integrado en los chequeos a cualquier hora.
+    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T07:49:47-03:00", "fin": "2026-11-05T08:10:00-03:00",
+        "pasos": [{"paso": "altas", "estado": "fail", "motivo": "x"}]}), encoding="utf-8")
+    assert "tras-alta:altas" in v.chequeos(HOY.replace(hour=5, minute=0), internet=lambda: True,
+        sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path))
