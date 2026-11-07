@@ -49,3 +49,15 @@ Hace la cuenta argentina que Amazon no hace: franquicia de USD 400 por envío, I
 2. La cuenta argentina es el diferencial: visible, simple y verificable.
 3. Nada inventado: lo que no viene de Amazon o de una fuente real, no se muestra.
 4. Funciona igual de bien en el celular.
+
+## Límites de antigüedad
+
+Los que aplica el código (relevados el 07/11/2026). Si un dato pasa su límite, el producto o la sección no se muestran; nunca se rellena con un dato anterior.
+
+| Dato | Límite | Dónde se controla |
+|---|---|---|
+| Precio de Mercado Libre | Sólo del día (fecha ART) | `ml_hoy` en `comparableChecks`, `src/lib/data.ts` |
+| Precio de Amazon | Sólo del día (fecha ART) | `amazon_hoy` en `comparableChecks`, `src/lib/data.ts` |
+| Envío a Argentina confirmado | Hasta 14 días calendario ART | `ARSHIPPING_MAX_DAYS` en `src/lib/data.ts` y `worker/amazon_prices.py` |
+| Dólar MEP | El del build; si dolarapi.com no responde, respaldo de hasta 3 días. Sin eso, el build falla | `loadProducts`, `src/lib/data.ts` |
+| Ficha técnica de Mercado Libre | Hasta 7 días | `validMlSheet`, `src/lib/ml-fichas.ts` |
