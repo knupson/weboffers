@@ -25,3 +25,6 @@ worker/.pytest_tmp/
 
 # Claude Code (permisos locales)
 .claude/settings.local.json
+
+# Foto de verificar-produccion (estado local, no se versiona)
+.claude/skills/verificar-produccion/ultima-foto.json
