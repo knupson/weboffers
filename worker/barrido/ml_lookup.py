@@ -268,7 +268,12 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                            modelos=identity_amazon['models'], linea=identity_amazon['line'], consultas=queries)
                 if not queries and not row['candidates']:
                     emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='sin_consulta', valor=amazon.get('title'))
-                for query in queries:
+                fallback_reason = None
+                for query_index, query in enumerate(queries[:2]):
+                    if query_index:
+                        emit_event('BARRIDO_ML_SEGUNDA_CONSULTA', asin=row['asin'],
+                                   consulta_anterior=row['queries_used'][-1], consulta=query,
+                                   motivo=fallback_reason)
                     row["queries_used"].append(query)
                     started = time.monotonic()
                     results = client.search(query)
@@ -291,6 +296,8 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                                    nombre=product.get('name'), puntaje=score, motivo=reason)
                     # El límite se aplica a consultas de ofertas, no a descartes locales.
                     ranked.sort(key=lambda entry: entry[0], reverse=True)
+                    fallback_reason = ('sin_resultados' if not results else
+                                       'sin_candidato_valido' if not ranked else 'sin_oferta_local_nueva')
                     for index, (score, product) in enumerate(ranked):
                         identity = product['id']
                         if checked >= 5:
