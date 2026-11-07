@@ -249,6 +249,16 @@ def stage(name, store):
         emit_event('BARRIDO_ETAPA_FIN', duracion=time.monotonic() - started, estado=outcome['status'], **metrics)
 
 
+def _salida_sin_credenciales(proxy):
+    """Para el log: esquema://host:puerto del proxy, nunca usuario ni clave."""
+    if not proxy:
+        return 'directa'
+    from urllib.parse import urlsplit
+    parts = urlsplit(proxy)
+    host = parts.hostname or '?'
+    return f"{parts.scheme}://{host}" + (f":{parts.port}" if parts.port else '')
+
+
 @contextmanager
 def observe_run(output, config, args):
     global _runtime
@@ -278,7 +288,7 @@ def observe_run(output, config, args):
     status = 'complete'
     try:
         emit_event('BARRIDO_PROCESO_INICIO', **identity, config=vars(config),
-                   salida_amazon=os.environ.get('BARRIDO_AMAZON_PROXY') or 'directa')
+                   salida_amazon=_salida_sin_credenciales(os.environ.get('BARRIDO_AMAZON_PROXY')))
         runtime.heartbeat()
         thread.start()
         yield runtime

@@ -40,3 +40,10 @@ def test_salida_directa(monkeypatch):
     assert config.amazon_country_proxy("US") is None
     assert config.amazon_fallback_proxy("US") is None
     assert fetch.RETRIES == 0 and fetch.BLOCK_RETRIES == 1
+
+
+def test_log_de_salida_sin_credenciales():
+    from .events import _salida_sin_credenciales
+    assert _salida_sin_credenciales(None) == "directa"
+    assert _salida_sin_credenciales("socks5h://warp-prueba:1080") == "socks5h://warp-prueba:1080"
+    assert _salida_sin_credenciales("http://usuario:clave@proxy.invalid:8080") == "http://proxy.invalid:8080"
