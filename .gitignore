@@ -28,3 +28,4 @@ worker/.pytest_tmp/
 
 # Foto de verificar-produccion (estado local, no se versiona)
 .claude/skills/verificar-produccion/ultima-foto.json
+data/ml-fichas.json

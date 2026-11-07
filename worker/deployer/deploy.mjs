@@ -217,6 +217,11 @@ async function syncRepo(workDir = WORK_DIR, runImpl = run) {
 }
 
 async function overlayCatalog(workDir, outputDir) {
+  const sheetDest = path.join(workDir, 'data', 'ml-fichas.json');
+  await fs.copyFile(path.join(outputDir, 'ml-fichas.json'), sheetDest).catch(async (error) => {
+    if (error.code !== 'ENOENT') throw error;
+    await fs.rm(sheetDest, { force: true });
+  });
   const catalogPath = path.join(workDir, 'data', 'catalog.json');
   const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));
   const origins = Object.fromEntries(repo.map((p) => [p.slug, 'repo']));

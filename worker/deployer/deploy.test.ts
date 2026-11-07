@@ -86,6 +86,19 @@ describe('deployer', () => {
     await expect(overlayCatalog(path.join(tmpDir, 'work'), tmpDir)).rejects.toThrow('lista de productos');
   });
 
+  it('copia fichas opcionales y elimina una copia anterior si falta el archivo', async () => {
+    const work = path.join(tmpDir, 'work');
+    const dest = path.join(work, 'data', 'ml-fichas.json');
+    const source = path.join(tmpDir, 'ml-fichas.json');
+    const sheet = JSON.stringify({ generatedAt: '2026-11-07', items: {} });
+    await fs.writeFile(source, sheet);
+    await overlayCatalog(work, tmpDir);
+    expect(await fs.readFile(dest, 'utf8')).toBe(sheet);
+    await fs.rm(source);
+    await overlayCatalog(work, tmpDir);
+    await expect(fs.stat(dest)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('un overlay fallido mantiene DEPLOY_FAIL y no ejecuta el build', async () => {
     const outputFile = path.join(tmpDir, 'ml-prices.json');
     const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');

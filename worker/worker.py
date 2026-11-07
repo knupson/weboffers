@@ -13,6 +13,7 @@ import traceback
 import amazon_prices
 import creators_api
 import ml_prices
+import ml_fichas
 import publish
 import rates
 import telegram
@@ -75,6 +76,7 @@ def run_once():
     except Exception as exc:
         print(f"Falló ML ({type(exc).__name__}).", flush=True)
         traceback.print_exc(file=sys.stdout)
+    ml_fichas.refresh_optional(catalog, output_dir / "ml-fichas.json", datetime.now(timezone.utc))
     # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
     try:
         telegram.maybe_post(

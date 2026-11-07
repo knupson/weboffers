@@ -60,9 +60,11 @@ def test_cycle_passes_merged_catalog_to_all_consumers(tmp_path, monkeypatch):
     monkeypatch.setattr(rates, "get_rates", lambda: None)
     amazon = Mock()
     ml = Mock()
+    sheets = Mock()
     merge = Mock(return_value=[])
     monkeypatch.setattr(worker.amazon_prices, "maybe_refresh", amazon)
     monkeypatch.setattr(worker.ml_prices, "maybe_refresh", ml)
+    monkeypatch.setattr(worker.ml_fichas, "refresh_optional", sheets)
     monkeypatch.setattr(worker.ml_prices, "merge", merge)
     monkeypatch.setattr(worker.telegram, "maybe_post", Mock())
     monkeypatch.setattr(worker.catalog_auto, "maybe_grow", Mock())
@@ -70,6 +72,8 @@ def test_cycle_passes_merged_catalog_to_all_consumers(tmp_path, monkeypatch):
     expected = repo + automatic[1:]
     assert amazon.call_args.args[0] == expected
     assert ml.call_args.args[0] == expected
+    assert sheets.call_args.args[0] == expected
+    assert sheets.call_args.args[1] == tmp_path / "ml-fichas.json"
     assert merge.call_args.args[0] == expected
     assert [p["asin"] for p in payload["items"]] == ["A", "B"]
 
