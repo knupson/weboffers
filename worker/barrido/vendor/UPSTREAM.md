@@ -19,8 +19,11 @@ propios y bloquea tanto requests como curl_cffi durante sus tests.
 `upstream-hashes.json` contiene SHA-256 de cada archivo original incluido. `local-hashes.json` contiene los
 hashes finales de archivos modificados. Las diferencias locales son:
 
-- amazon/fetch.py: observador optativo de cada request de curl, con método, ruta sin query,
-  HTTP, segundos y error literal. Incluye calentamiento, cambios de ubicación e intersticiales.
+- amazon/fetch.py: observador optativo que envuelve cada request de curl antes de enviarlo.
+  El adaptador registra inicio/fin, ID local de sesión, intento, ubicación AR, método, ruta,
+  parámetros permitidos, HTTP, bytes, milisegundos y motivo de bloqueo. Incluye calentamiento,
+  ubicación e intersticiales, rotación con causa y esperas internas con motivo.
+  Los IDs de sesión son aleatorios locales: nunca son cookies de Amazon.
   Sin observador conserva el comportamiento original. No registra headers, cookies ni credenciales.
 
 Fuera del vendor: bootstrap fija salida directa, timeout y ubicación AR compartida, y reduce

@@ -81,6 +81,7 @@ import re
 import sys
 import threading
 import time
+from uuid import uuid4
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -148,6 +149,20 @@ class AmazonNotFound(NotFound):
 # ---- per-thread sessions ------------------------------------------------------------------
 
 OBSERVER = None  # Extensión local: telemetría optativa, sin credenciales ni cuerpo.
+
+
+def _event(event, sess, **fields):
+    if OBSERVER is not None:
+        OBSERVER(event=event, tienda=sess.site['country'], sesion=getattr(sess, 'observation_id', None),
+                 ubicacion_ar=getattr(sess, 'located', None) == 'AR', **fields)
+
+
+def _wait(seconds, reason):
+    if OBSERVER is not None:
+        OBSERVER(event='wait', seconds=seconds, reason=reason)
+    else:
+        time.sleep(seconds)
+
 _local = threading.local()
 _egress_lock = threading.Lock()
 _dc_failures = {}       # country -> failures seen on the datacenter / direct egress (process-wide)
@@ -164,22 +179,23 @@ class _Session:
         if http1:
             kwargs["http_version"] = 1
         self.curl = curl_requests.Session(**kwargs)
-        if OBSERVER is not None:
-            original_request = self.curl.request
+        self.observation_id = uuid4().hex
+        self.observation_attempt = 0
+        original_request = self.curl.request
 
-            def observed_request(method, url, **request_kwargs):
-                started = time.monotonic()
-                try:
-                    response = original_request(method, url, **request_kwargs)
-                except Exception as exc:
-                    OBSERVER(country=site["country"], method=method, path=url.split("?")[0],
-                             http=None, seconds=time.monotonic() - started, error=str(exc))
-                    raise
-                OBSERVER(country=site["country"], method=method, path=url.split("?")[0],
-                         http=response.status_code, seconds=time.monotonic() - started, error=None)
-                return response
+        def observed_request(method, url, **request_kwargs):
+            if OBSERVER is None:
+                return original_request(method, url, **request_kwargs)
+            return OBSERVER(event='request', call=original_request, country=site['country'],
+                            method=method, url=url, session_id=self.observation_id,
+                            located=getattr(self, 'located', None) == 'AR',
+                            attempt=self.observation_attempt,
+                            block_reason=lambda response: _blocked_reason(response) or
+                                ('bm-verify' if is_pow(response.text or '') else None) or
+                                ('edge fallback render' if is_fallback_render(self, response) else None),
+                            **request_kwargs)
 
-            self.curl.request = observed_request
+        self.curl.request = observed_request
         if proxy:
             self.curl.proxies = {"http": proxy, "https": proxy}
         # Display currency + language are cookies, not the exit's geo: without
@@ -266,6 +282,8 @@ def _note_failure(sess, reason):
     exits permanently (until restart). Failures on residential exits or on
     a country-pinned storefront change nothing (there is nowhere further to
     go); its session is simply replaced."""
+    sess.observation_reason = reason
+    _event('BARRIDO_SESION_FALLA', sess, motivo=reason)
     country = sess.site["country"]
     if sess.egress == "residential" or sess.site["exit_country"] or country in _residential:
         return
@@ -275,8 +293,11 @@ def _note_failure(sess, reason):
         _dc_failures[country] = _dc_failures.get(country, 0) + 1
         if _dc_failures[country] >= config.AMAZON_DATACENTER_FAILURES and country not in _residential:
             _residential.add(country)
-            print(f"amazon {country}: {_dc_failures[country]} failures on the {sess.egress} egress "
-                  f"(last: {reason}); moving this marketplace to residential exits for good")
+            if OBSERVER is not None:
+                _event('BARRIDO_CAMBIO_SALIDA', sess, motivo=reason, fallas=_dc_failures[country], salida='residential')
+            else:
+                print(f"amazon {country}: {_dc_failures[country]} failures on the {sess.egress} egress "
+                      f"(last: {reason}); moving this marketplace to residential exits for good")
 
 
 def session(country, purpose="page", language=None):
@@ -291,6 +312,7 @@ def session(country, purpose="page", language=None):
     if sess is None:
         proxy, egress = _proxy_for(site)
         sess = store[key] = _Session(site, proxy, http1=(purpose == "aapi"), language=language, egress=egress)
+        _event('BARRIDO_SESION', sess, motivo='sesion_nueva', salida=egress)
     return sess
 
 
@@ -298,6 +320,7 @@ def drop_session(country, purpose="page", language=None):
     site = sites.site(country)
     sess = _store().pop((site["country"], purpose, language or site["language"]), None)
     if sess is not None:
+        _event('BARRIDO_ROTACION', sess, motivo=getattr(sess, 'observation_reason', 'descarte_explicito'))
         sess.close()
 
 
@@ -393,6 +416,7 @@ def _warm(sess):
     raises AmazonBlocked so the caller rotates the session."""
     if sess.warmed:
         return
+    _event('BARRIDO_CALENTAMIENTO_INICIO', sess, motivo='obtener_cookies_y_token_de_ubicacion')
     resp = sess.curl.get(sess.site["base"] + "/", headers=sess.headers(PAGE_HEADERS))
     if is_click_through(resp.text or ""):
         click_through(sess, resp)
@@ -401,6 +425,7 @@ def _warm(sess):
         if reason:
             raise AmazonBlocked(f"warm-up on {sess.site['host']}: {reason}")
     sess.warmed = True
+    _event('BARRIDO_CALENTAMIENTO_FIN', sess, motivo='portada_recibida', status=resp.status_code)
     sess.keep_language()
     match = _GLOW_TOKEN_RE.search(resp.text or "")
     if match:
@@ -417,13 +442,17 @@ def click_through(sess, resp):
     if not match:
         return False
     fields = {name: html_lib.unescape(value) for name, value in _HIDDEN_RE.findall(match.group(2))}
+    _event('BARRIDO_CAPTCHA_INICIO', sess, motivo='formulario_continue_shopping')
     try:
         answer = sess.curl.get(sess.site["base"] + match.group(1), params=fields,
                                headers={**sess.headers(PAGE_HEADERS), "referer": str(resp.url)}, allow_redirects=False)
-    except Exception:
+    except Exception as exc:
+        _event('BARRIDO_CAPTCHA_FIN', sess, motivo=str(exc), confirmado=False)
         return False
     sess.keep_language()
-    return answer.status_code in (200, 301, 302, 303) and not is_captcha(answer.text or "")
+    ok = answer.status_code in (200, 301, 302, 303) and not is_captcha(answer.text or "")
+    _event('BARRIDO_CAPTCHA_FIN', sess, motivo='respuesta_al_formulario', confirmado=ok, status=answer.status_code)
+    return ok
 
 
 def _solve_pow(sess, text):
@@ -433,6 +462,7 @@ def _solve_pow(sess, text):
     if not (match and token):
         return False
     pow_value = int(match.group(1)) + int(match.group(2) + match.group(3))
+    _event('BARRIDO_POW', sess, motivo='resolver_intersticial_bm_verify')
     resp = sess.curl.post(sess.site["base"] + "/_sec/verify?provider=interstitial",
                           json={"bm-verify": token.group(1), "pow": pow_value},
                           headers={**sess.headers(PAGE_HEADERS), "content-type": "application/json", "origin": sess.site["base"]})
@@ -503,8 +533,11 @@ def _request(country, method, path, *, params=None, data=None, json_body=None, h
     blocks = 0
     relocated = False
     clicks = 0
+    request_attempt = 0
     while True:
         sess = session(country, purpose, language)
+        request_attempt += 1
+        sess.observation_attempt = request_attempt
         try:
             if purpose == "page":
                 _warm(sess)
@@ -530,15 +563,19 @@ def _request(country, method, path, *, params=None, data=None, json_body=None, h
             if reason is None and purpose == "page" and is_fallback_render(sess, resp):
                 reason = "edge fallback render (origin throttled; price hidden)"
         except AmazonBlocked as e:
+            if not sess.warmed:
+                _event('BARRIDO_CALENTAMIENTO_FIN', sess, motivo=str(e), confirmado=False)
             reason = str(e)
             resp = None
         except Exception as e:
+            if not sess.warmed:
+                _event('BARRIDO_CALENTAMIENTO_FIN', sess, motivo=str(e), confirmado=False)
             _note_failure(sess, f"{type(e).__name__}: {e}")
             drop_session(country, purpose, language)
             attempt += 1
             if attempt > RETRIES:
                 raise AmazonUpstreamError(f"{label}: {type(e).__name__}: {e}")
-            time.sleep(0.5 * attempt)
+            _wait(0.5 * attempt, 'backoff_transitorio')
             continue
         if reason:
             blocks += 1
@@ -546,7 +583,7 @@ def _request(country, method, path, *, params=None, data=None, json_body=None, h
             drop_session(country, purpose, language)
             if blocks >= BLOCK_RETRIES:
                 raise AmazonBlocked(f"{label}: {reason} (after {blocks} sessions)")
-            time.sleep(1.5 * blocks)     # the 503 dogs page is mostly a burst limiter: back off
+            _wait(1.5 * blocks, 'backoff_bloqueo')
             continue
         if resp.status_code == 404:
             raise AmazonNotFound(f"{label}: not found")
@@ -556,7 +593,7 @@ def _request(country, method, path, *, params=None, data=None, json_body=None, h
             attempt += 1
             if attempt > RETRIES:
                 raise AmazonUpstreamError(f"HTTP {resp.status_code} on {label}")
-            time.sleep(0.5 * attempt)
+            _wait(0.5 * attempt, 'backoff_transitorio')
             continue
         if purpose == "page" and locate and not relocated and resp.status_code == 200:
             wanted = postal_code or site["postal_code"]

@@ -5,6 +5,7 @@ dist/
 .env.*
 !.env.example
 *.log
+!worker/barrido/fixtures/observabilidad.log
 .DS_Store
 Thumbs.db
 worker/output/

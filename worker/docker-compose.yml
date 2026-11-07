@@ -43,6 +43,8 @@ services:
     build:
       context: .
       dockerfile: barrido/Dockerfile
+        args:
+          BARRIDO_GIT_COMMIT: ${BARRIDO_GIT_COMMIT:-no_disponible}
     restart: unless-stopped
     mem_limit: 512m
     environment:

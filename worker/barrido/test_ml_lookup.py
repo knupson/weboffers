@@ -126,7 +126,8 @@ def test_dry_run_limit_no_escribe_ni_checkpoint(tmp_path, fixture_dir):
     before = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
     result = run_ml_lookup(Config(), tmp_path, dry_run=True, limit=1, client=fixture_client(fixture_dir), rate_loader=rate)
     assert result["total"] == 1
-    assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == before
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir() if path.name != 'latido.json'} == before
+    assert (tmp_path / 'latido.json').exists()  # El dry-run también deja telemetría.
 
 
 def test_recupera_registro_si_corta_antes_de_materializar(tmp_path, fixture_dir, monkeypatch):

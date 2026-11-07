@@ -1,5 +1,6 @@
 """Una tienda bloqueada no impide adquirir las otras."""
 from dataclasses import asdict
+from collections import Counter
 import json
 from pathlib import Path
 import time
@@ -8,7 +9,7 @@ import requests
 from .amazon_source import AmazonSource, SourceError, next_page
 from .config import Config
 from .currency import load_daily_rates, validate_rate, StaleRate
-from .events import emit_event, now_art
+from .events import emit_event, now_art, observed, store_stage, set_context, set_action, wait, action
 from .state import State, acquire_run_lock, write_summary
 
 
@@ -16,6 +17,7 @@ def retry_page(operation, config, *, store, category, page, sleep=time.sleep):
     failures = blocks = transients = 0
     while True:
         try:
+            set_context(tienda=store, categoria=category, pagina=page, asin=None, intento=failures + 1)
             result = operation()
             result.update(retry_failures=failures, block_failures=blocks, transient_failures=transients)
             return result
@@ -46,7 +48,7 @@ def retry_page(operation, config, *, store, category, page, sleep=time.sleep):
             delay = min(config.backoff * 2 ** (attempt - 1), config.backoff_cap)
             emit_event("BARRIDO_REINTENTO", tienda=store, categoria=category, pagina=page,
                        intento=attempt, pausa=delay, motivo=str(exc), clase="bloqueo" if blocked else "transitorio")
-            sleep(delay)
+            wait(delay, 'backoff_bloqueo' if blocked else 'backoff_transitorio', sleep=sleep)
 
 
 def enrich_variations(rows, source, state, config):
@@ -86,6 +88,7 @@ def category_metrics(state, category):
         segundos=sum(page.get("seconds", 0) for page in pages))
 
 
+@store_stage
 def run_store(store, definition, config, output, date, *, dry_run=False, refresh=False,
               max_pages=None, source_factory=None, rate_loader=load_daily_rates, known=(), sleep=time.sleep):
     if store not in ("US", "ES"):
@@ -96,8 +99,10 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
     result = dict(status="complete", categories={}, products=0, dry_run=dry_run)
     observed_locations = []
     category_id = None
+    seen_products = set()
     try:
-        context = {"config": asdict(config), "definition": definition}
+        set_action('preparando tienda y cotizacion')
+        context = {"config": {k: v for k, v in asdict(config).items() if k != 'stall_seconds'}, "definition": definition}
         previous = state.root / "context.json" if state else None
         if previous and previous.exists():
             frozen = json.loads(previous.read_text(encoding="utf-8"))
@@ -116,21 +121,55 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
         emit_event("BARRIDO_CATEGORIAS", tienda=store, cantidad=len(categories), dry_run=dry_run)
         for category in categories:
             category_id = category["id"]
+            set_context(categoria=category_id, pagina=None, asin=None)
+            set_action('leyendo checkpoint de categoria')
             try:
                 page = 1 if dry_run else state.load_checkpoint(category_id)
                 signatures = {tuple(row["id"] for row in p["products"]) for p in state.pages(category_id)} if state else set()
                 fetched = 0
                 if page is not None:
-                    sleep(config.pause)
+                    wait(config.pause, 'pausa_entre_paginas', sleep=sleep)
                 while page is not None:
                     if now_art().date().isoformat() != date:
                         raise SourceError("Cambió el día ART: se detiene para no mezclar fechas")
                     started = time.monotonic()
+                    set_action('adquiriendo pagina Amazon')
                     data = retry_page(lambda: source.fetch_search_page(category, page, now_art().isoformat()),
                                       config, store=store, category=category_id, page=page, sleep=sleep)
                     if now_art().date().isoformat() != date:
                         raise SourceError("Cambió el día ART durante la consulta: página sin confirmar")
                     rows = data["products"]
+                    set_action('evaluando productos de pagina')
+                    set_context(asin=None)
+                    reasons = Counter()
+                    known_count = 0
+                    kept = 0
+                    for row in rows:
+                        asin = row['id']
+                        decisions = list(row.get('rejection_reasons', []))
+                        if asin in seen_products:
+                            decisions.append('duplicado')
+                        seen_products.add(asin)
+                        for reason in decisions:
+                            reason = {'sin_precio_validado': 'sin_precio'}.get(reason, reason)
+                            if row.get('shipping_class') == 'no_envia' and reason == 'envio_no_confirmado':
+                                reason = 'no_envia'
+                            value = ((row.get('raw') or {}).get('price') if reason == 'sin_precio' else
+                                     row.get('price_usd') if reason == 'fuera_de_rango'
+                                     else row.get('shipping_text') or row.get('shipping_class') if reason.startswith('envio') or reason == 'no_envia'
+                                     else asin if reason == 'duplicado' else row.get('condition'))
+                            emit_event('BARRIDO_DESCARTE', asin=asin, motivo=reason, valor=value)
+                            reasons[reason] += 1
+                        if not decisions:
+                            kept += 1
+                            emit_event('BARRIDO_CONSERVADO', asin=asin, valor=row.get('price_usd'))
+                        if row.get('known'):
+                            known_count += 1
+                            emit_event('BARRIDO_DESCARTE', asin=asin, motivo='ya_conocido', valor=True, alcance='novedades')
+                        # La elegibilidad de evidencia y la deduplicación no alteran el contrato de salida.
+                    emit_event('BARRIDO_PAGINA_CONTADORES', productos=len(rows), conservados=kept,
+                               descartados=len(rows) - kept, descartes_por_motivo=dict(reasons),
+                               descartes_novedades_por_motivo={'ya_conocido': known_count})
                     located = data.get('located_ar', all(row.get('located_ar') is True for row in rows))
                     observed_locations.append(located)
                     if not rows:
@@ -154,8 +193,11 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                                    raw=data.get("raw"), located_ar=located,
                                    block_failures=data.get("block_failures", 0), transient_failures=data.get("transient_failures", 0),
                                    http=data.get("http"), total_pages=data.get("total_pages"), count=data.get("count"))
-                    state.commit_page(category_id, page, payload)
-                    state.materialize_jsonl()
+                    with action('persistiendo pagina y checkpoint'):
+                        state.commit_page(category_id, page, payload)
+                        state.materialize_jsonl()
+                    emit_event('BARRIDO_PERSISTIDO', categoria=category_id, pagina=page)
+                    set_action('calculando metricas de categoria')
                     result["categories"][category_id] = category_metrics(state, category_id)
                     if variation_failures:
                         result["status"] = "partial"
@@ -166,7 +208,7 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                         emit_event("BARRIDO_LIMITE", tienda=store, categoria=category_id, pagina=page)
                         break
                     if page is not None:
-                        sleep(config.pause)
+                        wait(config.pause, 'pausa_entre_paginas', sleep=sleep)
                 if state:
                     result["categories"][category_id] = category_metrics(state, category_id)
             except Exception as exc:
@@ -204,6 +246,7 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
     return result
 
 
+@observed
 def run_all(categories, config, output, *, stores=None, date=None, dry_run=False, **options):
     date = date or now_art().date().isoformat()
     if date != now_art().date().isoformat():

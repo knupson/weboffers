@@ -2,7 +2,7 @@
 from datetime import datetime
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import requests
-from .events import ART, now_art, emit_event
+from .events import ART, now_art, emit_event, http_call
 from .models import positive
 
 
@@ -24,9 +24,11 @@ def load_daily_rates(store, today, get=requests.get):
         return {"value": 1, "source": "identidad USD", "observed_at": now_art().isoformat()}
 
     def quote(endpoint):
-        response = get("https://dolarapi.com/v1/" + endpoint, timeout=20)
+        response = http_call(lambda method, url, **kw: get(url, **kw), 'GET',
+                             'https://dolarapi.com/v1/' + endpoint, store='COTIZACION',
+                             session_id='cotizaciones', timeout=20)
         if not response.ok:
-            raise RuntimeError(f"HTTP {response.status_code}: {response.text}")
+            raise RuntimeError(f"HTTP {response.status_code} en cotización {endpoint}")
         body = response.json()
         try:
             return validate_rate({"value": body["venta"], "source": response.url,

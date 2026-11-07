@@ -1,9 +1,11 @@
 """CLI sin scheduler; el encadenado se implementa en la tarea 10."""
 import argparse
 import json
+import sys
+import traceback
 from pathlib import Path
 from .config import Config, load_config
-from .events import emit_event
+from .events import emit_event, observe_run
 from .runner import run_all
 from .ml_lookup import run_ml_lookup
 
@@ -27,6 +29,19 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         config = Config(**{key: getattr(args, key) for key in vars(Config())})
+    except ValueError:
+        with observe_run(args.output, Config(), vars(args)) as runtime:
+            runtime.result_status = 'failed'
+            emit_event('BARRIDO_EXCEPCION', traceback=traceback.format_exc())
+        return 1
+    with observe_run(args.output, config, {'argv': list(argv) if argv is not None else sys.argv[1:], **vars(args)}) as runtime:
+        code = execute(args, config)
+        runtime.result_status = 'complete' if code == 0 else 'failed'
+        return code
+
+
+def execute(args, config):
+    try:
         if not args.dry_run and (config.min_usd, config.max_usd) != (Config().min_usd, Config().max_usd):
             raise ValueError("--min-usd/--max-usd sólo se permiten con --dry-run")
         if args.step == "ml-lookup":
@@ -57,6 +72,7 @@ def main(argv=None):
                          date=args.date, refresh=args.refresh_refinements, max_pages=args.max_pages, known=known)
         return 0 if all(item["status"] in ("complete", "skipped") for item in result.values()) else 1
     except Exception as exc:
+        emit_event('BARRIDO_EXCEPCION', traceback=traceback.format_exc())
         emit_event("BARRIDO_FALLA", tipo=type(exc).__name__, motivo=str(exc))
         return 1
 

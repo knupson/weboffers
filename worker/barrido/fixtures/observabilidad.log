@@ -1,0 +1,14 @@
+2026-11-07T17:00:00-03:00 BARRIDO_PROCESO_INICIO {"run_id":"simulado","pid":123,"version":"fixture","commit":"fixture","config_hash":"fixture","args":[]}
+2026-11-07T17:00:00-03:00 BARRIDO_ETAPA_INICIO {"run_id":"simulado","etapa":"amazon_us","tienda":"US"}
+2026-11-07T17:00:01-03:00 BARRIDO_HTTP_INICIO {"run_id":"simulado","request_id":"r1","tienda":"US","etapa":"amazon_us","categoria":"A","pagina":1,"metodo":"GET","path":"/s","params":{"page":1},"sesion":"s1","intento":1,"ubicacion_ar":false,"status":null,"bytes":0,"ms":0,"bloqueo":null}
+2026-11-07T17:00:02-03:00 BARRIDO_HTTP_FIN {"run_id":"simulado","request_id":"r1","tienda":"US","etapa":"amazon_us","categoria":"A","pagina":1,"metodo":"GET","path":"/s","params":{"page":1},"sesion":"s1","intento":1,"ubicacion_ar":false,"status":503,"bytes":128,"ms":1000,"bloqueo":"503 dogs page"}
+2026-11-07T17:00:02-03:00 BARRIDO_ROTACION {"run_id":"simulado","sesion":"s1","motivo":"503 dogs page"}
+2026-11-07T17:00:02-03:00 BARRIDO_REINTENTO {"run_id":"simulado","intento":1,"clase":"bloqueo","motivo":"503 dogs page"}
+2026-11-07T17:00:02-03:00 BARRIDO_ESPERA {"run_id":"simulado","segundos":30,"motivo":"backoff_bloqueo","hasta":"2026-11-07T17:00:32-03:00"}
+2026-11-07T17:00:32-03:00 BARRIDO_HTTP_INICIO {"run_id":"simulado","request_id":"r2","tienda":"US","etapa":"amazon_us","categoria":"A","pagina":1,"metodo":"GET","path":"/s","params":{"page":1},"sesion":"s2","intento":2,"ubicacion_ar":true,"status":null,"bytes":0,"ms":0,"bloqueo":null}
+2026-11-07T17:00:33-03:00 BARRIDO_HTTP_FIN {"run_id":"simulado","request_id":"r2","tienda":"US","etapa":"amazon_us","categoria":"A","pagina":1,"metodo":"GET","path":"/s","params":{"page":1},"sesion":"s2","intento":2,"ubicacion_ar":true,"status":200,"bytes":2048,"ms":1000,"bloqueo":null}
+2026-11-07T17:00:33-03:00 BARRIDO_DESCARTE {"run_id":"simulado","asin":"FIXTURE2","motivo":"fuera_de_rango","valor":450}
+2026-11-07T17:00:33-03:00 BARRIDO_PAGINA_CONTADORES {"run_id":"simulado","productos":2,"conservados":1,"descartados":1,"descartes_por_motivo":{"fuera_de_rango":1}}
+2026-11-07T17:01:00-03:00 BARRIDO_LATIDO {"run_id":"simulado","pid":123,"etapa":"amazon_us","tienda":"US","categoria":"A","pagina":1,"accion":"persistiendo pagina","segundos_sin_avance":27,"contadores":{"requests_amazon":2,"requests_ml":0,"products":2,"eligible":1,"errors":0,"blocks":1}}
+2026-11-07T17:01:01-03:00 BARRIDO_ETAPA_FIN {"run_id":"simulado","etapa":"amazon_us","duracion":61,"requests_amazon":2,"requests_ml":0,"products":2,"eligible":1,"ml_candidates":0,"comparisons":0}
+2026-11-07T17:01:01-03:00 BARRIDO_PROCESO_FIN {"run_id":"simulado","pid":123,"estado":"complete"}

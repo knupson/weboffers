@@ -24,6 +24,7 @@ Imprime los pasos de la cadena y de tras-alta, el lock, las últimas líneas del
 | Tras el alta (`franquicia-tras-alta.path` → `cadena.py --tras-alta`) | VM `/home/claude/logs/tras-alta-AAAA-MM-DD.log` + `.json` | igual que arriba | ART |
 | Lock (cadena en curso) | VM `/home/claude/logs/cadena.lock` | `ls -l` | — |
 | Worker (precios, altas `ALTAS_OK`, auditoría) | VM `/opt/docker/franquicia400/worker/output/logs/worker-AAAA-MM-DD.log`, `auditoria-pares.log` (= `/app/output/logs` en los contenedores worker y deployer) | `ssh docker 'tail -50 …'` | ART |
+| Barrido Amazon US/ES y lookup ML (también dry-run; implementación pendiente de validar/desplegar) | VM `/opt/docker/franquicia400/worker/output/logs/barrido-AAAA-MM-DD.log`; último latido en `…/output/barrido/latido.json` | Dentro del contenedor: `python -m barrido.logs --fecha AAAA-MM-DD --desde HH:MM`; operación detallada en `docs/barrido/OPERACION.md` | ART |
 | Deployer (deploys, `DEPLOY_MANUAL`, próximo previsto) | volumen `franquicia400_deployer-state` → `/state/logs/deployer-AAAA-MM-DD.log` | `ssh docker 'docker exec franquicia400-weboffers-deployer-1 tail -50 /state/logs/deployer-<F>.log'` | **UTC** (`…Z`): restar 3 h |
 | Desglose de publicación (por qué entra o no cada producto) | `/state/logs/desglose-AAAA-MM-DD-HHMM.log` en el deployer | `docker exec … ls -t /state/logs` | ART en el nombre |
 | Vigía (cron cada 15 min) | VM `/home/claude/logs/vigia_franquicia.log` | `tail` | ART |
@@ -40,6 +41,7 @@ Los crons están en `ssh docker 'crontab -l'` y la unidad systemd en `ssh docker
 
 - Cadena: `PASO_INICIO`, `PASO_OK`, `PASO_SIGUE` (latido; filtrarlo), y cualquier otro `PASO_*` que no sea OK. También `FILTRO <motivo> fallas=N`.
 - Worker: `ALTAS_OK promovidas=… rechazadas=… siguen_pendientes=…`.
+- Barrido: `BARRIDO_HTTP_INICIO/FIN` (mismo request ID), `BARRIDO_ESPERA`, `BARRIDO_DESCARTE`, `BARRIDO_ETAPA_INICIO/FIN`, `BARRIDO_LATIDO`, `BARRIDO_SIN_AVANCE` (pila principal), `BARRIDO_EXCEPCION`, `BARRIDO_CORTADO`. El lector consulta PID sólo en el contenedor de origen; un latido vencido no confirma identidad aunque el PID exista.
 - Deployer: `DEPLOY_FASE <fase> ok|…`, `DEPLOY_OK publicado con precios del …` (trae la ruta del desglose), `DEPLOY_MANUAL ok`, `Próximo despliegue previsto`.
 - Vigías y controles: `VIGIA_OK`, `VIGIA_EXTERNO_OK`, `FRANQUICIA_CONTROL_OK`, `ENVIO_AR_CHROME_OK`; cualquier variante sin `_OK` es la que hay que mirar.
 

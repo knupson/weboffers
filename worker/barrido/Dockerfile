@@ -1,4 +1,7 @@
 FROM python:3.12-slim
+ARG BARRIDO_GIT_COMMIT=no_disponible
+ENV BARRIDO_GIT_COMMIT=${BARRIDO_GIT_COMMIT}
+ENV BARRIDO_VERSION=observabilidad-v1
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 COPY barrido/requirements.txt /tmp/barrido-requirements.txt

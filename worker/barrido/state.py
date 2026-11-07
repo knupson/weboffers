@@ -200,9 +200,11 @@ class LookupState(State):
 
 
 def write_summary(output, date, stores):
+    from .events import comparison_metrics
     path = Path(output) / f"resumen-{date}.json"
     previous = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"date": date, "stores": {}}
     previous["stores"].update(stores)
+    previous.update(comparison_metrics())
     write_atomic(path, previous)
 
 

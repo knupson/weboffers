@@ -42,11 +42,11 @@ def pause():
     time.sleep(PAUSE_SECONDS)
 
 
-def get_token():
+def get_token(*, request=None):
     """Token client_credentials, cacheado en memoria hasta casi su vencimiento."""
     if _token_cache["value"] and time.time() < _token_cache["expires_at"]:
         return _token_cache["value"]
-    response = requests.post(
+    response = (request or requests.post)(
         API_BASE_URL + "/oauth/token",
         data={"grant_type": "client_credentials",
               "client_id": os.environ["ML_CLIENT_ID"],

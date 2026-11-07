@@ -16,7 +16,9 @@ def test_a1_a4_con_parser_y_fuente_reales_sin_red(tmp_path, fixture_dir, monkeyp
     html = (fixture_dir / "us_search.html").read_text(encoding="utf-8")
     def page(country, path, params, **kwargs):
         calls.append(params.copy())
-        fetch.OBSERVER(country=country, method="GET", path="https://www.amazon.com/s", http=200, seconds=.01, error=None)
+        fetch.OBSERVER(event='request', country=country, method='GET', url='https://www.amazon.com/s',
+                       session_id='fixture', params=params,
+                       call=lambda *a, **kw: SimpleNamespace(status_code=200, content=html.encode()))
         if params["page"] == "2":
             return html.replace("B0FIXTURE1", "B0FIXTURE2").replace(
                 's-pagination-selected">1', 's-pagination-selected">2').replace(

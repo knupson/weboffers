@@ -4,7 +4,7 @@ import time
 from urllib.parse import urlencode
 from .bootstrap import configure_transport
 from .currency import usd_bounds
-from .events import emit_event
+from .events import emit_event, vendor_observer, set_context, wait, action
 from .refinements import load_refinements
 from .shipping import session_is_ar, delivery_from_card
 from .models import normalize_product
@@ -78,9 +78,10 @@ class AmazonSource:
         self.filters = {}
 
     def observe(self, **fields):
-        if fields["path"].endswith("/s"):
-            self.http = fields["http"]
-        emit_event("BARRIDO_HTTP", **fields)
+        result = vendor_observer(**fields)
+        if fields.get('event') == 'request' and fields['url'].split('?')[0].endswith('/s'):
+            self.http = result.status_code
+        return result
 
     def request(self, params):
         from amazon import fetch
@@ -91,11 +92,13 @@ class AmazonSource:
             raise SourceError(str(exc), http=self.http, blocked=isinstance(exc, fetch.AmazonBlocked),
                               transient=isinstance(exc, fetch.AmazonUpstreamError)) from exc
         if self.http != 200:
-            raise SourceError(f"HTTP {self.http}: {html}", http=self.http, blocked=self.http in (403, 429, 503), transient=self.http is not None and self.http >= 500)
-        return parse_search_page(html, self.site)
+            raise SourceError(f"HTTP {self.http} en búsqueda Amazon", http=self.http, blocked=self.http in (403, 429, 503), transient=self.http is not None and self.http >= 500)
+        with action('interpretando HTML de busqueda Amazon'):
+            return parse_search_page(html, self.site)
 
     def fetch_search_page(self, category, page, stamp):
         node = category["id"]
+        set_context(tienda=self.store, categoria=node, pagina=page, asin=None)
         empty = None
         if node not in self.filters:
             context = dict(date=self.date, store=self.store, node=node, language=self.site["language"], destination="AR")
@@ -106,7 +109,7 @@ class AmazonSource:
                         raise EmptySearchPage(parsed)
                     return parsed
                 finally:
-                    self.sleep(self.config.pause)
+                    wait(self.config.pause, 'pausa_refinamientos', sleep=self.sleep)
             try:
                 self.filters[node] = load_refinements(self.cache, context, prequery, refresh=self.refresh)
             except EmptySearchPage as exc:
@@ -127,6 +130,7 @@ class AmazonSource:
         return {**parsed, "products": rows, "http": self.http, "located_ar": located}
 
     def variations(self, identity):
+        set_context(asin=identity)
         from amazon import products, fetch
         try:
             return products.variations(identity, self.store, language=self.site["language"])

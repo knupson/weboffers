@@ -30,18 +30,29 @@ def configure_transport(observer=None):
     apply_ar_location()
     original = fetch.set_location
     def set_ar_once(sess, postal_code=None):
+        from .events import emit_event
         if getattr(sess, 'ar_tried', False) or getattr(sess, 'located', None) == 'AR':
+            emit_event('BARRIDO_UBICACION_OMITIDA', motivo='ya_intentada_o_confirmada',
+                       sesion=getattr(sess, 'observation_id', None))
             return False
         if not sess.glow_token:
+            emit_event('BARRIDO_UBICACION_OMITIDA', motivo='sin_token_glow',
+                       sesion=getattr(sess, 'observation_id', None))
             return False
         sess.ar_tried = True
+        emit_event('BARRIDO_UBICACION_INICIO', motivo='confirmar_destino_AR',
+                   sesion=getattr(sess, 'observation_id', None), ubicacion_ar=False)
         try:
             confirmed = original(sess, postal_code)
+            emit_event('BARRIDO_UBICACION_FIN', motivo='respuesta_cambio_destino', confirmado=confirmed,
+                       sesion=getattr(sess, 'observation_id', None), ubicacion_ar=getattr(sess, 'located', None) == 'AR')
             if not confirmed:
                 from .events import emit_event
                 emit_event('BARRIDO_UBICACION_FALLIDA', motivo='Amazon no confirmó la ubicación AR')
             return confirmed
         except Exception as exc:
+            emit_event('BARRIDO_UBICACION_FIN', motivo=str(exc), confirmado=False,
+                       sesion=getattr(sess, 'observation_id', None), ubicacion_ar=False)
             from .events import emit_event
             emit_event('BARRIDO_UBICACION_FALLIDA', motivo=str(exc), tipo=type(exc).__name__)
             return False

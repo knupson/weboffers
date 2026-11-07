@@ -123,13 +123,13 @@ def test_recupera_lock_huerfano(dead, age, tmp_path, monkeypatch, capsys):
     assert 'BARRIDO_LOCK_HUERFANO' in capsys.readouterr().out
 
 
-def test_cli_rango_real_rechazado(monkeypatch, capsys):
+def test_cli_rango_real_rechazado(monkeypatch, capsys, tmp_path):
     from . import __main__ as cli
     calls = []
     monkeypatch.setattr(cli, 'run_all', lambda *a, **kw: calls.append(kw) or {})
-    assert cli.main(['--min-usd', '50']) == 1 and not calls
+    assert cli.main(['--min-usd', '50', '--output', str(tmp_path)]) == 1 and not calls
     assert '--dry-run' in capsys.readouterr().out
-    assert cli.main(['--min-usd', '50', '--dry-run']) == 0
+    assert cli.main(['--min-usd', '50', '--dry-run', '--output', str(tmp_path)]) == 0
 
 
 def test_cli_catalogos_anidados(tmp_path, monkeypatch):
@@ -145,7 +145,7 @@ def test_cli_catalogos_anidados(tmp_path, monkeypatch):
 def test_es_cotizacion_vieja_se_omite(tmp_path, capsys):
     from .currency import load_daily_rates
     class Response:
-        ok, url = True, 'fixture'
+        ok, url, status_code, content = True, 'fixture', 200, b'{}'
         def json(self):
             return {'venta': 1000, 'fechaActualizacion': '2026-11-05T12:00:00-03:00'}
     result = run_store('ES', definition('A'), Config(), tmp_path, now_art().date().isoformat(),

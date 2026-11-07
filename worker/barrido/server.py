@@ -4,7 +4,7 @@ import json
 import os
 from urllib.parse import parse_qs, urlparse
 from .config import Config, load_config
-from .events import emit_event
+from .events import emit_event, observe_run, action
 from .runner import run_all
 
 
@@ -49,8 +49,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    emit_event("BARRIDO_SERVIDOR", puerto=8002)
-    HTTPServer(("0.0.0.0", 8002), Handler).serve_forever()
+    with observe_run(os.environ.get('BARRIDO_OUTPUT', '/app/output/barrido'), Config(), {'servidor': True}) as runtime:
+        runtime.monitor_progress = False  # Un servidor ocioso no es un barrido trabado.
+        emit_event("BARRIDO_SERVIDOR", puerto=8002)
+        with action('esperando solicitudes del servidor'):
+            HTTPServer(("0.0.0.0", 8002), Handler).serve_forever()
 
 
 if __name__ == "__main__":

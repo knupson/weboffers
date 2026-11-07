@@ -18,6 +18,7 @@ class Config:
     transient_retries: int = 3
     max_run_hours: float = 8
     unlocated_page_ratio: float = .5
+    stall_seconds: float = 300
 
     def __post_init__(self):
         for key, value in vars(self).items():
@@ -25,7 +26,7 @@ class Config:
                 raise ValueError(f"Configuración inválida: {key}={value}")
         if not 0 < self.min_usd <= self.max_usd or self.consecutive_blocks < 1:
             raise ValueError("Rango o cantidad de bloqueos inválidos")
-        if self.unlocated_page_ratio > 1 or self.max_run_hours <= 0 or self.transient_retries < 1 or int(self.transient_retries) != self.transient_retries:
+        if self.stall_seconds <= 0 or self.unlocated_page_ratio > 1 or self.max_run_hours <= 0 or self.transient_retries < 1 or int(self.transient_retries) != self.transient_retries:
             raise ValueError("Umbral, duración o reintentos inválidos")
         if int(self.consecutive_blocks) != self.consecutive_blocks or int(self.variation_limit) != self.variation_limit:
             raise ValueError("Bloqueos y variantes deben ser enteros")
