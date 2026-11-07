@@ -1,5 +1,8 @@
 ---
 import Base from "../../layouts/Base.astro";
+import ShareButtons from "../../components/ShareButtons.astro";
+import { productJsonLd } from "../../lib/jsonld";
+import { loadMlSheet } from "../../lib/ml-fichas";
 import Calculator from "../../components/Calculator.tsx";
 import ProductCard from "../../components/ProductCard.astro";
 import Icon from "../../components/Icon.astro";
@@ -23,6 +26,7 @@ export async function getStaticPaths() {
 }
 
 const { product: p, comparable, rates, related } = Astro.props;
+const sheet = comparable ? loadMlSheet(p.ml?.catalogId, p.name) : null;
 const buy = p.asin ? amazonUrl(p.asin, p.store) : null;
 const photo = p.price?.imageUrl ?? p.image ?? null;
 const logo = brandLogo(p.brand);
@@ -64,15 +68,7 @@ const specs: Array<[string, string]> = [
     title={`${p.name}: precio en Argentina, ¿Amazon o Mercado Libre?`}
     description={`${p.name} en Argentina: comparamos el precio en Mercado Libre contra el costo final trayéndolo de Amazon puesto en tu casa. ${p.summary}`}
     jsonLd={[
-      {
-        "@type": "Product",
-        name: p.name,
-        brand: { "@type": "Brand", name: p.brand },
-        description: p.summary,
-        category: p.category,
-        ...(p.asin ? { sku: p.asin } : {}),
-        ...(p.image ? { image: `${SITE.url}${p.image}` } : {}),
-      },
+      productJsonLd(p, SITE.url),
       {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -101,11 +97,24 @@ const specs: Array<[string, string]> = [
           )}
           <h1>{p.name}</h1>
           <p class="lead">{p.summary}</p>
+          <ShareButtons title={p.name} />
           <dl class="specs">
             {specs.map(([k, v]) => (
               <div><dt>{k}</dt><dd>{v}</dd></div>
             ))}
           </dl>
+          {sheet && (sheet.attributes.length > 0 || sheet.mainFeatures.length > 0) && (
+            <section class="ml-sheet">
+              <h2>Características según Mercado Libre</h2>
+              <p class="fine">Datos de la publicación de Mercado Libre, relevados el {sheet.fetched.split("-").reverse().slice(0, 2).join("/")}.</p>
+              {sheet.attributes.length > 0 && <table>
+                <thead><tr><th scope="col">Característica</th><th scope="col">Valor</th></tr></thead>
+                <tbody>{sheet.attributes.map(([name, value]) => <tr><th scope="row">{name}</th><td>{value}</td></tr>)}</tbody>
+              </table>}
+              {sheet.mainFeatures.length > 0 && <><h3>Lo que destaca la publicación</h3>
+                <ul>{sheet.mainFeatures.slice(0, 5).map((text) => <li>{text}</li>)}</ul></>}
+            </section>
+          )}
         </div>
 
         <div class="buybox">
@@ -176,3 +185,10 @@ const specs: Array<[string, string]> = [
     )}
   </Base>
 )}
+<style>
+  .ml-sheet { padding: 32px 0; }
+  .ml-sheet h2 { font-size: clamp(24px, 3vw, 32px); }
+  .ml-sheet table { width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed; }
+  .ml-sheet th, .ml-sheet td { text-align: left; padding: 12px; border-bottom: 1px solid var(--linea); overflow-wrap: anywhere; }
+  .ml-sheet td, .ml-sheet li { color: var(--crema-2); }
+</style>

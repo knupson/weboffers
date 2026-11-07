@@ -1,0 +1,45 @@
+---
+import Base from "../layouts/Base.astro";
+import { loadProducts, loadPricesDate } from "../lib/data";
+import { rankToday } from "../lib/conviene-hoy";
+import { formatArs } from "../lib/format";
+const { products } = await loadProducts();
+const pricesDate = loadPricesDate();
+const ranking = rankToday(products, pricesDate);
+const dateLabel = pricesDate.split("-").reverse().slice(0, 2).join("/");
+---
+<Base title="Qué conviene comprar hoy: Amazon o Mercado Libre" description="Compará los precios de hoy de Amazon puesto en Argentina y Mercado Libre. Mirá dónde conviene comprar y cuánto ahorrás en pesos.">
+  <div class="wrap page-head" data-checked={pricesDate}>
+    <h1 class="letra">Qué conviene hoy</h1>
+    <p class="lead" data-price-sub hidden>Precios del {dateLabel}. {ranking.count} productos publicados.</p>
+    <p data-price-stale>Estamos actualizando los precios de hoy.</p>
+  </div>
+  {[{ title: "Conviene traerlo de Amazon", rows: ranking.amazon }, { title: "Conviene comprarlo en Mercado Libre", rows: ranking.ml }].map(({ title, rows }) => (
+    <section style="padding-top: 24px">
+      <div class="wrap">
+        <div class="head"><h2>{title}</h2></div>
+        {rows.length ? <ol class="ranking">
+          {rows.map(({ product: p, saving }) => <li data-checked={pricesDate}>
+            <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
+            <dl class="num" data-price-amount hidden>
+              <div><dt>Amazon puesto en tu casa</dt><dd>~{formatArs(p.amazonArs!)}</dd></div>
+              <div><dt>Mercado Libre</dt><dd>{formatArs(p.ml!.price)}</dd></div>
+              <div><dt>Ahorro estimado</dt><dd>{formatArs(saving)}</dd></div>
+            </dl>
+            <p data-price-stale>Precio en actualización</p>
+          </li>)}
+        </ol> : <p>No hay productos comparables para esta lista hoy.</p>}
+      </div>
+    </section>
+  ))}
+</Base>
+<style>
+  .ranking { display: grid; gap: 16px; padding: 0; list-style-position: inside; }
+  .ranking li { padding: 24px; background: var(--placa); border-radius: var(--r-placa); box-shadow: inset 0 0 0 1.5px var(--linea); }
+  h3 { display: inline; font-size: 17px; }
+  dl { display: grid; gap: 12px; margin: 20px 0 0; }
+  [hidden] { display: none !important; }
+  dt { color: var(--crema-2); font-size: 14px; }
+  dd { margin: 0; font-weight: 700; }
+  @media (min-width: 640px) { dl { grid-template-columns: repeat(3, 1fr); } }
+</style>
