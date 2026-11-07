@@ -239,6 +239,12 @@ def test_interpretar_texto_del_chrome():
     assert mod.interpretar({"deliver": ar, "captcha": True})["motivo"] == "captcha"
     # 07/11: la página «Click the button below to continue shopping» no es «ubicación no AR».
     assert mod.interpretar({"deliver": "", "intersticial": True, "titulo": ""})["motivo"] == "intersticial"
+    # 07/11: tras el clic la página vino en castellano («Entrega GRATIS») y se leyó como envío pago. Sin inglés, no se decide.
+    es = mod.interpretar({"lang": "es-us", "deliver": "Enviar a Argentina", "buybox": True,
+                          "envio": "Entrega GRATIS el lunes, 23 de noviembre a Argentina", "precio": "US$299.00", "titulo": "x"})
+    assert (es["ships"], es["free"], es["motivo"]) == (None, None, "pagina_no_ingles")
+    assert mod.interpretar({"lang": "en-us", "deliver": ar, "buybox": True, "envio": "FREE delivery to Argentina",
+                            "precio": "$10", "titulo": "x"})["free"] is True
 
 
 def test_chrome_aprieta_continue_shopping_y_recarga_en_ingles():
@@ -271,6 +277,9 @@ def test_chrome_aprieta_continue_shopping_y_recarga_en_ingles():
     navegaciones = [p["url"] for m, p in llamadas if m == "Page.navigate"]
     assert navegaciones == ["https://www.amazon.com/dp/B1?language=en_US"] * 2
     assert any(m == "Runtime.evaluate" and p["expression"] == mod.CONTINUAR for m, p in llamadas)
+    # Después del clic se vuelve a fijar el idioma inglés antes de recargar.
+    clic = next(i for i, (m, p) in enumerate(llamadas) if m == "Runtime.evaluate" and p["expression"] == mod.CONTINUAR)
+    assert any(m == "Network.setCookie" and p["name"] == "lc-main" and p["value"] == "en_US" for m, p in llamadas[clic:])
 
 
 def test_precios_de_chrome_primero_y_scraper_de_respaldo(tmp_path, monkeypatch):

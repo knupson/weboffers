@@ -44,6 +44,7 @@ return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||
  envio:entrega||null,
  sinOferta:(b.match(/[^\n]*(See All Buying Options|No featured offers available|cannot be shipped to your selected delivery location|This item cannot be shipped|Currently unavailable)[^\n]*/)||[])[0]||null,
  captcha:/captcha|Enter the characters you see/i.test(t),
+ lang:(document.documentElement.lang||'').toLowerCase(),
  intersticial:/Click the button below to continue shopping/i.test(t)&&!document.getElementById('productTitle'),
  precio:(['#corePrice_feature_div .a-offscreen','#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen','#corePriceDisplay_desktop_feature_div .a-offscreen','#apex_desktop .a-offscreen'].map(s=>{const e=document.querySelector(s); return e && (e.innerText||e.textContent||'').trim();}).find(v=>v && /\d/.test(v)))||null,
  titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
@@ -63,6 +64,10 @@ def interpretar(d):
         return {"ships": None, "free": None, "text": None, "motivo": "captcha"}
     if d.get("intersticial"):
         return {"ships": None, "free": None, "text": None, "motivo": "intersticial"}
+    if d.get("lang") and not d["lang"].startswith("en"):
+        # Los textos que se interpretan («FREE delivery», «See All Buying Options») están en inglés:
+        # en otro idioma no se decide nada (07/11 «Entrega GRATIS» se leyó como envío pago).
+        return {"ships": None, "free": None, "text": (d.get("envio") or "")[:160] or None, "motivo": "pagina_no_ingles"}
     if "argentina" not in (d.get("deliver") or "").lower():
         return {"ships": None, "free": None, "text": None, "motivo": "ubicacion_no_ar"}
     if d.get("buybox") is False:
@@ -115,7 +120,13 @@ async def nueva_pestana(c, ctx):
     await c.call("Network.setBlockedURLs", {"urls": BLOQUEADOS}, s)
     # Precios en dólares en la página (preferencia de moneda de Amazon); sin cuenta.
     await c.call("Network.setCookie", {"name": "i18n-prefs", "value": "USD", "domain": ".amazon.com", "path": "/"}, s)
+    await fijar_ingles(c, s)
     return tid, s
+
+
+async def fijar_ingles(c, s):
+    # Idioma de la página: la cadena interpreta textos en inglés (07/11, tras «Continue shopping» salía en castellano).
+    await c.call("Network.setCookie", {"name": "lc-main", "value": "en_US", "domain": ".amazon.com", "path": "/"}, s)
 
 
 async def leer_producto(c, s, asin):
@@ -133,6 +144,7 @@ async def leer_producto(c, s, asin):
         print(f"{asin} intersticial: aprieto Continue shopping (intento {intento + 1})", file=sys.stderr, flush=True)
         await c.call("Runtime.evaluate", {"expression": CONTINUAR, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
         await asyncio.sleep(ESPERA_CARGA)
+        await fijar_ingles(c, s)
     return d
 
 
