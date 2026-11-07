@@ -113,9 +113,19 @@ def test_alertar_devuelve_resultado(monkeypatch):
     resp.__enter__ = Mock(return_value=resp)
     resp.__exit__ = Mock(return_value=False)
     monkeypatch.setattr(meta.urllib.request, "urlopen", Mock(return_value=resp))
-    assert meta.alertar("aviso") is True
+    mediodia = meta.datetime.datetime(2026, 11, 7, 12, 0, tzinfo=meta.ART)
+    assert meta.alertar("aviso", ahora=mediodia) is True
     monkeypatch.setattr(meta.urllib.request, "urlopen", Mock(side_effect=OSError()))
-    assert meta.alertar("aviso") is False
+    assert meta.alertar("aviso", ahora=mediodia) is False
+
+
+def test_alertar_no_manda_antes_de_las_7(monkeypatch):
+    # Alejandro, 07/11: ningún WhatsApp antes de las 7; queda alertado=False y sale en la pasada de las 07:00.
+    monkeypatch.setattr(meta, "ENV", {"WAHA_URL": "https://waha", "WA_NOTIFY_CHAT_ID": "chat"})
+    urlopen = Mock()
+    monkeypatch.setattr(meta.urllib.request, "urlopen", urlopen)
+    assert meta.alertar("aviso", ahora=meta.datetime.datetime(2026, 11, 7, 6, 59, tzinfo=meta.ART)) is False
+    urlopen.assert_not_called()
 
 
 @pytest.mark.parametrize("expired", [True, False])

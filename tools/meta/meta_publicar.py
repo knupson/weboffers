@@ -199,8 +199,15 @@ def publicar(entry, destino, token):
     raise MetaError("destino desconocido: %s" % destino)
 
 
-def alertar(texto):
+ART = datetime.timezone(datetime.timedelta(hours=-3))
+SILENCIO_HASTA = 7  # Alejandro, 07/11: ningún WhatsApp antes de las 7 de la mañana.
+
+
+def alertar(texto, ahora=None):
     # Mismo WAHA que recordatorio_redes.py; un aviso fallido nunca corta el lote.
+    # Antes de las 7 devuelve False: queda alertado=False y sale en la primera pasada desde las 07:00.
+    if (ahora or datetime.datetime.now(ART)).astimezone(ART).hour < SILENCIO_HASTA:
+        return False
     try:
         payload = {"session": ENV.get("WAHA_SESSION") or "default", "chatId": ENV["WA_NOTIFY_CHAT_ID"], "text": texto}
         req = urllib.request.Request(ENV["WAHA_URL"].rstrip("/") + "/api/sendText", data=json.dumps(payload).encode(), method="POST")

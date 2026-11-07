@@ -56,3 +56,23 @@ def test_reel19_controla_tambien_los_reels_especiales(monkeypatch):
     assert reminder.control("reel19", viernes_normal) == ""
     black_friday = _dt.datetime(2026, 11, 27, 19, 10, tzinfo=reminder.ART)
     assert "no pude comprobar el Reel" in reminder.control("reel19", black_friday)  # el día especial se controla
+
+
+def test_no_manda_whatsapp_antes_de_las_7(monkeypatch):
+    # Alejandro, 07/11: ningún WhatsApp antes de las 7. El vigía guarda el aviso como pendiente y sale a las 07:00.
+    llamados = []
+    monkeypatch.setattr(reminder.urllib.request, "urlopen", lambda *a, **k: llamados.append(a))
+    with pytest.raises(SystemExit):
+        reminder.enviar("aviso", "prueba", ahora=datetime.fromisoformat("2026-11-07T06:59:00-03:00"))
+    assert llamados == []
+
+
+def test_manda_whatsapp_desde_las_7(monkeypatch):
+    class Resp:
+        def read(self):
+            return b"{}"
+    llamados = []
+    monkeypatch.setattr(reminder, "leer_env", lambda: {"WAHA_URL": "https://waha", "WA_NOTIFY_CHAT_ID": "chat"})
+    monkeypatch.setattr(reminder.urllib.request, "urlopen", lambda *a, **k: llamados.append(a) or Resp())
+    reminder.enviar("aviso", "prueba", ahora=datetime.fromisoformat("2026-11-07T07:00:00-03:00"))
+    assert len(llamados) == 1

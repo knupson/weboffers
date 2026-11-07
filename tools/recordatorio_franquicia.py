@@ -217,7 +217,15 @@ def graph(ruta, params, env, token=None):
         return json.load(r)
 
 
-def enviar(texto, etiqueta):
+SILENCIO_HASTA = 7  # Alejandro, 07/11: ningún WhatsApp antes de las 7 de la mañana.
+
+
+def enviar(texto, etiqueta, ahora=None):
+    ahora = ahora or datetime.datetime.now(ART)
+    if ahora.astimezone(ART).hour < SILENCIO_HASTA:
+        # Falla a propósito: el vigía lo deja en pendientes y lo manda en la primera pasada desde las 07:00.
+        print("FRANQUICIA_RECORDATORIO_ESPERA", etiqueta, f"(silencio hasta las {SILENCIO_HASTA:02d}:00)")
+        sys.exit(1)
     env = leer_env()
     payload = {"session": env.get("WAHA_SESSION") or "default", "chatId": env["WA_NOTIFY_CHAT_ID"], "text": texto}
     req = urllib.request.Request(env["WAHA_URL"].rstrip("/") + "/api/sendText", data=json.dumps(payload).encode(), method="POST")
