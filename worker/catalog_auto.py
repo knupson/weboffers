@@ -106,6 +106,31 @@ def add_accepted(catalog, matches, output, today):
                         lambda: _add_accepted(catalog, matches, output, today))
 
 
+def pending_rejection(row, catalog, rejected):
+    """Controles comunes al descubrimiento y a la aprobación manual."""
+    usd = row.get("amazonPriceUsd")
+    if row.get("asin") in rejected:
+        return "rechazado_14_dias"
+    if duplicate(row, catalog):
+        return "duplicado"
+    if any(mismo_producto(row, p) for p in catalog if p.get("verified") is not False):
+        return "modelo_duplicado"
+    if not matching.positive_number(usd) or not 100 <= usd <= 400:
+        return "precio_fuera_de_rango"
+    if discovery.is_excluded_title(row.get("amazonTitle")) or discovery.is_excluded_title(row.get("name")):
+        return "titulo_excluido"
+    return None
+
+
+def build_pending(row, catalog, output, today):
+    """Construye la misma entrada y foto para ambas vías de alta."""
+    entry = validate_and_build_entries(catalog, [row], today=today)[0]
+    if not fetch_photo(entry, output):
+        return None
+    entry["pendienteDesde"] = today
+    return entry
+
+
 def _add_accepted(catalog, matches, output, today):
     pending_path = output / "altas-pendientes.json"
     pending = read_catalog(pending_path) if pending_path.exists() else []
@@ -120,17 +145,7 @@ def _add_accepted(catalog, matches, output, today):
     added, failures = [], []
     for row in matches["accepted"]:
         usd = row.get("amazonPriceUsd")
-        reason = None
-        if row.get("asin") in rejected:
-            reason = "rechazado_14_dias"
-        elif duplicate(row, catalog + added):
-            reason = "duplicado"
-        elif any(mismo_producto(row, p) for p in catalog + added if p.get("verified") is not False):
-            reason = "modelo_duplicado"
-        elif not matching.positive_number(usd) or not 100 <= usd <= 400:
-            reason = "precio_fuera_de_rango"
-        elif discovery.is_excluded_title(row.get("amazonTitle")) or discovery.is_excluded_title(row.get("name")):
-            reason = "titulo_excluido"
+        reason = pending_rejection(row, catalog + added, rejected)
         if reason:
             print(alta_line(row, "descartado", reason, {"precio": usd}), flush=True)
             continue
@@ -143,12 +158,11 @@ def _add_accepted(catalog, matches, output, today):
             print(alta_line(row, "revision", "sin_identificador_fuerte", {"precio": usd}), flush=True)
             continue
         try:
-            entry = validate_and_build_entries(catalog + added, [row], today=today)[0]
-            if not fetch_photo(entry, output):
+            entry = build_pending(row, catalog + added, output, today)
+            if entry is None:
                 failures.append({"slug": row["slug"], "motivo": "sin_foto"})
                 print(alta_line(row, "descartado", "sin_foto", {"precio": usd}), flush=True)
                 continue
-            entry["pendienteDesde"] = today
             added.append(entry)
             print(alta_line(row, "pendiente_envio", item={"precio": usd}), flush=True)
         except (requests.RequestException, OSError, ValueError, KeyError, TypeError) as exc:
