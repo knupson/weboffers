@@ -57,6 +57,17 @@ def test_contenedor_caido_y_fallas_del_log(tmp_path):
     assert "ml-fallas" in p
 
 
+def test_latido_con_fecha_en_el_log(tmp_path):
+    # Formato real desde el 05/11: «AAAA-MM-DD HH:MM:SS texto».
+    log(tmp_path, "2026-11-05 09:16:05 Publicación completa: modo=offline, productos=241, cambios=True.")
+    assert "latido" not in correr(tmp_path)
+
+
+def test_sin_latido_con_fecha_en_el_log(tmp_path):
+    log(tmp_path, "2026-11-05 07:01:00 Publicación completa: modo=offline, productos=241, cambios=True.")
+    assert correr(tmp_path)["latido"] == "el worker no da señales desde las 07:01"
+
+
 def test_worker_sin_latido(tmp_path):
     log(tmp_path, "07:01:00 Publicación completa: modo=offline, productos=241, cambios=True.")
     assert "latido" in correr(tmp_path)

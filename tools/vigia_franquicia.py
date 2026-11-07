@@ -93,11 +93,13 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     if len(ml_fallas) > ML_FALLAS_TOLERADAS:
         problemas["ml-fallas"] = f"Mercado Libre: {len(ml_fallas)} consultas fallidas hoy (ver log del worker)"
     if WORKER in vivos:
-        ultima = next((l for l in reversed(lineas) if re.match(r"\d\d:\d\d:\d\d ", l)), None)
+        # Desde el 05/11 el log lleva la fecha adelante («AAAA-MM-DD HH:MM:SS texto»); se aceptan los dos formatos.
+        horas = (re.match(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) ", l) for l in reversed(lineas))
+        ultima = next((m.group(1) for m in horas if m), None)
         if ultima is None and ahora.hour >= 2:
             problemas["latido"] = "el worker no escribió nada en el log de hoy"
         elif ultima is not None:
-            h = datetime.datetime.combine(ahora.date(), datetime.time.fromisoformat(ultima[:8]), rf.ART)
+            h = datetime.datetime.combine(ahora.date(), datetime.time.fromisoformat(ultima), rf.ART)
             if (ahora - h).total_seconds() > SIN_LATIDO_MIN * 60:
                 problemas["latido"] = f"el worker no da señales desde las {ultima[:5]}"
 
