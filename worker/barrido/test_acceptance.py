@@ -1,4 +1,6 @@
 import json
+import pytest
+pytest.importorskip('curl_cffi', reason='dependencias del barrido: correr en su contenedor')
 from types import SimpleNamespace
 from .bootstrap import load_vendor
 from .amazon_source import AmazonSource

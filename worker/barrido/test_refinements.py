@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip('curl_cffi', reason='dependencias del barrido: correr en su contenedor')
 from .bootstrap import load_vendor
 from .amazon_source import parse_search_page
 from .refinements import discover_refinements, load_refinements

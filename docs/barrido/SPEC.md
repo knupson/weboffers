@@ -15,12 +15,17 @@ Nodos Amazon explícitos: root se consulta tal cual, SIN expansión implícita. 
 versionan hojas. ML expande raíces por /categories/{id} hasta hojas, excluye subárboles y deduplica.
 La lista inicial es configurable y no garantiza cobertura total. Los nodos iniciales US/ES deben
 validarse en la primera consulta real; los refinamientos se descubren en ejecución, nunca se inventan.
-Rango USD 100–400 configurable. US USD; ES EUR con límites locales redondeados hacia afuera al centavo
+Rango real fijo USD 100–400; `--min-usd`/`--max-usd` sólo se admiten con `--dry-run`.
+US USD; ES EUR con límites locales redondeados hacia afuera al centavo
 y validación final USD; ML ARS/MEP, filtro después de ofertas. La fuente vieja ML abarca 60–2400:
 medir cobertura antes de retirarla. Cotizaciones positivas, finitas y de HOY ART con fuente/fecha.
-Sin tasa del día falla la tienda dependiente; US no necesita cotizaciones externas. Sin respaldo viejo.
+Sin tasa del día falla ML; ES queda `skipped` con `BARRIDO_ES_SIN_COTIZACION` y
+`fecha_recibida` literal. ES corre sólo los días con cotizaciones oficial y EUR del mismo día ART;
+no se reutilizan tasas del último día hábil durante fines de semana o feriados. US no necesita tasas externas.
 Pausa Amazon 5 s/página y ML 0,3 s/llamada; backoff 30,60 s con tope 120; N=3 bloqueos consecutivos
-por tienda. Éxito reinicia contador. Transporte interno una sesión bloqueada/intento y cero reintentos
+por página. Los errores transitorios tienen contador independiente (`transient_retries=3`) y el mismo
+backoff con tope; `BARRIDO_REINTENTO` conserva el motivo literal y la clase del error.
+Transporte interno una sesión bloqueada/intento y cero reintentos
 de red; calentamiento, ubicación y click-through observables siguen permitidos. Variantes: 20 intentos
 diarios por tienda persistidos ANTES de consultar. Todo configurable, no es un ritmo seguro medido.
 
@@ -76,26 +81,37 @@ nodo, idioma y destino AR. Falta condición nueva: falla. Falta filtro AR: log y
 DRY-RUN obtiene sólo página 1 filtrada por categoría (+preconsulta si falta cache), imprime count,
 total_pages y cantidad de categorías; no variantes ni checkpoint de producción. No estima duración
 ni exhaustividad. total_pages es máximo visible, no total independiente. Seguir next habilitado;
-metadatos insuficientes/repetición de secuencia ASIN/página incorrecta → parcial con error explícito.
+Sin paginación ni next, la página de resultados es la última; cero resultados registra
+`BARRIDO_CATEGORIA_VACIA`. Repetición de secuencia ASIN/página incorrecta → parcial con error explícito.
 No fijar límite arbitrario de páginas. Tope de operador → parcial, nunca completo.
 ML: highlights/MLA/category/{cat} → PRODUCT → products/{id} y products/{id}/items paginado.
 No sites/MLA/search. products/search queda para matching futuro. Conservar respuestas, deduplicar
-IDs y procedencias. Highlights no es catálogo exhaustivo. 401/403/429/error: falla visible con cuerpo
+IDs y procedencias. La respuesta highlights completa se guarda una vez por página; cada fila guarda
+sólo su entrada propia. Highlights no es catálogo exhaustivo. 401/403/429/error: falla visible con cuerpo
 literal, no lista vacía. Sin MEP de hoy falla ML; no se prueba cuota real desde fixtures.
 
 ## Persistencia y observabilidad
 
 Estado diario `output/barrido/state/AAAA-MM-DD/<store>`. Página JSON atómica inmutable antes del
 checkpoint (siguiente página). Página es fuente de verdad: corte antes de checkpoint se recupera.
-JSONL atómico reconstruido, sin append; deduplica y acumula provenance. Configuración, tasas y alcance
-fijados por día/tienda; cambios incompatibles requieren otro output. Día nuevo comienza página 1.
-Lock exclusivo; tras caída retirar lock sólo verificando ausencia de proceso vivo.
+JSONL atómico reconstruido, sin append; deduplica y acumula provenance. Configuración y tasas
+fijadas por día/tienda; se admiten subconjuntos de nodos compatibles y ampliar el alcance.
+Los conocidos se recalculan con `catalog.json` y `catalog-auto.json` en cada ejecución y no se congelan.
+Día nuevo comienza página 1. Lock exclusivo con PID y hora de inicio; se recupera con
+`BARRIDO_LOCK_HUERFANO` si el proceso murió o superó `max_run_hours` (8 por defecto).
 `resumen-AAAA-MM-DD.json` con estados por tienda y métricas por categoría: páginas, productos,
-en rango, con envío, fallas, segundos. Tienda bloqueada conserva evidencia parcial, NO fuente completa.
+en rango, `envio_gratis`, `envio_pago`, `envio_desconocido`, `no_envia`, fallas y segundos.
+Sólo envío gratis confirmado es elegible; pago y costo desconocido se rechazan con
+`envio_pago` y `envio_costo_desconocido` y no consumen variantes.
+Cada categoría fallida conserva error literal y estado `failed`; las otras continúan y la tienda queda `partial`.
+Ubicación AR se intenta una vez por sesión; una excepción registra `BARRIDO_UBICACION_FALLIDA`
+y deja el envío desconocido. Si más del 50% de páginas carece de ubicación confirmada, la tienda
+queda `partial`, razón `ubicacion_ar_no_confirmada`; umbral configurable con `unlocated_page_ratio`.
+Se persiste la ubicación por página para conservar ese diagnóstico al reanudar.
 Cada línea propia lleva timestamp ART ISO y campos JSON. BARRIDO_PAGINA: tienda,categoria,pagina,
 de (null si desconocido),productos,segundos,http (real o null). BARRIDO_HTTP observa intentos sin
 credenciales. BARRIDO_ERROR/BARRIDO_BLOQUEADO: motivo literal completo, tipo, HTTP disponible;
-saltos de línea escapados. Bloqueo tras N detiene sólo tienda; página fallida no avanza. Reanudar
+saltos de línea escapados. Bloqueo tras N termina esa categoría; página fallida no avanza. Reanudar
 mismo día desde primera no confirmada. BARRIDO_OK sólo completo; parcial/fallido BARRIDO_FALLA y
 exit CLI no cero. No fabricar datos si /s sigue bloqueado.
 

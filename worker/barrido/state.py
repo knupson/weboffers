@@ -3,7 +3,10 @@ from contextlib import contextmanager
 import hashlib
 import json
 import os
+import time
+import uuid
 from pathlib import Path
+from .events import emit_event
 
 
 def write_atomic(path, value, *, text=False):
@@ -17,17 +20,65 @@ def write_atomic(path, value, *, text=False):
     os.replace(temporary, path)
 
 
+def pid_alive(pid):
+    if os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        handle = kernel.OpenProcess(0x1000, False, pid)
+        if not handle:
+            return ctypes.get_last_error() == 5  # Acceso denegado no prueba que haya muerto.
+        try:
+            code = wintypes.DWORD()
+            return not kernel.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value == 259
+        finally:
+            kernel.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
 @contextmanager
-def acquire_run_lock(output):
+def acquire_run_lock(output, max_run_hours=8):
     path = Path(output) / "run.lock"
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    owner = dict(pid=os.getpid(), started_at=time.time(), token=uuid.uuid4().hex)
+    while True:
+        try:
+            descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            try:
+                literal = path.read_text(encoding='utf-8')
+                existing = json.loads(literal)
+                if isinstance(existing, int):  # Lock anterior a pid+hora.
+                    existing = dict(pid=existing, started_at=path.stat().st_mtime)
+                stale = time.time() - existing['started_at'] > max_run_hours * 3600 or not pid_alive(existing['pid'])
+            except FileNotFoundError:
+                continue
+            except (ValueError, KeyError, TypeError):
+                # Puede estar recién creado y todavía sin escribir.
+                stale = time.time() - path.stat().st_mtime > max_run_hours * 3600
+            if not stale:
+                raise
+            emit_event('BARRIDO_LOCK_HUERFANO', lock=literal)
+            if path.read_text(encoding='utf-8') == literal:
+                path.unlink()
     try:
-        os.write(descriptor, str(os.getpid()).encode())
-        os.close(descriptor)
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+            json.dump(owner, stream)
         yield
     finally:
-        path.unlink()
+        if path.exists() and json.loads(path.read_text(encoding='utf-8')) == owner:
+            path.unlink()
 
 
 class State:
@@ -40,8 +91,24 @@ class State:
         path = self.root / "context.json"
         if path.exists():
             old = json.loads(path.read_text(encoding="utf-8"))
-            if old != config:
+            # Los IDs conocidos cambian con el catálogo; los subconjuntos de nodos
+            # comparten páginas, pero conservan una definición estable por nodo.
+            old.pop('known', None)
+            config = {k: v for k, v in config.items() if k != 'known'}
+            old_definition, definition = old.get('definition'), config.get('definition')
+            if old_definition is not None and definition is not None:
+                old_nodes = {node['id']: node for node in old_definition['nodes']}
+                nodes = {node['id']: node for node in definition['nodes']}
+                if any(old_nodes[key] != nodes[key] for key in old_nodes.keys() & nodes.keys()):
+                    raise ValueError('Configuración diaria incompatible: cambió un nodo')
+                merged = {**old_definition, 'nodes': list({**old_nodes, **nodes}.values())}
+                old = {**old, 'definition': {k: v for k, v in old_definition.items() if k != 'nodes'}}
+                comparable = {**config, 'definition': {k: v for k, v in definition.items() if k != 'nodes'}}
+            else:
+                comparable, merged = config, None
+            if old != comparable:
                 raise ValueError("Configuración diaria incompatible: usá otro directorio output")
+            write_atomic(path, {**config, **({'definition': merged} if merged is not None else {})})
         else:
             write_atomic(path, config)
 
@@ -67,7 +134,7 @@ class State:
             write_atomic(path, payload)
         write_atomic(self.root / "checkpoint.json", {"category": category, "next_page": None if payload["complete"] else page + 1})
 
-    def materialize_jsonl(self):
+    def materialize_jsonl(self, known=None):
         products = {}
         for page in self.pages():
             for row in page["products"]:
@@ -78,6 +145,9 @@ class State:
                     for source in row["provenance"]:
                         if source not in products[key]["provenance"]:
                             products[key]["provenance"].append(source)
+        if known is not None:
+            for row in products.values():
+                row["known"] = row["id"] in known
         write_atomic(self.output / f"{self.store}-{self.date}.jsonl",
                      "".join(json.dumps(p, ensure_ascii=False, allow_nan=False) + "\n" for p in products.values()), text=True)
         return list(products.values())

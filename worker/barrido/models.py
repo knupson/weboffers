@@ -21,8 +21,9 @@ def normalize_product(raw, *, store, identity, stamp, currency, rate, provenance
         reasons.append("fuera_de_rango")
     if condition != "new":
         reasons.append("condicion_no_confirmada")
-    if shipping["shipping_class"] not in ("gratis", "pago", "envia_costo_desconocido"):
-        reasons.append("envio_no_confirmado")
+    if shipping["shipping_class"] != "gratis":
+        reasons.append({"pago": "envio_pago", "envia_costo_desconocido": "envio_costo_desconocido"}.get(
+            shipping["shipping_class"], "envio_no_confirmado"))
     return dict(schema_version=1, store=store, id=identity, date=stamp[:10], observed_at=stamp,
                 title=raw.get("title") or raw.get("name"), currency=currency, price=price,
                 price_usd=usd, exchange_rate=rate, condition=condition, shipping_text=shipping.get("text"),

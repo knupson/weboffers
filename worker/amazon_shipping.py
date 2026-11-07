@@ -9,14 +9,10 @@ NO_SHIP_PATTERNS = (
     "does not ship",
     "not available for shipping",
     "no se puede enviar",
-    "no se envía",
-    "no se envia",
 )
 
 
 PAID_DELIVERY_RE = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?\s+delivery", re.IGNORECASE)
-ES_PAID_RE = re.compile(r"(?:env[ií]o(?: de| por)?\s*[€$]?\s*\d+[,.]\d{2}\s*€?|\d+[,.]\d{2}\s*€\s*(?:de env[ií]o|de entrega))", re.I)
-FREE_RE = re.compile(r"^(?:FREE DELIVERY|ENV[IÍ]O GRATIS|ENTREGA GRATIS)", re.I)
 ELIGIBLE_OVER_RE = re.compile(r"orders? over \$\s?(\d[\d,]*(?:\.\d+)?)", re.IGNORECASE)
 
 
@@ -71,9 +67,9 @@ def parse_delivery(details, located=False):
         ships = False
     elif "Argentina" in text and amount_ok:
         ships = True
-    elif located and amount_ok and bool(FREE_RE.search(text)):
+    elif located and amount_ok and text.upper().startswith("FREE DELIVERY"):
         ships = True
-    elif located and "argentina" in location.lower() and amount_ok and (PAID_DELIVERY_RE.search(text) or ES_PAID_RE.search(text)):
+    elif located and "argentina" in location.lower() and amount_ok and PAID_DELIVERY_RE.search(text):
         # 03/11: «$71.77 delivery Monday…» con la sesión en Argentina = envía, pero cobra el envío.
         # Antes quedaba desconocido para siempre y el producto se volvía a relevar todos los días.
         ships = True
@@ -81,16 +77,16 @@ def parse_delivery(details, located=False):
 
     free = None
     if ships is True:
-        free = bool(FREE_RE.search(text))
+        free = text.upper().startswith("FREE DELIVERY")
         for option in options:
             if not isinstance(option, dict):
                 continue
             price_text = option.get("price_text")
-            if isinstance(price_text, str) and price_text.strip().upper() in ("FREE", "GRATIS", "ENVÍO GRATIS"):
+            if isinstance(price_text, str) and price_text.strip().upper() == "FREE":
                 free = True
         # 03/11: «FREE delivery … on eligible orders over $99» no es gratis si el producto vale menos que el mínimo.
-        minimo = ELIGIBLE_OVER_RE.search(text) or re.search(r"pedidos? (?:superiores a|de más de)\s*(\d+(?:[,.]\d+)?)\s*€", text, re.I)
-        if free and minimo and amount_ok and amount < float(minimo.group(1).replace(",", ".") if "€" in text else minimo.group(1).replace(",", "")):
+        minimo = ELIGIBLE_OVER_RE.search(text)
+        if free and minimo and amount_ok and amount < float(minimo.group(1).replace(",", "")):
             free = False
     condition = details.get("condition")
     return {

@@ -36,7 +36,7 @@ def test_bloqueo_continua_otras_tiendas(tmp_path, capsys):
     sources = {"US": FakeSource(blocked=True), "ES": FakeSource()}
     categories = {"stores": {store: {"nodes": [{"id": "A", "name": "Prueba", "kind": "leaf"}]} for store in sources}}
     result = run_all(categories, Config(backoff=0), tmp_path, source_factory=lambda store, *a: sources[store], rate_loader=rate, sleep=lambda _: None)
-    assert result["US"]["status"] == "blocked" and result["ES"]["status"] == "complete"
+    assert result["US"]["status"] == "partial" and result["ES"]["status"] == "complete"
     assert State(tmp_path, now_art().date().isoformat(), "US").load_checkpoint("A") == 1
     lines = capsys.readouterr().out.splitlines()
     assert all("-03:00 " in line for line in lines)

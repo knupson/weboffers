@@ -44,6 +44,7 @@ services:
       context: .
       dockerfile: barrido/Dockerfile
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       ML_CLIENT_ID: ${ML_CLIENT_ID:-}
       ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}

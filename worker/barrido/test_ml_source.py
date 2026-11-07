@@ -15,6 +15,9 @@ def test_highlights_product_precio_ars_mep_excluye_usado_cbt(fixture_dir):
     rows = source.fetch_search_page({"id": "MLAFIXTURE", "name": "Prueba"}, 1, "2026-11-07T12:00:00-03:00")["products"]
     assert len(rows) == 1 and rows[0]["price_usd"] == 200 and rows[0]["eligible"]
     assert rows[0]["raw"]["selected_offer"]["item_id"] == "MLA1001"
+    assert rows[0]['raw']['highlights'] == json.loads((fixture_dir / 'ml_highlights.json').read_text())['content'][0]
+    page = source.fetch_search_page({'id': 'MLAFIXTURE', 'name': 'Prueba'}, 1, '2026-11-07T12:00:00-03:00')
+    assert page['raw']['highlights']['content']
     source.fetch_search_page({"id": "MLAFIXTURE2", "name": "Otra"}, 1, "2026-11-07T12:00:00-03:00")
     assert len([path for path, _ in calls if path.endswith("/items")]) == 1
     assert not any("/sites/" in path for path, _ in calls)

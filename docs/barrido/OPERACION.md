@@ -25,9 +25,25 @@ ssh docker 'docker exec -i -w /app franquicia400-weboffers-worker-1 python - bar
 
 Una corrida completa se ejecuta con el mismo comando CLI sin `--dry-run`. `--max-pages 1` permite
 probar reanudación y deja estado parcial si quedan páginas. Repetir sin ese límite continúa.
-Cambios de rango, nodos, conocidos o políticas en un día ya iniciado requieren otro `--output`.
-`--refresh-refinements` fuerza redescubrimiento del cache diario. No borrar un lock sin verificar
-que no hay otro proceso de barrido activo. Tras una caída, quitar sólo run.lock de ese output.
+El rango real es siempre USD 100–400; sólo `--dry-run` permite cambiarlo. Cambios de políticas
+o de la definición de un nodo existente requieren otro `--output`. Se puede ampliar el conjunto
+de nodos o correr `--category` y después la corrida completa. Los conocidos se recalculan leyendo
+`ml.catalogId` y ASIN de ambos catálogos; `catalog-auto.json` se busca junto al directorio del barrido
+(por defecto `/app/output/catalog-auto.json`) o en `--catalog-auto`.
+`--refresh-refinements` fuerza redescubrimiento del cache diario. El lock guarda PID y hora;
+se recupera automáticamente si murió el proceso o superó `--max-run-hours` (8 horas por defecto),
+registrando `BARRIDO_LOCK_HUERFANO`.
+
+ES corre sólo los días en que oficial y EUR tienen cotización del mismo día ART. Durante fines
+de semana o feriados pueden seguir con fecha del último día hábil: se rechazan, se registra
+`BARRIDO_ES_SIN_COTIZACION fecha_recibida=<fecha literal>` y ES queda `skipped`; las otras tiendas
+continúan. No se rellenan tasas viejas. `skipped` no provoca error de salida por sí solo.
+
+Una categoría fallida registra `BARRIDO_ERROR` con el error literal y no interrumpe las restantes;
+la tienda queda `partial`. Los timeouts, conexiones y 5xx tienen reintentos separados de bloqueos.
+Hay pausa antes de cada categoría y después de la preconsulta de refinamientos.
+Más de la mitad de páginas sin ubicación AR confirmada deja `partial` con
+`ubicacion_ar_no_confirmada`; se ajusta con `--unlocated-page-ratio` (0,5 por defecto).
 
 Validación local con dependencias instaladas de worker/barrido/requirements.txt:
 

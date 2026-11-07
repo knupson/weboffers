@@ -1,4 +1,6 @@
 import hashlib
+import pytest
+pytest.importorskip('curl_cffi', reason='dependencias del barrido: correr en su contenedor')
 import json
 from pathlib import Path
 from .bootstrap import VENDOR, load_vendor, configure_transport

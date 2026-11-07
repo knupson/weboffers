@@ -14,7 +14,10 @@ def forbid_network(monkeypatch):
         raise AssertionError("Los tests del barrido no pueden consultar la red")
 
     monkeypatch.setattr(requests.sessions.Session, "request", fail)
-    from curl_cffi import requests as curl_requests
+    try:
+        from curl_cffi import requests as curl_requests
+    except ImportError:
+        return
     monkeypatch.setattr(curl_requests.Session, "request", fail)
 
 

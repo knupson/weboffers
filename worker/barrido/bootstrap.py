@@ -28,4 +28,22 @@ def configure_transport(observer=None):
     fetch.BLOCK_RETRIES = 1
     fetch.OBSERVER = observer
     apply_ar_location()
+    original = fetch.set_location
+    def set_ar_once(sess, postal_code=None):
+        if getattr(sess, 'ar_tried', False) or getattr(sess, 'located', None) == 'AR':
+            return False
+        if not sess.glow_token:
+            return False
+        sess.ar_tried = True
+        try:
+            confirmed = original(sess, postal_code)
+            if not confirmed:
+                from .events import emit_event
+                emit_event('BARRIDO_UBICACION_FALLIDA', motivo='Amazon no confirmó la ubicación AR')
+            return confirmed
+        except Exception as exc:
+            from .events import emit_event
+            emit_event('BARRIDO_UBICACION_FALLIDA', motivo=str(exc), tipo=type(exc).__name__)
+            return False
+    fetch.set_location = set_ar_once
     return fetch

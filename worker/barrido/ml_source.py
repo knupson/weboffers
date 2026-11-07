@@ -27,6 +27,12 @@ class MLSource:
         excluded = set(definition.get("exclude", []))
 
         def walk(node):
+            try:
+                visit(node)
+            except Exception as exc:
+                result.append({**node, '_discovery_error': exc})
+
+        def visit(node):
             if node["id"] in seen or node["id"] in excluded:
                 return
             seen.add(node["id"])
@@ -100,7 +106,7 @@ class MLSource:
                 shipping_class = "gratis"
             elif shipping.get("free_shipping") is False:
                 shipping_class = "pago"
-            raw = {"name": detail.get("name"), "price": offer.get("price"), "highlights": highlights,
+            raw = {"name": detail.get("name"), "price": offer.get("price"), "highlights": product,
                    "detail": detail, "offers": offers, "offer_pages": self.offer_pages[identity], "selected_offer": offer}
             row = normalize_product(raw, store="ML", identity=identity, stamp=stamp, currency="ARS", rate=self.rate,
                 provenance=dict(category_id=category["id"], category_name=category["name"], page=1,
@@ -108,4 +114,4 @@ class MLSource:
                 shipping={"shipping_class": shipping_class, "text": None}, condition="new" if offer else None,
                 known=identity in self.known, min_usd=self.config.min_usd, max_usd=self.config.max_usd)
             rows.append(row)
-        return dict(products=rows, http=200, count=len(rows), total_pages=1, current_page=1, has_next=False)
+        return dict(products=rows, raw={"highlights": highlights}, http=200, count=len(rows), total_pages=1, current_page=1, has_next=False)
