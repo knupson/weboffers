@@ -6,3 +6,5 @@
 Dockerfile text eol=lf
 *.path text eol=lf
 *.service text eol=lf
+# 07/11: el barrido verifica hashes del scraper copiado; sin conversión de fin de línea en ningún archivo suyo.
+worker/barrido/** -text
