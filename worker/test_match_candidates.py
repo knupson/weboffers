@@ -11,6 +11,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import match_candidates as match  # noqa: E402
 import apply_candidates  # noqa: E402
+from eval.adversarial import CASES, REPORTED_CASES, evaluate_case  # noqa: E402
+
+
+@pytest.mark.parametrize("row", REPORTED_CASES + CASES, ids=lambda row: row["label"])
+def test_adversarial_identity(row):
+    status, reason, _ = evaluate_case(row, match.evaluate)
+    assert (status == "accepted") == row["accept"], (status, reason)
+    if row["expected_status"]:
+        assert status == row["expected_status"], reason
 
 
 def amazon(**changes):

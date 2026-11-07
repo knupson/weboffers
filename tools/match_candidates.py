@@ -25,7 +25,10 @@ from variants import variant_conflicts
 from tools.apply_candidates import candidate_summary  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
-VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
+VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("core neo go mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
+# «Stinger 2 Core» es edición; «8-Core»/«Octa Core» son núcleos de CPU.
+CORE_SPEC_RE = re.compile(r"\b(?:\d+\s*-\s*cores?|(?:dual|quad|hexa|octa|deca)[ -]+cores?"
+                          r"|\d+\s+cores|\d+\s+core(?=.{0,30}\b(?:processor|procesador|cpu)\b))\b")
 UNIT_RE = re.compile(r'\b(\d+(?:[.,]\d+)?)\s*-?\s*(tb|gb|mb|mah|mm|inches|inch|in|pulgadas|pulgada|pulg|w|\")(?=$|[^a-z])')
 ALIASES = {"wd": "western digital", "wd black": "western digital", "wdblack": "western digital",
            "hewlett packard": "hp", "hewlett packard hp": "hp", "hp inc": "hp",
@@ -131,8 +134,74 @@ def own_description(value):
     return re.split(r"\b(?:for|para|compatible (?:with|con))\b", ascii_text(value), maxsplit=1)[0]
 
 
+def pack_description(value):
+    """Extrae unidades vendidas y retira sólo expresiones de cantidad inequívocas.
+
+    No infiere una unidad del silencio ni confunde generaciones, RAM o conectores
+    con cantidades. «Kit»/«bundle» sin cantidad conserva su duda de variante.
+    """
+    counts = set()
+    pattern = (r"\b(?:pack|kit|paquete|set)\s*(?:of\s*|de\s*|x\s*)?(\d+)\b"
+               r"(?:\s*(?:unidades|units))?"
+               r"|\b(\d+)(?:\s*-\s*(?:pack|units?|unidades|cameras?|camaras?)"
+               r"|\s+(?:pack|units?|unidades|cameras|camaras|camera(?=\s+system\b)))\b"
+               r"(?:\s+system)?|\b(twin\s+pack|duo)\b")
+
+    def take(match):
+        counts.add(int(match[1] or match[2] or 2))
+        return " "
+
+    return counts, re.sub(pattern, take, ascii_text(value))
+
+
+def product_types(value, category=""):
+    """Tipos explícitos del producto propio, con sinónimos de ambos idiomas.
+
+    Las frases compuestas se consumen primero: «cámara web» es webcam. Los
+    earbuds pueden describirse también como auriculares sin cambiar de tipo.
+    """
+    text = normalize(own_description(value))
+    text = re.sub(r"\b(?:(?:voice|touch|app) control|control (?:por voz|de voz|tactil))\b", " ", text)
+    # En teléfonos/tablets «4 speakers» enumera componentes internos.
+    if category_for(category) in {"Celulares", "Tablets y lectores"} or CORE_SPEC_RE.search(text):
+        text = re.sub(r"\b\d+\s+(?:speakers?|parlantes?|altavoces)\b", " ", text)
+    camera_kind = re.search(r"\b(webcams?|camaras? web|cameras?|camaras?)\b", text)
+    groups = {
+        "webcam": r"\b(?:webcams?|camaras? web)\b",
+        "keyboard": r"\b(?:keyboards?|teclados?)\b",
+        "mouse": r"\b(?:mouse|mice|raton|ratones)\b",
+        "earbuds": r"\b(?:earbuds?|in ear)\b",
+        "headphones": r"\b(?:headsets?|headphones?)\b",
+        "audio": r"\bauriculares\b",
+        "speaker": r"\b(?:speakers?|parlantes?|altavoces|altavoz)\b",
+        "camera": r"\b(?:cameras?|camaras?)\b",
+        "monitor": r"\b(?:monitors?|monitores)\b",
+        "router": r"\b(?:routers?)\b",
+        "tablet": r"\b(?:tablets?|tabletas?)\b",
+        "phone": r"\b(?:phones?|smartphones?|celular|celulares)\b",
+        "watch": r"\b(?:watch|watches|smartwatch|smartwatches|reloj|relojes)\b",
+        "charger": r"\b(?:chargers?|cargador|cargadores)\b",
+        "case": r"\b(?:cases?|fundas?)\b",
+        "cable": r"\b(?:cables?)\b",
+        "stand": r"\b(?:stands?|soportes?)\b",
+        "controller": r"\b(?:controllers?|control(?:es)?|joysticks?|gamepads?)\b",
+    }
+    found = set()
+    for kind, pattern in groups.items():
+        if re.search(pattern, text):
+            found.add(kind)
+            text = re.sub(pattern, " ", text)
+    if found & {"earbuds", "headphones"}:
+        found.discard("audio")
+    if {"camera", "webcam"} <= found:
+        # Una cámara de acción puede ofrecer modo webcam y una webcam incluir
+        # una cámara: el primer tipo declarado identifica el dispositivo vendido.
+        found.discard("camera" if "web" in camera_kind[0] else "webcam")
+    return found
+
+
 def model_tokens(value):
-    text = ascii_text(value)
+    text = pack_description(value)[1]
     text = UNIT_RE.sub(" ", text)
     # Los prefijos de códigos también pueden venir separados por espacios.
     text = re.sub(r"\b(wf|wh|mz|rt|sn)\s+(?=[a-z0-9]*\d)", r"\1-", text)
@@ -188,6 +257,8 @@ def family_conflict(left, right):
 
 
 def variant_words(value, textual_model=""):
+    value = pack_description(value)[1]
+    value = CORE_SPEC_RE.sub(" ", value)
     owned = own_description(value)
     text = owned.split("|", 1)[0]
     text = re.sub(r"\bultra[ -](?:portable|slim|hd)\b|\bpro[ -]level\b", "", text)
@@ -239,7 +310,10 @@ def identity_qualifiers(value, textual_model):
     son versiones. Los signos + sólo califican un modelo, nunca sumas de RAM o
     nombres ajenos (por ejemplo, una plataforma mencionada en la descripción).
     """
-    text = own_description(memory_text(value))
+    text = own_description(memory_text(pack_description(value)[1]))
+    text = CORE_SPEC_RE.sub(" ", text)
+    # «International Version» describe la región, no una generación numérica.
+    text = re.sub(r"\binternational version\b", " ", text)
     text = UNIT_RE.sub(" ", text)
     text = re.sub(r"\bultra[ -](?:portable|slim|hd)\b|\bpro[ -]level\b", "", text)
     text = re.sub(r"\b(?:with (?:a )?clock|con reloj)\b", " clock ", text)
@@ -381,6 +455,23 @@ def evaluate(amazon, candidate, product, mep):
     evidence = {"brand": brand_key(brand) if brand_key(brand) == brand_key(attrs.get("BRAND")) else "",
                 "model": sorted(shared), "capacity": sorted(f"{n:g}{u}" for u in a_caps.keys() & b_caps.keys() for n in a_caps[u] & b_caps[u])}
     doubts = []
+    category = amazon.get("amazonCategory", "")
+    a_types, b_types = product_types(title, category), product_types(name, category)
+    # «Auriculares» solo no distingue in-ear de vincha; no inventar esa diferencia.
+    if a_types == {"audio"} and b_types in ({"earbuds"}, {"headphones"}):
+        a_types = b_types
+    if b_types == {"audio"} and a_types in ({"earbuds"}, {"headphones"}):
+        b_types = a_types
+    if a_types and b_types and a_types != b_types:
+        return "rejected", "tipo de producto distinto", evidence
+    a_pack = pack_description(title)[0]
+    b_pack = pack_description(" ".join([name, model, attrs.get("LINE", "")]))[0]
+    if a_pack != b_pack:
+        if a_pack and b_pack:
+            return "rejected", "cantidad del paquete distinta", evidence
+        doubts.append("variante de cantidad del paquete sin confirmar")
+    if len(a_pack) > 1 or len(b_pack) > 1:
+        doubts.append("cantidad del paquete ambigua")
     if re.search(r"\b(?:libro|book|manual|user guide|cookbook|editorial)\b", normalize(name)):
         return "rejected", "libro o manual en lugar del producto", evidence
     if accessory(title) or accessory(name):
@@ -424,9 +515,14 @@ def evaluate(amazon, candidate, product, mep):
         doubts.append("plataforma contradictoria entre nombre y atributos")
     if not evidence["brand"]:
         doubts.append("marca ausente")
-    a_ram, b_ram = ram_quantities(title), ram_quantities(ml_text)
+    a_ram, b_ram = ram_quantities(title), ram_quantities(name)
+    for key in ("RAM", "RAM_MEMORY"):
+        b_ram.update(quantities(attrs.get(key, "")).get("gb", set()))
     if a_ram and b_ram and a_ram != b_ram:
         return "rejected", "memoria RAM distinta", evidence
+    if (a_ram != b_ram
+            and category_for(amazon.get("amazonCategory")) in {"Celulares", "Tablets y lectores"}):
+        doubts.append("memoria RAM sin confirmar")
     for unit in a_caps.keys() & b_caps.keys():
         # Si los dos lados informan varios valores (RAM + almacenamiento), tienen que coincidir todos:
         # IdeaPad 1 «8GB RAM, 128GB» vs «4GB 128gB» comparte 128 y es otra configuración.
