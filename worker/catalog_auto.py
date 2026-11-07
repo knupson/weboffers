@@ -27,6 +27,7 @@ from tools import discover_products as discovery, match_candidates as matching
 from tools.apply_candidates import validate_and_build_entries
 from tools.fetch_photos import to_webp, ALLOWED_HOSTS
 from tools import crecer_desde_ml
+from tools.identifier_gate import strong_identifier_match
 
 ART = timezone(timedelta(hours=-3))
 
@@ -108,6 +109,11 @@ def add_accepted(catalog, matches, output, today):
 def _add_accepted(catalog, matches, output, today):
     pending_path = output / "altas-pendientes.json"
     pending = read_catalog(pending_path) if pending_path.exists() else []
+    review_path = output / "altas-revision.json"
+    cutoff = (datetime.fromisoformat(today) - timedelta(days=14)).date().isoformat()
+    # Conservar la primera fecha: redescubrir un par no renueva su vencimiento.
+    review = {(row["asin"], row["catalogId"]): row
+              for row in read_json(review_path, []) if row.get("revisionDesde", "") >= cutoff}
     # Releer el automático bajo el bloqueo: Chrome pudo promover durante el descubrimiento.
     catalog = catalog + read_json(output / "catalog-auto.json", []) + pending
     rejected = rejected_asins(output, today)
@@ -128,6 +134,14 @@ def _add_accepted(catalog, matches, output, today):
         if reason:
             print(alta_line(row, "descartado", reason, {"precio": usd}), flush=True)
             continue
+        key = (row["asin"], row["catalogId"])
+        if key in review or not strong_identifier_match(row):
+            review[key] = {**row, "amazonIds": row.get("amazonIds") or {},
+                           "mlIds": row.get("mlIds") or {},
+                           "motivoRevision": "sin_identificador_fuerte",
+                           "revisionDesde": review.get(key, {}).get("revisionDesde", today)}
+            print(alta_line(row, "revision", "sin_identificador_fuerte", {"precio": usd}), flush=True)
+            continue
         try:
             entry = validate_and_build_entries(catalog + added, [row], today=today)[0]
             if not fetch_photo(entry, output):
@@ -141,6 +155,7 @@ def _add_accepted(catalog, matches, output, today):
             failures.append({"slug": row.get("slug"), "motivo": type(exc).__name__})
             print(alta_line(row, "descartado", type(exc).__name__, {"precio": usd, "text": str(exc)}), flush=True)
     publish.write_atomic(pending_path, pending + added)
+    publish.write_atomic(review_path, list(review.values()))
     return added, failures
 
 
@@ -219,7 +234,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)
     # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
     marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"
-    print(f"{marker} catálogo: pendientes={len(added)}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
+    revision = len(read_json(output / "altas-revision.json", []))
+    print(f"{marker} catálogo: pendientes={len(added)}, revision={revision}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
     # 07/11: aviso al host para confirmar las altas apenas termina (unidad systemd franquicia-tras-alta.path).
     # Escritura directa, no atómica: la unidad .path se dispara al cerrarse el archivo escrito.
     (output / "alta-terminada.json").write_text(json.dumps(

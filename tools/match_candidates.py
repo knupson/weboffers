@@ -23,6 +23,7 @@ import publish  # noqa: E402
 import rates  # noqa: E402
 from variants import variant_conflicts
 from tools.apply_candidates import candidate_summary  # noqa: E402
+from tools.identifier_gate import ML_FIELDS  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
 VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("core neo go mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
@@ -674,6 +675,9 @@ def match_products(products, mep, catalog=(), products_cache=None):
                        mlBrand=attributes(product).get("BRAND", ""), mlModel=attributes(product).get("MODEL", ""),
                        amazonPriceUsd=amazon.get("amazonPriceUsd"))
             row["slug"] = unique_slug(brand, evidence, name, used)
+            # Conservar la evidencia cruda para el filtro posterior, sin cambiar la decisión.
+            row["amazonIds"] = dict(amazon.get("amazonIds") or {})
+            row["mlIds"] = {key: value for key, value in attributes(product).items() if key in ML_FIELDS}
             if reason:
                 row["reason"] = reason
             result[status].append(row)

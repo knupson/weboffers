@@ -19,7 +19,8 @@ def candidate(**changes):
     row = dict(asin="B000000001", store="US", slug="samsung-t9", name="Samsung T9 SSD",
                brand="Samsung", category="Almacenamiento", summary="SSD Samsung T9.",
                catalogId="MLA123", itemId="MLA456", mlPrice=200000,
-               amazonTitle="Samsung T9 SSD", amazonPriceUsd=150)
+               amazonTitle="Samsung T9 SSD", amazonPriceUsd=150,
+               amazonIds={"model_number": "MU-PG1T0B/AM"}, mlIds={"MPN": "MU-PG1T0B/AM"})
     return {**row, **changes}
 
 
@@ -275,3 +276,74 @@ def test_al_terminar_avisa_al_host(setup_job):
     assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
     aviso = json.loads((output / "alta-terminada.json").read_text())
     assert aviso["slot"] == "2026-11-08" and aviso["status"] == "ok" and aviso["added"] == 1 and aviso["fin"]
+
+
+@pytest.mark.parametrize("amazon_ids,ml_ids,strong", [
+    ({"upc": "012345678905"}, {"GTIN": "0012345678905"}, True),
+    ({"ean": "0 123-456-78905"}, {"UPC": "012345678905"}, True),
+    ({"model_number": "ab 123/ZA"}, {"MPN": "AB-123ZA"}, True),
+    ({"model_number": "AB123/ZA"}, {"MPN": "AB123/ZB"}, False),
+    ({"model_number": "SM-A165F"}, {"ALPHANUMERIC_MODEL": "SM-A165M"}, False),
+    ({"model_number": "SM-A165F"}, {"MODEL": "SM A165F"}, True),
+    ({"model_number": "123456"}, {"MPN": "123456"}, False),
+    ({"model_number": "ABCDE"}, {"MPN": "ABCDE"}, False),
+    ({"model_number": "AB12"}, {"MODEL": "AB12"}, False),
+    ({"model_number": "AB123/ZA"}, {"MPN": "AB123"}, False),
+    ({"model_number": "AB123/ZA"}, {"MPN": "OTRO9, AB123/ZA"}, True),
+    ({"model_name": "AB123"}, {"MODEL": "AB123"}, False),
+    ({"upc": "000000"}, {"GTIN": "0000000"}, False),
+    ({}, {}, False),
+])
+def test_identifier_gate_routes_to_pending_or_review(setup_job, monkeypatch, capsys, amazon_ids, ml_ids, strong):
+    repo, output, _ = setup_job
+    photo = Mock(return_value=True)
+    monkeypatch.setattr(auto, "fetch_photo", photo)
+    row = candidate(amazonIds=amazon_ids, mlIds=ml_ids)
+    added, failures = auto.add_accepted(load_catalog(repo, output / "catalog-auto.json"),
+                                      {"accepted": [row]}, output, "2026-11-07")
+    pending = json.loads((output / "altas-pendientes.json").read_text())
+    review = json.loads((output / "altas-revision.json").read_text())
+    assert len(added) == len(pending) == int(strong)
+    assert len(review) == int(not strong)
+    assert not failures
+    assert photo.call_count == int(strong)
+    if not strong:
+        assert review[0] == {**row, "motivoRevision": "sin_identificador_fuerte", "revisionDesde": "2026-11-07"}
+        log = capsys.readouterr().out
+        assert "decision=revision" in log and "motivo=sin_identificador_fuerte" in log
+
+
+def test_review_persists_dedupes_and_expires(setup_job):
+    repo, output, _ = setup_job
+    row = candidate(amazonIds={})
+    auto.add_accepted([], {"accepted": [row, row]}, output, "2026-11-07")
+    other = candidate(amazonIds={}, catalogId="MLA999")
+    auto.add_accepted([], {"accepted": [row, other]}, output, "2026-11-08")
+    review = json.loads((output / "altas-revision.json").read_text())
+    assert len(review) == 2
+    assert review[0]["revisionDesde"] == "2026-11-07"
+    from tools.confirmar_altas import confirm
+    assert confirm(repo, output, "2026-11-08")["promovidas"] == 0
+    assert not (output / "catalog-auto.json").exists()
+    # Ni siquiera nuevos identificadores promueven una entrada que está en revisión.
+    added, _ = auto.add_accepted([], {"accepted": [candidate()]}, output, "2026-11-21")
+    assert not added
+    assert len(json.loads((output / "altas-revision.json").read_text())) == 2
+    auto.add_accepted([], {"accepted": []}, output, "2026-11-22")
+    review = json.loads((output / "altas-revision.json").read_text())
+    assert len(review) == 1 and review[0]["catalogId"] == "MLA999"
+    assert json.loads((output / "altas-pendientes.json").read_text()) == []
+
+
+def test_catalogo_ok_reports_review(setup_job, monkeypatch, capsys):
+    repo, output, _ = setup_job
+    monkeypatch.setattr(auto.matching, "match_products", lambda *a: {"accepted": [candidate(amazonIds={})]})
+    auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    assert "CATALOGO_OK catálogo: pendientes=0, revision=1," in capsys.readouterr().out
+
+
+def test_strong_ids_do_not_bypass_validator(setup_job):
+    _, output, _ = setup_job
+    auto.add_accepted([], {"accepted": [], "rejected": [candidate()], "doubtful": [candidate()]}, output, "2026-11-07")
+    assert json.loads((output / "altas-pendientes.json").read_text()) == []
+    assert json.loads((output / "altas-revision.json").read_text()) == []

@@ -60,6 +60,14 @@ def test_exact_match_and_apply_shape(api):
     api.assert_called_once_with("/products/MLA123")
 
 
+def test_matching_preserves_identifiers_for_gate():
+    row = amazon(amazonIds={"model_number": "MZ-V9P1T0B"})
+    result = match.match_products([row], 1575, products_cache={"MLA123": product()})
+    accepted = result["accepted"][0]
+    assert accepted["amazonIds"] == row["amazonIds"]
+    assert accepted["mlIds"] == {"MODEL": "990 PRO", "ALPHANUMERIC_MODEL": "MZ-V9P1T0B"}
+
+
 @pytest.mark.parametrize("ml_title,devices", [("Samsung 990 PRO 1TB PlayStation", ""),
                                              ("Samsung 990 PRO 1TB", "PS5")])
 def test_amazon_vs_ml_platform_mismatch(api, ml_title, devices):
