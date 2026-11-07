@@ -2,6 +2,7 @@
 import time
 import requests
 from .amazon_source import SourceError
+from .events import emit_event
 from .models import normalize_product, positive
 
 
@@ -39,6 +40,9 @@ class MLSource:
             if node["kind"] == "leaf":
                 result.append(node)
                 return
+            # 07/11: el recorrido del árbol tardaba >10 min sin una línea de log; avance cada 25 nodos.
+            if len(seen) % 25 == 0:
+                emit_event("BARRIDO_DESCUBRIENDO", tienda="ML", consultadas=len(seen), hojas=len(result))
             body = self.request("/categories/" + node["id"])
             if "children_categories" not in body:
                 raise SourceError(f"Categoría ML sin children_categories: {body}")
