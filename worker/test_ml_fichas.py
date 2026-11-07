@@ -111,3 +111,8 @@ def test_nombres_en_conflicto_descartan_aunque_el_atributo_coincida_con_uno():
     hoja = {"name": "SSD Samsung 980 1TB", "rawAttributes": [{"id": "INTERNAL_MEMORY", "value_name": "1 TB"}]}
     assert ml_fichas.conflict("SSD Samsung 980 2TB", hoja)
     assert not ml_fichas.conflict("SSD Samsung 980 1TB", hoja)
+
+
+def test_voltaje_y_enchufe_no_se_muestran():
+    assert ml_fichas.market_specific("VOLTAGE") and ml_fichas.market_specific("PLUG_TYPE")
+    assert not ml_fichas.market_specific("BATTERY_VOLTAGE")

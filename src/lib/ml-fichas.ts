@@ -39,7 +39,8 @@ export function validMlSheet(productName: string, input: unknown, now = Date.now
     if (!kind || !names.size || (kind === "ram" && names.size < 2)) continue;
     if ([...quantities(attribute.value_name ?? "")].some((q) => !names.has(q))) return null;
   }
-  return sheet;
+  // Voltaje y enchufe son de la versión argentina; la de Amazon puede ser otra (mismo criterio que el worker).
+  return { ...sheet, attributes: sheet.attributes.filter(([name]) => !/^voltaje$|enchufe/i.test(name.trim())) };
 }
 
 export function loadMlSheet(catalogId: string | undefined, productName: string, now = Date.now()): MlSheet | null {

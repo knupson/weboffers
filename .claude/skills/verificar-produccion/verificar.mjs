@@ -71,7 +71,8 @@ console.log('\nFichas para comparar en Chrome (precio de la página vs tienda):'
 for (const url of muestra) {
   const completo = await get(url);
   // Sólo el producto de la ficha: después del primer <h2>Más … vienen las tarjetas de relacionados.
-  const corte = completo.search(/<h2>Más /);
+  // Astro agrega atributos (data-astro-cid-…) al h2 cuando la página tiene estilos con scope (07/11).
+  const corte = completo.search(/<h2[^>]*>Más /);
   const html = corte > 0 ? completo.slice(0, corte) : completo;
   const fecha = html.match(/data-prices-date="([^"]+)"/)?.[1] ?? '—';
   const amazon = [...new Set(html.match(/https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]+\?tag=[a-z0-9-]+/g) ?? [])];

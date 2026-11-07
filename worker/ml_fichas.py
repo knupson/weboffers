@@ -7,6 +7,12 @@ import ml_prices
 import publish
 
 NOISE = {"PACKAGE_DATA_SOURCE", "GTIN", "SELLER_SKU", "MPN"}
+
+
+def market_specific(attribute_id):
+    """Voltaje y enchufe son de la versión que se vende en Argentina; la que se trae de Amazon
+    puede ser otra (07/11: «Voltaje 220V» del Pioneer DDJ-FLX4 al lado de «Tensión: mirala en Amazon»)."""
+    return attribute_id == "VOLTAGE" or "PLUG" in attribute_id
 QUANTITY = re.compile(r"(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(GB|TB)\b(?!\s*/)", re.I)  # GB/s es velocidad, no capacidad
 
 
@@ -81,7 +87,8 @@ def refresh(catalog, output_path, now):
                         "rawAttributes": raw,
                         "attributes": [[a["name"], a["value_name"]] for a in raw
                                        if a.get("name") and a.get("value_name") and a.get("id") not in NOISE
-                                       and not a.get("id", "").startswith("PACKAGE_")],
+                                       and not a.get("id", "").startswith("PACKAGE_")
+                                       and not market_specific(a.get("id", ""))],
                         "mainFeatures": [f["text"] for f in body.get("main_features", []) if f.get("text")],
                     }
                 finally:

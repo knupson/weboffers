@@ -42,3 +42,8 @@ it("descarta si el nombre de ML y el nuestro no comparten cantidad (2TB vs 1TB)"
   expect(validMlSheet("SSD Samsung 980 2TB", hoja, now)).toBeNull();
   expect(validMlSheet("SSD Samsung 980 1TB", hoja, now)).not.toBeNull();
 });
+
+it("no muestra voltaje ni enchufe de la versión argentina", () => {
+  const hoja = { ...sheet, name: "Controlador DJ", attributes: [["Voltaje", "220V"], ["Tipo de enchufe", "I"], ["Voltaje de la batería", "3.7 V"], ["Modelo", "X"]] as [string, string][], rawAttributes: [] };
+  expect(validMlSheet("Controlador DJ", hoja, now)?.attributes).toEqual([["Voltaje de la batería", "3.7 V"], ["Modelo", "X"]]);
+});
