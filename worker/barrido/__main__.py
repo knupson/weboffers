@@ -25,7 +25,7 @@ def main(argv=None):
     parser.add_argument("--refresh-refinements", action="store_true")
     parser.add_argument("--max-pages", type=int)
     for key, default in vars(Config()).items():
-        parser.add_argument("--" + key.replace("_", "-"), type=int if key in ("consecutive_blocks", "variation_limit", "transient_retries") else float, default=default)
+        parser.add_argument("--" + key.replace("_", "-"), type=int if key in ("consecutive_blocks", "variation_limit", "transient_retries", "ml_consecutive_429") else float, default=default)
     args = parser.parse_args(argv)
     try:
         config = Config(**{key: getattr(args, key) for key in vars(Config())})

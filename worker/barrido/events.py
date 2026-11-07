@@ -246,6 +246,7 @@ def stage(name, store):
         raise
     finally:
         metrics = {k: v - before[k] for k, v in _runtime.counters.items()} if _runtime else {}
+        metrics.update(outcome.get('metrics', {}))
         emit_event('BARRIDO_ETAPA_FIN', duracion=time.monotonic() - started, estado=outcome['status'], **metrics)
 
 
@@ -324,6 +325,9 @@ def observed(function):
                     with stage('ml_lookup', 'ML') as outcome:
                         result = function(*args, **kwargs)
                         outcome['status'] = result['status']
+                        outcome['metrics'] = {key: result[key] for key in (
+                            'requests_ml', 'requests_ml_por_producto', 'items_404',
+                            'productos_procesados', 'productos_con_candidato', 'alcance_metricas')}
                 else:
                     result = function(*args, **kwargs)
             finally:

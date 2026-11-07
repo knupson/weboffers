@@ -35,12 +35,17 @@ def read_output(path):
 
 def fixture_client(fixture_dir, calls=None, delays=None):
     calls = calls if calls is not None else []
+    clock = [0.0]
+    def sleep(seconds):
+        clock[0] += seconds
+        if delays is not None:
+            delays.append(seconds)
     def get(path, params=None):
         calls.append((path, params))
         name = "ml_lookup.json" if path == "/products/search" else "ml_items.json"
         body = json.loads((fixture_dir / name).read_text(encoding="utf-8"))
         return body["search"] if name == "ml_lookup.json" else body
-    return MLClient(Config(ml_pause=.7), get=get, sleep=(delays.append if delays is not None else lambda _: None))
+    return MLClient(Config(ml_pause=.7), get=get, sleep=sleep, clock=lambda: clock[0])
 
 
 def test_queries_modelo_antes_de_limpiar_parentesis(fixture_dir):
@@ -57,14 +62,18 @@ def test_oferta_local_nueva_mep_y_reanudacion_sin_duplicados(tmp_path, fixture_d
     calls, delays = [], []
     client = fixture_client(fixture_dir, calls, delays)
     result = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
-    assert result == dict(status="complete", total=1, con_candidatos=1, sin_resultados=0, errores=0)
+    assert result == dict(status="complete", total=1, con_candidatos=1, sin_resultados=0, errores=0,
+                         requests_ml=2, requests_ml_por_producto=2, items_404=0,
+                         productos_procesados=1, productos_con_candidato=1, alcance_metricas='ejecucion_actual')
     row = read_output(tmp_path)[0]
     assert row["candidates"] == [dict(catalogId="MLAFIXTURE1", name="Monitor Samsung S36GD", price_ars=200000,
                                       price_usd=200, itemId="MLA1001", condition="new")]
     assert set(row) == set("store asin amazon_title amazon_price_usd shipping_class queries_used candidates lookup_status error".split())
     assert calls[0] == ("/products/search", dict(status="active", site_id="MLA", q="Samsung S36GD"))
-    assert delays == [.7, .7]
-    run_ml_lookup(Config(), tmp_path, client=client, rate_loader=lambda *a: pytest.fail("Tasa ya congelada"))
+    assert delays == [.7]
+    resumed = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=lambda *a: pytest.fail("Tasa ya congelada"))
+    assert resumed['requests_ml'] == resumed['productos_procesados'] == 0
+    assert resumed['requests_ml_por_producto'] is None
     assert len(calls) == 2 and len(read_output(tmp_path)) == 1
     lines = capsys.readouterr().out.splitlines()
     assert all("-03:00 " in line for line in lines)
@@ -94,7 +103,8 @@ def test_bloqueo_corta_y_reanuda_el_asin_fallido(tmp_path, fixture_dir, capsys, 
         raise requests.HTTPError(f"{http} literal", response=response)
     client = MLClient(Config(), get=get, sleep=lambda _: None)
     result = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
-    assert result["status"] == "blocked" and len(calls) == 1
+    assert result["status"] == "blocked"
+    assert len(calls) == (Config().ml_consecutive_429 if http == 429 else 1)
     assert read_output(tmp_path)[0]["error"] == f"{http} literal: bloqueo literal\nsegunda linea"
     assert "BARRIDO_ML_BLOQUEADO" in capsys.readouterr().out
     run_ml_lookup(Config(), tmp_path, client=fixture_client(fixture_dir), rate_loader=rate)
@@ -102,14 +112,14 @@ def test_bloqueo_corta_y_reanuda_el_asin_fallido(tmp_path, fixture_dir, capsys, 
     assert len(rows) == 2 and all(row["lookup_status"] == "ok" for row in rows)
 
 
-def test_fallback_titulo_y_maximo_cinco_catalogos(tmp_path):
+def test_fallback_titulo_y_corte_en_primera_oferta(tmp_path):
     write_input(tmp_path, [amazon()])
     class Client:
         def __init__(self):
             self.queries, self.offers = [], []
         def search(self, query):
             self.queries.append(query)
-            return [] if len(self.queries) == 1 else [dict(id=f"MLA{i}", name="Prueba") for i in range(9)]
+            return [] if len(self.queries) == 1 else [dict(id=f"MLA{i}", name="Monitor Samsung S36GD") for i in range(9)]
         def cheapest(self, identity):
             self.offers.append(identity)
             return 500000, "MLA1001"
@@ -117,7 +127,7 @@ def test_fallback_titulo_y_maximo_cinco_catalogos(tmp_path):
     run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
     row = read_output(tmp_path)[0]
     assert row["queries_used"] == client.queries and len(client.queries) == 2
-    assert len(client.offers) == len(row["candidates"]) == 5
+    assert len(client.offers) == len(row["candidates"]) == 1
     assert row["candidates"][0]["price_usd"] == 500  # El rango filtra Amazon, no ML.
 
 

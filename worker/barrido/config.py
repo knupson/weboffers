@@ -11,6 +11,9 @@ class Config:
     max_usd: float = 400
     pause: float = 5
     ml_pause: float = .3
+    ml_backoff: float = 30
+    ml_backoff_cap: float = 300
+    ml_consecutive_429: int = 5
     backoff: float = 30
     backoff_cap: float = 120
     consecutive_blocks: int = 3
@@ -24,6 +27,8 @@ class Config:
         for key, value in vars(self).items():
             if isinstance(value, bool) or not math.isfinite(value) or value < 0:
                 raise ValueError(f"Configuración inválida: {key}={value}")
+        if self.ml_consecutive_429 < 2 or int(self.ml_consecutive_429) != self.ml_consecutive_429:
+            raise ValueError("ML requiere al menos dos 429 consecutivos para abandonar")
         if not 0 < self.min_usd <= self.max_usd or self.consecutive_blocks < 1:
             raise ValueError("Rango o cantidad de bloqueos inválidos")
         if self.stall_seconds <= 0 or self.unlocated_page_ratio > 1 or self.max_run_hours <= 0 or self.transient_retries < 1 or int(self.transient_retries) != self.transient_retries:

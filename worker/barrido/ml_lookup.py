@@ -1,8 +1,9 @@
 """Busca contrapartes locales de los productos Amazon del día, sin emparejar ni publicar."""
 import json
 from collections import Counter
+from email.utils import parsedate_to_datetime
+import math
 from pathlib import Path
-import re
 import time
 from uuid import uuid4
 
@@ -13,40 +14,84 @@ from .config import Config
 from .currency import load_daily_rates, validate_rate
 from .events import now_art, emit_event, http_call, wait, observed, set_context, set_action, action
 from .models import positive
+from .ml_matching import amazon_identity, build_queries, candidate_score
 from .state import LookupState, acquire_run_lock, write_summary
 
 
-def build_queries(title, brand=""):
-    """El modelo se extrae ANTES de limpiar paréntesis, que pueden contenerlo."""
-    title = title or ""
-    brand = brand.strip() or (title.split()[0] if title.split() else "")
-    tokens = re.findall(r"\b[A-Za-z0-9]+(?:[-/][A-Za-z0-9]+)*\b", title)
-    models = [token for token in tokens if re.search(r"[A-Za-z]", token)
-              and re.search(r"\d", token)
-              and not re.fullmatch(r"\d+(?:GB|TB|MB|HZ|KHZ|MHZ|GHZ|INCH|P|K)", token, re.I)]
-    # Evitar elegir S3 si el mismo título trae el código más específico S36GD.
-    model = max(models, key=lambda token: (len(token), -tokens.index(token)), default="")
-    cleaned = re.sub(r"\([^)]*\)|\[[^\]]*\]", " ", title)
-    cleaned = re.sub(r"\b(?:Amazon'?s Choice|Best Seller|Limited time deal)\b", " ", cleaned, flags=re.I)
-    cleaned = re.split(r"\s*[|;–—]\s*|\s+-\s+|,\s*", cleaned)[0]
-    cleaned = " ".join(cleaned.split()[:12])
-    return list(dict.fromkeys(query for query in (f"{brand} {model}".strip() if model else "", cleaned) if query))
-
-
 class MLClient:
-    def __init__(self, config, *, get=None, sleep=time.sleep):
+    def __init__(self, config, *, get=None, sleep=time.sleep, clock=time.monotonic):
         import ml_prices
         self.ml, self.get = ml_prices, get or ml_prices.get_json
         self.config, self.sleep = config, sleep
+        self.clock, self.last_request_started = clock, None
+        self.requests_ml, self.items_404, self.consecutive_429 = 0, 0, 0
         self.session_id = uuid4().hex
         self.transport = requests.Session() if get is None else None
 
     def _http(self, method, url, **kwargs):
-        return http_call(self.transport.request, method, url, store='ML',
-                         session_id=self.session_id, located=None, **kwargs)
+        def perform():
+            response = http_call(self.transport.request, method, url, store='ML',
+                                 session_id=self.session_id, located=None,
+                                 attempt=self.consecutive_429 + 1, **kwargs)
+            response.raise_for_status()
+            return response
+        return self._retry(perform, url)
+
+    def _retry(self, perform, path):
+        """Pausa por intento real, también para OAuth; 429 no termina el producto."""
+        while True:
+            if self.last_request_started is not None:
+                remaining = self.config.ml_pause - (self.clock() - self.last_request_started)
+                if remaining > 0:
+                    wait(remaining, 'pausa_ml', sleep=self.sleep)
+            self.last_request_started = self.clock()
+            self.requests_ml += 1
+            emit_event('BARRIDO_ML_PEDIDO', path=path, numero=self.requests_ml,
+                       consecutivos_429=self.consecutive_429)
+            try:
+                result = perform()
+            except requests.HTTPError as exc:
+                response = exc.response
+                status = response.status_code if response is not None else None
+                if status == 404 and path.endswith('/items'):
+                    self.items_404 += 1
+                if status != 429:
+                    self.consecutive_429 = 0
+                    raise
+                self.consecutive_429 += 1
+                emit_event('BARRIDO_ML_429', path=path, consecutivos=self.consecutive_429,
+                           limite=self.config.ml_consecutive_429,
+                           retry_after=response.headers.get('Retry-After'))
+                if self.consecutive_429 >= self.config.ml_consecutive_429:
+                    emit_event('BARRIDO_ML_REINTENTOS_AGOTADOS', motivo='limite_429_consecutivos_ml',
+                               path=path, consecutivos=self.consecutive_429)
+                    raise
+                delay = None
+                header = response.headers.get('Retry-After')
+                if header is not None:
+                    try:
+                        delay = float(header)
+                    except (ValueError, TypeError):
+                        try:
+                            delay = max(0, (parsedate_to_datetime(header) - now_art()).total_seconds())
+                        except (ValueError, TypeError, OverflowError):
+                            pass
+                    if delay is not None and (not math.isfinite(delay) or delay < 0):
+                        delay = None
+                    if delay is None:
+                        emit_event('BARRIDO_ML_RETRY_AFTER_INVALIDO', valor=header)
+                if delay is None:
+                    delay = min(self.config.ml_backoff_cap,
+                                self.config.ml_backoff * 2 ** (self.consecutive_429 - 1))
+                wait(delay, 'backoff_429_ml', sleep=self.sleep)
+                continue
+            except Exception:
+                self.consecutive_429 = 0
+                raise
+            self.consecutive_429 = 0
+            return result
 
     def request(self, path, params=None):
-        wait(self.config.ml_pause, 'pausa_ml', sleep=self.sleep)
         try:
             if self.transport is not None:
                 token = self.ml.get_token(request=lambda url, **kw: self._http('POST', url, **kw))
@@ -54,7 +99,7 @@ class MLClient:
                                       headers={'Authorization': f'Bearer {token}'}, timeout=30)
                 response.raise_for_status()
                 return response.json()
-            return self.get(path, params=params)
+            return self._retry(lambda: self.get(path, params=params), path)
         except requests.HTTPError as exc:
             response = exc.response
             http = response.status_code if response is not None else None
@@ -78,8 +123,9 @@ class MLClient:
             try:
                 body = self.request(f"/products/{identity}/items", {"offset": offset, "limit": 100})
             except SourceError as exc:
-                if exc.http == 404 and "no winners" in str(exc).lower():
-                    break
+                if exc.http == 404:
+                    emit_event('BARRIDO_DESCARTE', motivo='catalogo_sin_ofertas_404', valor=identity)
+                    return None
                 raise
             batch = body.get("results")
             if not isinstance(batch, list):
@@ -170,6 +216,8 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         if state:
             state.freeze({"rate": rate, "min_usd": config.min_usd, "max_usd": config.max_usd})
         client = client or MLClient(config)
+        requests_before = getattr(client, 'requests_ml', 0)
+        items_404_before = getattr(client, 'items_404', 0)
         records = state.materialize_jsonl() if state else []
         done = {(row["store"], row["asin"]) for row in records if row["lookup_status"] != "error"}
         processed, blocked, limited = [], False, False
@@ -187,9 +235,12 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
             row = dict(store=amazon["store"], asin=amazon["id"], amazon_title=amazon.get("title"),
                        amazon_price_usd=amazon["price_usd"], shipping_class=amazon["shipping_class"],
                        queries_used=[], candidates=[], lookup_status="sin_resultados", error=None)
-            seen = set()
+            seen, checked = set(), 0
             try:
-                queries = build_queries(amazon.get("title"), (amazon.get("raw") or {}).get("brand") or "")
+                identity_amazon = amazon_identity(amazon)
+                queries = build_queries(amazon.get("title"), row=amazon)
+                emit_event('BARRIDO_ML_IDENTIDAD', marca=identity_amazon['brand'],
+                           modelos=identity_amazon['models'], linea=identity_amazon['line'], consultas=queries)
                 if not queries:
                     emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='sin_consulta', valor=amazon.get('title'))
                 for query in queries:
@@ -198,23 +249,45 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                     results = client.search(query)
                     emit_event("BARRIDO_ML_BUSQUEDA", asin=row["asin"], consulta=query,
                                candidatos=len(results), segundos=time.monotonic() - started, dry_run=dry_run)
+                    ranked = []
                     for product in results:
                         identity = product.get("id") if isinstance(product, dict) else None
                         if not identity or identity in seen:
                             emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='duplicado' if identity else 'sin_identidad', valor=identity)
                             continue
-                        if len(seen) >= 5:
+                        seen.add(identity)
+                        score, reason = candidate_score(identity_amazon, product)
+                        if score is None:
+                            emit_event('BARRIDO_DESCARTE', asin=row['asin'], catalogo=identity,
+                                       nombre=product.get('name'), motivo='candidato_no_coincide', valor=reason)
+                            continue
+                        ranked.append((score, product))
+                        emit_event('BARRIDO_ML_CANDIDATO_VALIDADO', catalogo=identity,
+                                   nombre=product.get('name'), puntaje=score, motivo=reason)
+                    # El límite se aplica a consultas de ofertas, no a descartes locales.
+                    ranked.sort(key=lambda entry: entry[0], reverse=True)
+                    for index, (score, product) in enumerate(ranked):
+                        identity = product['id']
+                        if checked >= 5:
                             emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='limite_candidatos', valor=identity)
                             continue
-                        seen.add(identity)
+                        checked += 1
+                        emit_event('BARRIDO_ML_CANDIDATO', catalogo=identity, nombre=product.get('name'),
+                                   puntaje=score, orden=checked)
                         best = client.cheapest(identity)
                         if best is not None:
                             price, item_id = best
                             row["candidates"].append(dict(catalogId=identity, name=product.get("name"),
                                 price_ars=price, price_usd=price * rate["value"], itemId=item_id, condition="new"))
+                            emit_event('BARRIDO_ML_SELECCION', catalogo=identity,
+                                       motivo='primera_oferta_local_nueva_valida', consultas_items=checked)
+                            for _, skipped in ranked[index + 1:]:
+                                emit_event('BARRIDO_DESCARTE', catalogo=skipped['id'],
+                                           motivo='oferta_ya_encontrada', valor=identity)
+                            break
                         else:
                             emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='sin_oferta_local_nueva', valor=identity)
-                    if row["candidates"] or len(seen) >= 5:
+                    if row["candidates"] or checked >= 5:
                         break
                 row["lookup_status"] = "ok" if row["candidates"] else "sin_resultados"
             except Exception as exc:
@@ -240,6 +313,14 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         summary = dict(total=len(records), con_candidatos=sum(row["lookup_status"] == "ok" for row in records),
                        sin_resultados=sum(row["lookup_status"] == "sin_resultados" for row in records),
                        errores=sum(row["lookup_status"] == "error" for row in records))
+        # Numerador y denominador de ESTA ejecución; total/con_candidatos incluyen el checkpoint.
+        requests_ml = getattr(client, 'requests_ml', 0) - requests_before
+        summary.update(requests_ml=requests_ml,
+                       requests_ml_por_producto=requests_ml / len(processed) if processed else None,
+                       items_404=getattr(client, 'items_404', 0) - items_404_before,
+                       productos_procesados=len(processed),
+                       productos_con_candidato=sum(bool(row['candidates']) for row in processed),
+                       alcance_metricas='ejecucion_actual')
         if limited:
             emit_event("BARRIDO_ML_LIMITE", limite=limit)
         emit_event("BARRIDO_ML_OK", **summary)
