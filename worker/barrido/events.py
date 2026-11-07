@@ -277,7 +277,8 @@ def observe_run(output, config, args):
                     args=args)
     status = 'complete'
     try:
-        emit_event('BARRIDO_PROCESO_INICIO', **identity, config=vars(config))
+        emit_event('BARRIDO_PROCESO_INICIO', **identity, config=vars(config),
+                   salida_amazon=os.environ.get('BARRIDO_AMAZON_PROXY') or 'directa')
         runtime.heartbeat()
         thread.start()
         yield runtime

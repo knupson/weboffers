@@ -21,11 +21,17 @@ def configure_transport(observer=None):
     from amazon import fetch
     import config
     from amazon_shipping import apply_ar_location
-    config.AMAZON_PROXY = None
-    config.AMAZON_PROXY_COUNTRY = None
+    # Salida a Amazon: BARRIDO_AMAZON_PROXY (p. ej. socks5h://warp:1080, WARP de Cloudflare)
+    # o directa por la IP de la VM. Medido 07/11: la IP de la VM recibe 503 en /s; por WARP pasa.
+    import os
+    proxy = os.environ.get("BARRIDO_AMAZON_PROXY") or None
+    config.AMAZON_PROXY = proxy
+    config.AMAZON_PROXY_COUNTRY = "any" if proxy else None
     config.AMAZON_EGRESS = "direct"
     fetch.RETRIES = 0
-    fetch.BLOCK_RETRIES = 1
+    # Por WARP el bloqueo es por sesión (07/11: de 3 pedidos, uno pasó al 1.º, otro al 2.º y otro
+    # falló las 4 sesiones): hasta 4 sesiones nuevas por pedido, como el original. Directa: 1.
+    fetch.BLOCK_RETRIES = 4 if proxy else 1
     fetch.OBSERVER = observer
     apply_ar_location()
     original = fetch.set_location
