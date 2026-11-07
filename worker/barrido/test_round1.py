@@ -207,9 +207,10 @@ class Missing(importlib.abc.MetaPathFinder):
             raise ModuleNotFoundError('curl_cffi ausente para la prueba', name='curl_cffi')
 sys.meta_path.insert(0, Missing())
 import pytest
-raise SystemExit(pytest.main(['worker/barrido/test_state.py', 'worker/barrido/test_shipping.py',
-    'worker/barrido/test_currency.py', 'worker/barrido/test_config.py', '-q', '-p', 'no:cacheprovider']))
+raise SystemExit(pytest.main(['test_state.py', 'test_shipping.py',
+    'test_currency.py', 'test_config.py', '-q', '-p', 'no:cacheprovider']))
 '''
+    # cwd = carpeta de este test: anda igual desde la raíz del repo y en el contenedor (que monta sólo worker/).
     result = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True,
-        cwd=Path(__file__).resolve().parents[2])
+        cwd=Path(__file__).resolve().parent)
     assert result.returncode == 0, result.stdout + result.stderr
