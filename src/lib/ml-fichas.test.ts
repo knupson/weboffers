@@ -36,3 +36,9 @@ it("mismo criterio que el worker con los casos reales del 07/11", () => {
   expect(validMlSheet("Samsung A37 5G 256GB", hoja("Samsung Galaxy A37 5G 256 GB", ["RAM", "8 GB"]), now)).not.toBeNull();
   expect(validMlSheet("Xiaomi Pad 2 128GB 4GB", hoja("Xiaomi Pad 2 128 GB 4 GB", ["RAM", "8 GB"]), now)).toBeNull();
 });
+
+it("descarta si el nombre de ML y el nuestro no comparten cantidad (2TB vs 1TB)", () => {
+  const hoja = { ...sheet, name: "SSD Samsung 980 1TB", rawAttributes: [{ id: "INTERNAL_MEMORY", value_name: "1 TB" }] };
+  expect(validMlSheet("SSD Samsung 980 2TB", hoja, now)).toBeNull();
+  expect(validMlSheet("SSD Samsung 980 1TB", hoja, now)).not.toBeNull();
+});

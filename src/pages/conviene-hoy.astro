@@ -28,7 +28,7 @@ const dateLabel = pricesDate.split("-").reverse().slice(0, 2).join("/");
             </dl>
             <p data-price-stale>Precio en actualización</p>
           </li>)}
-        </ol> : <p>No hay productos comparables para esta lista hoy.</p>}
+        </ol> : <p>{ranking.count ? "Hoy no hay productos con ahorro en esta lista." : "Estamos actualizando los precios de hoy."}</p>}
       </div>
     </section>
   ))}

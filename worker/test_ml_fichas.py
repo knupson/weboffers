@@ -104,3 +104,10 @@ def test_conflict_casos_reales_del_07_11():
         ("INTERNAL_MEMORY", "256 GB"), ("RAM", "8 GB")))
     # Con dos cantidades en el nombre, la RAM sí se contrasta.
     assert ml_fichas.conflict("Xiaomi Pad 2 128GB 4GB", hoja("Xiaomi Pad 2 128 GB 4 GB", ("RAM", "8 GB")))
+
+
+def test_nombres_en_conflicto_descartan_aunque_el_atributo_coincida_con_uno():
+    # Hallazgo del revisor (07/11): con la unión de nombres, 2TB contra 1TB pasaba.
+    hoja = {"name": "SSD Samsung 980 1TB", "rawAttributes": [{"id": "INTERNAL_MEMORY", "value_name": "1 TB"}]}
+    assert ml_fichas.conflict("SSD Samsung 980 2TB", hoja)
+    assert not ml_fichas.conflict("SSD Samsung 980 1TB", hoja)

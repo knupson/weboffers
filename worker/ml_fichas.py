@@ -28,7 +28,13 @@ def checked_kind(key):
 
 
 def conflict(product_name, sheet):
-    names = quantities(product_name) | quantities(sheet.get("name", ""))
+    own = quantities(product_name)
+    ml_name = quantities(sheet.get("name", ""))
+    # Si los dos nombres traen cantidades y no comparten ninguna, el catálogo es otro producto (2TB vs 1TB).
+    if own and ml_name and own.isdisjoint(ml_name):
+        return f"nombre de ML {sorted(ml_name)} no coincide con {sorted(own)}"
+    # Base: el nombre de nuestro producto; el de ML sólo si el nuestro no trae cantidades.
+    names = own or ml_name
     for attribute in sheet.get("rawAttributes", []):
         key = attribute.get("id", "").upper()
         kind = checked_kind(key)

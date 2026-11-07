@@ -219,8 +219,9 @@ async function syncRepo(workDir = WORK_DIR, runImpl = run) {
 async function overlayCatalog(workDir, outputDir) {
   const sheetDest = path.join(workDir, 'data', 'ml-fichas.json');
   await fs.copyFile(path.join(outputDir, 'ml-fichas.json'), sheetDest).catch(async (error) => {
-    if (error.code !== 'ENOENT') throw error;
-    await fs.rm(sheetDest, { force: true });
+    // Fichas opcionales: sin copia (ausente, permisos, lo que sea) el sitio sale sin fichas, nunca con menos productos.
+    if (error.code !== 'ENOENT') log(`FICHAS_SIN_COPIA ${error.code ?? error.message}`);
+    await fs.rm(sheetDest, { force: true }).catch(() => {});
   });
   const catalogPath = path.join(workDir, 'data', 'catalog.json');
   const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));

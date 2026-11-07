@@ -26,7 +26,11 @@ export function validMlSheet(productName: string, input: unknown, now = Date.now
   if (!Array.isArray(sheet.rawAttributes) || !Array.isArray(sheet.attributes) || !Array.isArray(sheet.mainFeatures)) return null;
   if (!sheet.attributes.every((a) => Array.isArray(a) && a.length === 2 && a.every((v) => typeof v === "string")) ||
       !sheet.mainFeatures.every((text) => typeof text === "string")) return null;
-  const names = new Set([...quantities(productName), ...quantities(sheet.name)]);
+  // Mismo criterio que worker/ml_fichas.py: base = nombre de nuestro producto; nombres sin cantidad en común → otro producto.
+  const own = quantities(productName);
+  const mlName = quantities(sheet.name);
+  if (own.size && mlName.size && ![...mlName].some((q) => own.has(q))) return null;
+  const names = own.size ? own : mlName;
   for (const attribute of sheet.rawAttributes) {
     if (!attribute || typeof attribute.id !== "string" || (attribute.value_name != null && typeof attribute.value_name !== "string")) return null;
     // Mismo criterio que worker/ml_fichas.py: sin máximos ni velocidades; RAM sólo si el nombre trae dos cantidades.

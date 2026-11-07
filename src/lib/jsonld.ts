@@ -9,13 +9,10 @@ export function productJsonLd(product: CatalogEntry, siteUrl: string, now = Date
     ...(product.image ? { image: new URL(product.image, siteUrl).href } : {}),
   };
   if (!isComparable(product, null, now)) return base;
-  const prices = [product.ml!.price, product.amazonArs!];
-  const expires = new Date(`${product.ml!.checked}T00:00:00Z`);
-  expires.setUTCDate(expires.getUTCDate() + 1);
+  // Sólo el precio real de Mercado Libre (el de Amazon es una estimación redondeada «puesto en tu casa»),
+  // válido únicamente el día en que se relevó: si mañana no hay deploy, no queda declarado como vigente.
   return { ...base, offers: {
-    "@type": "AggregateOffer", priceCurrency: "ARS", offerCount: 2,
-    lowPrice: Math.min(...prices), highPrice: Math.max(...prices),
-    priceValidUntil: expires.toISOString().slice(0, 10),
-    availability: "https://schema.org/InStock",
+    "@type": "Offer", priceCurrency: "ARS", price: product.ml!.price,
+    priceValidUntil: product.ml!.checked, url: product.ml!.url,
   } };
 }

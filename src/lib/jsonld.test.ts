@@ -11,13 +11,11 @@ const product: CatalogEntry = {
   amazonArs: 200000, amazonUsd: 150, amazonSource: "amazon", amazonChecked: "2026-12-31",
 };
 describe("Product JSON-LD", () => {
-  it("usa los montos mostrados y avanza un día incluso al cambiar de año", () => {
+  it("declara sólo el precio real de Mercado Libre, válido el día del relevamiento", () => {
     expect(productJsonLd(product, "https://ofertas.knunet.com", now).offers).toEqual({
-      "@type": "AggregateOffer", priceCurrency: "ARS", offerCount: 2,
-      lowPrice: 200000, highPrice: 300000, priceValidUntil: "2027-01-01", availability: "https://schema.org/InStock",
+      "@type": "Offer", priceCurrency: "ARS", price: 300000,
+      priceValidUntil: "2026-12-31", url: "https://mercadolibre.com.ar/p/MLA1",
     });
-    expect(productJsonLd({ ...product, amazonArs: 400000 }, "https://ofertas.knunet.com", now).offers)
-      .toMatchObject({ lowPrice: 300000, highPrice: 400000 });
   });
   it.each([{ ml: undefined }, { amazonArs: null }, { amazonArs: NaN }, { amazonChecked: "2026-12-30" },
     { shipsToArToday: false }, { verified: false }])("omite toda oferta si no es comparable: %o", (change) => {
