@@ -1,0 +1,12 @@
+# 07/11: cuando el alta nocturna termina (worker/catalog_auto.py escribe alta-terminada.json),
+# confirma sus altas y despliega sin esperar la cadena del día siguiente.
+# Instalar: sudo cp tools/systemd/franquicia-tras-alta.* /etc/systemd/system/ && sudo systemctl daemon-reload
+#           && sudo systemctl enable --now franquicia-tras-alta.path
+[Unit]
+Description=Franquicia 400: confirmar altas al terminar el alta nocturna
+
+[Path]
+PathChanged=/opt/docker/franquicia400/worker/output/alta-terminada.json
+
+[Install]
+WantedBy=multi-user.target

@@ -164,3 +164,42 @@ def test_deploy_copia_el_desglose_exactamente_despues_del_resultado(tmp_path, st
     assert text.index(f'DEPLOY_{status}') < text.index('PRODUCTO kindle') < text.index(f'PASO_{status}')
     assert calls[-1] == ['docker', 'exec', cadena.DEPLOYER, 'cat', report_path]
     assert runner.summary['pasos'][0]['estado'] == ('ok' if status == 'OK' else 'fail')
+
+
+def _tras_alta(tmp_path, promovidas):
+    reloj = Reloj()
+    comandos = []
+
+    def popen(command, **kwargs):
+        comandos.append(command)
+        if command[-1] == "/app/tools/confirmar_altas.py":
+            return Hijo(reloj, out=f"2026-11-06 03:31:00 ALTAS_OK promovidas={promovidas} rechazadas=0 siguen_pendientes=0\n")
+        if "/app/deploy.mjs" in command:
+            return Hijo(reloj, out="2026-11-06T06:40:00.000Z DEPLOY_OK publicado. desglose=/state/logs/desglose-2026-11-06-0340.log\n")
+        return Hijo(reloj)
+
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep, modo="tras-alta")
+    return runner.run(), comandos
+
+
+def test_tras_alta_encadena_pendientes_y_despliega(tmp_path):
+    # 07/11: al terminar el alta nocturna se confirman sus altas sin esperar la cadena del día siguiente.
+    code, comandos = _tras_alta(tmp_path, 1)
+    assert code == 0
+    assert "envio_ar_chrome.sh" in comandos[0][-2] and comandos[0][-1] == "--pendientes"
+    assert comandos[1][-1] == "/app/tools/confirmar_altas.py"
+    assert [c[-1] for c in comandos[2:4]] == ["amazon", "ml"]
+    assert comandos[4][-2:] == ["/app/deploy.mjs", "--ahora"]
+    resumen = json.loads((tmp_path / "tras-alta-2026-11-06.json").read_text())
+    assert [p["paso"] for p in resumen["pasos"]] == ["chrome", "altas", "amazon", "ml", "deploy"]
+    assert all(p["estado"] == "ok" for p in resumen["pasos"])
+    # No pisa el resumen de la cadena de madrugada que controla el vigía.
+    assert not (tmp_path / "cadena-2026-11-06.json").exists()
+
+
+def test_tras_alta_sin_promovidas_no_despliega(tmp_path):
+    code, comandos = _tras_alta(tmp_path, 0)
+    assert code == 0
+    assert len(comandos) == 2
+    log = (tmp_path / "tras-alta-2026-11-06.log").read_text()
+    assert "TRAS_ALTA sin altas promovidas; no hace falta desplegar" in log

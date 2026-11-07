@@ -220,4 +220,9 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
     marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"
     print(f"{marker} catálogo: pendientes={len(added)}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
+    # 07/11: aviso al host para confirmar las altas apenas termina (unidad systemd franquicia-tras-alta.path).
+    # Escritura directa, no atómica: la unidad .path se dispara al cerrarse el archivo escrito.
+    (output / "alta-terminada.json").write_text(json.dumps(
+        {"slot": slot, "status": status, "added": len(added),
+         "fin": datetime.now(timezone.utc).astimezone(ART).isoformat(timespec="seconds")}), encoding="utf-8")
     return True

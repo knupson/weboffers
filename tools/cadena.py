@@ -33,7 +33,9 @@ DEPLOYER = "franquicia400-weboffers-deployer-1"
 
 class Cadena:
     def __init__(self, logs=LOG_DIR, popen=subprocess.Popen, clock=time.monotonic,
-                 now=lambda: datetime.now(ART), sleep=time.sleep):
+                 now=lambda: datetime.now(ART), sleep=time.sleep, modo="cadena"):
+        # modo «tras-alta» (07/11): lo dispara el fin del alta nocturna; sólo pendientes, log propio y deploy --ahora.
+        self.modo = modo
         self.logs = Path(logs)
         self.logs.mkdir(parents=True, exist_ok=True)
         self.popen, self.clock, self.now, self.sleep = popen, clock, now, sleep
@@ -48,7 +50,7 @@ class Cadena:
         return self.now().astimezone(ART).isoformat(timespec="seconds")
 
     def log(self, text):
-        with self.log_lock, (self.logs / f"cadena-{self.fecha}.log").open("a", encoding="utf-8") as out:
+        with self.log_lock, (self.logs / f"{self.modo}-{self.fecha}.log").open("a", encoding="utf-8") as out:
             for line in str(text).splitlines():
                 # Chrome y el desglose ya vienen fechados en ART: conservá su instante original.
                 if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ", line):
@@ -58,7 +60,7 @@ class Cadena:
 
     def save(self):
         self.summary["segundos"] = round(self.clock() - self.start, 1)
-        target = self.logs / f"cadena-{self.fecha}.json"
+        target = self.logs / f"{self.modo}-{self.fecha}.json"
         temp = target.with_suffix(".json.tmp")
         temp.write_text(json.dumps(self.summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         temp.replace(target)
@@ -162,6 +164,15 @@ class Cadena:
             self.log(f"PASO_SIGUE deploy {self.clock() - self.step_start:.1f}s")
         raise TimeoutError("timeout esperando DEPLOY_OK / DEPLOY_FAIL")
 
+    def deploy_ahora(self, deadline):
+        # El marcador cadena-AAAA-MM-DD.json despliega una sola vez por día: un segundo deploy va por --ahora.
+        out = self.process(["docker", "exec", DEPLOYER, "node", "/app/deploy.mjs", "--ahora"], deadline, "deploy")
+        if "DEPLOY_OK" not in out:
+            raise RuntimeError("deploy --ahora sin DEPLOY_OK")
+        report = re.search(r"desglose=(/state/logs/desglose-\d{4}-\d{2}-\d{2}-\d{4}\.log)", out)
+        if report:
+            self.process(["docker", "exec", DEPLOYER, "cat", report[1]], deadline, "deploy")
+
     def step(self, paso, timeout):
         self.step_start = self.clock()
         record = dict(paso=paso, inicio=self.stamp(), fin=None, segundos=0, estado="en_curso", motivo="")
@@ -174,14 +185,21 @@ class Cadena:
                 raise TimeoutError("timeout global")
             if paso == "chrome":
                 env_timeout = max(1, int(deadline - self.clock()))
-                self.process(["env", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh")], deadline, paso)
+                extra = ["--pendientes"] if self.modo == "tras-alta" else []
+                self.process(["env", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh"), *extra],
+                             deadline, paso)
             elif paso in ("altas", "amazon", "ml"):
                 # El timeout dentro del contenedor mata el Python aunque muera docker exec en el host.
                 seconds = max(1, int(deadline - self.clock()))
                 script = ["/app/tools/confirmar_altas.py"] if paso == "altas" else ["/app/tools/refresh_ahora.py", paso]
-                self.process(["docker", "exec", "-w", "/app/worker", WORKER,
-                              "timeout", "-s", "KILL", str(seconds), "python",
-                              *script], deadline, paso)
+                out = self.process(["docker", "exec", "-w", "/app/worker", WORKER,
+                                    "timeout", "-s", "KILL", str(seconds), "python",
+                                    *script], deadline, paso)
+                if paso == "altas":
+                    m = re.search(r"ALTAS_OK promovidas=(\d+)", out or "")
+                    self.promovidas = int(m[1]) if m else None
+            elif self.modo == "tras-alta":
+                self.deploy_ahora(deadline)
             else:
                 self.deploy(deadline)
             record["estado"] = "ok"
@@ -194,13 +212,27 @@ class Cadena:
             self.save()
 
     def run(self):
+        self.promovidas = None
         for paso, timeout in (("chrome", CHROME_TIMEOUT), ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT),
                               ("ml", ML_TIMEOUT), ("deploy", DEPLOY_TIMEOUT)):
+            if self.modo == "tras-alta" and paso == "amazon" and self.promovidas == 0:
+                self.log("TRAS_ALTA sin altas promovidas; no hace falta desplegar")
+                break
             self.step(paso, timeout)
         self.summary["fin"] = self.stamp()
         self.save()
         return int(any(p["estado"] != "ok" for p in self.summary["pasos"]))
 
 
+def main(argv):
+    modo = "tras-alta" if "--tras-alta" in argv else "cadena"
+    # Las dos cadenas usan el mismo Chrome y los mismos archivos: nunca corren juntas (la segunda espera).
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    with open(LOG_DIR / "cadena.lock", "w") as lock:
+        import fcntl
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return Cadena(modo=modo).run()
+
+
 if __name__ == "__main__":
-    sys.exit(Cadena().run())
+    sys.exit(main(sys.argv[1:]))

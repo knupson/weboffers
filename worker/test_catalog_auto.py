@@ -266,3 +266,12 @@ def test_falla_suelta_no_marca_la_corrida_como_fallida(setup_job, monkeypatch, c
     estado = json.loads((output / "catalog-auto-state.json").read_text())
     assert estado["status"] == "ok" and "sin_foto" in estado["motivos"]
     assert "CATALOGO_OK" in capsys.readouterr().out
+
+
+def test_al_terminar_avisa_al_host(setup_job):
+    # 07/11: el alta nocturna terminó 05:11 y la cadena ya había buscado altas a las 03:46; las altas esperaban
+    # un día. Al terminar se escribe alta-terminada.json (escritura directa: la unidad systemd .path ve el cierre).
+    repo, output, discover = setup_job
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    aviso = json.loads((output / "alta-terminada.json").read_text())
+    assert aviso["slot"] == "2026-11-08" and aviso["status"] == "ok" and aviso["added"] == 1 and aviso["fin"]
