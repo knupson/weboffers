@@ -20,6 +20,34 @@ ART = timezone(timedelta(hours=-3))
 _runtime = None
 _lock = threading.RLock()
 _context = {}
+REQUEST_KINDS = ('search', 'detail/variations', 'warm-up', 'location', 'ml_search', 'ml_price', 'other')
+
+
+def request_kind(store, path):
+    if store == 'ML':
+        return 'ml_search' if path.endswith('/products/search') else 'ml_price' if path.endswith('/items') else 'other'
+    if store in ('US', 'ES'):
+        if path == '/s':
+            return 'search'
+        if '/dp/' in path:
+            return 'detail/variations'
+        if path in ('', '/'):
+            return 'warm-up'
+        if '/portal-migration' in path or '/address-change' in path:
+            return 'location'
+    return 'other'
+
+
+def stage_metrics():
+    counters = _runtime.counters if _runtime else {}
+    before = getattr(_runtime, 'stage_before', {}) if _runtime else {}
+    delta = lambda key: counters.get(key, 0) - before.get(key, 0)
+    kinds = {kind: delta('request_kind_' + kind) for kind in REQUEST_KINDS}
+    eligible = delta('eligible')
+    return dict(requests_por_tipo=kinds, productos_unicos=delta('unique_products'),
+                tarjetas_patrocinadas=delta('sponsored_cards'), duplicados=delta('duplicates'),
+                requests_por_producto_elegible=sum(kinds.values()) / eligible if eligible else None,
+                alcance_metricas='ejecucion_actual')
 _SAFE_PARAMS = {'rh', 'fs', 'low-price', 'high-price', 'page', 'k', 'q', 'status',
                 'site_id', 'offset', 'limit', 'provider', 'actionSource', 'deviceType',
                 'pageType', 'storeContext', 'language', 'node'}
@@ -91,7 +119,9 @@ class Runtime:
         self.result_status = 'complete'
         self.monitor_progress = True
         self.counters = dict(requests=0, requests_amazon=0, requests_ml=0, requests_other=0, products=0, eligible=0,
-                             ml_candidates=0, comparisons=0, errors=0, blocks=0, queries=0)
+                             ml_candidates=0, comparisons=0, errors=0, blocks=0, queries=0,
+                             unique_products=0, sponsored_cards=0, duplicates=0,
+                             **{'request_kind_' + kind: 0 for kind in REQUEST_KINDS})
         self.stop = threading.Event()
 
     def record(self, event, body):
@@ -99,6 +129,7 @@ class Runtime:
             return
         self.progress = self.clock()
         if event == 'BARRIDO_HTTP_INICIO':
+            self.counters['request_kind_' + request_kind(body.get('tienda'), body.get('path', ''))] += 1
             self.counters['requests'] += 1
             self.counters['requests_ml' if body.get('tienda') == 'ML' else
                           'requests_amazon' if body.get('tienda') in ('US', 'ES') else 'requests_other'] += 1
@@ -109,6 +140,9 @@ class Runtime:
         if event == 'BARRIDO_PAGINA_CONTADORES':
             self.counters['products'] += body['productos']
             self.counters['eligible'] += body['conservados']
+            self.counters['unique_products'] += body.get('productos_unicos', 0)
+            self.counters['sponsored_cards'] += body.get('tarjetas_patrocinadas', 0)
+            self.counters['duplicates'] += body.get('duplicados', 0)
         if event == 'BARRIDO_ML_BUSQUEDA':
             self.counters['queries'] += 1
         if event == 'BARRIDO_ML_PRODUCTO':
@@ -235,6 +269,8 @@ def stage(name, store):
     set_context(etapa=name, tienda=store, categoria=None, pagina=None, asin=None, intento=1)
     started = time.monotonic()
     before = dict(_runtime.counters) if _runtime else {}
+    if _runtime:
+        _runtime.stage_before = before
     emit_event('BARRIDO_ETAPA_INICIO')
     if _runtime:
         _runtime.heartbeat()
@@ -246,7 +282,7 @@ def stage(name, store):
         raise
     finally:
         metrics = {k: v - before[k] for k, v in _runtime.counters.items()} if _runtime else {}
-        metrics.update(outcome.get('metrics', {}))
+        metrics.update({**stage_metrics(), **outcome.get('metrics', {})})
         emit_event('BARRIDO_ETAPA_FIN', duracion=time.monotonic() - started, estado=outcome['status'], **metrics)
 
 
@@ -327,7 +363,9 @@ def observed(function):
                         outcome['status'] = result['status']
                         outcome['metrics'] = {key: result[key] for key in (
                             'requests_ml', 'requests_ml_por_producto', 'items_404',
-                            'productos_procesados', 'productos_con_candidato', 'alcance_metricas')}
+                            'productos_procesados', 'productos_con_candidato', 'alcance_metricas',
+                            'requests_por_tipo', 'productos_unicos', 'tarjetas_patrocinadas',
+                            'duplicados', 'requests_por_producto_elegible')}
                 else:
                     result = function(*args, **kwargs)
             finally:
@@ -344,6 +382,7 @@ def store_stage(function):
         with stage('amazon_' + store.lower(), store) as outcome:
             result = function(store, *args, **kwargs)
             outcome['status'] = result['status']
+            outcome['metrics'] = {key: result[key] for key in stage_metrics()}
             return result
     return wrapper
 

@@ -9,7 +9,7 @@ import requests
 from .amazon_source import AmazonSource, SourceError, next_page
 from .config import Config
 from .currency import load_daily_rates, validate_rate, StaleRate
-from .events import emit_event, now_art, observed, store_stage, set_context, set_action, wait, action
+from .events import emit_event, now_art, observed, store_stage, set_context, set_action, wait, action, stage_metrics
 from .state import State, acquire_run_lock, write_summary
 
 
@@ -51,7 +51,7 @@ def retry_page(operation, config, *, store, category, page, sleep=time.sleep):
             wait(delay, 'backoff_bloqueo' if blocked else 'backoff_transitorio', sleep=sleep)
 
 
-def enrich_variations(rows, source, state, config):
+def enrich_variations(rows, source, state, config, *, expected_date=None):
     failures = 0
     for row in rows:
         if not row["eligible"] or not row["has_variations"]:
@@ -61,6 +61,8 @@ def enrich_variations(rows, source, state, config):
             emit_event("BARRIDO_VARIANTES", tienda=row["store"], id=identity)
             try:
                 value = source.variations(identity)
+                if expected_date is not None and now_art().date().isoformat() != expected_date:
+                    raise SourceError('Cambió el día ART durante la consulta de variantes')
             except Exception as exc:
                 state.finish_variation(identity, status="failed", error=str(exc), value=None)
                 emit_event("BARRIDO_ERROR", tienda=row["store"], id=identity, tipo=type(exc).__name__,
@@ -144,11 +146,15 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                     reasons = Counter()
                     known_count = 0
                     kept = 0
+                    unique_count = duplicates = 0
                     for row in rows:
                         asin = row['id']
                         decisions = list(row.get('rejection_reasons', []))
                         if asin in seen_products:
                             decisions.append('duplicado')
+                            duplicates += 1
+                        else:
+                            unique_count += 1
                         seen_products.add(asin)
                         for reason in decisions:
                             reason = {'sin_precio_validado': 'sin_precio'}.get(reason, reason)
@@ -168,6 +174,8 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                             emit_event('BARRIDO_DESCARTE', asin=asin, motivo='ya_conocido', valor=True, alcance='novedades')
                         # La elegibilidad de evidencia y la deduplicación no alteran el contrato de salida.
                     emit_event('BARRIDO_PAGINA_CONTADORES', productos=len(rows), conservados=kept,
+                               productos_unicos=unique_count, duplicados=duplicates,
+                               tarjetas_patrocinadas=sum(bool((row.get('raw') or {}).get('is_sponsored')) for row in rows),
                                descartados=len(rows) - kept, descartes_por_motivo=dict(reasons),
                                descartes_novedades_por_motivo={'ya_conocido': known_count})
                     located = data.get('located_ar', all(row.get('located_ar') is True for row in rows))
@@ -186,7 +194,8 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                         raise SourceError(f"Página repetida en {category_id}: {list(signature)}")
                     signatures.add(signature)
                     following = next_page(data, page)
-                    variation_failures = enrich_variations(rows, source, state, config)
+                    # Las variantes se adquieren al terminar ML, sólo con contraparte local.
+                    variation_failures = 0
                     payload = dict(page=page, complete=following is None, products=rows,
                                    seconds=time.monotonic() - started, variation_failures=variation_failures,
                                    retry_failures=data.get("retry_failures", 0),
@@ -242,6 +251,7 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
         locations = [page.get('located_ar') for page in state.pages()] if state else observed_locations
         if locations and sum(located is not True for located in locations) / len(locations) > config.unlocated_page_ratio:
             result.update(status="partial", reason="ubicacion_ar_no_confirmada")
+    result.update(stage_metrics())
     emit_event("BARRIDO_OK" if result["status"] == "complete" else "BARRIDO_FALLA", tienda=store, **result)
     return result
 

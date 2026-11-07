@@ -62,9 +62,10 @@ def test_oferta_local_nueva_mep_y_reanudacion_sin_duplicados(tmp_path, fixture_d
     calls, delays = [], []
     client = fixture_client(fixture_dir, calls, delays)
     result = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
-    assert result == dict(status="complete", total=1, con_candidatos=1, sin_resultados=0, errores=0,
+    expected = dict(status="complete", total=1, con_candidatos=1, sin_resultados=0, errores=0,
                          requests_ml=2, requests_ml_por_producto=2, items_404=0,
                          productos_procesados=1, productos_con_candidato=1, alcance_metricas='ejecucion_actual')
+    assert all(result[key] == value for key, value in expected.items())
     row = read_output(tmp_path)[0]
     assert row["candidates"] == [dict(catalogId="MLAFIXTURE1", name="Monitor Samsung S36GD", price_ars=200000,
                                       price_usd=200, itemId="MLA1001", condition="new")]
@@ -202,6 +203,6 @@ def test_cli_step_fecha_y_limit(monkeypatch, tmp_path):
     calls = []
     monkeypatch.setattr(cli, "run_ml_lookup", lambda *a, **kw: calls.append(kw) or dict(status="complete"))
     assert cli.main(["--step", "ml-lookup", "--date", today(), "--limit", "2", "--dry-run", "--output", str(tmp_path)]) == 0
-    assert calls == [dict(date=today(), limit=2, dry_run=True)]
+    assert calls == [dict(date=today(), limit=2, dry_run=True, catalog_path='/app/data/catalog.json', catalog_auto_path=None)]
     with pytest.raises(SystemExit):
         cli.main(["--store", "ML"])

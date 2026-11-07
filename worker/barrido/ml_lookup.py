@@ -9,13 +9,13 @@ from uuid import uuid4
 
 import requests
 
-from .amazon_source import SourceError
+from .amazon_source import AmazonSource, SourceError
 from .config import Config
 from .currency import load_daily_rates, validate_rate
 from .events import now_art, emit_event, http_call, wait, observed, set_context, set_action, action
 from .models import positive
 from .ml_matching import amazon_identity, build_queries, candidate_score
-from .state import LookupState, acquire_run_lock, write_summary
+from .state import State, LookupState, acquire_run_lock, write_summary
 
 
 class MLClient:
@@ -25,6 +25,7 @@ class MLClient:
         self.config, self.sleep = config, sleep
         self.clock, self.last_request_started = clock, None
         self.requests_ml, self.items_404, self.consecutive_429 = 0, 0, 0
+        self.requests_by_kind = Counter()
         self.session_id = uuid4().hex
         self.transport = requests.Session() if get is None else None
 
@@ -46,6 +47,8 @@ class MLClient:
                     wait(remaining, 'pausa_ml', sleep=self.sleep)
             self.last_request_started = self.clock()
             self.requests_ml += 1
+            kind = 'ml_search' if path.endswith('/products/search') else 'ml_price' if path.endswith('/items') else 'other'
+            self.requests_by_kind[kind] += 1
             emit_event('BARRIDO_ML_PEDIDO', path=path, numero=self.requests_ml,
                        consecutivos_429=self.consecutive_429)
             try:
@@ -196,7 +199,8 @@ def amazon_rows(output, date, config):
 
 @observed
 def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
-                  client=None, rate_loader=load_daily_rates):
+                  client=None, rate_loader=load_daily_rates, catalog_path='/app/data/catalog.json',
+                  catalog_auto_path=None, source_factory=None):
     date = date or now_art().date().isoformat()
     if date != now_art().date().isoformat():
         raise ValueError("Sólo se adquiere evidencia del día ART actual")
@@ -216,11 +220,20 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         if state:
             state.freeze({"rate": rate, "min_usd": config.min_usd, "max_usd": config.max_usd})
         client = client or MLClient(config)
+        known_ml = {}
+        for path in dict.fromkeys((Path(catalog_path), Path(catalog_auto_path) if catalog_auto_path else Path(output).parent / 'catalog-auto.json')):
+            if path.exists():
+                for product in json.loads(path.read_text(encoding='utf-8')):
+                    identity = (product.get('ml') or {}).get('catalogId')
+                    if product.get('asin') and isinstance(identity, str) and identity.startswith('MLA') and identity[3:].isdigit():
+                        known_ml.setdefault(product['asin'], identity)
+        kinds_before = dict(getattr(client, 'requests_by_kind', {}))
         requests_before = getattr(client, 'requests_ml', 0)
         items_404_before = getattr(client, 'items_404', 0)
         records = state.materialize_jsonl() if state else []
         done = {(row["store"], row["asin"]) for row in records if row["lookup_status"] != "error"}
         processed, blocked, limited = [], False, False
+        eligible_processed = 0
         for amazon in amazon_rows(output, date, config):
             set_action('evaluando producto Amazon para lookup ML')
             set_context(asin=amazon['id'], categoria=None, pagina=None)
@@ -238,10 +251,22 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
             seen, checked = set(), 0
             try:
                 identity_amazon = amazon_identity(amazon)
-                queries = build_queries(amazon.get("title"), row=amazon)
+                known_id = known_ml.get(amazon['id'])
+                if known_id:
+                    emit_event('BARRIDO_ML_ATAJO_CONOCIDO', asin=amazon['id'], catalogo=known_id)
+                    best = client.cheapest(known_id)
+                    seen.add(known_id)
+                    if best is not None:
+                        price, item_id = best
+                        row['candidates'].append(dict(catalogId=known_id, name=amazon.get('title'),
+                            price_ars=price, price_usd=price * rate['value'], itemId=item_id, condition='new'))
+                    else:
+                        emit_event('BARRIDO_ML_ATAJO_FALLBACK', asin=amazon['id'], catalogo=known_id,
+                                   motivo='sin_oferta_local_nueva')
+                queries = [] if row['candidates'] else build_queries(amazon.get("title"), row=amazon)
                 emit_event('BARRIDO_ML_IDENTIDAD', marca=identity_amazon['brand'],
                            modelos=identity_amazon['models'], linea=identity_amazon['line'], consultas=queries)
-                if not queries:
+                if not queries and not row['candidates']:
                     emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='sin_consulta', valor=amazon.get('title'))
                 for query in queries:
                     row["queries_used"].append(query)
@@ -300,6 +325,7 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
             if now_art().date().isoformat() != date:
                 raise SourceError("Cambió el día ART durante la consulta: registro sin confirmar")
             processed.append(row)
+            eligible_processed += int(bool(amazon.get('eligible')))
             emit_event('BARRIDO_ML_PRODUCTO', asin=row['asin'], candidatos=len(row['candidates']),
                        eligible=amazon.get('eligible', False), estado=row['lookup_status'])
             if state:
@@ -310,6 +336,11 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
             if blocked:
                 break
         records = state.materialize_jsonl() if state else processed
+        variation_failures = 0
+        if not dry_run and not blocked:
+            variation_failures = enrich_ml_variations(config, output, date, records,
+                                                      source_factory=source_factory, rate_loader=rate_loader)
+            set_context(tienda='ML', asin=None, pagina=None)
         summary = dict(total=len(records), con_candidatos=sum(row["lookup_status"] == "ok" for row in records),
                        sin_resultados=sum(row["lookup_status"] == "sin_resultados" for row in records),
                        errores=sum(row["lookup_status"] == "error" for row in records))
@@ -321,9 +352,59 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                        productos_procesados=len(processed),
                        productos_con_candidato=sum(bool(row['candidates']) for row in processed),
                        alcance_metricas='ejecucion_actual')
+        from .events import stage_metrics
+        summary.update(stage_metrics())
+        for kind in ('ml_search', 'ml_price'):
+            summary['requests_por_tipo'][kind] = getattr(client, 'requests_by_kind', {}).get(kind, 0) - kinds_before.get(kind, 0)
+        if getattr(client, 'transport', None) is None:
+            summary['requests_por_tipo']['other'] += getattr(client, 'requests_by_kind', {}).get('other', 0) - kinds_before.get('other', 0)
+        summary.update(productos_unicos=len(processed), variation_failures=variation_failures,
+                       requests_por_producto_elegible=sum(summary['requests_por_tipo'].values()) / eligible_processed if eligible_processed else None)
         if limited:
             emit_event("BARRIDO_ML_LIMITE", limite=limit)
         emit_event("BARRIDO_ML_OK", **summary)
         if not dry_run:
             write_summary(output, date, {'ML': summary})
-        return dict(status="blocked" if blocked else "partial" if summary["errores"] or limited else "complete", **summary)
+        return dict(status="blocked" if blocked else "partial" if summary["errores"] or limited or variation_failures else "complete", **summary)
+
+
+def enrich_ml_variations(config, output, date, records, *, source_factory=None, rate_loader=load_daily_rates):
+    """Reanuda variantes con el State Amazon original y un transporte compartido por tienda."""
+    from .runner import enrich_variations
+    candidates = {(row['store'], row['asin']) for row in records if row['candidates']}
+    sources, touched, failures = {}, set(), 0
+    for amazon in amazon_rows(output, date, config):
+        if not amazon.get('eligible') or not amazon.get('has_variations'):
+            continue
+        store, identity = amazon['store'], amazon['id']
+        set_context(tienda=store, asin=identity, categoria=None, pagina=None)
+        if (store, identity) not in candidates:
+            emit_event('BARRIDO_DESCARTE', motivo='variantes_sin_ml', valor=identity)
+            continue
+        state = State(output, date, store)
+        touched.add(store)
+        if state.variation(identity) is not None:
+            continue
+        # No abrir sesión ni cargar cotización si ya se agotó el cupo.
+        path = state.root / 'variations.json'
+        saved = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+        if identity not in saved and len(saved) >= config.variation_limit:
+            continue
+        if now_art().date().isoformat() != date:
+            raise SourceError('Cambió el día ART antes de adquirir variantes')
+        if store not in sources:
+            context = state.root / 'context.json'
+            rate = json.loads(context.read_text(encoding='utf-8'))['rate'] if context.exists() else rate_loader(store, date)
+            validate_rate(rate, date)
+            sources[store] = (source_factory(store, date, rate) if source_factory else
+                              AmazonSource(store, date, rate, config, Path(output) / 'refinements'))
+        try:
+            failures += enrich_variations([amazon], sources[store], state, config, expected_date=date)
+        except SourceError:
+            failures += 1
+            break
+    for store in touched:
+        state = State(output, date, store)
+        if state.pages():
+            state.materialize_jsonl()
+    return failures

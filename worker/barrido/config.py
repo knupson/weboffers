@@ -18,6 +18,7 @@ class Config:
     backoff_cap: float = 120
     consecutive_blocks: int = 3
     variation_limit: int = 20
+    refinements_ttl_days: float = 7
     transient_retries: int = 3
     max_run_hours: float = 8
     unlocated_page_ratio: float = .5

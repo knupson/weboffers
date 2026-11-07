@@ -100,22 +100,28 @@ class AmazonSource:
         node = category["id"]
         set_context(tienda=self.store, categoria=node, pagina=page, asin=None)
         empty = None
+        prequeried = None
         if node not in self.filters:
             context = dict(date=self.date, store=self.store, node=node, language=self.site["language"], destination="AR")
             def prequery():
+                nonlocal prequeried
                 try:
                     parsed = self.request(build_search_params(node, 1, self.bounds))
+                    prequeried = parsed
                     if not parsed['results']:
                         raise EmptySearchPage(parsed)
                     return parsed
                 finally:
                     wait(self.config.pause, 'pausa_refinamientos', sleep=self.sleep)
             try:
-                self.filters[node] = load_refinements(self.cache, context, prequery, refresh=self.refresh)
+                self.filters[node] = load_refinements(self.cache, context, prequery, refresh=self.refresh,
+                                                     ttl_days=self.config.refinements_ttl_days)
             except EmptySearchPage as exc:
                 empty = exc.parsed
         params = build_search_params(node, page, self.bounds, self.filters.get(node))
-        parsed = empty if empty is not None else self.request(params)
+        # Igualdad exacta: no usar una página sin «nuevo»/AR cuando se agregaron esos filtros.
+        reusable = prequeried is not None and params == build_search_params(node, 1, self.bounds)
+        parsed = empty if empty is not None else prequeried if reusable else self.request(params)
         url = self.site["base"] + "/s?" + urlencode(params)
         session = self.fetch.session(self.store, "page", self.site["language"])
         located = session_is_ar(session)

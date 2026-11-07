@@ -91,6 +91,8 @@ class State:
         path = self.root / "context.json"
         if path.exists():
             old = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(old.get('config'), dict) and 'refinements_ttl_days' in config.get('config', {}):
+                old['config'].setdefault('refinements_ttl_days', 7)
             # Los IDs conocidos cambian con el catálogo; los subconjuntos de nodos
             # comparten páginas, pero conservan una definición estable por nodo.
             old.pop('known', None)
@@ -145,6 +147,12 @@ class State:
                     for source in row["provenance"]:
                         if source not in products[key]["provenance"]:
                             products[key]["provenance"].append(source)
+        variation_path = self.root / 'variations.json'
+        variations = json.loads(variation_path.read_text(encoding='utf-8')) if variation_path.exists() else {}
+        for row in products.values():
+            saved = variations.get(row['id'], {}).get('value')
+            if saved is not None:
+                row['variations'] = saved
         if known is not None:
             for row in products.values():
                 row["known"] = row["id"] in known
@@ -155,7 +163,7 @@ class State:
     def reserve_variation(self, identity, limit):
         path = self.root / "variations.json"
         body = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-        if identity in body or len(body) >= limit:
+        if (identity in body and body[identity]['status'] == 'complete') or (identity not in body and len(body) >= limit):
             return False
         body[identity] = {"status": "pending", "value": None}
         write_atomic(path, body)

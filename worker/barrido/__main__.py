@@ -47,7 +47,8 @@ def execute(args, config):
         if args.step == "ml-lookup":
             if args.store or args.category:
                 raise ValueError("ml-lookup usa los JSONL de US y ES; no admite store ni category")
-            result = run_ml_lookup(config, args.output, date=args.date, limit=args.limit, dry_run=args.dry_run)
+            result = run_ml_lookup(config, args.output, date=args.date, limit=args.limit, dry_run=args.dry_run,
+                                   catalog_path=args.catalog, catalog_auto_path=args.catalog_auto)
             return 0 if result["status"] == "complete" else 1
         if args.limit is not None:
             raise ValueError("--limit sólo se admite con --step ml-lookup")

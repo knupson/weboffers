@@ -1,0 +1,10 @@
+{
+  "catalog": [
+    {"asin": "B0FIXTURE1", "ml": {"catalogId": "MLA2069878284", "price": 1, "checked": "2000-01-01"}},
+    {"asin": "SINML"},
+    {"asin": "SINID", "ml": {"price": 1}},
+    {"asin": "INVALIDO", "ml": {"catalogId": "https://no-es-un-id"}}
+  ],
+  "offer": {"price": 200000, "currency_id": "ARS", "condition": "new", "item_id": "MLA1001"},
+  "refinements": [{"id": "p_n_condition-type", "options": [{"name": "New", "value": "FIXTURE_NEW"}]}]
+}

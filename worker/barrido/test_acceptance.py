@@ -46,4 +46,4 @@ def test_a1_a4_con_parser_y_fuente_reales_sin_red(tmp_path, fixture_dir, monkeyp
     assert all(100 <= r["price_usd"] <= 400 and r["raw"]["card_html"] for r in rows)
     assert len(calls) == 3  # Una preconsulta de refinamientos y dos páginas filtradas.
     assert all("p_n_condition-type:FIXTURE_NEW" in p["rh"] for p in calls[1:])
-    assert rows[0]["variations"] is not None and rows[1]["variations"] is None
+    assert all(r['variations'] is None for r in rows)  # Se difieren hasta tener ML.
