@@ -44,14 +44,25 @@ return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||
  envio:entrega||null,
  sinOferta:(b.match(/[^\n]*(See All Buying Options|No featured offers available|cannot be shipped to your selected delivery location|This item cannot be shipped|Currently unavailable)[^\n]*/)||[])[0]||null,
  captcha:/captcha|Enter the characters you see/i.test(t),
+ intersticial:/Click the button below to continue shopping/i.test(t)&&!document.getElementById('productTitle'),
  precio:(['#corePrice_feature_div .a-offscreen','#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen','#corePriceDisplay_desktop_feature_div .a-offscreen','#apex_desktop .a-offscreen'].map(s=>{const e=document.querySelector(s); return e && (e.innerText||e.textContent||'').trim();}).find(v=>v && /\d/.test(v)))||null,
  titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
+
+
+# 07/11: Amazon muestra a veces «Click the button below to continue shopping» en vez del producto (se
+# registraba mal como ubicacion_no_ar). Alejandro autorizó apretar el botón; después del clic la página
+# salía en castellano, por eso se vuelve a cargar el producto con language=en_US.
+CONTINUAR = r"""(() => {const b=document.querySelector('form button, form input[type=submit], button');
+if(b){b.click(); return true;} return false;})()"""
+INTENTOS_INTERSTICIAL = 2
 
 
 def interpretar(d):
     """Traduce lo leído a ships/free con evidencia literal; ante la duda, None."""
     if d.get("captcha"):
         return {"ships": None, "free": None, "text": None, "motivo": "captcha"}
+    if d.get("intersticial"):
+        return {"ships": None, "free": None, "text": None, "motivo": "intersticial"}
     if "argentina" not in (d.get("deliver") or "").lower():
         return {"ships": None, "free": None, "text": None, "motivo": "ubicacion_no_ar"}
     if d.get("buybox") is False:
@@ -108,14 +119,21 @@ async def nueva_pestana(c, ctx):
 
 
 async def leer_producto(c, s, asin):
-    await c.call("Page.navigate", {"url": f"https://www.amazon.com/dp/{asin}?language=en_US"}, s)
-    await asyncio.sleep(ESPERA_CARGA)
-    r = await c.call("Runtime.evaluate", {"expression": LEER, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
-    if r.get("exceptionDetails"):
-        # Un error del JavaScript de lectura nunca puede pasar como «página vacía» (05/11).
-        det = r["exceptionDetails"]
-        raise RuntimeError(f"js: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
-    return json.loads((r.get("result") or {}).get("value") or "{}")
+    for intento in range(INTENTOS_INTERSTICIAL + 1):
+        await c.call("Page.navigate", {"url": f"https://www.amazon.com/dp/{asin}?language=en_US"}, s)
+        await asyncio.sleep(ESPERA_CARGA)
+        r = await c.call("Runtime.evaluate", {"expression": LEER, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
+        if r.get("exceptionDetails"):
+            # Un error del JavaScript de lectura nunca puede pasar como «página vacía» (05/11).
+            det = r["exceptionDetails"]
+            raise RuntimeError(f"js: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
+        d = json.loads((r.get("result") or {}).get("value") or "{}")
+        if not d.get("intersticial") or intento == INTENTOS_INTERSTICIAL:
+            return d
+        print(f"{asin} intersticial: aprieto Continue shopping (intento {intento + 1})", file=sys.stderr, flush=True)
+        await c.call("Runtime.evaluate", {"expression": CONTINUAR, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
+        await asyncio.sleep(ESPERA_CARGA)
+    return d
 
 
 async def main(asins):
@@ -141,7 +159,8 @@ async def main(asins):
                         pass
                     tid, s = await nueva_pestana(c, ctx)
                 try:
-                    items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin), TIMEOUT_PRODUCTO + ESPERA_CARGA + 5))
+                    items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin),
+                                                                       (TIMEOUT_PRODUCTO + 2 * ESPERA_CARGA) * (INTENTOS_INTERSTICIAL + 1) + 5))
                 except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
                     items[asin] = {"ships": None, "free": None, "text": None, "motivo": f"error:{type(e).__name__}"}
                     try:

@@ -237,6 +237,40 @@ def test_interpretar_texto_del_chrome():
     assert mod.interpretar({"deliver": ar, "sinOferta": "See All Buying Options", "titulo": "x"})["ships"] is False
     assert mod.interpretar({"deliver": "Deliver to 10001", "envio": "FREE delivery"})["ships"] is None
     assert mod.interpretar({"deliver": ar, "captcha": True})["motivo"] == "captcha"
+    # 07/11: la página «Click the button below to continue shopping» no es «ubicación no AR».
+    assert mod.interpretar({"deliver": "", "intersticial": True, "titulo": ""})["motivo"] == "intersticial"
+
+
+def test_chrome_aprieta_continue_shopping_y_recarga_en_ingles():
+    # 07/11 (autorizado por Alejandro): Amazon muestra a veces la página intermedia; se aprieta el botón
+    # y se vuelve a cargar el producto con language=en_US (después del clic la página salía en castellano).
+    import asyncio
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location("envio_ar_chrome", pathlib.Path(__file__).resolve().parent.parent / "tools" / "envio_ar_chrome.py")
+    try:
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    except ModuleNotFoundError:
+        import pytest
+        pytest.skip("sin websockets")
+    mod.ESPERA_CARGA = 0
+    lecturas = iter([{"intersticial": True, "titulo": ""}, {"deliver": "Deliver to Argentina", "titulo": "SSD"}])
+    llamadas = []
+
+    class FakeCdp:
+        async def call(self, method, params=None, session=None, timeout=30):
+            llamadas.append((method, params))
+            if method == "Runtime.evaluate" and params["expression"] == mod.LEER:
+                import json
+                return {"result": {"value": json.dumps(next(lecturas))}}
+            return {"result": {"value": True}}
+
+    d = asyncio.run(mod.leer_producto(FakeCdp(), "s", "B1"))
+    assert d["titulo"] == "SSD"
+    navegaciones = [p["url"] for m, p in llamadas if m == "Page.navigate"]
+    assert navegaciones == ["https://www.amazon.com/dp/B1?language=en_US"] * 2
+    assert any(m == "Runtime.evaluate" and p["expression"] == mod.CONTINUAR for m, p in llamadas)
 
 
 def test_precios_de_chrome_primero_y_scraper_de_respaldo(tmp_path, monkeypatch):
