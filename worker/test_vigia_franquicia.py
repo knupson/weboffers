@@ -182,3 +182,20 @@ def test_tras_alta_sin_archivo_ok_fallida_e_interrumpida(tmp_path):
         "pasos": [{"paso": "altas", "estado": "fail", "motivo": "x"}]}), encoding="utf-8")
     assert "tras-alta:altas" in v.chequeos(HOY.replace(hour=5, minute=0), internet=lambda: True,
         sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path))
+
+
+def test_umami_ip_avisa_si_cambio_la_ip_de_casa():
+    def sh_env(valor):
+        def sh(*cmd, timeout=30):
+            return 0, f"PATH=/x\nIGNORE_IP={valor}\n"
+        return sh
+    assert v.chequear_umami_ip(sh_env("1.2.3.4"), ip=lambda: "1.2.3.4") == {}
+    assert v.chequear_umami_ip(sh_env('"1.2.3.4"'), ip=lambda: "1.2.3.4") == {}
+    assert v.chequear_umami_ip(sh_env("9.9.9.9,1.2.3.4"), ip=lambda: "1.2.3.4") == {}
+    assert "umami-ip" in v.chequear_umami_ip(sh_env("9.9.9.9"), ip=lambda: "1.2.3.4")
+    # Sin la variable, sin contenedor o sin poder averiguar la IP: no se avisa (no hay dato para comparar).
+    assert v.chequear_umami_ip(lambda *c, timeout=30: (0, "PATH=/x\n"), ip=lambda: "1.2.3.4") == {}
+    assert v.chequear_umami_ip(lambda *c, timeout=30: (1, ""), ip=lambda: "1.2.3.4") == {}
+    def falla():
+        raise OSError("sin red")
+    assert v.chequear_umami_ip(sh_env("9.9.9.9"), ip=falla) == {}

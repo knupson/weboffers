@@ -76,3 +76,11 @@ def test_manda_whatsapp_desde_las_7(monkeypatch):
     monkeypatch.setattr(reminder.urllib.request, "urlopen", lambda *a, **k: llamados.append(a) or Resp())
     reminder.enviar("aviso", "prueba", ahora=datetime.fromisoformat("2026-11-07T07:00:00-03:00"))
     assert len(llamados) == 1
+
+
+def test_cola_de_revision_pide_revisar_las_altas_solo_a_las_0730():
+    now = datetime.fromisoformat("2026-11-03T07:30:00-03:00")
+    base = {"preciosDe": "2026-11-03", "amazon": {}}
+    assert not reminder.control("sitio", now, download({**base, "catalogo": {"revision": 0}}))
+    assert "«revisá las altas»" in reminder.control("sitio", now, download({**base, "catalogo": {"revision": 3}}))
+    assert "revisá las altas" not in reminder.control("sitio13", now, download({**base, "catalogo": {"revision": 3}}))

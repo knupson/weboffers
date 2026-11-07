@@ -122,6 +122,9 @@ def control(que, ahora, bajar=bajar):
             problema = control_catalogo(ahora, bajar)
             if problema:
                 problemas.append(problema)
+        # 07/11: altas sin identificador fuerte esperan revisión en Chrome (decisión de Alejandro); sólo en el control de las 07:30.
+        if que == "sitio" and ((estado.get("catalogo") or {}).get("revision") or 0) > 0:
+            problemas.append("revisá las altas")
         return pedir(problemas) if problemas else ""
     if que in ("telegram12", "telegram20"):
         hora = int(que[-2:])

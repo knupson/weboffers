@@ -50,6 +50,30 @@ def hay_internet():
     return False
 
 
+def ip_publica():
+    with urllib.request.urlopen("https://api.ipify.org", timeout=10) as r:
+        return r.read().decode().strip()
+
+
+def chequear_umami_ip(sh=sh, ip=ip_publica):
+    """07/11: la IP de casa cambió y Umami contaba como público las visitas propias. Avisa si vuelve a pasar."""
+    try:
+        code, out = sh("docker", "inspect", "umami", "--format", "{{range .Config.Env}}{{println .}}{{end}}")
+    except Exception:  # noqa: BLE001
+        return {}
+    valores = [linea.split("=", 1)[1] for linea in (out or "").splitlines() if linea.startswith("IGNORE_IP=")]
+    if code != 0 or not valores:
+        return {}
+    try:
+        actual = ip()
+    except Exception:  # noqa: BLE001
+        return {}
+    permitidas = {x.strip().strip('"') for x in valores[0].split(",")}
+    if actual and actual not in permitidas:
+        return {"umami-ip": "la IP de casa cambió y Umami volvió a contar tus visitas, actualizá IGNORE_IP"}
+    return {}
+
+
 def leer_json_contenedor(contenedor, ruta):
     code, out = sh("docker", "exec", contenedor, "cat", ruta)
     return json.loads(out) if code == 0 and out.strip() else None
@@ -73,6 +97,7 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     if not internet():
         problemas["internet"] = "la VM docker no tiene salida a internet, revisá la ruta por defecto"
         return problemas  # sin internet el resto da falsos positivos
+    problemas.update(chequear_umami_ip(sh))
 
     try:
         code, out = sh("docker", "ps", "--format", "{{.Names}}")

@@ -340,6 +340,8 @@ def test_catalogo_ok_reports_review(setup_job, monkeypatch, capsys):
     monkeypatch.setattr(auto.matching, "match_products", lambda *a: {"accepted": [candidate(amazonIds={})]})
     auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
     assert "CATALOGO_OK catálogo: pendientes=0, revision=1," in capsys.readouterr().out
+    # El estado lleva la cantidad: estado.json la publica y el control de las 07:30 pide «revisá las altas».
+    assert json.loads((output / "catalog-auto-state.json").read_text())["revision"] == 1
 
 
 def test_strong_ids_do_not_bypass_validator(setup_job):

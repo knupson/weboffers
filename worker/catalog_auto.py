@@ -230,6 +230,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     status = "failed" if fatal else "ok"
     publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
                                     "added": len(added), "pages": scraper.pages if scraper else 0,
+                                    # 07/11: pares en altas-revision.json; estado.json lo publica y el control de las 07:30 pide «revisá las altas».
+                                    "revision": len(read_json(output / "altas-revision.json", [])),
                                     "motivos": sorted({f.get("motivo") for f in failures if f.get("motivo")})})
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)
     # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
