@@ -303,10 +303,18 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     extra_slot = _slot_id(today, EXTRA_REFRESH_HOUR) if today in EXTRA_REFRESH_DATES else None
     previous = load_json(prices_path, None)
     done_slot = _done_slot(previous) if isinstance(previous, dict) and previous.get("date") == today else None
+    nuevos = set()
     if extra_slot is not None and local.hour >= EXTRA_REFRESH_HOUR and done_slot != extra_slot:
         slot = extra_slot
     elif done_slot is not None:
-        if not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
+        # 07/11: un alta confirmada de día entra al catálogo después del slot; con force se consulta igual.
+        vistos = (set(previous.get("items") or {}) | set(previous.get("absent") or [])
+                  | set(previous.get("failed") or []) | set(previous.get("variantConflict") or []))
+        nuevos = {p["slug"] for p in catalog if p.get("verified") and (p.get("ml") or {}).get("catalogId")
+                  and p["slug"] not in vistos} if force else set()
+        if nuevos:
+            print(f"Mercado Libre: {len(nuevos)} productos nuevos desde el slot {done_slot}; se consultan.", flush=True)
+        elif not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
             # Pasada horaria sin consulta: una sola línea (06/11: 275 líneas por hora tapaban lo importante).
             print(f"Mercado Libre: sin consulta en esta pasada (slot {done_slot} ya ejecutado).", flush=True)
             return False
@@ -332,7 +340,7 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
             print(ml_line(product, "omitido", reason="sin_verificar" if not product.get("verified") else "sin_catalog_id"), flush=True)
             continue
         slug = product["slug"]
-        if retry and slug not in previous.get("failed", []):
+        if retry and slug not in previous.get("failed", []) and slug not in nuevos:
             status = "ok" if slug in items else "absent" if slug in absent else "omitido"
             print(ml_line(product, status, items.get(slug), "sin_reconsulta_en_este_reintento"), flush=True)
             continue

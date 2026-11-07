@@ -429,3 +429,28 @@ def test_force_adelanta_sin_repetir_slot_y_conserva_reintento(tmp_path, monkeypa
     assert not ml_prices.maybe_refresh([], path, amazon, MEP, now, force=True)
     assert ml_prices.maybe_refresh([], path, amazon, MEP, now.replace(hour=8), force=True)
     assert json.loads(path.read_text())["attempts"] == 2
+
+
+def test_force_consulta_productos_nuevos_despues_del_slot(tmp_path, monkeypatch):
+    # 07/11: la Zotac se promovió de día (confirmar_altas) y refresh_ahora ml no la consultó porque el slot
+    # de hoy ya estaba hecho: quedaba sin precio de ML hasta el día siguiente. Con force se consultan los
+    # productos que el slot nunca vio, sin reconsultar los que ya tienen dato.
+    consultados = []
+
+    def fetch(catalog_id):
+        consultados.append(catalog_id)
+        return [{"price": 100000, "condition": "new", "id": "MLA9" + catalog_id}]
+
+    monkeypatch.setattr(ml_prices, "fetch_items", fetch)
+    monkeypatch.setattr(ml_prices, "pause", lambda: None)
+    path = tmp_path / "ml-prices.json"
+    amazon = tmp_path / "amazon.json"
+    viejo = [{"slug": "p1", "verified": True, "ml": {"catalogId": "MLA1"}}]
+    assert ml_prices.maybe_refresh(viejo, path, amazon, MEP, AFTER_SEVEN)
+    consultados.clear()
+    nuevo = viejo + [{"slug": "p2", "verified": True, "ml": {"catalogId": "MLA2"}}]
+    assert not ml_prices.maybe_refresh(nuevo, path, amazon, MEP, AFTER_SEVEN)  # sin force: horario normal
+    assert ml_prices.maybe_refresh(nuevo, path, amazon, MEP, AFTER_SEVEN, force=True)
+    assert consultados == ["MLA2"]
+    data = json.loads(path.read_text())
+    assert set(data["items"]) == {"p1", "p2"}
