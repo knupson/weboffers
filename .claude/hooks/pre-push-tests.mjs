@@ -11,6 +11,14 @@ try { input = JSON.parse(raw); } catch { process.exit(0); }
 const command = input?.tool_input?.command ?? '';
 if (!/\bgit\s+(?:-[^\s]+\s+)*push\b/.test(command)) process.exit(0);
 
+// El hook corre ANTES del comando entero: si el mismo comando cambia el árbol antes del push
+// (merge, pull…), los tests verían el árbol viejo. 07/11: `git merge … && git push` subió un test roto.
+const pushAt = command.search(/\bgit\s+(?:-[^\s]+\s+)*push\b/);
+if (/\bgit\s+(?:-[^\s]+\s+)*(merge|pull|rebase|cherry-pick|checkout|switch|reset|am|stash)\b/.test(command.slice(0, pushAt))) {
+  process.stderr.write('[pre-push] El comando cambia el árbol antes del push: los tests correrían sobre el árbol viejo. Hacé el merge/pull primero y el `git push` en un comando aparte.\n');
+  process.exit(2);
+}
+
 const cwd = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 const suites = [
   ['vitest', 'npm', ['test', '--silent']],

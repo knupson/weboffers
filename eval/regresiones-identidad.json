@@ -1,0 +1,155 @@
+[
+  {
+    "id": "1",
+    "title": "Amazon Echo Dot (5th Gen, 2022 release) Smart speaker with Alexa",
+    "name": "Amazon Echo Dot Kids",
+    "model": "Echo Dot",
+    "brand": "Amazon",
+    "category": "Audio",
+    "amazon_brand": "Amazon"
+  },
+  {
+    "id": "2",
+    "title": "Amazon Echo Dot (4th Gen) Smart speaker",
+    "name": "Amazon Echo Dot Parlante Alexa",
+    "model": "Echo Dot",
+    "brand": "Amazon",
+    "category": "Audio",
+    "amazon_brand": "Amazon"
+  },
+  {
+    "id": "2b",
+    "title": "Amazon Echo Dot (3rd Gen) Smart speaker",
+    "name": "Amazon Echo Dot Parlante Alexa",
+    "model": "Echo Dot",
+    "brand": "Amazon",
+    "category": "Audio",
+    "amazon_brand": "Amazon"
+  },
+  {
+    "id": "3",
+    "title": "Amazon Echo Dot 5th Gen",
+    "name": "Amazon Echo Dot con reloj",
+    "model": "Echo Dot",
+    "brand": "Amazon",
+    "category": "Audio",
+    "amazon_brand": "Amazon"
+  },
+  {
+    "id": "4",
+    "title": "Roku Streaming Stick 4K",
+    "name": "Roku Streaming Stick HD",
+    "model": "Streaming Stick",
+    "brand": "Roku",
+    "category": "TV box",
+    "amazon_brand": "Roku"
+  },
+  {
+    "id": "5",
+    "title": "Amazon Fire TV Stick 4K",
+    "name": "Amazon Fire TV Stick HD",
+    "model": "Fire TV Stick",
+    "brand": "Amazon",
+    "category": "TV box",
+    "amazon_brand": "Amazon"
+  },
+  {
+    "id": "6",
+    "title": "Amazon Fire HD 8 Kids Tablet 32GB",
+    "name": "Amazon Fire HD 8 Tablet 32GB",
+    "model": "Fire HD",
+    "brand": "Amazon",
+    "category": "Tablets",
+    "amazon_brand": "Amazon"
+  },
+  {
+    "id": "7",
+    "title": "Xiaomi Redmi Buds 6 Active",
+    "name": "Xiaomi Redmi Buds 6 Play",
+    "model": "Redmi Buds",
+    "brand": "Xiaomi",
+    "category": "Audio",
+    "amazon_brand": "Xiaomi"
+  },
+  {
+    "id": "8",
+    "title": "Logitech Pebble Keyboard",
+    "name": "Logitech Teclado Bluetooth",
+    "model": "Pebble",
+    "brand": "Logitech",
+    "category": "Keyboards",
+    "amazon_brand": "Logitech"
+  },
+  {
+    "id": "9",
+    "title": "Moto G15 Power",
+    "name": "Motorola Moto G15",
+    "model": "G15",
+    "brand": "Motorola",
+    "category": "Celulares",
+    "amazon_brand": ""
+  },
+  {
+    "id": "10",
+    "title": "Samsung Galaxy Tab A9+",
+    "name": "Samsung Galaxy Tab A9",
+    "model": "Galaxy Tab A9",
+    "brand": "Samsung",
+    "category": "Tablets",
+    "amazon_brand": "Samsung"
+  },
+  {
+    "id": "11",
+    "title": "Sony DualSense Edge",
+    "name": "Sony DualSense",
+    "model": "DualSense",
+    "brand": "Sony",
+    "category": "Gaming",
+    "amazon_brand": "Sony"
+  },
+  {
+    "id": "12",
+    "title": "HyperX Cloud II",
+    "name": "HyperX Cloud III",
+    "model": "Cloud",
+    "brand": "HyperX",
+    "category": "Audio",
+    "amazon_brand": "HyperX"
+  },
+  {
+    "id": "13",
+    "title": "Google Pixel 9 Pro XL",
+    "name": "Google Pixel 9 Pro",
+    "model": "Pixel 9 Pro",
+    "brand": "Google",
+    "category": "Celulares",
+    "amazon_brand": "Google"
+  },
+  {
+    "id": "14",
+    "title": "Apple Watch Series 10",
+    "name": "Apple Watch Series 9",
+    "model": "Apple Watch",
+    "brand": "Apple",
+    "category": "Smartwatch",
+    "amazon_brand": "Apple"
+  },
+  {
+    "id": "15",
+    "title": "Valve Steam Deck OLED",
+    "name": "Valve Steam Deck",
+    "model": "Steam Deck",
+    "brand": "Valve",
+    "category": "Gaming",
+    "amazon_brand": "Valve"
+  },
+  {
+    "id": "16",
+    "title": "Nintendo Switch OLED",
+    "name": "Nintendo Switch",
+    "model": "Nintendo Switch",
+    "brand": "Nintendo",
+    "category": "Gaming",
+    "amazon_brand": "Nintendo"
+  }
+]
