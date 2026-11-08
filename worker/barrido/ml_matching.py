@@ -1,4 +1,6 @@
 """Identidad Amazon y filtro local de catálogo, sin consultas adicionales."""
+import json
+from pathlib import Path
 import re
 import unicodedata
 
@@ -180,6 +182,39 @@ def amazon_identity(row, brand=''):
                 line=line, suffix=suffix, cleaned=cleaned)
 
 
+GLOSSARY_PATH = Path(__file__).with_name('glosario_es.json')
+_glossary_cache = None
+# Palabras que no estaban en el glosario en esta ejecución: ml_lookup las registra para ampliarlo.
+_untranslated = set()
+
+
+def glossary():
+    global _glossary_cache
+    if _glossary_cache is None:
+        _glossary_cache = json.loads(GLOSSARY_PATH.read_text(encoding='utf-8')) if GLOSSARY_PATH.exists() else {}
+    return _glossary_cache
+
+
+def translate_query(text, keep=()):
+    """08/11: ML se buscaba con el título de Amazon en inglés («Titanium Cutting Board with Knife»).
+    Cada palabra pasa por el glosario EN->ES (green bag -> verde cartera): «-» la saca, «=» la deja igual.
+    Marca, modelo, códigos con dígitos y palabras fuera del glosario (nombres propios) quedan como están."""
+    keep = {w.lower() for w in keep}
+    table, out = glossary(), []
+    for word in text.split():
+        bare = word.strip(".,:;!?()[]\"'").lower()
+        if not bare or bare in keep or re.search(r'\d', bare):
+            out.append(word)
+            continue
+        value = table.get(bare)
+        if value is None:
+            _untranslated.add(bare)
+            out.append(word)
+        elif value != '-':
+            out.append(word if value == '=' else value)
+    return ' '.join(out)
+
+
 def build_queries(title, brand='', row=None):
     identity = amazon_identity({**(row or {}), 'title': title or ''}, brand)
     if not identity['title']:
@@ -188,8 +223,10 @@ def build_queries(title, brand='', row=None):
     if identity['models'] and not identity['line']:
         model = ' '.join([model, *(part for part in identity['suffix'] if part.lower() != 'hero')]).strip()
     specific = f"{identity['brand']} {model}".strip() if model else ''
+    # La consulta específica es identidad (marca + línea + modelo): no se traduce. Sólo el título limpio.
+    keep = set(identity['brand'].split()) | set(identity['models']) | set(identity['line']) | set(identity['suffix'])
     queries = {}
-    for value in (specific, identity['cleaned']):
+    for value in (specific, translate_query(identity['cleaned'], keep)):
         query = _query(value)
         if query:
             queries.setdefault(code(query), query)

@@ -381,6 +381,10 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                        requests_por_producto_elegible=sum(summary['requests_por_tipo'].values()) / eligible_processed if eligible_processed else None)
         if limited:
             emit_event("BARRIDO_ML_LIMITE", limite=limit)
+        from . import ml_matching
+        # 08/11: palabras de las búsquedas que no están en glosario_es.json (para ampliarlo; quedan en inglés).
+        emit_event("BARRIDO_ML_SIN_TRADUCCION", cantidad=len(ml_matching._untranslated),
+                   palabras=sorted(ml_matching._untranslated)[:500])
         emit_event("BARRIDO_ML_OK", **summary)
         if not dry_run:
             write_summary(output, date, {'ML': summary})
