@@ -41,6 +41,7 @@ Los crons están en `ssh docker 'crontab -l'` y la unidad systemd en `ssh docker
 - Cadena: `PASO_INICIO`, `PASO_OK`, `PASO_SIGUE` (latido; filtrarlo), y cualquier otro `PASO_*` que no sea OK. También `FILTRO <motivo> fallas=N`.
 - Worker: `ALTAS_OK promovidas=… rechazadas=… siguen_pendientes=…`.
 - Deployer: `DEPLOY_FASE <fase> ok|…`, `DEPLOY_OK publicado con precios del …` (trae la ruta del desglose), `DEPLOY_MANUAL ok`, `Próximo despliegue previsto`.
+- Chrome de envío: `ENVIO_AR_CHROME_REINICIO` (no había CDP y se reinició `chrome-claude`). La hora en que Chrome se cae queda en `docker logs chrome-claude | grep "CDP caido"` (desde el 08/11).
 - Vigías y controles: `VIGIA_OK`, `VIGIA_EXTERNO_OK`, `FRANQUICIA_CONTROL_OK`, `ENVIO_AR_CHROME_OK`; cualquier variante sin `_OK` es la que hay que mirar.
 
 ## Reglas al citar
