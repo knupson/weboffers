@@ -2,6 +2,10 @@
 
 ## Alcance
 
+**Requisito de Alejandro (07/11, literal): «en todas las categorías de productos entre 100 y 400 dólares,
+que tengan envío a Argentina».** `categorias.json` debe listar TODAS las categorías raíz (departamentos) de
+Amazon US y ES, no sólo tecnología. Hasta el 07/11 21:45 tenía sólo 541966 y 667049031: fuera de requisito.
+
 Adquisición diaria Amazon US y ES, seguida de lookup ML. «Todos» significa resultados accesibles de nodos
 configurados, no exhaustividad de catálogo. Nuevo es condición nueva; conocidos también se guardan.
 No publica ni modifica el catálogo actual. Tareas 1–9 y 11; integración (tarea 10) pendiente.
