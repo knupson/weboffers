@@ -303,6 +303,10 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     extra_slot = _slot_id(today, EXTRA_REFRESH_HOUR) if today in EXTRA_REFRESH_DATES else None
     previous = load_json(prices_path, None)
     done_slot = _done_slot(previous) if isinstance(previous, dict) and previous.get("date") == today else None
+    # 08/11: lo que el Chrome de hoy vio sin envío gratis a Argentina no se consulta en ML (no se publica).
+    # Tampoco cuenta como «nuevo»: si no, cada pasada con force reescribiría el slot y sumaría attempts.
+    from amazon_prices import chrome_sin_envio_gratis
+    sin_gratis = chrome_sin_envio_gratis(amazon_prices_path, today)
     nuevos = set()
     if extra_slot is not None and local.hour >= EXTRA_REFRESH_HOUR and done_slot != extra_slot:
         slot = extra_slot
@@ -311,7 +315,8 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         vistos = (set(previous.get("items") or {}) | set(previous.get("absent") or [])
                   | set(previous.get("failed") or []) | set(previous.get("variantConflict") or []))
         nuevos = {p["slug"] for p in catalog if p.get("verified") and (p.get("ml") or {}).get("catalogId")
-                  and p["slug"] not in vistos} if force else set()
+                  and p["slug"] not in vistos
+                  and not (p.get("store") == "US" and p.get("asin") in sin_gratis)} if force else set()
         if nuevos:
             print(f"Mercado Libre: {len(nuevos)} productos nuevos desde el slot {done_slot}; se consultan.", flush=True)
         elif not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
@@ -340,6 +345,10 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
             print(ml_line(product, "omitido", reason="sin_verificar" if not product.get("verified") else "sin_catalog_id"), flush=True)
             continue
         slug = product["slug"]
+        motivo = sin_gratis.get(product.get("asin")) if product.get("store") == "US" else None
+        if motivo:
+            print(ml_line(product, "omitido", reason=motivo), flush=True)
+            continue
         if retry and slug not in previous.get("failed", []) and slug not in nuevos:
             status = "ok" if slug in items else "absent" if slug in absent else "omitido"
             print(ml_line(product, status, items.get(slug), "sin_reconsulta_en_este_reintento"), flush=True)

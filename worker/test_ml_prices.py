@@ -454,3 +454,36 @@ def test_force_consulta_productos_nuevos_despues_del_slot(tmp_path, monkeypatch)
     assert consultados == ["MLA2"]
     data = json.loads(path.read_text())
     assert set(data["items"]) == {"p1", "p2"}
+
+
+def test_skips_products_chrome_saw_without_free_shipping_today(tmp_path, monkeypatch):
+    # 08/11 Alejandro: lo que no cumple se filtra en el paso que lo ve; ML no consulta envío pago ni sin oferta AR.
+    catalog = [{**CATALOG[0], "asin": "B0PAGO"}, {**CATALOG[1], "asin": "B0GRATIS"},
+               {"slug": "sin-oferta", "name": "Z", "store": "US", "verified": True, "verdict": "ml", "asin": "B0NOAR",
+                "ml": {"price": 1, "catalogId": "MLA444"}}]
+    (tmp_path / "ar-chrome-2026-10-30.json").write_text(json.dumps({"items": {
+        "B0PAGO": {"ships": True, "free": False}, "B0GRATIS": {"ships": True, "free": True},
+        "B0NOAR": {"ships": False, "free": None}}}), encoding="utf-8")
+    get = Mock(side_effect=route_get({"MLA222/items": items_response([{"price": 700000}])}))
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    prices = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
+    assert get.call_count == 1
+    assert set(json.loads(prices.read_text(encoding="utf-8"))["items"]) == {"ssd"}
+
+
+def test_chrome_skipped_products_are_not_new_on_forced_rerun(tmp_path, monkeypatch):
+    # Un salteado por envío no entra en items/absent/failed: no debe contar como «nuevo» ni sumar attempts.
+    catalog = [{**CATALOG[0], "asin": "B0PAGO"}, {**CATALOG[1], "asin": "B0GRATIS"}]
+    (tmp_path / "ar-chrome-2026-10-30.json").write_text(json.dumps({"items": {
+        "B0PAGO": {"ships": True, "free": False}, "B0GRATIS": {"ships": True, "free": True}}}), encoding="utf-8")
+    get = Mock(side_effect=route_get({"MLA222/items": items_response([{"price": 700000}])}))
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    prices = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN, force=True) is True
+    antes = prices.read_text(encoding="utf-8")
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN, force=True) is False
+    assert prices.read_text(encoding="utf-8") == antes
+    assert get.call_count == 1

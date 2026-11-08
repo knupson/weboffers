@@ -675,22 +675,47 @@ def chrome_shipping(products, prices_path, today):
     return out
 
 
+def chrome_sin_envio_gratis(prices_path, today):
+    """ASIN que el Chrome de HOY vio sin envío gratis a Argentina: {asin: motivo} (08/11).
+
+    Alejandro: «se tienen que filtrar en el mismo momento que se ve envío internacional». El paso chrome
+    corre primero en la cadena; con su dato, Amazon y ML no gastan consultas en productos que no se publican.
+    Sólo evidencia de hoy (ships/free booleanos); sin dato no se saltea nada.
+    """
+    if prices_path is None:
+        return {}
+    data = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), None)
+    items = data.get("items") if isinstance(data, dict) else None
+    out = {}
+    for asin, it in (items or {}).items():
+        if not isinstance(it, dict):
+            continue
+        if it.get("ships") is False:
+            out[asin] = "sin_oferta_ar_chrome"
+        elif it.get("ships") is True and it.get("free") is False:
+            out[asin] = "envio_pago_chrome"
+    return out
+
+
 def prices_with_chrome(base_url, products, today, prices_path=None):
     """Precios del día: primero Chrome (tienda US), el resto con el scraper. Devuelve (items, ok, faltantes)."""
     chrome = load_chrome_prices(prices_path, today)
     raw_chrome = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), {}) if prices_path else {}
     items, ok, missing, resto = {}, 0, 0, []
     chrome_fallas = []
+    sin_gratis = chrome_sin_envio_gratis(prices_path, today)
     for p in products:
         evidence = (raw_chrome.get("items") or {}).get(p["asin"]) if p.get("store") == "US" else None
         if evidence is not None:
             print(chrome_line([p["slug"]], p["asin"], evidence), flush=True)
         amount, ships = chrome.get(p["asin"], (None, None)) if p.get("store") == "US" else (None, None)
-        if ships is False:
-            # Chrome vio la página sin oferta para Argentina: no se publica (REGLA 0) y no se gasta el scraper.
+        motivo = sin_gratis.get(p["asin"]) if p.get("store") == "US" else None
+        if motivo:
+            # Chrome vio la página sin oferta o con envío pago a Argentina: no se publica (REGLA 0) y no se
+            # gasta el scraper (08/11: antes sólo se salteaba «sin oferta»; los de envío pago se consultaban igual).
             missing += 1
-            chrome_fallas.append({"slug": p["slug"], "asin": p["asin"], "store": "US", "motivo": "sin_oferta_ar_chrome"})
-            print(amazon_line(p, "chrome", reason="sin_oferta_ar_chrome"), flush=True)
+            chrome_fallas.append({"slug": p["slug"], "asin": p["asin"], "store": "US", "motivo": motivo})
+            print(amazon_line(p, "chrome", reason=motivo), flush=True)
             continue
         if amount is not None and plausible((amount, "USD"), p):
             items[p["slug"]] = {"asin": p["asin"], "amount": amount, "currency": "USD", "checked": today, "source": "chrome"}

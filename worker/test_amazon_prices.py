@@ -789,3 +789,20 @@ def test_run_guarda_lo_que_falta_tras_cada_reintento(tmp_path, monkeypatch):
     run = json.loads(out.read_text(encoding="utf-8"))["run"]
     assert run["reintento"]["recuperados"] == 2  # acumulado de los dos reintentos
     assert run["faltan"] == {"total": 0, "motivos": {}}
+
+
+def test_chrome_paid_shipping_skips_scraper(tmp_path, monkeypatch):
+    # 08/11 Alejandro: lo que no cumple se filtra en el paso que lo ve; envío pago visto por Chrome no va al scraper.
+    (tmp_path / "ar-chrome-2026-11-08.json").write_text(json.dumps({"items": {
+        "B0PAGO": {"ships": True, "free": False, "precio": "$120.00"},
+        "B0NOAR": {"ships": False, "free": None},
+        "B0SINDATO": {"ships": None, "free": None}}}), encoding="utf-8")
+    pedidos = []
+    monkeypatch.setattr(amazon_prices, "fetch_prices",
+                        lambda base, products, today: (pedidos.extend(p["slug"] for p in products), ({}, 0, len(products)))[1])
+    products = [{"slug": s, "asin": a, "store": "US", "name": s} for s, a in
+                (("pago", "B0PAGO"), ("noar", "B0NOAR"), ("sindato", "B0SINDATO"))]
+    items, ok, missing = amazon_prices.prices_with_chrome("http://scraper", products, "2026-11-08",
+                                                          tmp_path / "amazon-prices.json")
+    assert pedidos == ["sindato"]
+    assert items == {} and ok == 0 and missing == 3
