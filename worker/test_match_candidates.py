@@ -735,3 +735,30 @@ def test_sufijo_de_codigo_no_se_confunde_con_ordinal():
     assert match.model_tokens('Comfort 552A') == {'552a'}
     ml = cached_product('Marca Comfort 552B', 'Marca', 'Comfort')
     assert not cached_match('Marca Comfort 552A', ml, 'Marca', 'Audio')['accepted']
+
+
+# 08/11: el barrido aceptó dos pares que eran otro producto (verificado en Chrome).
+@pytest.mark.parametrize("amazon,ml,conflicto", [
+    ("OneSkin OS-01 BODY Peptide Moisturizer, Skin Longevity Lotion, 8.45 Fl Oz",
+     "Oneskin Face Os-01 Suplemento Topico De Peptidos Y Humectante", "zona"),
+    ("Womier SK75 TMR/HE Keyboard Gaming 75% Hall Effect, Mechanical Gaming Keyboard",
+     "Teclado Mecánico Aluminio Inalámbrico Womier Sk75 Rgb (75%) Blanco", "switch_tipo"),
+])
+def test_variant_conflicts_rechaza_otro_producto(amazon, ml, conflicto):
+    from variants import variant_conflicts
+    assert conflicto in variant_conflicts(amazon, ml)
+
+
+@pytest.mark.parametrize("amazon,ml", [
+    # ML llama «mecánico» a los HE: si el título dice HE o magnético, manda eso.
+    ("GravaStar Mercury V60 Pro 60% HE Magnetic Keyboard (Cyber Fr",
+     "Teclado Mecánico Gamer Gravastar Mercury V60 Pro He Ingles C"),
+    ("GravaStar Mercury V60 HE Gaming Keyboard, Onyx Crystal",
+     "Teclado Magnético Gravastar Mercury V60 60% 8khz Usb-c Cryst"),
+    ("OneSkin OS-01 FACE Topical Supplement", "Oneskin Face Os-01 Suplemento Topico"),
+    ("Logitech G915 X Lightspeed TKL Wireless Mechanical Keyboard", "Teclado Mecánico Logitech G915 X Tkl"),
+    ("Apple iPhone 16 with Face ID 128GB", "Apple iPhone 16 128 GB"),
+])
+def test_variant_conflicts_no_rompe_pares_buenos(amazon, ml):
+    from variants import variant_conflicts
+    assert not {"zona", "switch_tipo"} & set(variant_conflicts(amazon, ml))

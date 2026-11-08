@@ -27,11 +27,19 @@ def _attributes(title):
         "layout": {"tkl": r"\b(tkl|tenkeyless)\b|\b80\s*%", "full": r"\b(full(?:[ -]?size)?|completo)\b|\b100\s*%|\b(104|108) keys\b", "60": r"\b60\s*%"},
         "color": {"negro": r"\b(negro|negra|black)\b", "blanco": r"\b(blanco|blanca|white)\b", "gris": r"\b(gris|gray|grey)\b", "plata": r"\b(plata|plateado|silver)\b", "rosa": r"\b(rosa|pink)\b", "verde": r"\b(verde|green)\b", "azul": r"\b(azul|blue)\b", "rojo": r"\b(rojo|red)\b"},
     }
+    # 08/11: OneSkin OS-01 BODY (loción corporal) se aceptó contra el OS-01 Face de ML. «Face ID» no es la zona.
+    groups["zona"] = {"cuerpo": r"\b(body|cuerpo|corporal)\b", "rostro": r"\b(face|facial|rostro)\b(?!\s*id\b)"}
     # Los colores de switches sólo se interpretan como tales en un teclado.
     keyboard = re.search(r"\b(keyboard|teclado|switch(?:es)?|cherry|gateron|kailh|mx|clicky|tactile|tactil|linear|lineal)\b", text)
     if not keyboard:
         groups.pop("switch")
     else:
+        # 08/11: Womier SK75 TMR/HE se aceptó contra el SK75 mecánico. ML llama «mecánico» a los HE,
+        # así que HE/magnético manda y «mecánico» sólo cuenta si el título no dice HE.
+        if re.search(r"\b(he|hall[ -]?effect|magnetic[oa]?|magnetic[oa]s?|tmr)\b", text):
+            out["switch_tipo"] = {"he"}
+        elif re.search(r"\b(mechanical|mecanic[oa]s?)\b", text):
+            out["switch_tipo"] = {"mecanico"}
         text_colors = re.sub(r"\b(?:red|blue|brown|rojo|azul|marron)\s+switch(?:es)?\b|\bswitch(?:es)?\s+(?:red|blue|brown|rojo|azul|marron)\b", "", text)
     for key, choices in groups.items():
         source = text_colors if key == "color" and keyboard else text
