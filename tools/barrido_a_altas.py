@@ -74,6 +74,11 @@ def main(argv):
     if not ml_prices.is_configured():
         log("FALLA faltan credenciales de ML")
         return 1
+    # 08/11: sin modelo/UPC/GTIN de Amazon el filtro de identificador fuerte (catalog_auto.add_accepted)
+    # manda todo a revisión. Misma consulta que el alta nocturna (página de Amazon vía amazon-ar).
+    from tools.crecer_desde_ml import agregar_identificadores
+    con_ids = agregar_identificadores(pares)
+    log(f"IDENTIFICADORES amazon_con_ids={con_ids} de {len(pares)}")
     matches = matching.match_products(pares, mep, catalog + pending)
     log(f"MATCHEO aceptados={len(matches['accepted'])} dudosos={len(matches['doubtful'])} rechazados={len(matches['rejected'])}")
     for row in matches["accepted"]:
