@@ -103,7 +103,7 @@ def test_agota_racha_guarda_error_y_reanuda_solo_pendiente(tmp_path, capsys):
         if len(attempts) > 1:
             raise http_error()
         return {'results': [{'price': 200000, 'condition': 'new', 'currency_id': 'ARS', 'item_id': 'MLA1'}]}
-    config = Config(ml_pause=0, ml_consecutive_429=3, ml_backoff=2, ml_backoff_cap=3)
+    config = Config(ml_pause=0, ml_consecutive_429=3, ml_backoff=2, ml_backoff_cap=3, consecutive_blocks=1)
     client = MLClient(config, get=get, sleep=clock.sleep, clock=clock)
     result = run_ml_lookup(config, tmp_path, client=client, rate_loader=rate)
     assert result['status'] == 'blocked' and result['requests_ml'] == 6

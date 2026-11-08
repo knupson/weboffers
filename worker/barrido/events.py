@@ -67,6 +67,18 @@ def safe_text(value):
     return re.sub(r'(https?://)[^/@\s]+:[^/@\s]+@', r'\1[OCULTO]@', text)
 
 
+def response_excerpt(response, limit=2000):
+    """Cuerpo de una respuesta de error, legible y sin secretos: de una página HTML queda sólo el texto."""
+    try:
+        text = response.text or ''
+    except Exception as exc:  # noqa: BLE001
+        return f'sin_cuerpo_legible: {type(exc).__name__}'
+    if text.lstrip().startswith('<'):
+        text = re.sub(r'(?is)<(script|style)\b.*?</\1>', ' ', text)
+        text = 'HTML: ' + re.sub(r'<[^>]+>', ' ', text)
+    return safe_text(re.sub(r'\s+', ' ', text).strip()[:limit])
+
+
 def clean(value):
     if isinstance(value, dict):
         return {k: ('[OCULTO]' if re.search(r'(?i)token|secret|authorization|cookie|password|^amzn', k)
@@ -238,8 +250,11 @@ def http_call(call, method, url, *, store, session_id, located=None, attempt=1,
             _runtime.pending_request = None
         raise
     reason = block_reason(response) if block_reason else ('HTTP ' + str(response.status_code) if response.status_code in (403, 429) else None)
+    # 08/11: un 403 de ML quedó registrado sólo como «2585 bytes»; toda respuesta de error guarda su cuerpo.
+    extra = {'cuerpo': response_excerpt(response)} if response.status_code >= 400 else {}
     emit_event('BARRIDO_HTTP_FIN', **{**fields, 'status': response.status_code,
-               'bytes': len(response.content), 'ms': round((time.monotonic() - started) * 1000, 3), 'bloqueo': reason})
+               'bytes': len(response.content), 'ms': round((time.monotonic() - started) * 1000, 3), 'bloqueo': reason},
+               **extra)
     if _runtime:
         _runtime.pending_request = None
     if follow and response.status_code in (301, 302, 303, 307, 308) and response.headers.get('Location'):

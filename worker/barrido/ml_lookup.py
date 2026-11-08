@@ -12,7 +12,7 @@ import requests
 from .amazon_source import AmazonSource, SourceError
 from .config import Config
 from .currency import MEP_MAX_DIAS, load_daily_rates, validate_rate
-from .events import now_art, emit_event, http_call, wait, observed, set_context, set_action, action
+from .events import now_art, emit_event, http_call, wait, observed, set_context, set_action, action, response_excerpt
 from .models import positive
 from .ml_matching import amazon_identity, build_queries, candidate_score
 from .state import State, LookupState, acquire_run_lock, write_summary
@@ -106,8 +106,8 @@ class MLClient:
         except requests.HTTPError as exc:
             response = exc.response
             http = response.status_code if response is not None else None
-            # ML devuelve JSON; no anexar una eventual página HTML de WAF.
-            literal = response.text if response is not None and not response.text.lstrip().startswith('<') else ''
+            # 08/11: el cuerpo se guarda siempre (antes se descartaba la página HTML y no se supo qué dijo ML).
+            literal = response_excerpt(response, 500) if response is not None else ''
             raise SourceError(f"{exc}: {literal}",
                               http=http, blocked=http in (403, 429)) from exc
 
@@ -233,6 +233,7 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         records = state.materialize_jsonl() if state else []
         done = {(row["store"], row["asin"]) for row in records if row["lookup_status"] != "error"}
         processed, blocked, limited = [], False, False
+        rejected_in_a_row = 0
         eligible_processed = 0
         for amazon in amazon_rows(output, date, config):
             set_action('evaluando producto Amazon para lookup ML')
@@ -325,10 +326,21 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
             except Exception as exc:
                 row.update(lookup_status="error", error=str(exc), candidates=[])
                 http = getattr(exc, "http", None)
-                blocked = http in (403, 429) or getattr(exc, "blocked", False)
+                rejected = http in (403, 429) or getattr(exc, "blocked", False)
                 emit_event("BARRIDO_ML_ERROR", asin=row["asin"], motivo=str(exc), http=http)
+                # 08/11: UN 403 cortó la etapa con 2202 productos sin buscar; era esa consulta
+                # («Montblanc Sartorial 131200 …» da 403 siempre, las demás 200). Se corta recién con
+                # consecutive_blocks productos seguidos rechazados; si no, ese producto queda en error y sigue.
+                rejected_in_a_row = rejected_in_a_row + 1 if rejected else 0
+                blocked = rejected_in_a_row >= config.consecutive_blocks
                 if blocked:
-                    emit_event("BARRIDO_ML_BLOQUEADO", asin=row["asin"], motivo=str(exc), http=http)
+                    emit_event("BARRIDO_ML_BLOQUEADO", asin=row["asin"], motivo=str(exc), http=http,
+                               seguidos=rejected_in_a_row)
+                elif rejected:
+                    emit_event("BARRIDO_ML_CONSULTA_RECHAZADA", asin=row["asin"], motivo=str(exc), http=http,
+                               seguidos=rejected_in_a_row, limite=config.consecutive_blocks, sigue=True)
+            else:
+                rejected_in_a_row = 0
             if now_art().date().isoformat() != date:
                 raise SourceError("Cambió el día ART durante la consulta: registro sin confirmar")
             processed.append(row)
@@ -380,6 +392,7 @@ def enrich_ml_variations(config, output, date, records, *, source_factory=None, 
     from .runner import enrich_variations
     candidates = {(row['store'], row['asin']) for row in records if row['candidates']}
     sources, touched, failures = {}, set(), 0
+    blocked_in_a_row = 0
     for amazon in amazon_rows(output, date, config):
         if not amazon.get('eligible') or not amazon.get('has_variations'):
             continue
@@ -407,9 +420,16 @@ def enrich_ml_variations(config, output, date, records, *, source_factory=None, 
                               AmazonSource(store, date, rate, config, Path(output) / 'refinements'))
         try:
             failures += enrich_variations([amazon], sources[store], state, config, expected_date=date)
-        except SourceError:
+            blocked_in_a_row = 0
+        except SourceError as exc:
+            # 08/11: un bloqueo de UN producto cortaba todas las variantes; se corta con N seguidos.
             failures += 1
-            break
+            blocked_in_a_row += 1
+            if blocked_in_a_row >= config.consecutive_blocks:
+                emit_event('BARRIDO_VARIANTES_CORTADAS', motivo=str(exc), seguidos=blocked_in_a_row)
+                break
+            emit_event('BARRIDO_VARIANTE_RECHAZADA', id=identity, motivo=str(exc), seguidos=blocked_in_a_row,
+                       limite=config.consecutive_blocks, sigue=True)
     for store in touched:
         state = State(output, date, store)
         if state.pages():

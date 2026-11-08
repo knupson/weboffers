@@ -102,11 +102,12 @@ def test_bloqueo_corta_y_reanuda_el_asin_fallido(tmp_path, fixture_dir, capsys, 
         response = requests.Response()
         response.status_code, response._content = http, b'bloqueo literal\nsegunda linea'
         raise requests.HTTPError(f"{http} literal", response=response)
-    client = MLClient(Config(), get=get, sleep=lambda _: None)
-    result = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
+    config = Config(consecutive_blocks=1)  # corte al primer producto rechazado (el valor real es 3)
+    client = MLClient(config, get=get, sleep=lambda _: None)
+    result = run_ml_lookup(config, tmp_path, client=client, rate_loader=rate)
     assert result["status"] == "blocked"
     assert len(calls) == (Config().ml_consecutive_429 if http == 429 else 1)
-    assert read_output(tmp_path)[0]["error"] == f"{http} literal: bloqueo literal\nsegunda linea"
+    assert read_output(tmp_path)[0]["error"] == f"{http} literal: bloqueo literal segunda linea"
     assert "BARRIDO_ML_BLOQUEADO" in capsys.readouterr().out
     run_ml_lookup(Config(), tmp_path, client=fixture_client(fixture_dir), rate_loader=rate)
     rows = read_output(tmp_path)
@@ -218,3 +219,38 @@ def test_mep_del_viernes_sirve_el_domingo_pero_no_a_los_4_dias():
         validate_rate(rate, '2026-11-12', MEP_MAX_DIAS)
     with pytest.raises(StaleRate):
         validate_rate(rate, '2026-11-08')  # euro de España: sigue exigiendo el mismo día
+
+
+def test_un_403_de_una_consulta_no_corta_la_etapa(tmp_path, capsys):
+    """08/11: «Montblanc Sartorial 131200 …» da 403 (página HTML) siempre y cortó 2202 productos sin buscar."""
+    write_input(tmp_path, [amazon(), amazon("B0FIXTURE2"), amazon("B0FIXTURE3")])
+    html = b"<html><head><style>.x{}</style></head><body><h1>Hubo un error</h1></body></html>"
+    pedidos = []
+    def get(path, params=None):
+        pedidos.append(path)
+        if len(pedidos) == 1:
+            response = requests.Response()
+            response.status_code, response._content = 403, html
+            raise requests.HTTPError("403 Client Error: Forbidden", response=response)
+        if path == "/products/search":
+            return {"results": [{"id": "MLA1", "name": "Monitor Samsung S36GD"}]}
+        return {"results": [{"price": 200000, "condition": "new", "currency_id": "ARS", "item_id": "MLA1"}]}
+    result = run_ml_lookup(Config(), tmp_path, client=MLClient(Config(), get=get, sleep=lambda _: None), rate_loader=rate)
+    out = capsys.readouterr().out
+    assert result["status"] != "blocked" and result["productos_procesados"] == 3
+    estados = sorted(r["lookup_status"] for r in read_output(tmp_path))
+    assert estados == ["error", "ok", "ok"]
+    error = next(r["error"] for r in read_output(tmp_path) if r["lookup_status"] == "error")
+    assert "HTML: Hubo un error" in error and ".x{}" not in error  # se guarda lo que dijo ML
+    assert "BARRIDO_ML_CONSULTA_RECHAZADA" in out and "BARRIDO_ML_BLOQUEADO" not in out
+
+
+def test_tres_productos_rechazados_seguidos_si_cortan(tmp_path, capsys):
+    write_input(tmp_path, [amazon(), amazon("B0FIXTURE2"), amazon("B0FIXTURE3"), amazon("B0FIXTURE4")])
+    def get(path, params=None):
+        response = requests.Response()
+        response.status_code, response._content = 403, b'{"message":"PolicyAgent"}'
+        raise requests.HTTPError("403 Client Error: Forbidden", response=response)
+    result = run_ml_lookup(Config(), tmp_path, client=MLClient(Config(), get=get, sleep=lambda _: None), rate_loader=rate)
+    assert result["status"] == "blocked" and result["productos_procesados"] == 3
+    assert '"seguidos": 3' in capsys.readouterr().out
