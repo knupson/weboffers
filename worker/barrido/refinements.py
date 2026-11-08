@@ -43,8 +43,6 @@ def discover_refinements(page):
                 picks = [part for part in rh.split(",") if part.startswith(str(facet.get("id")) + ":")]
                 if picks:
                     result["ar"] = picks[-1]
-    if not result["new"]:
-        raise ValueError("No apareció el refinamiento de condición nueva; no se omite el filtro")
     return result
 
 
@@ -56,11 +54,12 @@ def load_refinements(directory, context, fetch, refresh=False, ttl_days=7):
             body = json.loads(path.read_text(encoding="utf-8"))
             age = (now_art() - datetime.fromisoformat(body['observed_at'])).total_seconds()
             filters = body['refinements']
-            valid = isinstance(filters, dict) and isinstance(filters.get('new'), str) and filters['new'].startswith('p_n_condition-type:')
+            valid = isinstance(filters, dict) and 'new' in filters and (filters['new'] is None or
+                    isinstance(filters['new'], str) and filters['new'].startswith('p_n_condition-type:'))
             if valid and body.get("version") == 2 and body["context"] == context and 0 <= age < ttl_days * 86400:
                 return body["refinements"]
         except (ValueError, KeyError, TypeError):
-            pass  # Caché inválida: redescubrir, sin omitir filtros.
+            pass  # Caché inválida: redescubrir.
     result = discover_refinements(fetch())
     write_atomic(path, {"version": 2, "context": context, "refinements": result, "observed_at": now_art().isoformat()})
     if result["ar"] is None:

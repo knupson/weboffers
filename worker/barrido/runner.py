@@ -163,7 +163,9 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                             value = ((row.get('raw') or {}).get('price') if reason == 'sin_precio' else
                                      row.get('price_usd') if reason == 'fuera_de_rango'
                                      else row.get('shipping_text') or row.get('shipping_class') if reason.startswith('envio') or reason == 'no_envia'
-                                     else asin if reason == 'duplicado' else row.get('condition'))
+                                     else asin if reason == 'duplicado'
+                                     else (row.get('raw') or {}).get('non_new_marker') if reason == 'no_nuevo'
+                                     else row.get('condition'))
                             emit_event('BARRIDO_DESCARTE', asin=asin, motivo=reason, valor=value)
                             reasons[reason] += 1
                         if not decisions:

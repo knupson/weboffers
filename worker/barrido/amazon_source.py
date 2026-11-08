@@ -11,6 +11,11 @@ from .shipping import session_is_ar, delivery_from_card
 from .models import normalize_product
 
 
+NON_NEW = re.compile(r"\b(?:Amazon\s+Renewed|Renewed|Refurbished|Used|Pre[\s‐‑–-]+Owned|"
+                     r"Reacondicionad[oa]s?|Usad[oa]s?|Open[\s‐‑–-]+Box|"
+                     r"Caja\s+abierta|De\s+segunda\s+mano)\b", re.I)
+
+
 class SourceError(RuntimeError):
     def __init__(self, message, *, http=None, blocked=False, transient=False):
         super().__init__(message)
@@ -37,6 +42,8 @@ def parse_search_page(html, site):
     for row, card in zip(result["results"], cards):
         row["card_html"] = str(card)
         text = card.get_text(" ", strip=True)
+        marker = NON_NEW.search(text)
+        row['non_new_marker'] = marker.group(0) if marker else None
         variation = re.search(r"(?:Options|Opciones):?\s*(.+)", text, re.I)
         if variation:
             row["has_variations"], row["variations_text"] = True, variation.group(1)
@@ -68,8 +75,10 @@ def next_page(result, current):
 
 
 class AmazonSource:
-    def __init__(self, store, date, rate, config, cache, refresh=False, known=(), sleep=time.sleep):
+    def __init__(self, store, date, rate, config, cache, refresh=False, known=(), sleep=time.sleep,
+                 clock=time.monotonic):
         self.sleep = sleep
+        self.clock = clock
         self.http = None
         self.fetch = configure_transport(self.observe)
         from amazon import sites
@@ -81,6 +90,37 @@ class AmazonSource:
         self.chrome_endpoint = os.environ.get("BARRIDO_CHROME_CDP", "").strip()
         self.chrome = None
         self._request_located_ar = None
+        self._search_source = None
+        self._chrome_until = None
+        self._chrome_reason = None
+
+    def search_source(self, source, why):
+        if source != self._search_source:
+            self._search_source = source
+            emit_event('BARRIDO_FUENTE_BUSQUEDA', tienda=self.store, source=source, why=why)
+
+    def prefer_chrome(self, params, reason):
+        parsed = self.chrome_request(params, reason=reason)
+        # Sólo un respaldo exitoso activa o renueva la ventana.
+        self._chrome_until = self.clock() + self.config.chrome_search_ttl if self.config.chrome_search_ttl else float('inf')
+        self._chrome_reason = reason
+        self.search_source('chrome', reason)
+        return parsed
+
+    def probe_scraper(self, params):
+        """Un solo /s observado, sin warm-up, redirecciones, ubicación ni reintentos."""
+        from .chrome_search import blocked_reason
+        session = self.fetch.session(self.store, 'page', self.site['language'])
+        response = session.curl.request('GET', self.site['base'] + '/s', params=params,
+                                      headers=self.fetch.PAGE_HEADERS, allow_redirects=False)
+        self.http = response.status_code
+        reason = blocked_reason(response.text, self.http, response.url)
+        if not reason and self.fetch.is_fallback_render(session, response):
+            reason = 'edge fallback render'
+        if reason or self.http != 200:
+            raise SourceError(reason or f'HTTP {self.http} en sondeo', http=self.http, blocked=bool(reason))
+        with action('interpretando sondeo de busqueda Amazon'):
+            return parse_search_page(response.text, self.site)
 
     def observe(self, **fields):
         result = vendor_observer(**fields)
@@ -92,16 +132,27 @@ class AmazonSource:
         from amazon import fetch
         self.http = None
         self._request_located_ar = None
+        if self._search_source == 'chrome':
+            if self.clock() < self._chrome_until:
+                return self.chrome_request(params, reason=self._chrome_reason)
+            try:
+                parsed = self.probe_scraper(params)
+            except Exception as exc:
+                return self.prefer_chrome(params, reason=f'sondeo_scraper_fallido: {exc}')
+            self.search_source('scraper', 'sondeo_scraper_exitoso_tras_vencimiento')
+            self._chrome_until = None
+            return parsed
+        self.search_source('scraper', 'inicio_busquedas')
         try:
             html = self.fetch.page(self.store, "/s", params, language=self.site["language"], postal_code="AR")
         except Exception as exc:
             if isinstance(exc, fetch.AmazonBlocked) and self.chrome_endpoint:
-                return self.chrome_request(params, reason=str(exc))
+                return self.prefer_chrome(params, reason=str(exc))
             raise SourceError(str(exc), http=self.http, blocked=isinstance(exc, fetch.AmazonBlocked),
                               transient=isinstance(exc, fetch.AmazonUpstreamError)) from exc
         if self.http != 200:
             if self.http in (403, 429, 503) and self.chrome_endpoint:
-                return self.chrome_request(params, reason=f"HTTP {self.http} bloqueado al finalizar el transporte")
+                return self.prefer_chrome(params, reason=f"HTTP {self.http} bloqueado al finalizar el transporte")
             raise SourceError(f"HTTP {self.http} en búsqueda Amazon", http=self.http, blocked=self.http in (403, 429, 503), transient=self.http is not None and self.http >= 500)
         with action('interpretando HTML de busqueda Amazon'):
             return parse_search_page(html, self.site)
@@ -151,6 +202,9 @@ class AmazonSource:
                                                      ttl_days=self.config.refinements_ttl_days)
                 emit_event("BARRIDO_FILTROS", tienda=self.store, categoria=node,
                            refinamientos=self.filters[node], ids=[value for value in self.filters[node].values() if value])
+                if not self.filters[node].get('new'):
+                    emit_event('BARRIDO_SIN_FILTRO_NUEVO', tienda=self.store, categoria=node,
+                               motivo='No apareció el refinamiento de condición nueva; se decide por tarjeta')
             except EmptySearchPage as exc:
                 empty = exc.parsed
         params = build_search_params(node, page, self.bounds, self.filters.get(node))
@@ -167,9 +221,14 @@ class AmazonSource:
         rows = [normalize_product(raw, store=self.store, identity=raw["asin"], stamp=stamp,
                     currency=self.site["currency"], rate=self.rate,
                     provenance=dict(category_id=node, category_name=category["name"], page=page, url=url),
-                    shipping=delivery_from_card(raw, located=located), located=located, condition="new",
+                    shipping=delivery_from_card(raw, located=located), located=located,
+                    condition="non_new" if raw.get('non_new_marker') else "new",
                     known=raw["asin"] in self.known, min_usd=self.config.min_usd, max_usd=self.config.max_usd)
                 for raw in parsed["results"]]
+        for row in rows:
+            if (row.get('raw') or {}).get('non_new_marker'):
+                row['rejection_reasons'] = ['no_nuevo' if reason == 'condicion_no_confirmada' else reason
+                                            for reason in row['rejection_reasons']]
         return {**parsed, "products": rows, "http": self.http, "located_ar": located}
 
     def variations(self, identity):

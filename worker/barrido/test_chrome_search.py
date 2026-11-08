@@ -182,7 +182,7 @@ def test_fallback_misma_url_parser_y_evidencia_por_tarjeta(monkeypatch, tmp_path
     assert second['products'][0]['eligible'] is False
     assert second['products'][0]['shipping_class'] == 'desconocido'
     constructor.assert_called_once()
-    assert transport.page.call_count == 2
+    assert transport.page.call_count == 1
     for number, call in enumerate(chrome.search.call_args_list, 1):
         params = parse_qs(urlsplit(call.args[0]).query)
         assert params['page'] == [str(number)]
@@ -228,7 +228,8 @@ def test_transporte_exitoso_no_hereda_destino_de_chrome(monkeypatch, tmp_path, f
     def success(*a, **kw):
         source.http = 200
         return html
-    transport.page.side_effect = success
+    source._chrome_until = 0
+    source.probe_scraper = Mock(side_effect=lambda params: amazon_source.parse_search_page(success(), site))
     result = source.fetch_search_page(category, 2, now_art().isoformat())
     assert result['located_ar'] is False
     assert result['products'][0]['eligible'] is False

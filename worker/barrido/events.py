@@ -21,6 +21,7 @@ _runtime = None
 _lock = threading.RLock()
 _context = {}
 REQUEST_KINDS = ('search', 'detail/variations', 'warm-up', 'location', 'ml_search', 'ml_price', 'other')
+REQUEST_SOURCES = ('scraper', 'chrome', 'ml', 'other')
 
 
 def request_kind(store, path):
@@ -44,7 +45,9 @@ def stage_metrics():
     delta = lambda key: counters.get(key, 0) - before.get(key, 0)
     kinds = {kind: delta('request_kind_' + kind) for kind in REQUEST_KINDS}
     eligible = delta('eligible')
-    return dict(requests_por_tipo=kinds, productos_unicos=delta('unique_products'),
+    return dict(requests_por_tipo=kinds,
+                requests_por_fuente={source: delta('request_source_' + source) for source in REQUEST_SOURCES},
+                productos_unicos=delta('unique_products'),
                 tarjetas_patrocinadas=delta('sponsored_cards'), duplicados=delta('duplicates'),
                 requests_por_producto_elegible=sum(kinds.values()) / eligible if eligible else None,
                 alcance_metricas='ejecucion_actual')
@@ -121,7 +124,8 @@ class Runtime:
         self.counters = dict(requests=0, requests_amazon=0, requests_ml=0, requests_other=0, products=0, eligible=0,
                              ml_candidates=0, comparisons=0, errors=0, blocks=0, queries=0,
                              unique_products=0, sponsored_cards=0, duplicates=0,
-                             **{'request_kind_' + kind: 0 for kind in REQUEST_KINDS})
+                             **{'request_kind_' + kind: 0 for kind in REQUEST_KINDS},
+                             **{'request_source_' + source: 0 for source in REQUEST_SOURCES})
         self.stop = threading.Event()
 
     def record(self, event, body):
@@ -129,6 +133,9 @@ class Runtime:
             return
         self.progress = self.clock()
         if event == 'BARRIDO_HTTP_INICIO':
+            source = body.get('source') or ('scraper' if body.get('tienda') in ('US', 'ES') else
+                                          'ml' if body.get('tienda') == 'ML' else 'other')
+            self.counters['request_source_' + source] += 1
             self.counters['request_kind_' + request_kind(body.get('tienda'), body.get('path', ''))] += 1
             self.counters['requests'] += 1
             self.counters['requests_ml' if body.get('tienda') == 'ML' else

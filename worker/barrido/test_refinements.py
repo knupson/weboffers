@@ -21,9 +21,8 @@ def test_cache_evitar_preconsulta(tmp_path, fixture_dir):
     assert len(calls) == 2
 
 
-def test_condicion_ausente_no_se_omite():
-    with pytest.raises(ValueError, match="condición nueva"):
-        discover_refinements({"refinements": []})
+def test_condicion_ausente_permite_decidir_por_tarjeta():
+    assert discover_refinements({"refinements": []})['new'] is None
 
 
 @pytest.mark.parametrize('store,filename,expected', [

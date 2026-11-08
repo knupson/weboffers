@@ -3,6 +3,7 @@ import html as html_lib
 import time
 from types import SimpleNamespace
 from urllib.parse import urlsplit, urlunsplit
+from uuid import uuid4
 
 import requests
 
@@ -133,6 +134,7 @@ class ChromeSearch:
     def search(self, url, site, *, reason):
         started = time.monotonic()
         content, status, blocked, error = '', None, None, None
+        request_fields = None
         emit_event('BARRIDO_CHROME_INICIO', url=url, motivo_fallback=reason)
         try:
             self._connect()
@@ -140,6 +142,9 @@ class ChromeSearch:
             # exige que cada página de resultados vuelva a confirmar Argentina.
             self._ensure_ar(site)
             with action('navegando busqueda Amazon en Chrome'):
+                request_fields = dict(request_id=uuid4().hex, tienda=site['country'], source='chrome',
+                                      metodo='GET', path='/s', url=url)
+                emit_event('BARRIDO_HTTP_INICIO', **request_fields)
                 response = self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
                 status = response.status if response else None
                 content = self.page.content()
@@ -164,6 +169,9 @@ class ChromeSearch:
             error = f"{type(exc).__name__}: {str(exc)[:300]}"
             raise
         finally:
+            if request_fields is not None:
+                emit_event('BARRIDO_HTTP_FIN', **request_fields, status=status, bloqueo=blocked, error=error,
+                           ms=round((time.monotonic() - started) * 1000), bytes=len(content.encode('utf-8')))
             emit_event('BARRIDO_CHROME_FIN', url=url, motivo_fallback=reason,
                        ms=round((time.monotonic() - started) * 1000), bytes=len(content.encode('utf-8')),
                        http=status, bloqueo=blocked, error=error)
