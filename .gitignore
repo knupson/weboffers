@@ -10,6 +10,7 @@ dist/
 Thumbs.db
 worker/output/
 worker/warp-data/
+worker/chrome-barrido/
 data/ml-prices.json
 data/amazon-prices.json
 .pytest_cache/

@@ -1,11 +1,12 @@
 """Consultas filtradas sin la preconsulta repetida del wrapper upstream."""
 import re
+import os
 import time
 from urllib.parse import urlencode
 from .bootstrap import configure_transport
 from .currency import usd_bounds
 from .events import emit_event, vendor_observer, set_context, wait, action
-from .refinements import load_refinements
+from .refinements import load_refinements, delivery_refinements
 from .shipping import session_is_ar, delivery_from_card
 from .models import normalize_product
 
@@ -23,7 +24,7 @@ class EmptySearchPage(Exception):
 
 
 def build_search_params(node, page, bounds, refinements=None):
-    rh = [f"n:{node}"] + [v for v in (refinements or {}).values() if v]
+    rh = [f"n:{node}"] + list(dict.fromkeys(v for v in (refinements or {}).values() if v))
     return {"rh": ",".join(rh), "fs": "true", "low-price": bounds[0], "high-price": bounds[1], "page": str(page)}
 
 
@@ -31,6 +32,7 @@ def parse_search_page(html, site):
     from amazon import parsers as parser
     doc = parser.soup(html)
     result = parser.search_page(html, site)
+    result["refinements"].extend(delivery_refinements(doc))
     cards = [card for card in doc.select('div[data-component-type="s-search-result"]') if card.get("data-asin")]
     for row, card in zip(result["results"], cards):
         row["card_html"] = str(card)
@@ -76,6 +78,9 @@ class AmazonSource:
         self.cache, self.refresh, self.known = cache, refresh, set(known)
         self.bounds = usd_bounds(config.min_usd, config.max_usd, rate)
         self.filters = {}
+        self.chrome_endpoint = os.environ.get("BARRIDO_CHROME_CDP", "").strip()
+        self.chrome = None
+        self._request_located_ar = None
 
     def observe(self, **fields):
         result = vendor_observer(**fields)
@@ -86,15 +91,43 @@ class AmazonSource:
     def request(self, params):
         from amazon import fetch
         self.http = None
+        self._request_located_ar = None
         try:
             html = self.fetch.page(self.store, "/s", params, language=self.site["language"], postal_code="AR")
         except Exception as exc:
+            if isinstance(exc, fetch.AmazonBlocked) and self.chrome_endpoint:
+                return self.chrome_request(params, reason=str(exc))
             raise SourceError(str(exc), http=self.http, blocked=isinstance(exc, fetch.AmazonBlocked),
                               transient=isinstance(exc, fetch.AmazonUpstreamError)) from exc
         if self.http != 200:
+            if self.http in (403, 429, 503) and self.chrome_endpoint:
+                return self.chrome_request(params, reason=f"HTTP {self.http} bloqueado al finalizar el transporte")
             raise SourceError(f"HTTP {self.http} en búsqueda Amazon", http=self.http, blocked=self.http in (403, 429, 503), transient=self.http is not None and self.http >= 500)
         with action('interpretando HTML de busqueda Amazon'):
             return parse_search_page(html, self.site)
+
+    def chrome_request(self, params, reason):
+        from .chrome_search import ChromeSearch, ChromeBlocked, ChromeLocationError
+        if self.chrome is None:
+            self.chrome = ChromeSearch(self.chrome_endpoint)
+        url = self.site["base"] + "/s?" + urlencode(params)
+        try:
+            html, self.http = self.chrome.search(url, self.site, reason=reason)
+        except ChromeLocationError as exc:
+            error = SourceError(str(exc))
+            error.stop_store = True
+            raise error from exc
+        except ChromeBlocked as exc:
+            raise SourceError(str(exc), http=exc.http, blocked=True) from exc
+        except Exception as exc:
+            raise SourceError(f"Falló el acceso CDP: {type(exc).__name__}", transient=True) from exc
+        self._request_located_ar = True
+        with action('interpretando HTML de busqueda Chrome'):
+            return parse_search_page(html, self.site)
+
+    def close(self):
+        if self.chrome is not None:
+            self.chrome.close()
 
     def fetch_search_page(self, category, page, stamp):
         node = category["id"]
@@ -116,6 +149,8 @@ class AmazonSource:
             try:
                 self.filters[node] = load_refinements(self.cache, context, prequery, refresh=self.refresh,
                                                      ttl_days=self.config.refinements_ttl_days)
+                emit_event("BARRIDO_FILTROS", tienda=self.store, categoria=node,
+                           refinamientos=self.filters[node], ids=[value for value in self.filters[node].values() if value])
             except EmptySearchPage as exc:
                 empty = exc.parsed
         params = build_search_params(node, page, self.bounds, self.filters.get(node))
@@ -124,7 +159,9 @@ class AmazonSource:
         parsed = empty if empty is not None else prequeried if reusable else self.request(params)
         url = self.site["base"] + "/s?" + urlencode(params)
         session = self.fetch.session(self.store, "page", self.site["language"])
-        located = session_is_ar(session)
+        located = getattr(self, '_request_located_ar', None)
+        if located is None:
+            located = session_is_ar(session)
         if not located:
             emit_event("BARRIDO_UBICACION_DESCONOCIDA", tienda=self.store, categoria=node)
         rows = [normalize_product(raw, store=self.store, identity=raw["asin"], stamp=stamp,

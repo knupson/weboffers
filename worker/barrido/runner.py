@@ -221,7 +221,7 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                 if state:
                     result["categories"][category_id] = category_metrics(state, category_id)
             except Exception as exc:
-                if str(exc).startswith("Cambió el día ART"):
+                if str(exc).startswith("Cambió el día ART") or getattr(exc, "stop_store", False):
                     raise
                 result.update(status="partial", error=str(exc))
                 emit_event("BARRIDO_ERROR", tienda=store, categoria=category_id, tipo=type(exc).__name__,
@@ -241,6 +241,8 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
             result["categories"][category_id] = category_metrics(state, category_id)
             result["categories"][category_id]["fallas"] += getattr(exc, "attempts", 1)
     finally:
+        if 'source' in locals() and callable(getattr(source, 'close', None)):
+            source.close()
         if state:
             result["products"] = len(state.materialize_jsonl(known=known))
     if result["status"] == "failed" and result["products"]:

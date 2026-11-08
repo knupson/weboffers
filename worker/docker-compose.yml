@@ -53,11 +53,43 @@ services:
       BARRIDO_OUTPUT: /app/output/barrido
       # Salida a Amazon por WARP: la IP de la VM recibe 503 en /s (medido 07/11).
       BARRIDO_AMAZON_PROXY: socks5h://weboffers-warp:1080
+      BARRIDO_CHROME_CDP: http://weboffers-chrome:9222
     depends_on:
-      - weboffers-warp
+      weboffers-warp:
+        condition: service_started
+      weboffers-chrome:
+        condition: service_healthy
+      weboffers-chrome-cdp:
+        condition: service_started
     volumes:
       - ./output:/app/output
       - ../data:/app/data:ro
+
+  weboffers-chrome:
+    image: lscr.io/linuxserver/chrome@sha256:b60948cf017ac5c2476a975a44f0ad02b54bf9783ea8b845ba260ba45d24299a
+    restart: unless-stopped
+    mem_limit: 1g
+    shm_size: 1gb
+    environment:
+      CHROME_CLI: --user-data-dir=/config/chrome-profile --remote-debugging-port=9222
+    volumes:
+      - ./chrome-barrido:/config
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9222/json/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Comparte la red de Chrome: escucha sólo en su IP de Docker y reenvía al
+  # CDP de loopback. No ocupa 127.0.0.1:9222 ni publica puertos al host.
+  weboffers-chrome-cdp:
+    build: ./chrome-cdp
+    restart: unless-stopped
+    network_mode: service:weboffers-chrome
+    depends_on:
+      weboffers-chrome:
+        condition: service_healthy
 
   # Cloudflare WARP como proxy SOCKS5/HTTP en :1080, sólo dentro de la red del compose (sin puertos al host).
   # Imagen comunitaria (github.com/cmj2002/warp-docker), fijada por digest; medido 07/11: 82,6 MiB.

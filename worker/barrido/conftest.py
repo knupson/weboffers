@@ -15,6 +15,12 @@ def forbid_network(monkeypatch):
 
     monkeypatch.setattr(requests.sessions.Session, "request", fail)
     try:
+        from playwright.sync_api import BrowserType
+    except ImportError:
+        pass
+    else:
+        monkeypatch.setattr(BrowserType, 'connect_over_cdp', fail)
+    try:
         from curl_cffi import requests as curl_requests
     except ImportError:
         return

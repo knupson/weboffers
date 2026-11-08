@@ -7,8 +7,8 @@ cantidad publicada corresponde a la tarea 10 antes de retirar las fuentes anteri
 Desde `/opt/docker/franquicia400` en la VM, con estos archivos ya copiados al checkout:
 
 ```sh
-docker compose -f worker/docker-compose.yml build weboffers-barrido
-docker compose -f worker/docker-compose.yml up -d --no-deps weboffers-barrido
+docker compose -f worker/docker-compose.yml build weboffers-barrido weboffers-chrome-cdp
+docker compose -f worker/docker-compose.yml up -d weboffers-barrido
 docker compose -f worker/docker-compose.yml exec -T weboffers-barrido python -m barrido --store US --category 541966 --dry-run
 ```
 
@@ -52,6 +52,65 @@ python -m pytest worker -q -p no:cacheprovider
 ```
 
 La PC se usa para escribir y coordinar. No ejecutar tests, sondeos ni el barrido en Windows.
+
+## Respaldo de búsquedas con Chrome (07/11/2026)
+
+`BARRIDO_CHROME_CDP=http://weboffers-chrome:9222` habilita el respaldo exclusivamente para `/s`,
+después de agotar las sesiones configuradas del transporte y recibir un bloqueo. Sin esa variable,
+el comportamiento anterior se conserva. Los errores transitorios del transporte no activan Chrome.
+Cada página conserva sus filtros, rango de precio y paginación; el parser y las verificaciones
+de envío por tarjeta siguen siendo los mismos. Un filtro de envío gratis nunca prueba por sí solo
+que el producto tenga envío gratis a Argentina. `BARRIDO_FILTROS` informa los identificadores por categoría;
+la caché de refinamientos tiene versión nueva para redescubrir el filtro aun si la anterior no venció.
+
+Playwright sólo se conecta por `connect_over_cdp`: no se descarga un navegador en el worker,
+no se ejecuta `playwright install` y no se crean contextos de incógnito. La conexión reutiliza el
+contexto persistente y una pestaña, sin paralelismo. Las pausas de refinamientos y entre páginas
+siguen a cargo del runner. Al terminar una tienda se desconecta Playwright sin cerrar Chrome.
+El perfil exclusivo queda en `worker/chrome-barrido/`, excluido de Git y del contexto de build.
+
+Antes de la primera búsqueda se lee `#glow-ingress-line2`. Si no dice Argentina, se usa el flujo glow
+de `amazon_shipping.apply_ar_location`: GET del modal, token CSRF del modal y POST a `address-change`
+con `locationType=COUNTRY`, `district=AR`, `countryCode=AR`. Ese adaptador no usa código postal:
+no se toma el código local US/ES de `sites.py`. Además de exigir éxito en la respuesta, se recarga y
+se verifica Argentina en la cabecera. Se vuelve a comprobar en cada búsqueda. Si no se confirma,
+`BARRIDO_UBICACION_FALLIDA` detiene esa tienda sin procesar su página; las otras tiendas pueden continuar.
+
+La imagen fijada de LinuxServer usa 1 GiB de memoria y 1 GiB de shm según el pedido. No publica
+puertos al host. Hay reportes de [CDP escuchando sólo en loopback pese al flag de dirección](https://github.com/linuxserver/docker-chromium/issues/71),
+y el [reporte de Chrome exige un user-data-dir propio](https://github.com/linuxserver/docker-chrome/issues/11).
+Por eso `weboffers-chrome-cdp` comparte el namespace de red de Chrome y usa socat desde la IP interna
+del contenedor en 9222 hacia `127.0.0.1:9222`; el bind específico no disputa el puerto de loopback.
+No se depende de `--remote-debugging-address=0.0.0.0`. La exposición efectiva del digest debe verificarse
+en la VM con el procedimiento de abajo. El discovery CDP usa Host localhost y reemplaza la autoridad
+del WebSocket anunciado por la del endpoint configurado, para no conectar al loopback del worker.
+
+`BARRIDO_CHROME_INICIO` y `BARRIDO_CHROME_FIN` registran URL, motivo del respaldo y, al terminar,
+milisegundos, bytes de HTML, HTTP, motivo de bloqueo y clase de error. No incluyen cookies ni tokens.
+Si Chrome devuelve perros, captcha o WAF, se conserva el tratamiento de bloqueo del runner.
+
+Validación en la VM, desde la raíz del checkout actualizado (no ejecutada en la PC):
+
+```sh
+docker compose -f worker/docker-compose.yml config --quiet
+docker compose -f worker/docker-compose.yml build weboffers-barrido weboffers-chrome-cdp
+# La imagen productiva no trae pytest: contenedor efímero, sin iniciar el servidor ni Chrome.
+docker compose -f worker/docker-compose.yml run --rm --no-deps weboffers-barrido sh -c 'pip install --no-cache-dir pytest && python -m pytest /app/barrido -q -p no:cacheprovider'
+docker compose -f worker/docker-compose.yml up -d weboffers-barrido
+# Listener nativo de Chrome, desde su propio namespace.
+docker compose -f worker/docker-compose.yml exec -T weboffers-chrome curl --fail --silent http://127.0.0.1:9222/json/version
+# Listener del sidecar desde el worker: también valida DNS/red y el Host de discovery.
+docker compose -f worker/docker-compose.yml exec -T weboffers-barrido python -c 'import requests; r=requests.get("http://weboffers-chrome:9222/json/version", headers={"Host":"localhost:9222"}, timeout=10); r.raise_for_status(); print(r.json()["Browser"])'
+docker compose -f worker/docker-compose.yml exec -T weboffers-barrido python -m barrido --store US --category 541966 --dry-run --refresh-refinements
+```
+
+Las pruebas usan fixtures sintéticos de sidebars US/ES, ubicación, resultados y bloqueo; simulan
+CDP y prohíben tanto las solicitudes HTTP como las conexiones Playwright reales. Instalar pytest
+requiere red durante la preparación del contenedor efímero; las pruebas mismas no la usan.
+Para verificar el fallback real, el dry-run debe mostrar el agotamiento del transporte seguido
+de `BARRIDO_CHROME_INICIO/FIN` y `BARRIDO_FILTROS` con `p_n_is_free_shipping`. Si el transporte responde,
+esa corrida no verifica Chrome. Revisar `ubicacion_ar`, envío y contadores; no tomar los fixtures
+como una medición de cobertura. Este cambio no publica productos ni modifica el catálogo en producción.
 
 Pendiente de aceptación real A6: build en VM, US completo, ES, reinicio real, verificar cinco pares
 tarjeta/ficha y procedencia/alcance de nodos iniciales. Los fixtures son sintéticos rotulados.
