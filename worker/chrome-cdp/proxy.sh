@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-# Se lee la interfaz compartida; no se depende del hostname del sidecar.
-cdp_ip=$(ip -4 addr show dev eth0 | awk '/inet / {split($2, parts, "/"); print parts[1]; exit}')
-test -n "$cdp_ip"
-# El bind específico evita disputar el listener de loopback de Chrome.
-exec socat "TCP-LISTEN:9222,bind=${cdp_ip},reuseaddr,fork" TCP:127.0.0.1:9222
+# Escucha sólo en la IP fija de Chrome en la red interna barrido-cdp (no en chrome-salida) y acepta
+# sólo clientes de esa subred: el CDP no queda alcanzable desde ninguna otra red.
+: "${CDP_BIND_IP:?falta CDP_BIND_IP}"
+: "${CDP_ALLOWED:?falta CDP_ALLOWED}"
+exec socat "TCP-LISTEN:9222,bind=${CDP_BIND_IP},range=${CDP_ALLOWED},reuseaddr,fork" TCP:127.0.0.1:9222
