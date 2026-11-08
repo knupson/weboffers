@@ -762,3 +762,30 @@ def test_force_adelanta_sin_repetir_corrida_ni_cambiar_reintentos(tmp_path, monk
     retry.assert_called_once()
     assert not amazon_prices.maybe_refresh([], path, now)
     assert retry.call_count == 1
+
+
+def test_run_guarda_lo_que_falta_tras_cada_reintento(tmp_path, monkeypatch):
+    """08/11: estado.json mostraba las 39 fallas de la corrida aunque el reintento recuperó 36."""
+    catalog = [{"slug": s, "asin": a, "store": "US", "verified": True, "ml": {"price": 1000}}
+               for s, a in (("ya", "B01"), ("uno", "B02"), ("dos", "B03"))]
+    out = tmp_path / "amazon-prices.json"
+    out.write_text(json.dumps({"date": "2026-10-30", "run": {"ok": 1, "total": 3, "fallas": 2, "motivos": {"sin_stock": 2}},
+                               "missingReasons": {"uno": "sin_stock", "dos": "sin_stock"},
+                               "items": {"ya": {"amount": 150, "currency": "USD", "checked": "2026-10-30"}}}), encoding="utf-8")
+    monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
+    monkeypatch.setattr(amazon_prices, "pause", lambda: None)
+    respuestas = [{"B02": {"asin": "B02", "price": {"amount": 120.0, "currency": "USD"}, "availability": {"is_in_stock": True}}},
+                  {"B03": {"asin": "B03", "price": {"amount": 130.0, "currency": "USD"}, "availability": {"is_in_stock": True}}}]
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", lambda base, asins, store: respuestas.pop(0) if respuestas else {})
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    run = json.loads(out.read_text(encoding="utf-8"))["run"]
+    assert run["fallas"] == 2  # la corrida no se reescribe
+    assert run["reintento"]["recuperados"] == 1
+    assert run["faltan"]["total"] == 1 and sum(run["faltan"]["motivos"].values()) == 1
+    data = json.loads(out.read_text(encoding="utf-8"))
+    data["retryAt"] = "2026-10-30T06:00:00-03:00"
+    out.write_text(json.dumps(data), encoding="utf-8")
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
+    run = json.loads(out.read_text(encoding="utf-8"))["run"]
+    assert run["reintento"]["recuperados"] == 2  # acumulado de los dos reintentos
+    assert run["faltan"] == {"total": 0, "motivos": {}}

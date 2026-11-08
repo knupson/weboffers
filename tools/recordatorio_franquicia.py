@@ -186,7 +186,17 @@ def causa_amazon(bajar):
         return ""
     if not run.get("fallas"):
         return ""
-    motivos = ", ".join(f"{v} {k}" for k, v in sorted((run.get("motivos") or {}).items(), key=lambda kv: -kv[1])[:3])
+    def resumen(motivos):
+        return ", ".join(f"{v} {k}" for k, v in sorted((motivos or {}).items(), key=lambda kv: -kv[1])[:3])
+    faltan = run.get("faltan")
+    if isinstance(faltan, dict):
+        # 08/11: lo que importa es lo que falta DESPUÉS de los reintentos (decía 39 cuando faltaba 1).
+        recuperados = (run.get("reintento") or {}).get("recuperados") or 0
+        historia = f"la corrida dejó {run['fallas']} sin precio y los reintentos recuperaron {recuperados}"
+        if not faltan.get("total"):
+            return f": no faltan precios de Amazon ({historia}); la causa está en otro filtro, mirá el desglose del deployer"
+        return f": faltan {faltan['total']} sin precio de Amazon ({resumen(faltan.get('motivos'))}); {historia}"
+    motivos = resumen(run.get("motivos"))
     texto = f": Amazon dejó {run['fallas']} sin precio ({motivos})"
     if run.get("rafaga"):
         texto += f", cortó por ráfaga desde la posición {run.get('primeraFallaPos')}; mañana el worker va más lento solo"

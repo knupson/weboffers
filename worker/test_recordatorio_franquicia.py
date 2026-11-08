@@ -84,3 +84,29 @@ def test_cola_de_revision_pide_revisar_las_altas_solo_a_las_0730():
     assert not reminder.control("sitio", now, download({**base, "catalogo": {"revision": 0}}))
     assert "«revisá las altas»" in reminder.control("sitio", now, download({**base, "catalogo": {"revision": 3}}))
     assert "revisá las altas" not in reminder.control("sitio13", now, download({**base, "catalogo": {"revision": 3}}))
+
+
+def _estado(amazon):
+    return lambda url: json.dumps({"amazon": amazon})
+
+
+def test_causa_amazon_informa_lo_que_falta_tras_los_reintentos():
+    """08/11: el aviso decía «Amazon dejó 39 sin precio» cuando el reintento de las 05:04 ya había recuperado 36."""
+    run = {"fallas": 39, "motivos": {"sin_stock": 23, "sin_precio_ni_vendedor": 15, "precio_inverosimil": 1},
+           "reintento": {"recuperados": 36, "pendientes": 1},
+           "faltan": {"total": 1, "motivos": {"precio_inverosimil": 1}}}
+    texto = reminder.causa_amazon(_estado(run))
+    assert "faltan 1 sin precio de Amazon (1 precio_inverosimil)" in texto
+    assert "la corrida dejó 39" in texto and "los reintentos recuperaron 36" in texto
+    assert "Amazon dejó 39" not in texto
+
+
+def test_causa_amazon_sin_faltantes_dice_que_no_es_amazon():
+    run = {"fallas": 5, "motivos": {"sin_stock": 5}, "reintento": {"recuperados": 5}, "faltan": {"total": 0, "motivos": {}}}
+    texto = reminder.causa_amazon(_estado(run))
+    assert "no faltan precios de Amazon" in texto
+
+
+def test_causa_amazon_formato_viejo_sigue_andando():
+    run = {"fallas": 3, "motivos": {"sin_stock": 3}}
+    assert "Amazon dejó 3 sin precio" in reminder.causa_amazon(_estado(run))

@@ -433,7 +433,9 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     ar_shipping.update(chrome_shipping(candidates, prices_path, today))
+    missing_reasons, run["faltan"] = missing_state(candidates, items, {}, last_reasons(candidates))
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
+                                       "missingReasons": missing_reasons,
                                        "arShipping": ar_shipping, "run": run, "pace": pace,
                                        "outOfRange": out_of_range_memory(previous, items, eur_usd, without_ml),
                                        "noArOffer": no_offer})
@@ -443,6 +445,22 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     if candidates and ok == 0:
         print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
     return True
+
+
+def missing_state(candidates, items, skip, reasons):
+    """08/11: lo que sigue sin precio AHORA (no lo que faltó en la corrida), con el último motivo de cada uno.
+    El aviso de WhatsApp decía «Amazon dejó 39 sin precio» cuando el reintento ya había recuperado 36."""
+    faltan = {p["slug"]: reasons.get(p["slug"]) or "sin_precio" for p in candidates
+              if p["slug"] not in skip and not is_valid_amount((items.get(p["slug"]) or {}).get("amount"))}
+    motivos = {}
+    for motivo in faltan.values():
+        motivos[motivo] = motivos.get(motivo, 0) + 1
+    return faltan, {"total": len(faltan), "motivos": motivos}
+
+
+def last_reasons(products):
+    slugs = {p["slug"] for p in products}
+    return {f["slug"]: f["motivo"] for f in failures if f.get("slug") in slugs and f.get("motivo")}
 
 
 def price_new_products(candidates, prices_path, local, base_url):
@@ -468,7 +486,11 @@ def price_new_products(candidates, prices_path, local, base_url):
         print(amazon_line(p, "nuevo", got.get(p["slug"]), reason), flush=True)
     ar_shipping = merge_ar_shipping(previous, items, local.date())
     ar_shipping.update(chrome_shipping(candidates, prices_path, today))
-    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping})
+    run = dict(previous.get("run") or {})
+    missing_reasons, run["faltan"] = missing_state(candidates, items, previous.get("outOfRange") or {},
+                                                   {**(previous.get("missingReasons") or {}), **last_reasons(nuevos)})
+    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run,
+                                       "missingReasons": missing_reasons})
     print(f"Amazon: productos nuevos, recuperados={ok} de {len(nuevos)}, total={len(items)}.", flush=True)
     fallas = [{"slug": p["slug"], "asin": p["asin"], "motivo": "sin_precio_nuevo"} for p in nuevos if p["slug"] not in got]
     write_run_log(prices_path, today, "nuevos", ok, len(nuevos), fallas)
@@ -513,8 +535,12 @@ def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=No
     ar_shipping.update(chrome_shipping(candidates, prices_path, today))
     run = dict(previous.get("run") or {})
     run["envio"] = {key: (run.get("envio") or {}).get(key, 0) + value for key, value in envio.items()}
-    run["reintento"] = {"recuperados": ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
+    retry_reasons = last_reasons(pending) if pending else {}
+    prev_recovered = ((previous.get("run") or {}).get("reintento") or {}).get("recuperados") or 0
+    run["reintento"] = {"recuperados": prev_recovered + ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
+    missing_reasons, run["faltan"] = missing_state(candidates, items, skip, {**(previous.get("missingReasons") or {}), **retry_reasons})
     publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True, "retryCount": count + 1, "retryAt": local.isoformat(),
+                                       "missingReasons": missing_reasons,
                                        "outOfRange": out_of_range_memory(previous, items, eur_usd)})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
     write_run_log(prices_path, today, "reintento", ok, len(pending))
