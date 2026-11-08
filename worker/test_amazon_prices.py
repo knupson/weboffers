@@ -373,6 +373,36 @@ def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
     assert pedidos == [["B02"]]
 
 
+def test_force_prices_products_added_after_todays_run(tmp_path, monkeypatch):
+    """08/11: 5 altas confirmadas después de la corrida quedaron sin precio de Amazon (reintentos agotados)."""
+    catalog = [
+        {"slug": "ya", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "fallo", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "nuevo", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}},
+    ]
+    out = tmp_path / "amazon-prices.json"
+    out.write_text(json.dumps({"date": "2026-10-30", "retryCount": 3, "retryAt": "2026-10-30T07:30:00-03:00",
+                               "items": {"ya": {"amount": 10, "currency": "USD", "checked": "2026-10-30"}}}), encoding="utf-8")
+    (tmp_path / "amazon-run-2026-10-30.json").write_text(json.dumps({"date": "2026-10-30", "passes": [
+        {"kind": "corrida", "fallas": [{"slug": "fallo", "motivo": "sin_stock"}]}]}), encoding="utf-8")
+    monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
+    monkeypatch.setattr(amazon_prices, "pause", lambda: None)
+    pedidos = []
+    def fetch(base, asins, store):
+        pedidos.append(list(asins))
+        return {"B03": {"asin": "B03", "price": {"amount": 150.0, "currency": "USD"}, "availability": {"is_in_stock": True}}}
+    monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is False  # pasada horaria: nada
+    assert pedidos == []
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN, force=True) is True
+    assert pedidos == [["B03"]]  # sólo el nuevo: el que ya falló hoy no se reconsulta
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["items"]["nuevo"]["amount"] == 150.0 and data["items"]["ya"]["amount"] == 10
+    assert data["retryCount"] == 3
+    assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN, force=True) is False
+    assert pedidos == [["B03"]]
+
+
 @pytest.mark.parametrize("checked,kept", [
     ("2026-10-29", True),
     ("2026-10-16", True),  # exactamente 14 días ART

@@ -386,6 +386,8 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     ]
     if isinstance(previous, dict) and previous.get("date") == today:
         refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
+        if force:
+            refreshed = price_new_products(candidates, prices_path, local, base_url) or refreshed
         if not refreshed:
             # Pasada horaria sin consulta: una sola línea (06/11: 275 líneas «ya relevado» por hora tapaban lo importante).
             print(f"Amazon: sin consulta en esta pasada (ya relevado hoy; reintentos según RETRY_TIMES).", flush=True)
@@ -440,6 +442,36 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
     if candidates and ok == 0:
         print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
+    return True
+
+
+def price_new_products(candidates, prices_path, local, base_url):
+    """08/11: un alta confirmada después de la corrida entraba al catálogo sin precio de Amazon
+    (los reintentos sólo miran lo que falló). Con force se consultan los que no se pidieron hoy."""
+    previous = load_json(prices_path, None)
+    if not base_url or not isinstance(previous, dict):
+        return False
+    today = previous["date"]
+    items = dict(previous.get("items") or {})
+    run_log = load_json(Path(prices_path).with_name(f"amazon-run-{today}.json"), {})
+    seen = set(items) | set(previous.get("outOfRange") or {}) | {
+        f.get("slug") for p in (run_log.get("passes") or []) for f in (p.get("fallas") or [])}
+    nuevos = [p for p in candidates if p["slug"] not in seen]
+    if not nuevos:
+        return False
+    print(f"Amazon: {len(nuevos)} productos nuevos desde la corrida de hoy; se consultan.", flush=True)
+    configure_budget(prices_path, today)
+    got, ok, _ = prices_with_chrome(base_url, nuevos, today, prices_path)
+    items.update(got)
+    for p in nuevos:
+        reason = None if p["slug"] in got else next((f["motivo"] for f in failures if f.get("slug") == p["slug"]), "sin_precio_nuevo")
+        print(amazon_line(p, "nuevo", got.get(p["slug"]), reason), flush=True)
+    ar_shipping = merge_ar_shipping(previous, items, local.date())
+    ar_shipping.update(chrome_shipping(candidates, prices_path, today))
+    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping})
+    print(f"Amazon: productos nuevos, recuperados={ok} de {len(nuevos)}, total={len(items)}.", flush=True)
+    fallas = [{"slug": p["slug"], "asin": p["asin"], "motivo": "sin_precio_nuevo"} for p in nuevos if p["slug"] not in got]
+    write_run_log(prices_path, today, "nuevos", ok, len(nuevos), fallas)
     return True
 
 
