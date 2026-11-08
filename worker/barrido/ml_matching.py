@@ -226,7 +226,9 @@ def candidate_score(identity, product):
                          ' '.join(words(product.get('name'))), maxsplit=1)[0]
     declared_brands = [set(words(a.get('value_name'))) for a in product.get('attributes') or []
                        if isinstance(a, dict) and a.get('id') == 'BRAND' and a.get('value_name')]
-    if (not brand or (declared_brands and any(value != brand for value in declared_brands))
+    # Marca declarada por ML compatible si una contiene a la otra: «Logitech G» vs «Logitech» (07/11 rechazaba
+    # el Logitech G Pro X2 Superstrike correcto por exigir igualdad exacta).
+    if (not brand or (declared_brands and not any(brand <= value or value <= brand for value in declared_brands))
             or not brand <= (set(words(brand_text)) | set().union(*declared_brands))):
         return None, 'marca_ausente_o_distinta'
     # Comparar códigos por tokens completos; V3 no coincide con V30.

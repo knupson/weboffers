@@ -84,3 +84,13 @@ def test_modelo_en_atributos_de_ml_aunque_falte_en_el_nombre():
                   'attributes': [{'id': 'MODEL', 'value_name': '40AF0135US'}, {'id': 'COLOR', 'value_name': 'Negro'}]}
     assert candidate_score(identity, sin_modelo)[0] is None
     assert candidate_score(identity, con_modelo)[0] is not None
+
+
+def test_marca_declarada_por_ml_con_submarca():
+    # Caso real 07/11: ML declara BRAND «Logitech G»; Amazon dice «Logitech».
+    identity = amazon_identity({'title': 'Logitech G PRO X2 SUPERSTRIKE Wireless Gaming Mouse - Black/White'})
+    producto = {'name': 'Mouse Inalámbrico Gaming Logitech G Pro X2 Superstrike Blanco Con Negro',
+                'attributes': [{'id': 'BRAND', 'value_name': 'Logitech G'}]}
+    assert candidate_score(identity, producto)[0] is not None
+    otra = {'name': 'Mouse Gaming Pro X2 Superstrike', 'attributes': [{'id': 'BRAND', 'value_name': 'Redragon'}]}
+    assert candidate_score(identity, otra)[0] is None
