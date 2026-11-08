@@ -206,3 +206,15 @@ def test_cli_step_fecha_y_limit(monkeypatch, tmp_path):
     assert calls == [dict(date=today(), limit=2, dry_run=True, catalog_path='/app/data/catalog.json', catalog_auto_path=None)]
     with pytest.raises(SystemExit):
         cli.main(["--store", "ML"])
+
+
+def test_mep_del_viernes_sirve_el_domingo_pero_no_a_los_4_dias():
+    # PRODUCT.md: dólar MEP con respaldo de hasta 3 días. Caso real: domingo 08/11 00:10, MEP del viernes.
+    import pytest
+    from .currency import validate_rate, StaleRate, MEP_MAX_DIAS
+    rate = {'value': 1 / 1587.9, 'source': 'dolarapi bolsa', 'observed_at': '2026-11-07T21:00:00.000Z'}
+    assert validate_rate(rate, '2026-11-08', MEP_MAX_DIAS) is rate
+    with pytest.raises(StaleRate):
+        validate_rate(rate, '2026-11-12', MEP_MAX_DIAS)
+    with pytest.raises(StaleRate):
+        validate_rate(rate, '2026-11-08')  # euro de España: sigue exigiendo el mismo día

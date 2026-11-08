@@ -11,7 +11,7 @@ import requests
 
 from .amazon_source import AmazonSource, SourceError
 from .config import Config
-from .currency import load_daily_rates, validate_rate
+from .currency import MEP_MAX_DIAS, load_daily_rates, validate_rate
 from .events import now_art, emit_event, http_call, wait, observed, set_context, set_action, action
 from .models import positive
 from .ml_matching import amazon_identity, build_queries, candidate_score
@@ -216,7 +216,7 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         context = state.root / "context.json" if state else None
         rate = (json.loads(context.read_text(encoding="utf-8"))["rate"]
                 if context and context.exists() else rate_loader("ML", date))
-        validate_rate(rate, date)
+        validate_rate(rate, date, MEP_MAX_DIAS)
         if state:
             state.freeze({"rate": rate, "min_usd": config.min_usd, "max_usd": config.max_usd})
         client = client or MLClient(config)
