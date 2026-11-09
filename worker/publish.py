@@ -47,6 +47,25 @@ def write_atomic(path, data):
             os.unlink(temporary)
 
 
+def limpiar_temporales(directory, minutos=60):
+    """Borra los `.nombre.XXXX.tmp` que dejó un write_atomic cortado por KILL (su `finally` no corre con SIGKILL).
+
+    Sólo los de más de `minutos` minutos: una escritura en curso termina en milisegundos. Devuelve cuántos borró."""
+    import time
+    directory = Path(directory)
+    limite = time.time() - minutos * 60
+    borrados = 0
+    for carpeta in (directory, directory / "historial", directory / "dudosos"):
+        for viejo in carpeta.glob(".*.tmp"):
+            try:
+                if viejo.is_file() and viejo.stat().st_mtime < limite:
+                    viejo.unlink()
+                    borrados += 1
+            except OSError:
+                pass
+    return borrados
+
+
 def content_hash(payload):
     content = {key: value for key, value in payload.items() if key != "generatedAt"}
     canonical = json.dumps(content, sort_keys=True, separators=(",", ":"),
