@@ -44,6 +44,13 @@ def test_todo_bien_no_avisa(tmp_path):
     assert correr(tmp_path) == {}
 
 
+def test_vigia_detecta_publicacion_alerta(tmp_path):
+    log(tmp_path, "2026-11-05 09:16:05 PUBLICACION_ALERTA salieron=11 motivos=envio:11")
+    problemas = correr(tmp_path)
+    assert any(k.startswith("log:") and "PUBLICACION_ALERTA salieron=11" in texto
+               for k, texto in problemas.items())
+
+
 def test_sin_internet_es_lo_unico_que_se_reporta(tmp_path):
     assert list(correr(tmp_path, internet=lambda: False)) == ["internet"]
 
