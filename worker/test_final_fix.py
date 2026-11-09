@@ -82,7 +82,10 @@ def test_vencido_sin_chrome_hoy_vuelve_a_no_revisar(tmp_path, evidencia):
         save(tmp_path / f"ar-chrome-{TODAY}.json", {"generado": TODAY + "T03:30:00-03:00", "items": {"VENCIDO": evidencia}})
     confirmar_altas.confirm(catalog, tmp_path, TODAY)
     item = publicacion.cargar(tmp_path)["vencido"]
-    assert item["hasta"] == (TODAY if evidencia and evidencia.get("free") is True else "2026-11-16")
+    # Con evidencia de hoy sin envío gratis: 7 días más. Sin evidencia (Chrome no corrió o no llegó al ASIN, F-19):
+    # sigue excluido hoy pero sólo hasta mañana; la exclusión de 7 días no se estira por algo que nadie miró.
+    esperado = TODAY if evidencia and evidencia.get("free") is True else "2026-11-10" if evidencia is None else "2026-11-16"
+    assert item["hasta"] == esperado
 
 
 def test_vencidos_cuentan_es(tmp_path, capsys):
@@ -102,7 +105,8 @@ def test_vencido_sin_chrome_se_excluye_aunque_haya_pendientes(tmp_path):
     publicacion.guardar(tmp_path, {"vencido": publicacion._entrada("no_revisar", "2026-11-02", "ml_hoy", "VENCIDO")})
     with pytest.raises(ValueError, match="No hay relevamiento"):
         confirmar_altas.confirm(catalog, tmp_path, TODAY)
-    assert publicacion.cargar(tmp_path)["vencido"]["hasta"] == "2026-11-16"
+    # F-19: sin relevamiento de Chrome no se publica (excluido hoy) ni se estira 7 días: se vuelve a mirar mañana.
+    assert publicacion.cargar(tmp_path)["vencido"]["hasta"] == "2026-11-10"
 
 
 def test_vencido_en_outofrange_se_reconsulta(tmp_path, monkeypatch):

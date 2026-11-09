@@ -77,7 +77,8 @@ def test_ml_partial_hourly_retries_keep_successes(tmp_path, monkeypatch):
     data = json.loads(path.read_text())
     assert data["items"]["OK"]["catalogId"] == "OK"
     assert data["failed"] == ["FAIL"] and data["attempts"] == 3
-    assert [c.args[0] for c in fetch.call_args_list] == ["OK", "FAIL", "FAIL", "FAIL"]
+    # F-21: la primera pasada reintenta una vez las fallidas en el mismo paso (FAIL, FAIL), y luego dos reintentos horarios.
+    assert [c.args[0] for c in fetch.call_args_list] == ["OK", "FAIL", "FAIL", "FAIL", "FAIL"]
 
 
 def test_amazon_three_delayed_retries_only_pending(tmp_path, monkeypatch):
