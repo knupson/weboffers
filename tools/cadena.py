@@ -127,11 +127,13 @@ class Cadena:
             raise RuntimeError(f"{reason} (código {child.returncode}): {tail}")
         return stdout
 
-    def docker(self, container, *args, cwd=None, stdin=False):
+    def docker(self, container, *args, cwd=None, stdin=False, env=None):
         command = ["docker", "exec"]
         if stdin:
             command.append("-i")
         command += ["-e", f"PUBLICACION_MODO={self.bloque}"]
+        for key, value in (env or {}).items():
+            command += ["-e", f"{key}={value}"]
         if cwd:
             command += ["-w", cwd]
         return command + [container, *args]
@@ -204,8 +206,10 @@ class Cadena:
                 seconds = max(1, int(deadline - self.clock()))
                 scripts = {"buscar": "crecer_ahora", "dudosos": "dudosos_nvidia", "altas": "confirmar_altas"}
                 script = [f"/app/tools/{scripts[paso]}.py"] if paso in scripts else ["/app/tools/refresh_ahora.py", paso]
+                # Reservar 15 minutos para identificadores, matching, fotos y escritura antes del KILL.
+                env = {"CATALOG_AUTO_MAX_SECONDS": max(0, seconds - 900)} if paso == "buscar" else None
                 out = self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
-                                                    *script, cwd="/app/worker"), deadline, paso)
+                                                    *script, cwd="/app/worker", env=env), deadline, paso)
                 if paso == "altas":
                     m = re.search(r"ALTAS_OK promovidas=(\d+)", out or "")
                     self.promovidas = int(m[1]) if m else None

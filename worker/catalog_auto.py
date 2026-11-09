@@ -35,18 +35,28 @@ ART = timezone(timedelta(hours=-3))
 
 class PacedScraper:
     """Cuenta también reintentos y categorías; corta antes de agotar el presupuesto."""
-    def __init__(self, limit):
+    def __init__(self, limit, budget=None):
         self.limit = max(0, limit)
         self.pages = 0
         self.valid = 0
         self.failures = 0
+        self.budget = budget
+
+    def pause(self, seconds):
+        if self.budget:
+            seconds = min(seconds, max(0, self.budget.deadline - time.monotonic()))
+        time.sleep(seconds)
+        if self.budget and self.budget.expired():
+            raise discovery.PageBudgetExhausted()
 
     def get(self, url, **kwargs):
         for attempt in range(2):
+            if self.budget and self.budget.expired():
+                raise discovery.PageBudgetExhausted()
             if self.pages >= self.limit:
                 raise discovery.PageBudgetExhausted()
             if self.pages:
-                time.sleep(300 if self.pages % 100 == 0 else amazon_prices.PAUSE_SECONDS)
+                self.pause(300 if self.pages % 100 == 0 else amazon_prices.PAUSE_SECONDS)
             amazon_prices.charge_pages(1)
             self.pages += 1
             try:
@@ -61,7 +71,7 @@ class PacedScraper:
                     self.failures += 1
                     raise
             if attempt == 0:
-                time.sleep(amazon_prices.BACKOFF_SECONDS)
+                self.pause(amazon_prices.BACKOFF_SECONDS)
         self.failures += 1
         return response
 
@@ -176,6 +186,7 @@ def _add_accepted(catalog, matches, output, today):
 
 def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     """Búsqueda diaria sin ventana horaria; force permite una invocación explícita."""
+    started = time.monotonic()
     now = (now or datetime.now(timezone.utc)).astimezone(ART)
     output = Path(output)
     state_path = output / "catalog-auto-state.json"
@@ -187,12 +198,15 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     if not force and str(state.get("slot", "")).startswith(slot):
         return False
     # Registrar el intento antes de consultar evita repetirlo automáticamente el mismo día.
-    publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": "running", "at": now.isoformat()})
+    state.update({"slot": slot, "week": f"{year}-W{week:02d}", "status": "running", "at": now.isoformat()})
+    publish.write_atomic(state_path, state)
     today = now.date().isoformat()
     added, failures, total = [], [], 0
     fatal = False
     scraper = None
     try:
+        seconds = os.getenv("CATALOG_AUTO_MAX_SECONDS")
+        budget = discovery.TimeBudget(started + max(0, float(seconds))) if seconds else None
         if not ml_prices.is_configured() or not matching.positive_number(mep):
             raise ValueError("Faltan credenciales de ML o cotización MEP.")
         auto_path = output / "catalog-auto.json"
@@ -204,22 +218,23 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         # 05/11: sin topes inventados (ni el 650/día ni un 400/corrida): no hay límite medido. El descubrimiento
         # termina solo (categorías x más vendidos + búsquedas). Sólo se limita si se configura la variable.
         tope = os.getenv("CATALOG_AUTO_MAX_PAGES")
-        scraper = PacedScraper(int(tope) if tope else 10**9)
+        scraper = PacedScraper(int(tope) if tope else 10**9, budget=budget)
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")
         existing_asins = {p.get("asin") for p in catalog + pending} | rejected_asins(output, today)
         existing_asins.update(item["asin"] for item in publicacion.cargar(output).values()
                               if item["situacion"] == "no_revisar" and item["hasta"] > today)
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
-            get=scraper.get, existing_asins=existing_asins, failures=failures)
+            get=scraper.get, existing_asins=existing_asins, failures=failures,
+            **({"budget": budget} if budget else {}))
         # 05/11: también al revés, desde lo que ML vende en Argentina (rinde mucho más que partir de Amazon).
         if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1":
             desde_ml = crecer_desde_ml.candidatos(existing_asins | {p["asin"] for p in products},
                                                   {(p.get("ml") or {}).get("catalogId") for p in catalog + pending},
-                                                  mep, get=scraper.get, failures=failures)
+                                                  mep, get=scraper.get, failures=failures, budget=budget, state=state)
             publish.write_atomic(output / "discovery-desde-ml.json", desde_ml)
             products = products + desde_ml
-        if not scraper.valid:
+        if not scraper.valid and not (budget and budget.expired()):
             raise ValueError("El scraper no devolvió páginas válidas.")
         con_ids = crecer_desde_ml.agregar_identificadores(products)
         print(f"Catálogo: identificadores de Amazon para {con_ids} de {len(products)} pares.", flush=True)
@@ -240,11 +255,12 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         print(f"CATALOGO_ERROR {type(exc).__name__}: {exc}", flush=True)
     # 05/11: fallas sueltas (una búsqueda HTTPError, una foto) no marcan la corrida como fallida: quedan contadas.
     status = "failed" if fatal else "ok"
-    publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
+    state.update({"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
                                     "added": len(added), "pages": scraper.pages if scraper else 0,
                                     # 07/11: pares en altas-revision.json; estado.json lo publica y el control de las 07:30 pide «revisá las altas».
                                     "revision": len(read_json(output / "altas-revision.json", [])),
                                     "motivos": sorted({f.get("motivo") for f in failures if f.get("motivo")})})
+    publish.write_atomic(state_path, state)
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)
     # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
     marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"

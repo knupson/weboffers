@@ -161,6 +161,24 @@ def test_modo_viaja_en_el_entorno(tmp_path):
             assert command[2].count(f"-e {modo}") == 2
 
 
+@pytest.mark.parametrize("remaining", [5400, 1000, 500])
+def test_buscar_reserva_tiempo_antes_del_kill(tmp_path, remaining):
+    reloj = Reloj()
+    commands = []
+    def spawn(command, **kwargs):
+        commands.append(command)
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.deadline = remaining
+    runner.step("buscar", cadena.AMAZON_TIMEOUT)
+    command = commands[0]
+    env = f"CATALOG_AUTO_MAX_SECONDS={max(0, remaining - 900)}"
+    assert command[command.index(env) - 1] == "-e"
+    assert command.index(env) < command.index(cadena.WORKER)
+    assert command[command.index("timeout"):command.index("python")] == ["timeout", "-s", "KILL", str(remaining)]
+
+
 def test_falla_verificacion_alta_corre_igual(tmp_path):
     runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
     assert code == 1

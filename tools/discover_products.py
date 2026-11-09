@@ -8,6 +8,7 @@ Contenedor:
   docker exec -i franquicia400-weboffers-worker-1 python /app/tools/discover_products.py
 """
 import argparse
+from datetime import datetime, timedelta, timezone
 import json
 import math
 import os
@@ -215,6 +216,25 @@ CAPACITY_TOKEN_RE = re.compile(r"\b\d+(?:\.\d+)?\s*(?:TB|GB|MB|W|mAh|Hz|K|mm|inc
 
 class PageBudgetExhausted(Exception):
     """Se alcanzó el máximo de páginas de la corrida."""
+
+
+class TimeBudget:
+    """Plazo compartido de recolección; el matching queda fuera del corte."""
+    def __init__(self, deadline):
+        self.deadline = deadline
+        self.logged = False
+
+    def expired(self):
+        return time.monotonic() >= self.deadline
+
+    def check(self, reviewed, total):
+        if not self.expired():
+            return False
+        if not self.logged:
+            stamp = datetime.now(timezone(timedelta(hours=-3))).strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{stamp} CATALOGO_CORTE_TIEMPO revisados={reviewed} de {total}", flush=True)
+            self.logged = True
+        return True
 
 
 def scraper_url(url=None):
@@ -470,12 +490,14 @@ def clean_title_for_ml(title, brand=""):
     return re.sub(r"\s+", " ", query).strip()
 
 
-def find_ml_candidates(query):
+def find_ml_candidates(query, budget=None):
     """Busca en el catálogo de ML los top 5 productos y obtiene el menor precio nuevo e itemId."""
     found = []
     results = ml_prices.search_products(query)[:CANDIDATES_PER_PRODUCT]
     ml_prices.pause()
     for result in results:
+        if budget and budget.expired():
+            break
         if not isinstance(result, dict) or not result.get("id"):
             continue
         catalog_id = result["id"]
@@ -502,7 +524,10 @@ def find_ml_candidates(query):
 
 def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None, get=None):
     """Reúne y filtra productos de best-sellers y búsquedas adicionales."""
-    cats = categories if categories is not None else (discover_categories(base_url=base_url, get=get) if get else discover_categories(base_url=base_url))
+    try:
+        cats = categories if categories is not None else (discover_categories(base_url=base_url, get=get) if get else discover_categories(base_url=base_url))
+    except PageBudgetExhausted:
+        cats = []
     raw_items = []
     for cat in cats:
         cat_id = cat["id"] if isinstance(cat, dict) else str(cat)
@@ -560,6 +585,7 @@ def discover_products(
     get=None,
     existing_asins=None,
     failures=None,
+    budget=None,
 ):
     existing_asins = load_existing_asins(catalog_path) if existing_asins is None else existing_asins
     amazon_candidates = collect_amazon_candidates(
@@ -572,9 +598,11 @@ def discover_products(
     total = len(amazon_candidates)
     results = []
     for idx, candidate in enumerate(amazon_candidates, start=1):
+        if budget and budget.check(idx - 1, total):
+            break
         query = clean_title_for_ml(candidate["amazonTitle"], candidate["brand"])
         try:
-            ml_list = find_ml_candidates(query)
+            ml_list = find_ml_candidates(query, **({"budget": budget} if budget else {}))
         except requests.RequestException as exc:
             print(f"  búsqueda ML fallida para {candidate['asin']} ({type(exc).__name__})", flush=True)
             if failures is not None:
@@ -595,6 +623,8 @@ def discover_products(
             publish.write_atomic(output_path, results)
             print(f"Checkpoint guardado en {output_path} ({len(results)} productos).", flush=True)
 
+    if budget:
+        budget.check(len(results), total)
     publish.write_atomic(output_path, results)
     print(f"Descubrimiento finalizado en {output_path}: productos={len(results)}.", flush=True)
     return results

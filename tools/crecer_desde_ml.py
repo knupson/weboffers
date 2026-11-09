@@ -62,7 +62,9 @@ def _get(path, **params):
     return r
 
 
-def categorias(raiz, profundidad=PROFUNDIDAD):
+def categorias(raiz, profundidad=PROFUNDIDAD, budget=None):
+    if budget and budget.expired():
+        return []
     r = _get(f"/categories/{raiz}")
     if not r.ok:
         return []
@@ -70,15 +72,21 @@ def categorias(raiz, profundidad=PROFUNDIDAD):
     out = [raiz]
     if profundidad > 0:
         for h in hijos:
-            out += categorias(h["id"], profundidad - 1)
+            if budget and budget.expired():
+                break
+            out += categorias(h["id"], profundidad - 1, budget=budget)
     return out
 
 
-def mas_vendidos_ml(catalog_ids_existentes):
+def mas_vendidos_ml(catalog_ids_existentes, budget=None):
     """{catalogId: categoria} de los más vendidos que no están en el catálogo."""
     vistos = {}
     for raiz in RAICES:
-        for cat in categorias(raiz):
+        if budget and budget.expired():
+            break
+        for cat in categorias(raiz, budget=budget):
+            if budget and budget.expired():
+                break
             r = _get(f"/highlights/MLA/category/{cat}")
             if not r.ok:
                 continue
@@ -108,14 +116,24 @@ def agregar_identificadores(filas, consulta_ar=None, lote=5):
     return len(ids)
 
 
-def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=None, limite=None):
+def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=None, limite=None, budget=None, state=None):
     """Lista en el formato de discover_products: [{asin, amazonTitle, brand, amazonPriceUsd, ml: [...]}]."""
     out, vistos_asin = [], set()
-    productos = mas_vendidos_ml(catalog_ids_existentes)
+    productos = list(mas_vendidos_ml(catalog_ids_existentes, **({"budget": budget} if budget else {})))
+    # Guardar el próximo catalogId evita desplazar el cursor si salen productos de la lista.
+    cursor = (state or {}).get("cursorMl")
+    start = productos.index(cursor) if cursor in productos else 0
+    productos = productos[start:] + productos[:start]
     print(f"Catálogo desde ML: {len(productos)} más vendidos fuera del catálogo.", flush=True)
+    reviewed = 0
     for n, pid in enumerate(productos, start=1):
+        if budget and budget.check(n - 1, len(productos)):
+            break
         if limite and n > limite:
             break
+        reviewed = n
+        if state is not None:
+            state["cursorMl"] = productos[n % len(productos)]
         try:
             best = ml_prices.cheapest_new(ml_prices.fetch_items(pid))
         except (requests.RequestException, ValueError, KeyError, TypeError):
@@ -125,6 +143,8 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
         precio, item_id = best
         if not (ML_MIN_USD <= precio / mep <= ML_MAX_USD):
             continue
+        if budget and budget.check(reviewed, len(productos)):
+            break
         r = _get(f"/products/{pid}")
         ficha = r.json() if r.ok else {}
         nombre = (ficha.get("name") or "").strip()
@@ -146,6 +166,9 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
             consultas.append(gtin)
         resultados, cortar = [], False
         for consulta in consultas:
+            if budget and budget.expired():
+                cortar = True
+                break
             try:
                 resultados += discovery.fetch_search_results(consulta, limit=RESULTADOS_AMAZON, **({"get": get} if get else {}))
             except discovery.PageBudgetExhausted:
@@ -154,8 +177,6 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
             except requests.RequestException as exc:
                 if failures is not None:
                     failures.append({"catalogId": pid, "motivo": f"busqueda_amazon:{type(exc).__name__}"})
-        if cortar:
-            break
         for item in resultados:
             if item.get("is_sponsored"):
                 continue
@@ -169,6 +190,12 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
                         "amazonCategory": categoria_ml(ficha.get("domain_id")) or (item.get("title") or "").strip(),
                         "amazonPriceUsd": discovery.extract_price_usd(item),
                         "ml": [{"catalogId": pid, "name": nombre, "minPrice": precio, "itemId": item_id}]})
+        if cortar:
+            if budget:
+                budget.check(n, len(productos))
+            break
         if n % 25 == 0:
             print(f"Catálogo desde ML: {n}/{len(productos)} revisados, {len(out)} pares para validar.", flush=True)
+    if budget:
+        budget.check(reviewed, len(productos))
     return out
