@@ -395,4 +395,5 @@ def test_i8_filtros_definitivos_tambien_duran_siete_dias(tmp_path, monkeypatch):
         get=lambda *a, **k: Response({"items": [
             {"asin": "barato", "title": "Samsung T9 SSD", "price": 1},
             {"asin": "duplicado", "title": "Samsung T9 SSD", "price": 150}]}))
-    assert set(BuscarLog(tmp_path, "2026-11-09").resolved("amazon")) == {"barato", "duplicado"}
+    # El existente/duplicado no se graba como resuelto: su aparición válida no puede quedar salteada 7 días.
+    assert set(BuscarLog(tmp_path, "2026-11-09").resolved("amazon")) == {"barato"}

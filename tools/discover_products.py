@@ -615,8 +615,11 @@ def collect_amazon_candidates(existing_asins, queries=None, categories=None, bas
             line("BUSCAR_AMAZON", asin=asin, estado="descartado", motivo=reason)
             if journal:
                 journal.append("amazon_filtro", asin, "descartado", reason)
-                if reason in ("existente", "duplicado", "precio_fuera_de_rango"):
-                    journal.append("amazon", asin, "fuera_de_rango" if reason == "precio_fuera_de_rango" else "duplicado", reason)
+                # Sólo el precio fuera de rango es un resultado definitivo del ASIN. «duplicado» es la segunda
+                # aparición de un ASIN que sí se procesa, y «existente» ya está excluido por catálogo/no revisar:
+                # grabarlos como resueltos salteaba 7 días la aparición válida (re-revisión N-1, 09/11).
+                if reason == "precio_fuera_de_rango":
+                    journal.append("amazon", asin, "fuera_de_rango", reason)
             continue
         asin = item["asin"].strip()
         seen_asins.add(asin)
