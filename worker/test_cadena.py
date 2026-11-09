@@ -174,7 +174,8 @@ def test_buscar_tiene_plazo_propio_sin_corte_interno(tmp_path, remaining):
     runner.step("buscar", cadena.BUSCAR_TIMEOUT)
     command = commands[0]
     assert not any("CATALOG_AUTO_MAX_SECONDS" in arg for arg in command)
-    assert command[command.index("timeout"):command.index("python")] == ["timeout", "-s", "KILL", str(cadena.BUSCAR_TIMEOUT)]
+    assert command[command.index("timeout"):command.index("python")] == ["timeout", "-s", "KILL", str(int((reloj.now().replace(hour=20, minute=0, second=0) - reloj.now()).total_seconds()) + 1)]
+    assert any(arg.startswith("BUSCAR_DEADLINE=") for arg in command)
 
 
 @pytest.mark.parametrize("bloque", ["verificacion", "alta"])

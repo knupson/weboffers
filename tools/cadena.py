@@ -19,13 +19,16 @@ AMAZON_TIMEOUT = 5400
 ML_TIMEOUT = 1800
 DEPLOY_TIMEOUT = 1800
 GLOBAL_TIMEOUT = 12000
-# Auditoría 09/11: 425/1779 IDs en 5100 s; extrapolación 21.348 s.
-# 24 h es sólo el fusible de seguridad (4 veces ese recorrido extrapolado);
-# no es un presupuesto interno ni descuenta tiempo a los pasos siguientes.
+# Buscar debe liberar la cadena de las 03:30 antes de las 20:00 ART.
+# La reserva cubre los 240 s de identificadores y 60 s para cerrar y persistir.
+BUSCAR_FIN_ART = 20
+BUSCAR_RESERVA = 300
+# Reservar también un minuto para cerrar procesos/logs antes de medianoche.
+ALTA_RESERVA_FIN_DIA = 60
 BUSCAR_TIMEOUT = 24 * 3600
-# Es el paso corto de cotizaciones: rates consulta tres endpoints con timeout
-# de 20 s cada uno; 120 s cubren esos 60 s más inicio/escritura del proceso.
-OFFERS_TIMEOUT = 120
+# Rates: 3×20 s; Creators: 2 tiendas × 2×30 s; hook: 30 s = 210 s,
+# más margen para inicio y escritura (los timeouts HTTP son por lectura).
+OFFERS_TIMEOUT = 300
 HEARTBEAT = 30
 ART = timezone(timedelta(hours=-3))
 LOG_DIR = Path("/home/claude/logs")
@@ -48,6 +51,8 @@ class Cadena:
         self.start = clock()
         self.deadline = self.start + GLOBAL_TIMEOUT
         self.fecha = now().astimezone(ART).date().isoformat()
+        midnight = datetime.fromisoformat(self.fecha).replace(tzinfo=ART) + timedelta(days=1)
+        self.alta_deadline = self.start + (midnight - now().astimezone(ART)).total_seconds() - ALTA_RESERVA_FIN_DIA
         self.summary = dict(fecha=self.fecha, inicio=self.stamp(), fin=None, segundos=0, pasos=[])
         self.save()
 
@@ -198,7 +203,20 @@ class Cadena:
         self.log(f"PASO_INICIO {nombre}")
         # El alta puede durar horas: cada paso tiene su plazo completo.
         # Deploy/estado conservan además su plazo aunque venciera el global.
-        deadline = self.step_start + timeout
+        deadline = min(self.step_start + timeout, self.alta_deadline)
+        buscar_env = None
+        if self.bloque == "alta":
+            deadline = min(deadline, self.alta_deadline)
+            if paso == "buscar":
+                cutoff = datetime.fromisoformat(self.fecha).replace(hour=BUSCAR_FIN_ART, tzinfo=ART)
+                remaining = (cutoff - self.now().astimezone(ART)).total_seconds()
+                if remaining <= BUSCAR_RESERVA:
+                    record.update(estado="ok", motivo="plazo_buscar", fin=self.stamp(), segundos=0)
+                    self.log("BUSCAR_FIN estado=pausado motivo=plazo_buscar")
+                    self.save()
+                    return
+                deadline = min(deadline, self.clock() + remaining)
+                buscar_env = {"BUSCAR_DEADLINE": str(cutoff.timestamp() - BUSCAR_RESERVA)}
         if self.bloque != "alta" and paso not in ("deploy", "estado"):
             deadline = min(self.deadline, deadline)
         try:
@@ -218,7 +236,7 @@ class Cadena:
                 scripts = {"buscar": "crecer_ahora", "dudosos": "dudosos_nvidia", "altas": "confirmar_altas"}
                 script = [f"/app/tools/{scripts[paso]}.py"] if paso in scripts else ["/app/tools/refresh_ahora.py", paso]
                 out = self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
-                                                    *script, cwd="/app/worker"), deadline, paso)
+                                                    *script, cwd="/app/worker", env=buscar_env), deadline, paso)
                 if paso == "altas":
                     m = re.search(r"ALTAS_OK promovidas=(\d+)", out or "")
                     self.promovidas = int(m[1]) if m else None
@@ -243,7 +261,7 @@ class Cadena:
         self.step_start = self.clock()
         try:
             self.process(self.docker(WORKER, "python", "/app/tools/actualizar_publicacion.py", "--verificar-estado",
-                                     cwd="/app/worker"), self.clock() + ALTAS_TIMEOUT, "estado_inicial")
+                                     cwd="/app/worker"), min(self.clock() + ALTAS_TIMEOUT, self.alta_deadline), "estado_inicial")
         except Exception as exc:
             self.log(f"PUBLICACION_INICIO_ABORTADO {exc}")
             self.summary["fin"] = self.stamp()
@@ -265,6 +283,9 @@ class Cadena:
                 self.deadline = self.clock() + GLOBAL_TIMEOUT
             first = len(self.summary["pasos"])
             for paso, timeout in pasos:
+                if self.now().astimezone(ART).date().isoformat() != self.fecha or self.clock() >= self.alta_deadline:
+                    self.log(f"CADENA_FIN bloque={bloque} motivo=fin_dia_ART")
+                    break
                 if bloque == "alta" and paso == "deploy" and verificacion_fallida:
                     self.log("ALTA_SIN_DEPLOY verificacion_fallida")
                     break

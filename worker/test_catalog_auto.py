@@ -176,7 +176,7 @@ def test_photo_missing_or_unofficial(tmp_path, monkeypatch, pictures):
 def test_pacing_backoff_and_hard_cap(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
-    get = Mock(side_effect=[Mock(json=lambda: {}), Mock(json=lambda: {"items": [1]})])
+    get = Mock(side_effect=[Mock(json=lambda: {}), Mock(json=lambda: {"items": [{"asin": "A"}]})])
     monkeypatch.setattr(auto.requests, "get", get)
     scraper = auto.PacedScraper(2)
     scraper.get("http://scraper")
@@ -190,7 +190,7 @@ def test_pacing_backoff_and_hard_cap(monkeypatch):
 def test_pause_breaks_consecutive_pages(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
-    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [1]})))
+    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [{"asin": "A"}]})))
     scraper = auto.PacedScraper(150)  # el tope sale del parámetro (05/11: sin tope fijo en el código)
     for _ in range(150):
         scraper.get("http://scraper")

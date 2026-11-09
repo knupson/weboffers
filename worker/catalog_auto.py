@@ -23,7 +23,7 @@ import publicacion
 from alta_state import read_json, rejected_asins, duplicate, update_state
 from refresh_lock import locked_refresh
 from article_log import alta_line
-from buscar_log import BuscarLog, line
+from buscar_log import BuscarLog, line, BuscarStop, check_stop
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import discover_products as discovery, match_candidates as matching
@@ -45,10 +45,16 @@ class PacedScraper:
         self.journal, self.progress = journal, progress
 
     def pause(self, seconds):
+        check_stop()
+        deadline = os.getenv("BUSCAR_DEADLINE")
+        if deadline:
+            seconds = min(seconds, max(0, float(deadline) - time.time()))
         time.sleep(seconds)
+        check_stop()
 
     def get(self, url, **kwargs):
         for attempt in range(2):
+            check_stop()
             if self.pages >= self.limit:
                 raise discovery.PageBudgetExhausted()
             if self.pages:
@@ -59,16 +65,20 @@ class PacedScraper:
                 response = requests.get(url, **kwargs)
                 response.raise_for_status()
                 payload = response.json() or {}
-                if isinstance(payload, dict) and any(isinstance(payload.get(k), list) for k in ("items", "results", "categories")):
-                    self.valid += 1
-                    count = sum(len(payload.get(k) or []) for k in ("items", "results", "categories"))
+                if isinstance(payload, dict) and not payload.get("error") and any(isinstance(payload.get(k), list) for k in ("items", "results", "categories")):
+                    lists = [payload[k] for k in ("items", "results", "categories") if isinstance(payload.get(k), list)]
+                    if any(not isinstance(item, dict) for items in lists for item in items):
+                        raise ValueError("Lista del scraper con elementos inválidos")
+                    count = sum(map(len, lists))
+                    self.valid += bool(count)
+                    self.failures += not bool(count)
                     self.page_line(url, kwargs, attempt, "valida" if count else "vacia", count)
                     return response
                 raise ValueError("Respuesta sin listas de resultados")
-            except (requests.RequestException, ValueError) as exc:
+            except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
+                self.failures += 1
                 self.page_line(url, kwargs, attempt, type(exc).__name__, 0, str(exc))
                 if attempt:
-                    self.failures += 1
                     raise
             if attempt == 0:
                 self.pause(amazon_prices.BACKOFF_SECONDS)
@@ -164,7 +174,6 @@ def _add_accepted(catalog, matches, output, today, journal=None):
     catalog = catalog + read_json(output / "catalog-auto.json", []) + pending
     rejected = rejected_asins(output, today)
     added, failures = [], []
-    journal = journal or BuscarLog(output, today)
 
     def decide(row):
         usd = row.get("amazonPriceUsd")
@@ -198,7 +207,8 @@ def _add_accepted(catalog, matches, output, today, journal=None):
             failures.append({"slug": row.get("slug"), "motivo": type(exc).__name__})
             status, reason = "descartado", type(exc).__name__
             print(alta_line(row, status, reason, {"text": str(exc)}), flush=True)
-        journal.append("alta", row.get("asin"), status, reason, row=row)
+        if journal:
+            journal.append("alta", row.get("asin"), status, reason, row=row)
     publish.write_atomic(pending_path, pending + added)
     publish.write_atomic(review_path, list(review.values()))
     return added, failures
@@ -226,12 +236,16 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     total = 0
     fatal = False
 
+    review_rows = read_json(output / "altas-revision.json", [])
+    review_keys = {(row.get("asin"), row.get("catalogId")) for row in review_rows}
+    revision_count = len(review_keys)
+
     def progress():
         state.update(pages=scraper.pages if scraper else len(journal.resolved("pagina")),
-                     added=sum(r["result"] == "pendiente_envio" for r in journal.records if r["stage"] == "alta"),
+                     added=journal.counts[("alta", "pendiente_envio")],
                      resolvedMl=len(journal.resolved("ml")),
                      ultimoCatalogId=state.get("ultimoCatalogId"),
-                     revision=len(read_json(output / "altas-revision.json", [])))
+                     revision=revision_count)
         publish.write_atomic(state_path, state)
 
     progress()
@@ -243,19 +257,19 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         amazon_prices.configure_budget(output / "amazon-prices.json", today)
         tope = os.getenv("CATALOG_AUTO_MAX_PAGES")
         scraper = PacedScraper(int(tope) if tope else 10**9, journal=journal, progress=progress)
-        pages = [r for r in journal.records if r["stage"] == "pagina"]
-        scraper.pages = len(pages)
-        scraper.valid = sum(r["result"] in ("valida", "vacia") for r in pages)
+        # Métricas de esta invocación: reanudar no arrastra fallas previas.
         existing_asins = {p.get("asin") for p in catalog + pending} | rejected_asins(output, today)
         existing_asins.update(item["asin"] for item in publicacion.cargar(output).values()
                               if item["situacion"] == "no_revisar" and item["hasta"] > today)
         decided = journal.resolved("match")
         matches = {"accepted": [], "doubtful": [], "rejected": []}
-        for record in decided.values():
+        for record in journal.records:
+            if record["stage"] != "match":
+                continue
             matches[record["result"]].append(record["row"])
 
         def on_result(status, row):
-            nonlocal total
+            nonlocal total, revision_count
             # Primero la cola: si muere entre cola y diario, la repetición es
             # idempotente bajo altas.lock y no vuelve a descargar la foto.
             if status == "accepted":
@@ -263,43 +277,42 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
                 added.extend(new)
                 failures.extend(errors)
                 total += 1
-            elif status == "doubtful":
-                def save_review():
-                    path = output / "altas-revision.json"
-                    rows = read_json(path, [])
-                    key = (row.get("asin"), row.get("catalogId"))
-                    if key not in {(r.get("asin"), r.get("catalogId")) for r in rows}:
-                        rows.append({**row, "motivoRevision": row.get("reason", "matching_dudoso"), "revisionDesde": today})
-                        publish.write_atomic(path, rows)
-                update_state(catalog, output / "altas.json", save_review)
+                if errors:
+                    return False
+                if journal.resolved("alta").get(row["asin"], {}).get("result") == "revision":
+                    review_keys.add((row.get("asin"), row.get("catalogId")))
+                    revision_count = len(review_keys)
             matches[status].append(row)
-            publish.write_atomic(output / "match-results.json", matches)
+            if sum(map(len, matches.values())) % 50 == 0:
+                publish.write_atomic(output / "match-results.json", matches)
             progress()
 
+        used_slugs = {r["slug"] for r in catalog + pending + review_rows
+                      + [r["row"] for r in decided.values()] if r.get("slug")}
+
         def process(product):
-            nonlocal fatal
+            check_stop()
             asin = product["asin"]
             if asin in decided:
+                line("BUSCAR_AMAZON", asin=asin, estado="salteado", motivo="match_resuelto_7_dias")
                 return
             if product.get("ml"):
                 try:
                     crecer_desde_ml.agregar_identificadores([product], journal=journal)
                 except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-                    # La evidencia de descubrimiento ya está guardada. Seguir
-                    # bajando los demás productos, sin inventar identificadores
-                    # ni dar por decidido este match: se reintenta desde disco.
-                    fatal = True
-                    failures.append({"asin": asin, "motivo": "identificadores_no_disponibles", "detalle": str(exc)})
-                    return
+                    product["amazonIds"] = {}
+                    line("IDENT", asin=asin, estado="error", motivo=str(exc))
+                    journal.append("ident_error", asin, "error", str(exc))
             # La ficha ML descargada durante el descubrimiento también se reutiliza.
             matching.match_products([product], mep,
-                catalog + read_json(output / "altas-pendientes.json", []),
-                on_result=on_result, journal=journal)
-            decided.update(journal.resolved("match"))
+                catalog, on_result=on_result, journal=journal, used_slugs=used_slugs)
+            if asin not in decided and asin in journal.resolved("match_error"):
+                failures.append({"asin": asin, "motivo": journal.resolved("match_error")[asin]["reason"]})
+
 
         # Reanudar también el intervalo entre resolver el producto y encolarlo.
         for record in list(journal.records):
-            if record["stage"] == "amazon":
+            if record["stage"] == "amazon" and record.get("product"):
                 process(record["product"])
             elif record["stage"] == "ml":
                 for product in record.get("pairs", []):
@@ -307,23 +320,31 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
             get=scraper.get, existing_asins=existing_asins, failures=failures,
             journal=journal, on_product=process)
-        if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1":
+        if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1" and not journal.stop_reason:
             review = read_json(output / "altas-revision.json", [])
             desde_ml = crecer_desde_ml.candidatos(existing_asins | {p["asin"] for p in products},
                 {(p.get("ml") or {}).get("catalogId") for p in catalog + pending} |
                 {r.get("catalogId") for r in review}, mep, get=scraper.get,
                 failures=failures, state=state, journal=journal, on_product=process, progress=progress)
             publish.write_atomic(output / "discovery-desde-ml.json", desde_ml)
-        # Reanudar desde disco no necesita descargar páginas nuevas.
-        if not scraper.valid and not journal.resolved("amazon_lista") and not journal.resolved("ml"):
-            raise ValueError("El scraper no devolvió páginas válidas.")
-        if scraper.failures:
-            failures.append({"motivo": "paginas_sin_datos", "total": scraper.failures})
-            fatal = fatal or scraper.failures > 0.3 * max(1, scraper.pages)
+    except BuscarStop as exc:
+        journal.stop_reason = str(exc)
+        line("BUSCAR_FIN", estado="pausado", motivo=str(exc))
+    except discovery.PageBudgetExhausted:
+        journal.stop_reason = "limite_paginas"
+        line("BUSCAR_FIN", estado="pausado", motivo="limite_paginas")
     except Exception as exc:
         failures.append({"motivo": type(exc).__name__, "detalle": str(exc)})
         fatal = True
         line("CATALOGO_ERROR", tipo=type(exc).__name__, motivo=str(exc))
+    if scraper and scraper.failures:
+        failures.append({"motivo": "paginas_sin_datos", "total": scraper.failures})
+        fatal = fatal or scraper.failures > 0.3 * max(1, scraper.pages)
+    if "matches" in locals():
+        publish.write_atomic(output / "match-results.json", matches)
+    # Reconciliar una vez al cerrar: altas.lock pudo podar revisiones vencidas.
+    revision_count = len(read_json(output / "altas-revision.json", []))
+    state["motivoFin"] = journal.stop_reason or "recorrido_completo"
     state.update(status="failed" if fatal else "ok", motivos=sorted({f["motivo"] for f in failures}))
     progress()
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)

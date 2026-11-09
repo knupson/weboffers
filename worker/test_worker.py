@@ -66,7 +66,7 @@ def test_catalogo_ignora_corte_y_completa_con_cursor(tmp_path, monkeypatch, caps
     reloj[0] = 0
     monkeypatch.delenv("CATALOG_AUTO_MAX_SECONDS")
     auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 10, tzinfo=timezone.utc), mep=1000, force=True)
-    assert visited == expected * 2
+    assert visited == expected  # Definitivos vigentes durante siete días.
     assert json.loads(state_path.read_text())["cursorMl"] == cursor
 
 
@@ -79,7 +79,7 @@ def test_scraper_pausa_corta_tambien_despues_de_cien_paginas(monkeypatch):
     scraper.pages = 100
     scraper.get("http://scraper")
     assert pauses == [auto.amazon_prices.PAUSE_SECONDS]
-    assert scraper.pages == 101 and scraper.failures == 0
+    assert scraper.pages == 101 and scraper.failures == 1
 
 
 @pytest.fixture(autouse=True)

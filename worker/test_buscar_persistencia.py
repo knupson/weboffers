@@ -46,7 +46,7 @@ def test_amazon_vacia_es_valida(monkeypatch, capsys):
     monkeypatch.setattr(catalog_auto.time, "sleep", lambda s: pytest.fail("No debe esperar"))
     scraper = catalog_auto.PacedScraper(10)
     scraper.get("http://prueba/search")
-    assert (scraper.valid, scraper.failures, scraper.pages) == (1, 0, 1)
+    assert (scraper.valid, scraper.failures, scraper.pages) == (0, 1, 1)
     assert "AMAZON_PAGINA" in capsys.readouterr().out
 
 
@@ -166,8 +166,7 @@ def test_identificadores_durables_y_error_visible(tmp_path, capsys):
     def no_network(asins):
         pytest.fail("No debe volver a descargar el ASIN resuelto")
     assert ml.agregar_identificadores(rows, no_network, journal=BuscarLog(tmp_path)) == 1
-    with pytest.raises(ValueError):
-        ml.agregar_identificadores([{"asin": "B"}], lambda asins: {}, journal=journal)
+    assert ml.agregar_identificadores([{"asin": "B"}], lambda asins: {}, journal=journal) == 0
     assert "IDENT asin=B estado=error" in capsys.readouterr().out
     assert "B" not in BuscarLog(tmp_path).resolved("ident")
 
@@ -192,8 +191,8 @@ def test_categoria_fallida_no_se_confunde_con_vacia(tmp_path, monkeypatch, capsy
         def raise_for_status(self):
             raise requests.HTTPError("HTTP 429")
     monkeypatch.setattr(ml, "_get", lambda path: Response())
-    with pytest.raises(requests.HTTPError):
-        ml.categorias("MLA1", journal=BuscarLog(tmp_path))
+    assert ml.categorias("MLA1", journal=BuscarLog(tmp_path)) == ["MLA1"]
+    assert BuscarLog(tmp_path).resolved("categoria_error")
     assert "BUSCAR_CATEGORIA id=MLA1 estado=error" in capsys.readouterr().out
 
 
@@ -257,7 +256,7 @@ def test_buscar_completo_kill_entre_ids_y_reanudacion(tmp_path, monkeypatch):
         assert marker in text
 
 
-@pytest.mark.parametrize("case,status", [("precio_error", "error_precio"), ("fuera", "fuera_de_rango"), ("ficha_error", "sin_ficha"), ("sin_nombre", "sin_ficha"), ("sin_pares", "sin_pares")])
+@pytest.mark.parametrize("case,status", [("precio_error", "error_precio"), ("fuera", "fuera_de_rango"), ("ficha_error", "sin_ficha"), ("sin_nombre", "sin_ficha"), ("sin_pares", "sin_resultados")])
 def test_ml_todos_los_descartes_tienen_dato_y_log(tmp_path, monkeypatch, capsys, case, status):
     import requests
     monkeypatch.setattr(ml, "mas_vendidos_ml", lambda *a, **k: {"MLA1": "cat"})
@@ -279,14 +278,14 @@ def test_ml_todos_los_descartes_tienen_dato_y_log(tmp_path, monkeypatch, capsys,
         def json(self):
             return {"results": []}
     ml.candidatos(set(), set(), 1000, output=tmp_path, get=lambda *a, **k: Page())
-    record = BuscarLog(tmp_path).resolved("ml")["MLA1"]
+    record = next(r for r in reversed(BuscarLog(tmp_path).records) if r["stage"] == "ml")
+    assert ("MLA1" in BuscarLog(tmp_path).resolved("ml")) == (status == "fuera_de_rango")
     assert record["result"] == status and record["reason"]
     assert f"BUSCAR_ML id=MLA1 estado={status}" in capsys.readouterr().out
 
 
 def test_ident_no_acepta_error_por_asin(tmp_path, capsys):
-    with pytest.raises(ValueError):
-        ml.agregar_identificadores([{"asin": "A"}], lambda asins: {"A": {"error": "bloqueado"}}, journal=BuscarLog(tmp_path))
+    assert ml.agregar_identificadores([{"asin": "A"}], lambda asins: {"A": {"error": "bloqueado"}}, journal=BuscarLog(tmp_path)) == 0
     assert "A" not in BuscarLog(tmp_path).resolved("ident")
     assert BuscarLog(tmp_path).resolved("ident_error")["A"]["reason"] == "bloqueado"
     assert "IDENT asin=A estado=error motivo=bloqueado" in capsys.readouterr().out
@@ -300,11 +299,10 @@ def test_revision_guardada_antes_del_siguiente_item(tmp_path):
         assert BuscarLog(tmp_path, "2026-11-09").resolved("alta")[row["asin"]]["result"] == "revision"
         raise KeyboardInterrupt()
     with pytest.raises(KeyboardInterrupt):
-        catalog_auto.add_accepted([], {"accepted": items()}, tmp_path, "2026-11-09")
+        catalog_auto.add_accepted([], {"accepted": items()}, tmp_path, "2026-11-09", journal=BuscarLog(tmp_path, "2026-11-09"))
 
 
 def test_ident_lote_persiste_aciertos_aunque_otro_falle(tmp_path):
-    with pytest.raises(ValueError):
-        ml.agregar_identificadores([{"asin": "A"}, {"asin": "B"}], lambda asins: {
-            "A": {"error": "bloqueado"}, "B": {"identifiers": {"upc": "123"}}}, journal=BuscarLog(tmp_path))
+    assert ml.agregar_identificadores([{"asin": "A"}, {"asin": "B"}], lambda asins: {
+        "A": {"error": "bloqueado"}, "B": {"identifiers": {"upc": "123"}}}, journal=BuscarLog(tmp_path)) == 1
     assert set(BuscarLog(tmp_path).resolved("ident")) == {"B"}
