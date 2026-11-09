@@ -90,26 +90,79 @@ describe('persistencia del deploy', () => {
     await expect(fs.access(path.join(tmpDir, 'state', 'deploy.lock'))).rejects.toThrow(); // se libera al terminar
   });
 
-  it('F-18: candado de un proceso muerto se toma; de uno vivo se espera y, si no termina, el despliegue falla', async () => {
-    const lockFile = path.join(tmpDir, 'deploy.lock');
-    await fs.writeFile(lockFile, JSON.stringify({ pid: 999999, at: new Date().toISOString() }));
-    const robado = await acquireLock(lockFile, { pidAlive: () => false, lockPollMs: 10 });
+  async function crearCandado(dir: string, owner: object | null, edadMs = 0) {
+    await fs.mkdir(dir);
+    if (owner) await fs.writeFile(path.join(dir, 'owner.json'), JSON.stringify(owner));
+    if (edadMs) {
+      const antes = new Date(Date.now() - edadMs);
+      await fs.utimes(dir, antes, antes);
+    }
+  }
+
+  it('F-18: candado de un pid muerto se toma; de uno vivo se espera y, si no termina, el despliegue falla', async () => {
+    const lock = path.join(tmpDir, 'deploy.lock');
+    await crearCandado(lock, { pid: 999999, at: new Date().toISOString() });
+    const robado = await acquireLock(lock, { pidAlive: () => false, lockPollMs: 10 });
     expect(robado.ok).toBe(true);
     await robado.release();
+    await expect(fs.access(lock)).rejects.toThrow();
 
-    await fs.writeFile(lockFile, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
-    const ocupado = await acquireLock(lockFile, { pidAlive: () => true, lockWaitMs: 100, lockPollMs: 10 });
+    await crearCandado(lock, { pid: process.pid, at: new Date().toISOString() });
+    const ocupado = await acquireLock(lock, { pidAlive: () => true, lockWaitMs: 100, lockPollMs: 10 });
     expect(ocupado.ok).toBe(false);
     expect(ocupado.reason).toContain('otro despliegue en curso');
 
-    setTimeout(() => { fs.rm(lockFile, { force: true }); }, 60);
-    const espera = await acquireLock(lockFile, { pidAlive: () => true, lockWaitMs: 2000, lockPollMs: 10 });
+    setTimeout(() => { fs.rm(lock, { recursive: true, force: true }); }, 60);
+    const espera = await acquireLock(lock, { pidAlive: () => true, lockWaitMs: 2000, lockPollMs: 10 });
     expect(espera.ok).toBe(true);
     await espera.release();
+  });
 
-    // Un candado viejo (más de 45 min) se da por abandonado aunque el pid siga vivo.
-    await fs.writeFile(lockFile, JSON.stringify({ pid: process.pid, at: new Date(Date.now() - 60 * 60e3).toISOString() }));
-    expect((await acquireLock(lockFile, { pidAlive: () => true, lockWaitMs: 100, lockPollMs: 10 })).ok).toBe(true);
+  it('revisión 2: un dueño vivo nunca se desaloja por antigüedad', async () => {
+    const lock = path.join(tmpDir, 'deploy.lock');
+    await crearCandado(lock, { pid: process.pid, at: new Date(Date.now() - 5 * 3600e3).toISOString() }, 5 * 3600e3);
+    const r = await acquireLock(lock, { pidAlive: () => true, lockWaitMs: 150, lockPollMs: 10 });
+    expect(r.ok).toBe(false);
+    expect(JSON.parse(await fs.readFile(path.join(lock, 'owner.json'), 'utf8')).pid).toBe(process.pid); // sigue siendo suyo
+  });
+
+  it('revisión 2: dos tomadores de un candado abandonado no ganan los dos', async () => {
+    const lock = path.join(tmpDir, 'deploy.lock');
+    await crearCandado(lock, { pid: 999999, at: new Date().toISOString() });
+    // Ambos ven al dueño muerto; el que gana mantiene el candado (no lo libera) y el otro tiene que esperar.
+    const resultados = await Promise.all([
+      acquireLock(lock, { pidAlive: (pid: number) => pid === process.pid, lockWaitMs: 400, lockPollMs: 10 }),
+      acquireLock(lock, { pidAlive: (pid: number) => pid === process.pid, lockWaitMs: 400, lockPollMs: 10 }),
+    ]);
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok)).toHaveLength(1);
+    const huerfanos = (await fs.readdir(tmpDir)).filter((n) => n.includes('.takeover') || n.includes('.stale-'));
+    expect(huerfanos).toEqual([]);
+  });
+
+  it('revisión 3: un KILL entre mkdir y escribir el pid no bloquea para siempre', async () => {
+    const lock = path.join(tmpDir, 'deploy.lock');
+    await crearCandado(lock, null); // carpeta sin owner.json, recién creada: puede estar escribiéndose, se espera
+    const reciente = await acquireLock(lock, { pidAlive: () => true, lockWaitMs: 100, lockPollMs: 10 });
+    expect(reciente.ok).toBe(false);
+    await fs.rm(lock, { recursive: true, force: true });
+    await crearCandado(lock, null, 3 * 60e3); // sin pid y de más de 2 minutos: murió en el medio
+    const robado = await acquireLock(lock, { pidAlive: () => true, lockWaitMs: 100, lockPollMs: 10 });
+    expect(robado.ok).toBe(true);
+    await robado.release();
+    await fs.mkdir(lock);
+    await fs.writeFile(path.join(lock, 'owner.json'), '{"pid"'); // pid truncado
+    const antes = new Date(Date.now() - 3 * 60e3);
+    await fs.utimes(lock, antes, antes);
+    expect((await acquireLock(lock, { pidAlive: () => true, lockWaitMs: 100, lockPollMs: 10 })).ok).toBe(true);
+  });
+
+  it('revisión 2: un mutex de toma huérfano no traba el candado', async () => {
+    const lock = path.join(tmpDir, 'deploy.lock');
+    await crearCandado(lock, { pid: 999999, at: new Date().toISOString() });
+    await crearCandado(`${lock}.takeover`, null, 3 * 60e3); // un tomador murió dentro de su sección crítica
+    const r = await acquireLock(lock, { pidAlive: () => false, lockWaitMs: 2000, lockPollMs: 10 });
+    expect(r.ok).toBe(true);
   });
 
   it('F-28: la caída brusca de publicados queda en last-result.json además del log', async () => {

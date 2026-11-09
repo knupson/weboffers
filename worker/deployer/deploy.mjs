@@ -16,7 +16,7 @@ const MIN_REDEPLOY_GAP_MS = 30 * 60e3;
 const ONE_DAY_MS = 86400e3;
 const LOCK_WAIT_MS = 20 * 60e3;   // cuánto espera un despliegue a que termine el que ya está corriendo
 const LOCK_POLL_MS = 2e3;
-const LOCK_MAX_AGE_MS = 45 * 60e3; // un candado más viejo que esto se da por abandonado aunque el pid siga vivo
+const LOCK_EMPTY_STALE_MS = 2 * 60e3; // un candado sin pid legible se da por muerto sólo si su carpeta tiene más de esto
 
 
 // `docker logs` se pierde al recrear el contenedor; /state es un volumen con nombre y sobrevive (05/11).
@@ -235,51 +235,95 @@ function pidAlive(pid) {
   }
 }
 
+async function readOwner(lockDir) {
+  try {
+    const owner = JSON.parse(await fs.readFile(path.join(lockDir, 'owner.json'), 'utf8'));
+    return Number.isInteger(owner?.pid) ? owner : null;
+  } catch {
+    return null;
+  }
+}
+
+/** ¿Está muerto el dueño? Pid inexistente (ESRCH) = muerto; sin pid legible = muerto sólo si la carpeta es vieja. */
+async function ownerDead(lockDir, owner, alive, now = Date.now()) {
+  if (owner) return !alive(owner.pid);
+  try {
+    return now - (await fs.stat(lockDir)).mtimeMs > LOCK_EMPTY_STALE_MS;
+  } catch {
+    return false; // desapareció: el próximo mkdir lo resuelve
+  }
+}
+
+/** Toma el candado viejo de forma atómica: un mutex (mkdir) deja pasar a un solo tomador, que revalida y renombra. */
+async function takeOver(lockDir, alive) {
+  const mutex = `${lockDir}.takeover`;
+  try {
+    await fs.mkdir(mutex);
+  } catch (error) {
+    if (error?.code !== 'EEXIST') return;
+    try {
+      // El mutex protege una sección de milisegundos: uno de más de 2 minutos quedó de un tomador muerto.
+      if (Date.now() - (await fs.stat(mutex)).mtimeMs > LOCK_EMPTY_STALE_MS) {
+        await fs.rename(mutex, `${mutex}.huerfano-${process.pid}-${Date.now()}`);
+      }
+    } catch {
+      // Otro tomador ya lo resolvió.
+    }
+    return;
+  }
+  try {
+    const owner = await readOwner(lockDir);
+    if (!(await ownerDead(lockDir, owner, alive))) return; // revalidación bajo el mutex: no se desaloja a un dueño vivo
+    const stale = `${lockDir}.stale-${process.pid}-${Date.now()}`;
+    await fs.rename(lockDir, stale);
+    log(`DEPLOY_LOCK_ABANDONADO pid=${owner?.pid ?? 'sin pid'}; se toma el candado.`);
+    await fs.rm(stale, { recursive: true, force: true }).catch(() => {});
+  } catch {
+    // El candado cambió de dueño mientras tanto: se reintenta desde cero.
+  } finally {
+    await fs.rm(mutex, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 /**
  * F-18: `docker exec` no mata el node del contenedor cuando la cadena corta el cliente por tope de tiempo: ese deploy
  * seguiría con npm/wrangler mientras arranca otro sobre el mismo /work. El candado hace que el segundo espere al primero.
+ * El candado es una carpeta (mkdir es atómico) con el pid del dueño adentro. Nunca se desaloja a un dueño vivo por
+ * antigüedad; sólo se toma el de un pid muerto, y la toma es atómica.
  */
-async function acquireLock(lockFile, opts = {}) {
+async function acquireLock(lockDir, opts = {}) {
   const waitMs = opts.lockWaitMs ?? LOCK_WAIT_MS;
   const pollMs = opts.lockPollMs ?? LOCK_POLL_MS;
   const alive = opts.pidAlive ?? pidAlive;
   try {
-    await fs.mkdir(path.dirname(lockFile), { recursive: true });
+    await fs.mkdir(path.dirname(lockDir), { recursive: true });
   } catch (error) {
-    log(`DEPLOY_LOCK_OFF no se pudo preparar ${lockFile}: ${error.code ?? error.message}; se despliega sin candado.`);
+    log(`DEPLOY_LOCK_OFF no se pudo preparar ${lockDir}: ${error.code ?? error.message}; se despliega sin candado.`);
     return { ok: true, release: async () => {} };
   }
   const started = Date.now();
   let announced = false;
   for (;;) {
     try {
-      const handle = await fs.open(lockFile, 'wx');
-      await handle.writeFile(JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
-      await handle.close();
-      return { ok: true, release: async () => { await fs.rm(lockFile, { force: true }).catch(() => {}); } };
+      await fs.mkdir(lockDir);
+      await fs.writeFile(path.join(lockDir, 'owner.json'), JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
+      return { ok: true, release: async () => { await fs.rm(lockDir, { recursive: true, force: true }).catch(() => {}); } };
     } catch (error) {
       if (error?.code !== 'EEXIST') {
         log(`DEPLOY_LOCK_OFF ${error.code ?? error.message}; se despliega sin candado.`);
         return { ok: true, release: async () => {} };
       }
     }
-    let holder = null;
-    try {
-      holder = JSON.parse(await fs.readFile(lockFile, 'utf8'));
-    } catch {
-      // Candado ilegible o recién liberado: se reintenta.
-    }
-    const age = Date.now() - Date.parse(holder?.at ?? '');
-    if (holder && (!Number.isInteger(holder.pid) || !alive(holder.pid) || !(age < LOCK_MAX_AGE_MS))) {
-      log(`DEPLOY_LOCK_ABANDONADO pid=${holder.pid} desde=${holder.at}; se toma el candado.`);
-      await fs.rm(lockFile, { force: true }).catch(() => {});
+    const owner = await readOwner(lockDir);
+    if (await ownerDead(lockDir, owner, alive)) {
+      await takeOver(lockDir, alive);
       continue;
     }
     if (Date.now() - started >= waitMs) {
-      return { ok: false, reason: `hay otro despliegue en curso (pid ${holder?.pid ?? '?'} desde ${holder?.at ?? '?'}); no terminó en ${Math.round(waitMs / 1000)} s` };
+      return { ok: false, reason: `hay otro despliegue en curso (pid ${owner?.pid ?? '?'} desde ${owner?.at ?? '?'}); no terminó en ${Math.round(waitMs / 1000)} s` };
     }
     if (!announced) {
-      log(`DEPLOY_ESPERA hay otro despliegue en curso (pid ${holder?.pid ?? '?'} desde ${holder?.at ?? '?'}); espero a que termine.`);
+      log(`DEPLOY_ESPERA hay otro despliegue en curso (pid ${owner?.pid ?? '?'} desde ${owner?.at ?? '?'}); espero a que termine.`);
       announced = true;
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs));
