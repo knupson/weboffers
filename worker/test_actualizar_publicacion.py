@@ -93,34 +93,47 @@ def test_cli_lee_archivo_y_no_registra_cambios_inexistentes(tmp_path):
     assert "PUBLICACION_OK publicados=1" in result.stdout
 
 
-def test_lectura_y_escritura_bajo_lock_compartido(tmp_path, monkeypatch):
-    from tools import actualizar_publicacion as cli
+def test_lectura_y_escritura_bajo_lock_compartido(tmp_path):
+    from alta_state import update_state
 
-    dentro = False
-    eventos = []
+    path = tmp_path / "publicacion.json"
+    desglose = tmp_path / "desglose.log"
+    desglose.write_text(producto("uno"), encoding="utf-8")
+    # El aviso sale despu?s de importar la CLI, antes de entrar al lock real.
+    script = (
+        "from tools import actualizar_publicacion as cli; "
+        "print('LISTO', flush=True); raise SystemExit(cli.main())"
+    )
+    process = None
 
-    def lock(catalog, lock_path, operation):
-        nonlocal dentro
-        assert catalog == []
-        assert lock_path == tmp_path / "altas.json"
-        dentro = True
-        try:
-            return operation()
-        finally:
-            dentro = False
+    def bajo_lock():
+        nonlocal process
+        process = subprocess.Popen(
+            [sys.executable, "-c", script, "--desglose", str(desglose)],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8",
+            env={**os.environ, "OUTPUT_PATH": str(tmp_path / "offers.json"),
+                 "PYTHONIOENCODING": "utf-8"},
+        )
+        assert process.stdout.readline().strip() == "LISTO"
+        with pytest.raises(subprocess.TimeoutExpired):
+            process.communicate(timeout=1)
+        assert not path.exists(), "La CLI escribi? mientras altas.lock estaba tomado"
+        # Si leyera antes del lock, perder?a esta entrada al guardar.
+        path.write_text(json.dumps({"previo": entrada()}), encoding="utf-8")
 
-    def cargar(output):
-        assert dentro and output == tmp_path
-        eventos.append("lectura")
-        return {}
-
-    def guardar(output, estado):
-        assert dentro and output == tmp_path
-        assert estado["uno"]["desde"] == "2026-11-09"
-        eventos.append("escritura")
-
-    monkeypatch.setattr(cli.alta_state, "update_state", lock)
-    monkeypatch.setattr(cli.publicacion, "cargar", cargar)
-    monkeypatch.setattr(cli.publicacion, "guardar", guardar)
-    cli.actualizar(producto("uno"), tmp_path, "2026-11-09")
-    assert eventos == ["lectura", "escritura"]
+    try:
+        # confirmar_altas usa exactamente update_state([], output / "altas.json", ...).
+        # El decorador locked_refresh adquiere altas.lock (flock o msvcrt).
+        update_state([], tmp_path / "altas.json", bajo_lock)
+        stdout, stderr = process.communicate(timeout=15)
+        assert process.returncode == 0, stderr
+        state = json.loads(path.read_text(encoding="utf-8"))
+        assert state["uno"]["situacion"] == "publicado"
+        assert state["previo"] == entrada()
+        assert "PUBLICACION_OK publicados=2" in stdout
+    finally:
+        if process is not None:
+            if process.poll() is None:
+                process.kill()
+            process.communicate(timeout=15)
