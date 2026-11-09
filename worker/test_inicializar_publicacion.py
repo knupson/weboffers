@@ -57,6 +57,20 @@ def test_inicial_reparte_los_tres_grupos(tmp_path):
     assert "PUBLICACION_INICIAL publicados=1 republicacion=1 no_revisar=2" in result.stdout
 
 
+def test_producto_ausente_del_ultimo_desglose_no_entra(tmp_path):
+    texto = (
+        bloque("2026-11-09", producto("actual", "PUBLICADO")).replace(
+            "-1200.log", "-1300.log")
+        + bloque("2026-11-08", producto("retirado", "PUBLICADO"))
+        + bloque("2026-11-09", producto("retirado_hoy", "PUBLICADO"),
+                 producto("filtrado_retirado"))
+    )
+    result = correr(tmp_path, texto)
+    assert result.returncode == 0, result.stderr
+    estado = json.loads((tmp_path / "publicacion.json").read_text(encoding="utf-8"))
+    assert set(estado) == {"actual"}
+
+
 def test_escalonado_en_7_dias(tmp_path):
     result = correr(tmp_path, bloque("2026-11-09", *(producto(str(i)) for i in range(100))))
     assert result.returncode == 0, result.stderr

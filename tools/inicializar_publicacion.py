@@ -40,11 +40,11 @@ def inicializar(texto, output, today=None, forzar=False):
                 actual.append(linea)
         if not bloques:
             raise ValueError("No hay bloques de desglose")
-        ultimos = {}
+        bloques_ordenados = sorted(bloques, key=lambda b: b[:2])
+        ultimos = publicacion.parse_desglose("\n".join(bloques_ordenados[-1][2]))
         publicados = {}
-        for fecha, _, lineas in sorted(bloques, key=lambda b: b[:2]):
+        for fecha, _, lineas in bloques_ordenados:
             for slug, datos in publicacion.parse_desglose("\n".join(lineas)).items():
-                ultimos[slug] = datos
                 if datos[0] == "PUBLICADO":
                     publicados[slug] = date.fromisoformat(fecha)
         if not ultimos:
