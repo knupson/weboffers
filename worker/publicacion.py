@@ -1,6 +1,6 @@
 """Estado de publicación, republicación y exclusión temporal por producto."""
 from copy import deepcopy
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
@@ -11,10 +11,11 @@ import publish
 NO_REVISAR_DIAS = 7
 REPUBLICACION_INTENTOS = 3
 ALERTA_SALIDAS = 10
+ART = timezone(timedelta(hours=-3))
 
 
 def _log(mensaje: str) -> None:
-    print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {mensaje}")
+    print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} {mensaje}")
 
 
 def _validar(estado: dict) -> None:

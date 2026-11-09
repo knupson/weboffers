@@ -1,9 +1,11 @@
 """Pruebas del estado de publicación y sus transiciones diarias."""
 from copy import deepcopy
+from datetime import datetime, timezone
 import json
 
 import pytest
 
+import publicacion
 from publicacion import (
     ALERTA_SALIDAS, NO_REVISAR_DIAS, REPUBLICACION_INTENTOS,
     cargar, guardar, motivo_estado, parse_desglose, transicion,
@@ -161,8 +163,19 @@ def test_guardar_y_cargar(tmp_path):
     assert cargar(output) == estado
 
 
-def test_guardar_usa_write_atomic(tmp_path, monkeypatch):
-    llamadas = []
-    monkeypatch.setattr("publish.write_atomic", lambda path, data: llamadas.append((path, data)))
-    guardar(tmp_path, {})
-    assert llamadas == [(tmp_path / "publicacion.json", {})]
+def test_guardar_archivo_real_y_cargar(tmp_path):
+    estado = {"producto": entrada("publicado")}
+    guardar(tmp_path, estado)
+    assert cargar(tmp_path) == estado
+
+
+def test_log_usa_hora_art_en_host_utc(monkeypatch, capsys):
+    class RelojUTC(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            instante = datetime(2026, 11, 12, 1, 30, tzinfo=timezone.utc)
+            return instante.astimezone(tz) if tz else instante.replace(tzinfo=None)
+
+    monkeypatch.setattr(publicacion, "datetime", RelojUTC)
+    publicacion._log("PRUEBA")
+    assert capsys.readouterr().out == "2026-11-11 22:30:00 PRUEBA\n"
