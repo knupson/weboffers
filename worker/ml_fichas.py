@@ -62,11 +62,18 @@ def refresh(catalog, output_path, now):
     today = now.astimezone(ml_prices.ART).date()
     rejected = set()
     fetched = 0
+
+    def save():
+        # F-24: cada ficha consultada queda en disco al momento; un KILL pierde a lo sumo la que estaba en curso
+        # y la corrida siguiente del día retoma (las fichas de hoy cuentan como vigentes y no se piden de nuevo).
+        publish.write_atomic(Path(output_path), {"generatedAt": now.isoformat(), "items": items})
+
     for product in catalog:
         catalog_id = (product.get("ml") or {}).get("catalogId")
         if not catalog_id or catalog_id in rejected:
             continue
         sheet = items.get(catalog_id)
+        consulted = False
         try:
             age = (today - date.fromisoformat(sheet["fetched"])).days if sheet else -1
             fresh = 0 <= age <= 7 and "rawAttributes" in sheet
@@ -79,6 +86,7 @@ def refresh(catalog, output_path, now):
                 if not re.fullmatch(r"[A-Za-z0-9]+", str(catalog_id)):
                     raise ValueError("catalogId inválido")
                 fetched += 1
+                consulted = True
                 try:
                     body = ml_prices.get_json(f"/products/{catalog_id}")
                     raw = body.get("attributes") or []
@@ -100,6 +108,11 @@ def refresh(catalog, output_path, now):
                 log(now, f"FICHA_DESCARTADA {product['slug']} {reason}")
             else:
                 items[catalog_id] = sheet
+                if consulted:
+                    log(now, f"FICHA_OK {product['slug']} id={catalog_id} fetched={sheet['fetched']} "
+                             f"atributos={len(sheet['rawAttributes'])}")
+            if consulted:
+                save()
         except Exception as exc:
             # Una falla de consulta conserva la copia previa; el render controla su vigencia.
             log(now, f"FICHA_ERROR {product['slug']} {type(exc).__name__}: {exc}")
@@ -107,7 +120,7 @@ def refresh(catalog, output_path, now):
                 items.pop(catalog_id, None)
                 rejected.add(catalog_id)
                 log(now, f"FICHA_DESCARTADA {product['slug']} copia previa inconsistente")
-    publish.write_atomic(Path(output_path), {"generatedAt": now.isoformat(), "items": items})
+    save()
     # Una línea por pasada (el worker corre cada hora): consultadas, vigentes y descartadas.
     log(now, f"FICHAS_OK consultadas={fetched} vigentes={len(items)} descartadas={len(rejected)}")
 

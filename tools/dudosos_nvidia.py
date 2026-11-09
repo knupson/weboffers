@@ -90,14 +90,43 @@ def decidir(votos: list[tuple[str, str]]) -> str:
     return "alejandro"
 
 
+def evidence_file(output, pair):
+    return output / "dudosos" / (
+        datetime.now(ml_prices.ART).strftime("%Y-%m-%d") + "-" +
+        hashlib.sha256(pair.encode()).hexdigest()[:20] + ".json")
+
+
+def decidido_hoy(path):
+    """Evidencia de hoy con los dos votos válidos: ya se juzgó y un reintento del día no la repite (F-25).
+
+    Con algún voto inválido (falla de red, timeout, sin contenido) no cuenta: es infraestructura, no una decisión."""
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+        votes = record["votos"]
+        return (isinstance(votes, list) and len(votes) == 2
+                and all(v.get("decision") in ("aprobar", "rechazar") for v in votes))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return False
+
+
 def run(catalog, output, post=requests.post):
-    if not os.environ.get("NVIDIA_API_KEY", "").strip():
-        log("DUDOSOS_SIN_CLAVE")
-        return 0
     output = Path(output)
+    queue = read_json(output / "altas-revision.json", [])
+    if not os.environ.get("NVIDIA_API_KEY", "").strip():
+        log("DUDOSOS_SIN_CLAVE" + (f" cola={len(queue)} sin revisar" if queue else ""))
+        # F-31: con cola y sin clave no se revisó nada; el paso no puede figurar «ok».
+        return 1 if queue else 0
     counts = dict(revisados=0, aprobados=0, rechazados=0, para_alejandro=0)
-    for row in read_json(output / "altas-revision.json", []):
+    invalidos = 0
+    saltados = 0
+    # Las filas nuevas primero (F-25): las viejas que ya dieron «alejandro» no tapan a las recién llegadas.
+    queue = sorted(queue, key=lambda row: row.get("revisionDesde") or "", reverse=True)
+    for row in queue:
         pair = revisar_altas.pair_key(row)
+        if decidido_hoy(evidence_file(output, pair)):
+            saltados += 1
+            log(f"DUDOSO_SALTEO par={pair} motivo=evidencia_de_hoy")
+            continue
         error = None
         try:
             ficha_ml = ml_prices.get_json(f"/products/{row['catalogId']}")
@@ -110,9 +139,7 @@ def run(catalog, output, post=requests.post):
         votos = ([("invalido", error)] * 2 if error else
                  [votar(modelo, proof, post=post) for modelo in MODELOS])
         decision = decidir(votos)
-        evidence_path = output / "dudosos" / (
-            datetime.now(ml_prices.ART).strftime("%Y-%m-%d") + "-" +
-            hashlib.sha256(pair.encode()).hexdigest()[:20] + ".json")
+        evidence_path = evidence_file(output, pair)
         evidence_path.parent.mkdir(parents=True, exist_ok=True)
         record = {"fecha": datetime.now(ml_prices.ART).isoformat(), "fila": row, "evidencia": proof,
                   "votos": [{"modelo": model, "decision": vote, "motivo": reason}
@@ -131,13 +158,16 @@ def run(catalog, output, post=requests.post):
                 record.update(decision=decision, error=error)
                 write_atomic(evidence_path, record)
         counts["revisados"] += 1
+        invalidos += all(vote == "invalido" for vote, _ in votos)
         counts[{"aprobar": "aprobados", "rechazar": "rechazados", "alejandro": "para_alejandro"}[decision]] += 1
         votes_log = ",".join(f"{model}:{vote}" for model, (vote, _) in zip(MODELOS, votos))
         log(f"DUDOSO_DECISION par={pair} decision={decision} votos={votes_log}")
         if decision == "alejandro":
             log(f"DUDOSO_PARA_ALEJANDRO par={pair} votos={votes_log} evidencia={evidence_path}")
-    log("DUDOSOS_OK " + " ".join(f"{key}={value}" for key, value in counts.items()))
-    return 0
+    log("DUDOSOS_OK " + " ".join(f"{key}={value}" for key, value in counts.items())
+        + f" saltados_hoy={saltados} sin_voto_valido={invalidos}")
+    # F-31: si ninguna fila obtuvo un solo voto válido no se revisó nada; el paso falla en vez de figurar «ok».
+    return 1 if counts["revisados"] and invalidos == counts["revisados"] else 0
 
 
 def main():
