@@ -175,25 +175,16 @@ def _add_accepted(catalog, matches, output, today):
 
 
 def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
-    """Alta automática de productos: TODAS las noches de 20:00 a 03:00 ART (05/11; antes sólo los domingos),
-    antes del relevamiento de Chrome de las 03:30 que confirma envío y precio de los nuevos.
-    `force=True` corre ahora fuera de la ventana (tools/crecer_ahora.py)."""
+    """Búsqueda diaria sin ventana horaria; force permite una invocación explícita."""
     now = (now or datetime.now(timezone.utc)).astimezone(ART)
-    if not force and not (now.hour >= 20 or now.hour < 3):
-        return False
     output = Path(output)
     state_path = output / "catalog-auto-state.json"
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
-    noche = now - timedelta(days=1) if now.hour < 3 else now
-    year, week, _ = noche.isocalendar()
-    slot = noche.date().isoformat() + (f"-forzado-{now:%H%M%S}" if force else "")
-    try:
-        expired = state.get("status") == "running" and now - datetime.fromisoformat(state["at"]) > timedelta(hours=6)
-    except (KeyError, ValueError, TypeError):
-        expired = state.get("status") == "running"
-    if state.get("slot") == slot and not expired and not (state.get("status") == "failed" and state.get("pages") == 0):
+    year, week, _ = now.isocalendar()
+    slot = now.date().isoformat()
+    if not force and str(state.get("slot", "")).startswith(slot):
         return False
-    # Registrar el intento antes de consultar: un reinicio nunca duplica el gasto semanal.
+    # Registrar el intento antes de consultar evita repetirlo automáticamente el mismo día.
     publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": "running", "at": now.isoformat()})
     today = now.date().isoformat()
     added, failures, total = [], [], 0
@@ -257,9 +248,4 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"
     revision = len(read_json(output / "altas-revision.json", []))
     print(f"{marker} catálogo: pendientes={len(added)}, revision={revision}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
-    # 07/11: aviso al host para confirmar las altas apenas termina (unidad systemd franquicia-tras-alta.path).
-    # Escritura directa, no atómica: la unidad .path se dispara al cerrarse el archivo escrito.
-    (output / "alta-terminada.json").write_text(json.dumps(
-        {"slot": slot, "status": status, "added": len(added),
-         "fin": datetime.now(timezone.utc).astimezone(ART).isoformat(timespec="seconds")}), encoding="utf-8")
     return True

@@ -17,4 +17,5 @@ def test_deploy_manual_usa_el_deployer_de_la_vm():
 def test_deployer_acepta_ahora_por_el_mismo_deploy_once():
     deploy = (RAIZ / "worker" / "deployer" / "deploy.mjs").read_text(encoding="utf-8")
     assert "process.argv.includes('--ahora')" in deploy
-    assert "deployOnce(new Date(), { slot: 'manual', manual: true })" in deploy
+    assert "main({ manual: process.argv.includes('--ahora') })" in deploy
+    assert "(opts.deployFn ?? deployOnce)(now, { ...opts, manual: opts.manual ?? false })" in deploy

@@ -26,15 +26,15 @@ shift
 HOY=$(TZ=America/Argentina/Buenos_Aires date +%F)
 W=franquicia400-weboffers-worker-1
 echo "ENVIO_AR_CHROME inicio"
-# Incluye pendientes; --pendientes releva solamente las altas diurnas.
-ASINS=$(docker exec -w /app/worker "$W" python3 /app/tools/altas_chrome.py listar "$@")
+# El modo selecciona el proceso; --pendientes incluye pendientes y no_revisar vencidos en alta.
+ASINS=$(docker exec -e PUBLICACION_MODO="${PUBLICACION_MODO:-verificacion}" -w /app/worker "$W" python3 /app/tools/altas_chrome.py listar "$@")
 if [ -z "$ASINS" ]; then
     echo "ENVIO_AR_CHROME_OK sin productos para relevar"
     exit 0
 fi
 # 08/11: el contenedor seguía arriba sin ningún proceso de Chrome (CDP 9222 cerrado) y la cadena
 # de las 03:30 y la tras-alta fallaron con «Connection refused». Si no hay CDP, se reinicia el contenedor.
-cdp() { docker exec chrome-claude curl -s -m3 http://127.0.0.1:9222/json/version >/dev/null 2>&1; }
+cdp() { docker exec -e PUBLICACION_MODO="${PUBLICACION_MODO:-verificacion}" chrome-claude curl -s -m3 http://127.0.0.1:9222/json/version >/dev/null 2>&1; }
 if ! cdp; then
     echo "ENVIO_AR_CHROME_REINICIO chrome-claude sin CDP en 127.0.0.1:9222; reinicio el contenedor"
     docker restart chrome-claude >/dev/null
@@ -51,7 +51,7 @@ docker cp /opt/docker/franquicia400/worker/article_log.py chrome-claude:/tmp/art
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT HUP INT TERM
 # shellcheck disable=SC2086
-docker exec chrome-claude timeout -s KILL "${CADENA_TIMEOUT:-3000}" python3 /tmp/envio_ar_chrome.py $ASINS > "$TMP"
+docker exec -e PUBLICACION_MODO="${PUBLICACION_MODO:-verificacion}" chrome-claude timeout -s KILL "${CADENA_TIMEOUT:-3000}" python3 /tmp/envio_ar_chrome.py $ASINS > "$TMP"
 # Fusiona el relevamiento y conserva los otros ASIN del mismo día.
-docker exec -i -w /app/worker "$W" python3 /app/tools/altas_chrome.py guardar --fecha "$HOY" < "$TMP"
+docker exec -e PUBLICACION_MODO="${PUBLICACION_MODO:-verificacion}" -i -w /app/worker "$W" python3 /app/tools/altas_chrome.py guardar --fecha "$HOY" < "$TMP"
 rm -f "$TMP"

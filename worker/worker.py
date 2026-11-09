@@ -1,4 +1,4 @@
-"""Daemon de actualización del catálogo público."""
+"""Daemon de Telegram; la cadena diaria actualiza los precios y las altas."""
 
 from datetime import datetime, timedelta, timezone
 import json
@@ -39,45 +39,12 @@ def run_once():
     catalog_path = resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json"))
     output_dir = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
     catalog = load_catalog(catalog_path, output_dir / "catalog-auto.json")
-    grouped = {}
-    for entry in catalog:
-        grouped.setdefault(entry["store"], []).append(entry["asin"])
     current_rates = rates.get_rates()
     eur_usd = rates.get_eur_usd(current_rates.get("oficial")) if current_rates else None
     mep = (current_rates or {}).get("mep")
-    payload = None
-    try:
-        items = []
-        for store, asins in grouped.items():
-            items.extend(creators_api.fetch_items(asins, store))
-        mode = "api" if any(creators_api.is_configured(s) for s in grouped) else "offline"
-        payload = publish.build_offers(datetime.now(timezone.utc).isoformat(), mode, current_rates, items)
-        output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
-        changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
-        print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
-    except Exception as exc:
-        print(f"Falló publish ({type(exc).__name__}).", flush=True)
     amazon_prices_path = resolve_path(os.environ.get("AMAZON_PRICES_PATH", "output/amazon-prices.json"))
-    try:
-        amazon_prices.maybe_refresh(catalog, amazon_prices_path, datetime.now(timezone.utc), eur_usd=eur_usd)
-    except Exception as exc:
-        print(f"Falló Amazon ({type(exc).__name__}).", flush=True)
-        traceback.print_exc(file=sys.stdout)
     ml_prices_path = resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json"))
-    try:
-        ml_prices.maybe_refresh(
-            catalog,
-            ml_prices_path,
-            amazon_prices_path,
-            mep,
-            datetime.now(timezone.utc),
-            eur_usd=eur_usd,
-        )
-    except Exception as exc:
-        print(f"Falló ML ({type(exc).__name__}).", flush=True)
-        traceback.print_exc(file=sys.stdout)
-    ml_fichas.refresh_optional(catalog, output_dir / "ml-fichas.json", datetime.now(timezone.utc))
-    # Telegram después de los precios del día, para publicar el mismo precio y veredicto que el sitio.
+    # Telegram consume los precios que ya dejó la cadena diaria.
     try:
         telegram.maybe_post(
             with_ar_shipping(ml_prices.merge(
@@ -92,11 +59,6 @@ def run_once():
         )
     except Exception as exc:
         print(f"Falló Telegram ({type(exc).__name__}).", flush=True)
-    try:
-        catalog_auto.maybe_grow(catalog_path, output_dir, datetime.now(timezone.utc), mep=mep)
-    except Exception as exc:
-        print(f"Falló catálogo semanal ({type(exc).__name__}).", flush=True)
-    return payload
 
 
 def with_ar_shipping(products, amazon_prices_path, now=None):
@@ -179,7 +141,7 @@ def main():
             run_once()
         except Exception as exc:
             print(f"Falló el ciclo de actualización ({type(exc).__name__}).", flush=True)
-        # Despierta al minuto 1 de cada hora (o antes si el intervalo es menor) para que Telegram y los precios salgan en horario.
+        # Despierta al minuto 1 de cada hora (o antes si el intervalo es menor) para que Telegram salga en horario.
         to_next_hour = 3600 - time.time() % 3600 + 60
         deadline = time.monotonic() + min(interval, to_next_hour)
         while not stop_requested and time.monotonic() < deadline:

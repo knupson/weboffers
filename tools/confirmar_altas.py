@@ -15,6 +15,8 @@ from alta_state import duplicate, read_json, update_state
 from article_log import alta_line
 from catalog import load_catalog
 from publish import write_atomic
+import publicacion
+from requisitos import motivo_total
 
 ART = timezone(timedelta(hours=-3))
 
@@ -95,9 +97,14 @@ def _confirm(catalog_path, output, today):
         if promoted:
             write_atomic(output / "catalog-auto.json", automatic + promoted)
         write_atomic(output / "altas-pendientes.json", remaining)
+    estado = publicacion.cargar(output)
+    catalog = load_catalog(catalog_path, output / "catalog-auto.json")
+    vencidos = sum(1 for entry in catalog
+                   if (item := estado.get(entry["slug"])) and item["situacion"] == "no_revisar"
+                   and motivo_total(entry, estado, today, "alta", stores=("US",)) is None)
     stamp = datetime.now(ART).strftime("%Y-%m-%d %H:%M:%S")
     print(f"{stamp} ALTAS_OK promovidas={len(promoted)} rechazadas={rejected_count} "
-          f"siguen_pendientes={len(remaining)}", flush=True)
+          f"siguen_pendientes={len(remaining)} vencidos={vencidos}", flush=True)
     return {"promovidas": len(promoted), "rechazadas": rejected_count, "siguen_pendientes": len(remaining)}
 
 

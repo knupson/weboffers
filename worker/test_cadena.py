@@ -39,37 +39,6 @@ class Hijo:
         self.killed, self.seconds = True, 0
 
 
-def test_orden_continua_tras_falla_latido_y_resumen(tmp_path):
-    reloj = Reloj()
-    comandos = []
-
-    def popen(command, **kwargs):
-        comandos.append(command)
-        resumen = json.loads((tmp_path / "cadena-2026-11-06.json").read_text())
-        assert resumen["pasos"][-1]["estado"] == "en_curso"
-        if command[-1] == "amazon":
-            return Hijo(reloj, seconds=65, code=1, err="Traceback\nerror simulado")
-        if "cat" in command:
-            return Hijo(reloj, out=f"{reloj.now().isoformat()} DEPLOY_OK publicado\n")
-        return Hijo(reloj)
-
-    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
-    assert runner.run() == 1
-    assert "envio_ar_chrome.sh" in comandos[0][-1]
-    assert comandos[1][-1] == "/app/tools/confirmar_altas.py"
-    assert [c[-1] for c in comandos[2:4]] == ["amazon", "ml"]
-    assert "cadena-2026-11-06.json" in comandos[4][-2]
-    resumen = json.loads((tmp_path / "cadena-2026-11-06.json").read_text())
-    assert [p["paso"] for p in resumen["pasos"]] == ["chrome", "altas", "amazon", "ml", "deploy"]
-    assert [p["estado"] for p in resumen["pasos"]] == ["ok", "ok", "fail", "ok", "ok"]
-    assert resumen["fin"] and resumen["segundos"] == 70
-    assert "error simulado" in resumen["pasos"][2]["motivo"]
-    log = (tmp_path / "cadena-2026-11-06.log").read_text()
-    assert "PASO_SIGUE amazon 30.0s" in log
-    assert "PASO_SIGUE amazon 60.0s" in log
-    assert all(line.startswith("2026-11-06 03:") for line in log.splitlines())
-
-
 def test_timeout_mata_hijo_y_guarda_parcial(tmp_path, monkeypatch):
     reloj = Reloj()
     hijo = Hijo(reloj, seconds=1000, err="error antes del timeout")
@@ -91,27 +60,8 @@ def test_limite_global_no_lanza_nuevos_procesos(tmp_path):
     runner = cadena.Cadena(tmp_path, lambda *a, **kw: (_ for _ in ()).throw(AssertionError()),
                            reloj.clock, reloj.now, reloj.sleep)
     runner.deadline = reloj.clock()
-    assert runner.run() == 1
+    runner.step("amazon", 35)
     assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"])
-
-
-def test_deploy_ignora_resultado_anterior_y_registra_falla_actual(tmp_path):
-    reloj = Reloj()
-    calls = []
-
-    def popen(command, **kw):
-        calls.append(command)
-        if "cat" in command:
-            out = "2026-11-06T06:00:00Z DEPLOY_OK anterior\n"
-            if len(calls) > 2:
-                out += f"{reloj.now().isoformat()} DEPLOY_FAIL build\n"
-            return Hijo(reloj, out=out)
-        return Hijo(reloj)
-
-    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
-    runner.step("deploy", 100)
-    assert runner.summary["pasos"][0]["estado"] == "fail"
-    assert "DEPLOY_FAIL build" in runner.summary["pasos"][0]["motivo"]
 
 
 def test_bloqueo_compartido_impide_refresh_simultaneos(tmp_path):
@@ -144,62 +94,143 @@ def test_bloqueo_compartido_impide_refresh_simultaneos(tmp_path):
     assert segundo.is_set()
 
 
-@pytest.mark.parametrize('status', ['OK', 'FAIL'])
-def test_deploy_copia_el_desglose_exactamente_despues_del_resultado(tmp_path, status):
-    reloj = Reloj()
-    report_path = '/state/logs/desglose-2026-11-06-0330.log'
-    report = '2026-11-06 03:30:00 PRODUCTO kindle asin=B0CFPJYX7P origen=repo PUBLICADO\n2026-11-06 03:30:00 TOTALES total=1 publicados=1 filtrados=0\n'
-    calls = []
-    def popen(command, **kw):
-        calls.append(command)
-        if command[-1] == report_path:
-            return Hijo(reloj, out=report)
-        if 'cat' in command:
-            return Hijo(reloj, out=f'{reloj.now().isoformat()} DEPLOY_{status} prueba desglose={report_path}\n')
-        return Hijo(reloj)
-    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
-    runner.step('deploy', 100)
-    text = (tmp_path / 'cadena-2026-11-06.log').read_text(encoding='utf-8')
-    assert report in text
-    assert text.index(f'DEPLOY_{status}') < text.index('PRODUCTO kindle') < text.index(f'PASO_{status}')
-    assert calls[-1] == ['docker', 'exec', cadena.DEPLOYER, 'cat', report_path]
-    assert runner.summary['pasos'][0]['estado'] == ('ok' if status == 'OK' else 'fail')
+PASOS = ["chrome", "amazon", "ml", "deploy", "estado", "buscar", "dudosos",
+         "chrome", "altas", "amazon", "ml", "deploy", "estado"]
 
 
-def _tras_alta(tmp_path, promovidas):
-    reloj = Reloj()
-    comandos = []
+def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False):
+    reloj, comandos = Reloj(), []
+    runner = None
 
     def popen(command, **kwargs):
         comandos.append(command)
-        if command[-1] == "/app/tools/confirmar_altas.py":
-            return Hijo(reloj, out=f"2026-11-06 03:31:00 ALTAS_OK promovidas={promovidas} rechazadas=0 siguen_pendientes=0\n")
+        actual = runner.summary["pasos"][-1]
+        runner.llamadas.append((actual["bloque"], command))
+        assert actual["estado"] == "en_curso"
+        if falla == (actual["bloque"], actual["paso"]):
+            return Hijo(reloj, seconds=65, code=1, err="error simulado")
+        if "/app/tools/confirmar_altas.py" in command:
+            return Hijo(reloj, out=f"ALTAS_OK promovidas={promovidas} rechazadas=0 siguen_pendientes=0 vencidos={vencidos}\n")
         if "/app/deploy.mjs" in command:
-            return Hijo(reloj, out="2026-11-06T06:40:00.000Z DEPLOY_OK publicado. desglose=/state/logs/desglose-2026-11-06-0340.log\n")
+            ruta = f"/state/logs/desglose-2026-11-06-{'0330' if actual['bloque'] == 'verificacion' else '0430'}.log"
+            return Hijo(reloj, out="DEPLOY_OK publicado" + ("" if sin_desglose else f" desglose={ruta}") + "\n")
         return Hijo(reloj)
 
-    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep, modo="tras-alta")
-    return runner.run(), comandos
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.llamadas = []
+    code = runner.run()
+    return runner, comandos, code
 
 
-def test_tras_alta_encadena_pendientes_y_despliega(tmp_path):
-    # 07/11: al terminar el alta nocturna se confirman sus altas sin esperar la cadena del día siguiente.
-    code, comandos = _tras_alta(tmp_path, 1)
+def test_orden_verificacion_y_despues_alta(tmp_path):
+    runner, comandos, code = corrida(tmp_path)
     assert code == 0
-    assert "envio_ar_chrome.sh" in comandos[0][-2] and comandos[0][-1] == "--pendientes"
-    assert comandos[1][-1] == "/app/tools/confirmar_altas.py"
-    assert [c[-1] for c in comandos[2:4]] == ["amazon", "ml"]
-    assert comandos[4][-2:] == ["/app/deploy.mjs", "--ahora"]
-    resumen = json.loads((tmp_path / "tras-alta-2026-11-06.json").read_text())
-    assert [p["paso"] for p in resumen["pasos"]] == ["chrome", "altas", "amazon", "ml", "deploy"]
-    assert all(p["estado"] == "ok" for p in resumen["pasos"])
-    # No pisa el resumen de la cadena de madrugada que controla el vigía.
-    assert not (tmp_path / "cadena-2026-11-06.json").exists()
+    assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
+    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 5 + ["alta"] * 8
+    assert runner.summary["fin"]
+    assert comandos[6][-1] == "/app/tools/crecer_ahora.py"
+    assert comandos[7][-1] == "/app/tools/dudosos_nvidia.py"
+    chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
+    assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
+    deploy = [c for c in comandos if "/app/deploy.mjs" in c]
+    assert "--ahora" not in deploy[0] and deploy[1][-1] == "--ahora"
 
 
-def test_tras_alta_sin_promovidas_no_despliega(tmp_path):
-    code, comandos = _tras_alta(tmp_path, 0)
+def test_cada_paso_una_vez(tmp_path):
+    runner, comandos, code = corrida(tmp_path)
+    pares = [(p["bloque"], p["paso"]) for p in runner.summary["pasos"]]
+    assert len(pares) == len(set(pares)) == 13
+    assert len(comandos) == 15  # Los dos deploy copian su desglose al log.
+    assert sum("/app/deploy.mjs" in c for c in comandos) == 2
+
+
+def test_modo_viaja_en_el_entorno(tmp_path):
+    runner, comandos, _ = corrida(tmp_path)
+    for bloque, command in runner.llamadas:
+        modo = f"PUBLICACION_MODO={bloque}"
+        if command[0] == "docker":
+            assert ["-e", modo] == command[2:4]
+        elif command[0] == "env":
+            assert modo in command
+        else:
+            assert command[:2] == ["sh", "-c"]
+            assert command[2].count(f"-e {modo}") == 2
+
+
+def test_falla_verificacion_alta_corre_igual(tmp_path):
+    runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
+    assert code == 1
+    assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
+    assert all(p["estado"] == "ok" for p in runner.summary["pasos"][5:])
+    log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    assert "PASO_SIGUE amazon 30.0s" in log and "PASO_SIGUE amazon 60.0s" in log
+    assert "ETAPA_RESUMEN verificacion" in log and "ETAPA_RESUMEN alta" in log
+    assert all(line.startswith("2026-11-06 03:") for line in log.splitlines())
+
+
+def test_estado_recibe_el_desglose_del_deploy(tmp_path):
+    _, comandos, code = corrida(tmp_path)
     assert code == 0
-    assert len(comandos) == 2
-    log = (tmp_path / "tras-alta-2026-11-06.log").read_text()
-    assert "TRAS_ALTA sin altas promovidas; no hace falta desplegar" in log
+    estados = [c[2] for c in comandos if c[:2] == ["sh", "-c"]]
+    for command, hora, modo in zip(estados, ["0330", "0430"], ["verificacion", "alta"]):
+        assert command == (f"docker exec -e PUBLICACION_MODO={modo} {cadena.DEPLOYER} cat "
+                           f"/state/logs/desglose-2026-11-06-{hora}.log | "
+                           f"docker exec -i -e PUBLICACION_MODO={modo} -w /app/worker {cadena.WORKER} "
+                           "python /app/tools/actualizar_publicacion.py --desglose -")
+
+
+def test_estado_falla_sin_desglose(tmp_path):
+    runner, _, code = corrida(tmp_path, sin_desglose=True)
+    assert code == 1
+    estados = [p for p in runner.summary["pasos"] if p["paso"] == "estado"]
+    assert len(estados) == 2
+    assert all(p["estado"] == "fail" and p["motivo"] == "sin desglose" for p in estados)
+
+
+@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:9]), (1, PASOS)])
+def test_sin_altas_promovidas_corta_solo_sin_vencidos(tmp_path, vencidos, esperados):
+    runner, _, code = corrida(tmp_path, promovidas=0, vencidos=vencidos)
+    assert code == 0
+    assert [p["paso"] for p in runner.summary["pasos"]] == esperados
+
+
+def test_timeout_del_bloque_no_impide_el_alta(tmp_path):
+    reloj = Reloj()
+    comandos = []
+    def popen(command, **kwargs):
+        comandos.append(command)
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.deadline = reloj.clock()
+    assert runner.run() == 1
+    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:5])
+    assert any("/app/tools/crecer_ahora.py" in c for c in comandos)
+    assert len(runner.summary["pasos"]) == 13
+
+
+def test_deploy_fallido_no_reutiliza_el_desglose_anterior(tmp_path):
+    runner, comandos, code = corrida(tmp_path, falla=("alta", "deploy"))
+    assert code == 1
+    ultimo = runner.summary["pasos"][-1]
+    assert ultimo["paso"] == "estado" and ultimo["motivo"] == "sin desglose"
+    assert len([c for c in comandos if c[:2] == ["sh", "-c"]]) == 1
+
+
+@pytest.mark.parametrize("status", ["OK", "FAIL"])
+def test_deploy_copia_el_desglose_exactamente_despues_del_resultado(tmp_path, status):
+    reloj = Reloj()
+    ruta = "/state/logs/desglose-2026-11-06-0330.log"
+    informe = "2026-11-06 03:30:00 PRODUCTO kindle asin=B0CFPJYX7P origen=repo PUBLICADO\n"
+    comandos = []
+    def popen(command, **kwargs):
+        comandos.append(command)
+        if "cat" in command:
+            return Hijo(reloj, out=informe)
+        return Hijo(reloj, code=int(status == "FAIL"), out=f"DEPLOY_{status} prueba desglose={ruta}\n")
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.step("deploy", 100)
+    texto = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    assert informe in texto
+    assert texto.index(f"DEPLOY_{status}") < texto.index("PRODUCTO kindle") < texto.index(f"PASO_{status}")
+    assert comandos[-1] == ["docker", "exec", "-e", "PUBLICACION_MODO=verificacion", cadena.DEPLOYER, "cat", ruta]
+    assert runner.summary["pasos"][0]["estado"] == ("ok" if status == "OK" else "fail")

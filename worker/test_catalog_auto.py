@@ -41,84 +41,39 @@ def setup_job(tmp_path, monkeypatch):
     return repo, output, discovery
 
 
-@pytest.mark.parametrize("instant", ["2026-11-07T20:00:00+00:00", "2026-11-08T16:59:00+00:00", "2026-11-09T00:00:00+00:00"])
-def test_gate_art_before_sunday_afternoon(setup_job, instant):
+@pytest.mark.parametrize("hora", [0, 3, 12, 19, 20, 23])
+def test_sin_ventana_horaria(setup_job, hora):
     repo, output, discover = setup_job
-    # Lunes UTC todavía es domingo ART: sí está dentro de la ventana.
-    expected = instant == "2026-11-09T00:00:00+00:00"
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat(instant), mep=1000) is expected
-    assert discover.call_count == int(expected)
-
-
-def test_once_per_night_keeps_previous_and_logs(setup_job):
-    """05/11: corre todas las noches (20:00-03:00 ART), una vez por noche."""
-    repo, output, discover = setup_job
-    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")  # 20:30 ART
+    now = datetime.fromisoformat(f"2026-11-09T{hora:02d}:00:00-03:00")
     assert auto.maybe_grow(repo, output, now, mep=1000)
+    assert discover.call_count == 1
     assert not auto.maybe_grow(repo, output, now, mep=1000)
-    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)  # 02:59, misma noche
     assert discover.call_count == 1
     assert not (output / "catalog-auto.json").exists()
     entries = json.loads((output / "altas-pendientes.json").read_text())
-    assert len(entries) == 1
-    assert entries[0]["pendienteDesde"] == "2026-11-08"
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T23:30:00+00:00"), mep=1000)  # noche siguiente
-    assert json.loads((output / "altas-pendientes.json").read_text()) == entries
-    log = json.loads((output / "amazon-run-2026-11-08.json").read_text())
-    assert log["passes"][0]["kind"] == "catalogo"
-    assert log["passes"][0]["ok"] == 1
+    assert len(entries) == 1 and entries[0]["pendienteDesde"] == "2026-11-09"
+    log = json.loads((output / "amazon-run-2026-11-09.json").read_text())
+    assert log["passes"][0]["kind"] == "catalogo" and log["passes"][0]["ok"] == 1
 
 
-def test_force_runs_outside_the_window(setup_job):
+@pytest.mark.parametrize("status,pages", [("failed", 0), ("failed", 1), ("running", 0), ("ok", 1)])
+def test_sin_reintento_por_hora(setup_job, status, pages):
     repo, output, discover = setup_job
-    tarde = datetime.fromisoformat("2026-11-05T19:00:00+00:00")  # 16:00 ART
-    assert not auto.maybe_grow(repo, output, tarde, mep=1000)
-    assert auto.maybe_grow(repo, output, tarde, mep=1000, force=True)
-    assert discover.call_count == 1
-
-
-def test_failed_before_scraping_retries_same_night(setup_job, monkeypatch, capsys):
-    repo, output, discover = setup_job
-    discover.side_effect = requests.ConnectionError("sin conexión")
-    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
-    assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert "DEPLOY_FAIL" in capsys.readouterr().out
-    assert json.loads((output / "catalog-auto-state.json").read_text())["status"] == "failed"
-
-
-def test_retry_missing_mep_before_three(setup_job):
-    repo, output, discover = setup_job
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=None)
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)
-    assert discover.call_count == 1
-    assert json.loads((output / "catalog-auto-state.json").read_text())["week"] == "2026-W45"
-    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T06:00:00+00:00"), mep=1000)
-
-
-def test_no_retry_after_scraping_started(setup_job):
-    repo, output, discover = setup_job
-    def fail(*args, **kwargs):
-        kwargs["get"].__self__.pages = 1
-        raise requests.ConnectionError()
-    discover.side_effect = fail
-    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
-    assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert not auto.maybe_grow(repo, output, now, mep=1000)
-    assert discover.call_count == 1
-
-
-@pytest.mark.parametrize("hours,retry", [(6, False), (7, True)])
-def test_expired_running_retries(setup_job, hours, retry):
-    from datetime import timedelta
-    repo, output, discover = setup_job
-    now = datetime.fromisoformat("2026-11-09T05:00:00+00:00")  # 02:00 ART, noche del 08/11
     output.mkdir(parents=True)
     (output / "catalog-auto-state.json").write_text(json.dumps({
-        "slot": "2026-11-08", "week": "2026-W45", "status": "running", "at": (now - timedelta(hours=hours)).isoformat(),
-    }))
-    assert auto.maybe_grow(repo, output, now, mep=1000) is retry
-    assert discover.call_count == int(retry)
+        "slot": "2026-11-09", "status": status, "pages": pages, "at": "2026-11-09T00:00:00-03:00"}))
+    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T20:00:00-03:00"), mep=1000)
+    assert discover.call_count == 0
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-10T03:30:00-03:00"), mep=1000)
+    assert discover.call_count == 1
+
+
+def test_force_permite_corrida_explicita(setup_job):
+    repo, output, discover = setup_job
+    now = datetime.fromisoformat("2026-11-09T03:30:00-03:00")
+    assert auto.maybe_grow(repo, output, now, mep=1000)
+    assert auto.maybe_grow(repo, output, now, mep=1000, force=True)
+    assert discover.call_count == 2
 
 
 def test_budget_comes_from_env_without_fixed_cap(setup_job, monkeypatch):
@@ -269,13 +224,10 @@ def test_falla_suelta_no_marca_la_corrida_como_fallida(setup_job, monkeypatch, c
     assert "CATALOGO_OK" in capsys.readouterr().out
 
 
-def test_al_terminar_avisa_al_host(setup_job):
-    # 07/11: el alta nocturna terminó 05:11 y la cadena ya había buscado altas a las 03:46; las altas esperaban
-    # un día. Al terminar se escribe alta-terminada.json (escritura directa: la unidad systemd .path ve el cierre).
+def test_al_terminar_no_dispara_otra_cadena(setup_job):
     repo, output, discover = setup_job
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
-    aviso = json.loads((output / "alta-terminada.json").read_text())
-    assert aviso["slot"] == "2026-11-08" and aviso["status"] == "ok" and aviso["added"] == 1 and aviso["fin"]
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T03:30:00-03:00"), mep=1000)
+    assert not (output / "alta-terminada.json").exists()
 
 
 @pytest.mark.parametrize("amazon_ids,ml_ids,strong", [

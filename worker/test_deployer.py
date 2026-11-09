@@ -33,3 +33,27 @@ def test_deadline_without_prices_never_calls_deploy(tmp_path, amazon):
     assert "DEPLOY_FAIL" in result.stdout
     assert "amazon-prices.json" in result.stdout
     assert "DEPLOY_OK" not in result.stdout
+
+
+def test_sin_bucle_de_reintento(tmp_path):
+    module = (Path(__file__).parent / "deployer" / "deploy.mjs").resolve().as_uri()
+    script = """
+        const { main } = await import(process.argv[1]);
+        for (const manual of [false, true]) {
+            let calls = 0;
+            const result = await main({ manual, deployFn: async (_now, opts) => {
+                calls++;
+                if (opts.manual !== manual) throw new Error('Modo incorrecto');
+                return 'fail';
+            }});
+            if (calls !== 1 || result !== 'fail') throw new Error('Debe ejecutar una vez');
+        }
+    """
+    result = subprocess.run(["node", "--input-type=module", "-e", script, module + "?test"],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+
+
+def test_contenedor_espera_llamadas_de_la_cadena():
+    dockerfile = (Path(__file__).parent / "deployer" / "Dockerfile").read_text()
+    assert 'CMD ["sleep", "infinity"]' in dockerfile

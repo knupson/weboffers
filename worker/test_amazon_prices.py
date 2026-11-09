@@ -303,7 +303,7 @@ def test_empty_ar_url_skips_ar_step(tmp_path, monkeypatch):
     get.assert_not_called()
 
 
-def test_worker_runs_amazon_before_ml(tmp_path, monkeypatch):
+def test_worker_deja_los_precios_a_la_cadena(tmp_path, monkeypatch):
     order = []
     cat_path = tmp_path / "catalog.json"
     cat_path.write_text(json.dumps([{"asin": "B01", "store": "US", "slug": "p", "verified": True}]), encoding="utf-8")
@@ -311,8 +311,10 @@ def test_worker_runs_amazon_before_ml(tmp_path, monkeypatch):
     monkeypatch.setattr(rates, "get_rates", lambda: None)
     monkeypatch.setattr(amazon_prices, "maybe_refresh", lambda *a, **kw: order.append("amazon"))
     monkeypatch.setattr(ml_prices, "maybe_refresh", lambda *a, **kw: order.append("ml"))
+    monkeypatch.setattr(worker.telegram, "maybe_post", lambda *a, **kw: order.append("telegram"))
+    monkeypatch.setattr(ml_prices, "merge", lambda *a, **kw: [])
     worker.run_once()
-    assert order == ["amazon", "ml"]
+    assert order == ["telegram"]
 
 
 def test_plausible_descarta_precio_muy_bajo_contra_lista():

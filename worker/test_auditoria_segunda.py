@@ -15,8 +15,8 @@ meta = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(meta)
 
 
-@pytest.mark.parametrize("failed", ["publish", "Amazon", "ML", "Telegram", "catálogo semanal"])
-def test_tareas_aisladas_en_orden(failed, tmp_path, monkeypatch, capsys):
+def test_falla_telegram_no_dispara_precios_ni_alta(tmp_path, monkeypatch, capsys):
+    failed = "Telegram"
     monkeypatch.setenv("OUTPUT_PATH", str(tmp_path / "offers.json"))
     monkeypatch.setattr(worker, "load_catalog", lambda *a: [])
     monkeypatch.setattr(worker.rates, "get_rates", lambda: None)
@@ -35,7 +35,7 @@ def test_tareas_aisladas_en_orden(failed, tmp_path, monkeypatch, capsys):
                             (worker.catalog_auto, "maybe_grow", "catálogo semanal")]:
         monkeypatch.setattr(obj, attr, task(name))
     worker.run_once()
-    assert calls == ["publish", "Amazon", "ML", "Telegram", "catálogo semanal"]
+    assert calls == ["Telegram"]
     assert f"Falló {failed} (RuntimeError)" in capsys.readouterr().out
 
 

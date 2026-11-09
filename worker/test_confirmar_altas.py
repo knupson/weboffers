@@ -171,3 +171,21 @@ def test_comando_diurno_encadena_y_shell_preserva_argumentos():
     assert 'listar "$@"' in shell and '*sys.argv[2:]' in shell
     assert "altas_chrome.py guardar --fecha" in shell
     assert shell.count("python3 /tmp/envio_ar_chrome.py") == 1
+
+
+def test_altas_ok_cuenta_vencidos_con_los_mismos_requisitos_de_chrome(state, capsys):
+    repo, output = state
+    save(output / "altas-pendientes.json", [])
+    productos = [pending(nombre) for nombre in ["VENCIDO", "HOY", "VIGENTE", "SINIMAGEN", "ESPANA"]]
+    productos[3].pop("image")
+    productos[4]["store"] = "ES"
+    save(output / "catalog-auto.json", productos)
+    import publicacion
+    publicacion.guardar(output, {
+        p["slug"]: {"asin": p["asin"], "situacion": "no_revisar", "desde": "2026-10-30",
+                    "hasta": "2026-11-07" if p["asin"] == "VIGENTE" else TODAY if p["asin"] == "HOY" else "2026-11-05",
+                    "ultimoIntento": None, "intentos": 0, "motivo": "sin_envio"}
+        for p in productos
+    })
+    confirmation.confirm(repo, output, TODAY)
+    assert "vencidos=2" in capsys.readouterr().out

@@ -3,19 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  artDate,
-  deadlineAt,
-  deployExtraWithRetry,
   deployOnce as actualDeployOnce,
   deployWithRetry,
   hasBothTodayPrices,
-  hasExtraSlotToday,
-  nextRunAt,
   overlayCatalog,
-  runStartupIfPending,
-  runChainIfReady,
+  main,
   saveBreakdown,
-  RETRY_INTERVAL_MS,
 } from './deploy.mjs';
 
 async function deployOnce(now: Date, opts: any) {
@@ -147,14 +140,6 @@ describe('deployer', () => {
       .toMatchObject({ status: 'ok', at: '2026-11-03T10:00:00.000Z' });
   });
 
-  it('calcula 07:00 ART como inicio, 11:00 ART como tope y 10 min de reintento', () => {
-    const now = new Date('2026-10-30T10:00:00Z'); // 07:00 ART del 2026-10-30
-    expect(artDate(now)).toBe('2026-10-30');
-    expect(deadlineAt(now)).toBe(Date.parse('2026-10-30T14:00:00Z')); // 11:00 ART
-    expect(nextRunAt(new Date('2026-10-30T09:30:00Z'))).toBe(Date.parse('2026-10-30T10:00:00Z'));
-    expect(RETRY_INTERVAL_MS).toBe(10 * 60e3);
-  });
-
   it('persiste el error del build y evita publicar cuando falta MEP', async () => {
     const outputFile = path.join(tmpDir, 'ml-prices.json');
     const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
@@ -191,17 +176,17 @@ describe('deployer', () => {
 
     const now = new Date('2026-10-30T10:00:00Z'); // 07:00 ART
 
-    // Falta ml-prices.json -> skip
-    expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('skip');
+    // Sin precios del día, falla inmediatamente
+    expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('fail');
 
-    // ml-prices.json de hoy, pero falta amazon-prices.json -> skip
+    // ML vigente con Amazon ausente: falla
     await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));
-    expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('skip');
+    expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('fail');
 
-    // amazon-prices.json de ayer -> skip
+    // Amazon de ayer: falla
     await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-29', items: { a: { amount: 100 } } }));
     expect((await hasBothTodayPrices(now, { outputFile, amazonOutputFile })).ready).toBe(false);
-    expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('skip');
+    expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('fail');
 
     // Ambos de hoy -> despliega y guarda el hash en stateFile
     await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 100 } } }));
@@ -210,39 +195,6 @@ describe('deployer', () => {
 
     // Segunda corrida con el mismo contenido -> skip por hash idéntico
     expect(await deployOnce(now, { outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => '' })).toBe('skip');
-  });
-
-  it('deployWithRetry reintenta cada 10 minutos desde las 07:30 ART hasta que ambos archivos son de hoy', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-29', items: {} })); // viejo al principio
-
-    let currentMs = Date.parse('2026-10-30T10:30:00Z'); // 07:30 ART
-    const sleeps: number[] = [];
-    const deployCalls: Array<{ iso: string; requireBothToday: boolean }> = [];
-
-    const result = await deployWithRetry({
-      outputFile,
-      amazonOutputFile,
-      nowFn: () => new Date(currentMs),
-      sleepFn: async (ms: number) => {
-        sleeps.push(ms);
-        currentMs += ms;
-        if (sleeps.length === 2) {
-          // A las 07:50 ART termina el scraper de Amazon y escribe date == hoy
-          await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 99 } } }));
-        }
-      },
-      deployFn: async (now: Date, opts: { requireBothToday: boolean }) => {
-        deployCalls.push({ iso: now.toISOString(), requireBothToday: opts.requireBothToday });
-        return 'ok';
-      },
-    });
-
-    expect(result).toBe('ok');
-    expect(sleeps).toEqual([10 * 60e3, 10 * 60e3]);
-    expect(deployCalls).toEqual([{ iso: '2026-10-30T10:50:00.000Z', requireBothToday: true }]);
   });
 
   it('a las 11:00 ART falla sin precios del día y conserva el sitio previo', async () => {
@@ -290,58 +242,6 @@ describe('deployer', () => {
     expect(commands).toBe(0);
   });
 
-  it('al iniciar después de las 07:30 ART ejecuta la ventana pendiente del día si no hubo despliegue hoy', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    const workDir = path.join(tmpDir, 'work');
-    const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
-    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
-    await fs.mkdir(path.dirname(stateFile), { recursive: true });
-
-    // Antes de las 07:30 ART (06:30 ART = 09:30Z): todavía no empezó la ventana de hoy
-    const beforeRes = await runStartupIfPending({
-      stateFile,
-      nowFn: () => new Date('2026-10-30T09:30:00Z'),
-    });
-    expect(beforeRes).toBe('before-window');
-
-    // Estado previo: el último despliegue fue ayer (2026-10-29), y el contenedor arranca a las 08:30 ART (11:30Z)
-    await fs.writeFile(stateFile, JSON.stringify({ hash: 'h-ayer', date: '2026-10-29', deployedAt: '2026-10-29T14:00:00Z' }));
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1500 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-29', items: {} })); // aún viejo a las 08:30 ART
-
-    let currentMs = Date.parse('2026-10-30T11:30:00Z'); // 08:30 ART
-    const sleeps: number[] = [];
-
-    const pendingRes = await runStartupIfPending({
-      deployFn: deployOnce,
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async () => 'a'.repeat(40),
-      nowFn: () => new Date(currentMs),
-      sleepFn: async (ms: number) => {
-        sleeps.push(ms);
-        currentMs += ms;
-        // A las 08:40 ART llega el archivo de Amazon de hoy
-        await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 120 } } }));
-      },
-    });
-
-    expect(pendingRes).toBe('ok');
-    expect(sleeps).toEqual([10 * 60e3]);
-    const savedState = JSON.parse(await fs.readFile(stateFile, 'utf8'));
-    expect(savedState.date).toBe('2026-10-30');
-
-    // Si el contenedor se reinicia más tarde el mismo día (ej. 09:30 ART), detecta que hoy ya desplegó
-    const alreadyRes = await runStartupIfPending({
-      stateFile,
-      nowFn: () => new Date('2026-10-30T12:30:00Z'),
-    });
-    expect(alreadyRes).toBe('already-deployed');
-  });
-
   it('conserva el informe del build y alerta si difiere de estado.json', async () => {
     const workDir = path.join(tmpDir, 'work');
     const target = path.join(tmpDir, 'desglose.log');
@@ -356,263 +256,17 @@ describe('deployer', () => {
     expect(await fs.readFile(target, 'utf8')).toContain('DEPLOY_ALERT desglose=1 estado.json=2');
   });
 
-  it('ante un fail transitorio reintenta cada 10 minutos hasta tener éxito, incluyendo el intento final de las 11:00 ART', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 100 } } }));
-
-    // Arranca a las 10:40 ART (13:40Z); falla a las 10:40 y a las 10:50, y tiene éxito en el intento final de las 11:00 ART (14:00Z)
-    let currentMs = Date.parse('2026-10-30T13:40:00Z');
-    const sleeps: number[] = [];
-    const attempts: string[] = [];
-
-    const result = await deployWithRetry({
-      outputFile,
-      amazonOutputFile,
-      nowFn: () => new Date(currentMs),
-      sleepFn: async (ms: number) => {
-        sleeps.push(ms);
-        currentMs += ms;
-      },
-      deployFn: async (now: Date) => {
-        attempts.push(now.toISOString());
-        return attempts.length < 3 ? 'fail' : 'ok';
-      },
-    });
-
-    expect(result).toBe('ok');
-    expect(sleeps).toEqual([10 * 60e3, 10 * 60e3]);
-    expect(attempts).toEqual([
-      '2026-10-30T13:40:00.000Z',
-      '2026-10-30T13:50:00.000Z',
-      '2026-10-30T14:00:00.000Z',
-    ]);
-
-    // Si el intento de las 11:00 ART también devuelve fail, termina y devuelve fail sin entrar en loop infinito
-    let atDeadlineMs = Date.parse('2026-10-30T13:50:00Z');
-    const finalSleeps: number[] = [];
-    const finalResult = await deployWithRetry({
-      outputFile,
-      amazonOutputFile,
-      nowFn: () => new Date(atDeadlineMs),
-      sleepFn: async (ms: number) => {
-        finalSleeps.push(ms);
-        atDeadlineMs += ms;
-      },
-      deployFn: async () => 'fail',
-    });
-    expect(finalResult).toBe('fail');
-    expect(finalSleeps).toEqual([10 * 60e3]);
-  });
-
-  it('en día extra conserva el slot de las 13 y chequea recuperaciones cada diez minutos', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    const workDir = path.join(tmpDir, 'work');
-    const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
-    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
-
-    // Despliegue de la mañana del día extra (07:30 ART)
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-02', slot: '2026-11-02T06', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-02', items: { a: { amount: 100 } } }));
-    expect(await deployOnce(new Date('2026-11-02T10:30:00Z'), {
-      outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => 'a'.repeat(40),
-    })).toBe('ok');
-    let state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
-    expect(state.date).toBe('2026-11-02');
-    expect(state.slot).toBe('morning');
-
-    // Tras el despliegue de la mañana, el próximo run es a las 16:00Z (13:00 ART) ese mismo día
-    expect(nextRunAt(new Date('2026-11-02T12:00:00Z'), state)).toBe(Date.parse('2026-11-02T12:10:00Z'));
-
-    // El worker termina el refresh extra y firma slot T13 con precios nuevos
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-02', slot: '2026-11-02T13', items: { a: { price: 900 } } }));
-    expect((await hasExtraSlotToday(new Date('2026-11-02T16:00:00Z'), { outputFile })).ready).toBe(true);
-
-    const commands: string[] = [];
-    const extraRes = await deployExtraWithRetry({
-      deployFn: deployOnce,
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async (cmd: string) => { commands.push(cmd); return 'a'.repeat(40); },
-      nowFn: () => new Date('2026-11-02T16:00:00Z'),
-      sleepFn: async () => {},
-    });
-    expect(extraRes).toBe('ok');
-    expect(commands.filter((c) => c === 'npx')).toHaveLength(1); // un solo wrangler deploy
-    state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
-    expect(state.date).toBe('2026-11-02');
-    expect(state.slot).toBe('extra');
-
-    // Queda disponible una recuperación más hasta las 20 ART.
-    expect(nextRunAt(new Date('2026-11-02T17:00:00Z'), state)).toBe(Date.parse('2026-11-02T17:10:00Z'));
-
-    // Reintentar el segundo despliegue el mismo día no despliega de nuevo
-    const again = await deployExtraWithRetry({
-      outputFile,
-      amazonOutputFile,
-      workDir,
-      stateFile,
-      runImpl: async (cmd: string) => { commands.push(cmd); return 'a'.repeat(40); },
-      nowFn: () => new Date('2026-11-02T16:30:00Z'),
-      sleepFn: async () => {},
-    });
-    expect(again).toBe('skip');
-    expect(commands.filter((c) => c === 'npx')).toHaveLength(1);
-  });
-
-  it('en día extra espera el slot T13 reintentando cada 10 min hasta las 15:00 ART', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-03', slot: '2026-11-03T06', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-03', items: { a: { amount: 100 } } }));
-
-    let currentMs = Date.parse('2026-11-03T16:00:00Z'); // 13:00 ART
-    const sleeps: number[] = [];
-    const deployCalls: string[] = [];
-    const result = await deployExtraWithRetry({
-      outputFile,
-      amazonOutputFile,
-      nowFn: () => new Date(currentMs),
-      sleepFn: async (ms: number) => {
-        sleeps.push(ms);
-        currentMs += ms;
-        if (sleeps.length === 1) {
-          // A las 13:10 ART el worker firma el slot T13
-          await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-03', slot: '2026-11-03T13', items: { a: { price: 950 } } }));
-        }
-      },
-      deployFn: async (now: Date) => {
-        deployCalls.push(now.toISOString());
-        return 'ok';
-      },
-    });
-
-    expect(result).toBe('ok');
-    expect(sleeps).toEqual([10 * 60e3]);
-    expect(deployCalls).toEqual(['2026-11-03T16:10:00.000Z']);
-  });
-
-  it('en día extra, si a las 15:00 ART no hay slot T13 no despliega la segunda vez', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-04', slot: '2026-11-04T06', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-04', items: {} }));
-
-    let currentMs = Date.parse('2026-11-04T17:50:00Z'); // 14:50 ART
-    const sleeps: number[] = [];
-    let deploys = 0;
-    const result = await deployExtraWithRetry({
-      outputFile,
-      amazonOutputFile,
-      nowFn: () => new Date(currentMs),
-      sleepFn: async (ms: number) => {
-        sleeps.push(ms);
-        currentMs += ms;
-      },
-      deployFn: async () => { deploys += 1; return 'ok'; },
-    });
-
-    expect(result).toBe('skip');
-    expect(sleeps).toEqual([10 * 60e3]); // 14:50 -> 15:00 ART (18:00Z)
-    expect(deploys).toBe(0);
-  });
-
-  it('en día normal chequea recuperaciones pero no usa la ventana de ofertas especiales', async () => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    const workDir = path.join(tmpDir, 'work');
-    const stateFile = path.join(tmpDir, 'state', 'last-deploy.json');
-    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
-
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', slot: '2026-10-30T06', items: { a: { price: 1000 } } }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-10-30', items: { a: { amount: 100 } } }));
-    expect(await deployOnce(new Date('2026-10-30T10:30:00Z'), {
-      outputFile, amazonOutputFile, workDir, stateFile, runImpl: async () => 'a'.repeat(40),
-    })).toBe('ok');
-    const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
-    // Día normal: también chequea recuperaciones cada diez minutos.
-    expect(nextRunAt(new Date('2026-10-30T12:00:00Z'), state)).toBe(Date.parse('2026-10-30T12:10:00Z'));
-
-    // Aunque ml-prices.json tuviera slot T13, en día normal no se despliega la segunda vez
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', slot: '2026-10-30T13', items: { a: { price: 900 } } }));
-    let deploys = 0;
-    const res = await deployExtraWithRetry({
-      outputFile,
-      amazonOutputFile,
-      nowFn: () => new Date('2026-10-30T16:00:00Z'),
-      sleepFn: async () => {},
-      deployFn: async () => { deploys += 1; return 'ok'; },
-    });
-    expect(res).toBe('skip');
-    expect(deploys).toBe(0);
-  });
-  it('adelanta el deploy con marcador de hoy y ambos precios, conservando las validaciones', async () => {
-    const now = new Date('2026-11-06T07:00:00Z'); // 04:00 ART
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    const stateFile = path.join(tmpDir, 'state.json');
-    let calls = 0;
-    const opts = { outputFile, amazonOutputFile, stateFile, deployFn: async () => { calls++; return 'ok'; } };
-    expect(await runChainIfReady(now, opts)).toBe('no-marker');
-    const marker = path.join(tmpDir, 'cadena-2026-11-06.json');
-    await fs.writeFile(marker, JSON.stringify({ fecha: '2026-11-05' }));
-    expect(await runChainIfReady(now, opts)).toBe('no-marker');
-    await fs.writeFile(marker, JSON.stringify({ fecha: '2026-11-06' }));
-    expect(await runChainIfReady(now, opts)).toBe('waiting-prices');
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-06', items: {} }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-05', items: { a: {} } }));
-    expect(await runChainIfReady(now, opts)).toBe('waiting-prices');
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-06', items: { a: {} } }));
-    expect(await runChainIfReady(now, opts)).toBe('ok');
-    expect(calls).toBe(1);
-    await fs.writeFile(stateFile, JSON.stringify({ date: '2026-11-06' }));
-    expect(await runChainIfReady(now, opts)).toBe('already-deployed');
-    expect(calls).toBe(1);
-  });
-
-  it.each([false, true])('registra inicio, fin y duración de cada fase (falla=%s)', async (falla) => {
-    const outputFile = path.join(tmpDir, 'ml-prices.json');
-    const amazonOutputFile = path.join(tmpDir, 'amazon-prices.json');
-    const stateFile = path.join(tmpDir, 'state.json');
-    const workDir = path.join(tmpDir, 'work');
-    await fs.mkdir(path.join(workDir, '.git'), { recursive: true });
-    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
-    await fs.writeFile(outputFile, JSON.stringify({ date: '2026-11-06', items: {} }));
-    await fs.writeFile(amazonOutputFile, JSON.stringify({ date: '2026-11-06', items: { a: {} } }));
-    const lines: string[] = [];
-    const original = process.stdout.write;
-    process.stdout.write = ((text: string) => { lines.push(String(text)); return true; }) as any;
-    try {
-      let ms = 0;
-      expect(await deployOnce(new Date('2026-11-06T07:00:00Z'), {
-        outputFile, amazonOutputFile, stateFile, workDir, clockFn: () => { ms += 1000; return ms; },
-        runImpl: async (cmd: string, args: string[]) => {
-          if (falla && cmd === 'npm' && args[0] === 'run') throw new Error('compilación simulada');
-          return '';
-        },
-      })).toBe(falla ? 'fail' : 'ok');
-    } finally {
-      process.stdout.write = original;
-    }
-    const text = lines.join('');
-    expect(text).toMatch(/DEPLOY_FASE repo_sync inicio/);
-    expect(text).toMatch(/DEPLOY_FASE repo_sync ok \d+\.\ds/);
-    expect(text).toContain('DEPLOY_FASE overlay inicio');
-    expect(text).toMatch(/DEPLOY_FASE overlay ok/);
-    if (falla) {
-      expect(text).toMatch(/DEPLOY_FASE build fail \d+\.\ds compilación simulada/);
-      expect(text).toMatch(/DEPLOY_FAIL compilación simulada \d+\.\ds/);
-    } else {
-      for (const phase of ['repo_sync', 'overlay', 'dependencias', 'build', 'verificacion', 'publicacion', 'estado']) {
-        expect(text).toContain(`DEPLOY_FASE ${phase} inicio`);
-        expect(text).toMatch(new RegExp(`DEPLOY_FASE ${phase} ok \\d+\\.\\ds`));
-      }
-      expect(text).toMatch(/DEPLOY_OK .* \d+\.\ds/);
+  it('ejecuta una sola vez por invocación, incluso si falla y sin ventana horaria', async () => {
+    for (const manual of [false, true]) {
+      const calls: boolean[] = [];
+      const result = await main({ manual, nowFn: () => new Date('2026-11-09T06:30:00Z'),
+        deployFn: async (now: Date, opts: any) => {
+          expect(now.toISOString()).toBe('2026-11-09T06:30:00.000Z');
+          calls.push(opts.manual);
+          return 'fail';
+        }});
+      expect(result).toBe('fail');
+      expect(calls).toEqual([manual]);
     }
   });
-
 });

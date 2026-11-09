@@ -27,55 +27,33 @@ def local_temp_files(tmp_path, monkeypatch):
     monkeypatch.delenv("ML_CLIENT_SECRET", raising=False)
 
 
-def test_offline_output_matches_spec(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("CATALOG_PATH", "../data/catalog.json")
-    monkeypatch.setattr(rates, "get_rates", lambda: None)
-    http = Mock(side_effect=AssertionError("No debe consultar Amazon sin credenciales"))
-    monkeypatch.setattr(requests, "post", http)
-    payload = worker.run_once()
-    assert set(payload) == {"generatedAt", "mode", "rates", "items"}
-    assert payload["mode"] == "offline"
-    assert payload["rates"] is None
-    assert datetime.fromisoformat(payload["generatedAt"]).tzinfo is not None
-    catalog = json.loads((Path(__file__).parent / "../data/catalog.json").read_text(encoding="utf-8"))
-    assert len(payload["items"]) == len(catalog)
-    for item in payload["items"]:
-        assert set(item) == {"asin", "store", "title", "priceUsd", "priceFetchedAt",
-                             "imageUrl", "availability"}
-        assert item["store"] in ("US", "ES")
-        assert all(item[key] is None for key in (
-            "title", "priceUsd", "priceFetchedAt", "imageUrl", "availability"))
-    assert "Modo offline" in capsys.readouterr().out
-    assert json.loads((tmp_path / "offers.json").read_text(encoding="utf-8")) == payload
-    http.assert_not_called()
-
-
-def test_cycle_passes_merged_catalog_to_all_consumers(tmp_path, monkeypatch):
+def test_bucle_no_llama_precios_ni_alta(tmp_path, monkeypatch):
     repo = [{"asin": "A", "slug": "a", "store": "US"}]
     automatic = [{"asin": "A", "slug": "repetido", "store": "US"}, {"asin": "B", "slug": "b", "store": "US"}]
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps(repo))
     (tmp_path / "catalog-auto.json").write_text(json.dumps(automatic))
+    (tmp_path / "offers.json").write_text('{"previo": true}')
     monkeypatch.setenv("CATALOG_PATH", str(path))
     monkeypatch.setattr(rates, "get_rates", lambda: None)
-    amazon = Mock()
-    ml = Mock()
-    sheets = Mock()
+    consumidores = [(worker.amazon_prices, "maybe_refresh"), (worker.ml_prices, "maybe_refresh"),
+                    (worker.ml_fichas, "refresh_optional"), (worker.catalog_auto, "maybe_grow"),
+                    (worker.creators_api, "fetch_items"), (worker.publish, "publish")]
+    mocks = []
+    for module, name in consumidores:
+        mock = Mock(side_effect=AssertionError("Sólo Telegram en el bucle"))
+        monkeypatch.setattr(module, name, mock)
+        mocks.append(mock)
     merge = Mock(return_value=[])
-    monkeypatch.setattr(worker.amazon_prices, "maybe_refresh", amazon)
-    monkeypatch.setattr(worker.ml_prices, "maybe_refresh", ml)
-    monkeypatch.setattr(worker.ml_fichas, "refresh_optional", sheets)
+    post = Mock()
     monkeypatch.setattr(worker.ml_prices, "merge", merge)
-    monkeypatch.setattr(worker.telegram, "maybe_post", Mock())
-    monkeypatch.setattr(worker.catalog_auto, "maybe_grow", Mock())
-    payload = worker.run_once()
-    expected = repo + automatic[1:]
-    assert amazon.call_args.args[0] == expected
-    assert ml.call_args.args[0] == expected
-    assert sheets.call_args.args[0] == expected
-    assert sheets.call_args.args[1] == tmp_path / "ml-fichas.json"
-    assert merge.call_args.args[0] == expected
-    assert [p["asin"] for p in payload["items"]] == ["A", "B"]
+    monkeypatch.setattr(worker.telegram, "maybe_post", post)
+    worker.run_once()
+    for mock in mocks:
+        mock.assert_not_called()
+    assert merge.call_args.args[0] == repo + automatic[1:]
+    post.assert_called_once()
+    assert json.loads((tmp_path / "offers.json").read_text()) == {"previo": True}
 
 
 def test_atomic_write_replaces_content_without_temp_files(tmp_path):
@@ -84,25 +62,6 @@ def test_atomic_write_replaces_content_without_temp_files(tmp_path):
     publish.write_atomic(path, {"new": "actualizado"})
     assert json.loads(path.read_text(encoding="utf-8")) == {"new": "actualizado"}
     assert list(tmp_path.iterdir()) == [path]
-
-
-def test_cycle_groups_stores_with_partial_credentials(tmp_path, monkeypatch):
-    catalog = [{"asin": "EXAMPLE0001", "store": "US"},
-               {"asin": "EXAMPLE0002", "store": "ES"},
-               {"asin": "EXAMPLE0003", "store": "US"}]
-    path = tmp_path / "catalog.json"
-    path.write_text(json.dumps(catalog), encoding="utf-8")
-    monkeypatch.setenv("CATALOG_PATH", str(path))
-    monkeypatch.setattr(rates, "get_rates", lambda: None)
-    for name in ("CREATORS_CLIENT_ID", "CREATORS_CLIENT_SECRET", "CREATORS_PARTNER_TAG_US"):
-        monkeypatch.setenv(name, "test")
-    fetch = Mock(side_effect=lambda asins, store: [creators_api.empty_item(a, store) for a in asins])
-    monkeypatch.setattr(creators_api, "fetch_items", fetch)
-    payload = worker.run_once()
-    assert payload["mode"] == "api"
-    assert fetch.call_count == 2
-    assert fetch.call_args_list[0].args == (["EXAMPLE0001", "EXAMPLE0003"], "US")
-    assert fetch.call_args_list[1].args == (["EXAMPLE0002"], "ES")
 
 
 def test_atomic_write_failure_preserves_previous_content(tmp_path, monkeypatch):

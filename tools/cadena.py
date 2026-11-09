@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Cadena nocturna del host: Chrome → altas → Amazon → ML → deployer.
-
-Chrome releva catálogo y pendientes en una sola pasada. Altas corre en el worker
-y promueve únicamente envío gratis a Argentina y precio USD 100–400 de hoy.
-Cada paso arranca al terminar el anterior y queda en el log y JSON de la cadena.
-"""
+"""Corrida diaria del host: verificación y alta, encadenadas en bloques independientes."""
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -34,8 +29,9 @@ DEPLOYER = "franquicia400-weboffers-deployer-1"
 class Cadena:
     def __init__(self, logs=LOG_DIR, popen=subprocess.Popen, clock=time.monotonic,
                  now=lambda: datetime.now(ART), sleep=time.sleep, modo="cadena"):
-        # modo «tras-alta» (07/11): lo dispara el fin del alta nocturna; sólo pendientes, log propio y deploy --ahora.
         self.modo = modo
+        self.bloque = "verificacion"
+        self.desglose = None
         self.logs = Path(logs)
         self.logs.mkdir(parents=True, exist_ok=True)
         self.popen, self.clock, self.now, self.sleep = popen, clock, now, sleep
@@ -125,57 +121,55 @@ class Cadena:
             raise RuntimeError(f"{reason} (código {child.returncode}): {tail}")
         return stdout
 
-    def deploy(self, deadline):
-        since = self.now().astimezone(timezone.utc)
-        marker = json.dumps(dict(fecha=self.fecha, fin=self.stamp()))
-        code = "import pathlib,sys; p=pathlib.Path(sys.argv[1]); t=p.with_suffix('.tmp'); t.write_text(sys.argv[2]); t.replace(p)"
-        self.process(["docker", "exec", WORKER, "python", "-c", code,
-                      f"/app/output/cadena-{self.fecha}.json", marker], deadline, "deploy")
-        while self.clock() < deadline:
+    def docker(self, container, *args, cwd=None, stdin=False):
+        command = ["docker", "exec"]
+        if stdin:
+            command.append("-i")
+        command += ["-e", f"PUBLICACION_MODO={self.bloque}"]
+        if cwd:
+            command += ["-w", cwd]
+        return command + [container, *args]
+
+    def deploy(self, deadline, ahora=False):
+        self.desglose = None
+        try:
+            out = self.process(self.docker(DEPLOYER, "node", "/app/deploy.mjs", *(["--ahora"] if ahora else [])),
+                               deadline, "deploy")
+        except RuntimeError as exc:
+            self.copiar_desglose(str(exc), deadline)
+            raise
+        report = self.copiar_desglose(out, deadline)
+        if "DEPLOY_OK" not in out or "DEPLOY_FAIL" in out:
+            raise RuntimeError("deploy sin DEPLOY_OK")
+        self.desglose = report
+
+    def copiar_desglose(self, out, deadline):
+        report = re.search(r"desglose=(/state/logs/desglose-\d{4}-\d{2}-\d{2}-\d{4}\.log)(?:\s|$)", out)
+        if report:
             try:
-                content = self.process(["docker", "exec", DEPLOYER, "cat",
-                                        f"/state/logs/deployer-{self.fecha}.log"], deadline, "deploy", emit=False)
-            except RuntimeError as exc:
-                self.log(f"DEPLOY_ESPERA {exc}")
-                content = ""
-            for line in content.splitlines():
-                parts = line.split(" ", 2)
-                if len(parts) < 2 or parts[1] not in ("DEPLOY_OK", "DEPLOY_FAIL"):
-                    continue
-                try:
-                    at = datetime.fromisoformat(parts[0].replace("Z", "+00:00"))
-                except ValueError:
-                    continue
-                if at < since:
-                    continue
-                self.log(line)
-                report = re.search(r"desglose=(\S+)", line)
-                if report and re.fullmatch(r"/state/logs/desglose-\d{4}-\d{2}-\d{2}-\d{4}\.log", report[1]):
-                    try:
-                        self.process(["docker", "exec", DEPLOYER, "cat", report[1]], deadline, "deploy")
-                    except Exception as exc:
-                        self.log(f"DEPLOY_ALERT no se pudo copiar {report[1]}: {exc}")
-                else:
-                    self.log("DEPLOY_ALERT resultado sin ruta de desglose")
-                if parts[1] == "DEPLOY_FAIL":
-                    raise RuntimeError(line)
-                return
-            self.sleep(min(HEARTBEAT, max(0, deadline - self.clock())))
-            self.log(f"PASO_SIGUE deploy {self.clock() - self.step_start:.1f}s")
-        raise TimeoutError("timeout esperando DEPLOY_OK / DEPLOY_FAIL")
+                self.process(self.docker(DEPLOYER, "cat", report[1]), deadline, "deploy")
+            except Exception as exc:
+                self.log(f"DEPLOY_ALERT no se pudo copiar {report[1]}: {exc}")
+            return report[1]
+        self.log("DEPLOY_ALERT resultado sin ruta de desglose")
+        return None
 
     def deploy_ahora(self, deadline):
-        # El marcador cadena-AAAA-MM-DD.json despliega una sola vez por día: un segundo deploy va por --ahora.
-        out = self.process(["docker", "exec", DEPLOYER, "node", "/app/deploy.mjs", "--ahora"], deadline, "deploy")
-        if "DEPLOY_OK" not in out:
-            raise RuntimeError("deploy --ahora sin DEPLOY_OK")
-        report = re.search(r"desglose=(/state/logs/desglose-\d{4}-\d{2}-\d{2}-\d{4}\.log)", out)
-        if report:
-            self.process(["docker", "exec", DEPLOYER, "cat", report[1]], deadline, "deploy")
+        self.deploy(deadline, ahora=True)
+
+    def estado(self, deadline):
+        if not self.desglose:
+            raise RuntimeError("sin desglose")
+        # La ruta sólo se acepta desde el patrón estricto del resultado del deploy.
+        # El lector devuelve 1 si el productor no entregó líneas PRODUCTO.
+        read = self.docker(DEPLOYER, "cat", self.desglose)
+        write = self.docker(WORKER, "python", "/app/tools/actualizar_publicacion.py", "--desglose", "-",
+                            cwd="/app/worker", stdin=True)
+        self.process(["sh", "-c", " ".join(read) + " | " + " ".join(write)], deadline, "estado")
 
     def step(self, paso, timeout):
         self.step_start = self.clock()
-        record = dict(paso=paso, inicio=self.stamp(), fin=None, segundos=0, estado="en_curso", motivo="")
+        record = dict(bloque=self.bloque, paso=paso, inicio=self.stamp(), fin=None, segundos=0, estado="en_curso", motivo="")
         self.summary["pasos"].append(record)
         self.save()
         self.log(f"PASO_INICIO {paso}")
@@ -185,20 +179,24 @@ class Cadena:
                 raise TimeoutError("timeout global")
             if paso == "chrome":
                 env_timeout = max(1, int(deadline - self.clock()))
-                extra = ["--pendientes"] if self.modo == "tras-alta" else []
-                self.process(["env", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh"), *extra],
+                extra = ["--pendientes"] if self.bloque == "alta" else []
+                self.process(["env", f"PUBLICACION_MODO={self.bloque}", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh"), *extra],
                              deadline, paso)
-            elif paso in ("altas", "amazon", "ml"):
+            elif paso in ("buscar", "dudosos", "altas", "amazon", "ml"):
                 # El timeout dentro del contenedor mata el Python aunque muera docker exec en el host.
                 seconds = max(1, int(deadline - self.clock()))
-                script = ["/app/tools/confirmar_altas.py"] if paso == "altas" else ["/app/tools/refresh_ahora.py", paso]
-                out = self.process(["docker", "exec", "-w", "/app/worker", WORKER,
-                                    "timeout", "-s", "KILL", str(seconds), "python",
-                                    *script], deadline, paso)
+                scripts = {"buscar": "crecer_ahora", "dudosos": "dudosos_nvidia", "altas": "confirmar_altas"}
+                script = [f"/app/tools/{scripts[paso]}.py"] if paso in scripts else ["/app/tools/refresh_ahora.py", paso]
+                out = self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
+                                                    *script, cwd="/app/worker"), deadline, paso)
                 if paso == "altas":
                     m = re.search(r"ALTAS_OK promovidas=(\d+)", out or "")
                     self.promovidas = int(m[1]) if m else None
-            elif self.modo == "tras-alta":
+                    m = re.search(r"ALTAS_OK[^\n]*\bvencidos=(\d+)", out or "")
+                    self.vencidos = int(m[1]) if m else None
+            elif paso == "estado":
+                self.estado(deadline)
+            elif self.bloque == "alta":
                 self.deploy_ahora(deadline)
             else:
                 self.deploy(deadline)
@@ -208,30 +206,43 @@ class Cadena:
             self.log(traceback.format_exc())
         finally:
             record.update(fin=self.stamp(), segundos=round(self.clock() - self.step_start, 1))
-            self.log(f"PASO_{record['estado'].upper()} {paso} {record['segundos']}s {record['motivo']}")
+            self.log(f"PASO_{record['estado'].upper()} {paso} {record['motivo']} {record['segundos']}s")
             self.save()
 
     def run(self):
-        self.promovidas = None
-        for paso, timeout in (("chrome", CHROME_TIMEOUT), ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT),
-                              ("ml", ML_TIMEOUT), ("deploy", DEPLOY_TIMEOUT)):
-            if self.modo == "tras-alta" and paso == "amazon" and self.promovidas == 0:
-                self.log("TRAS_ALTA sin altas promovidas; no hace falta desplegar")
-                break
-            self.step(paso, timeout)
+        self.promovidas = self.vencidos = None
+        verificacion = (("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
+                        ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
+        alta = (("buscar", AMAZON_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
+                ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
+                ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
+        for bloque, pasos in (("verificacion", verificacion), ("alta", alta)):
+            self.bloque = bloque
+            self.desglose = None
+            # Cada bloque tiene su propio límite: una verificación agotada no impide el alta.
+            if bloque == "alta":
+                self.deadline = self.clock() + GLOBAL_TIMEOUT
+            first = len(self.summary["pasos"])
+            for paso, timeout in pasos:
+                if bloque == "alta" and paso == "amazon" and self.promovidas == 0 and self.vencidos == 0:
+                    self.log("ALTA sin altas promovidas ni no_revisar vencidos; termina el bloque")
+                    break
+                self.step(paso, timeout)
+            records = self.summary["pasos"][first:]
+            failed = sum(p["estado"] != "ok" for p in records)
+            self.log(f"ETAPA_RESUMEN {bloque} pasos={len(records)} ok={len(records) - failed} fallidos={failed}")
         self.summary["fin"] = self.stamp()
         self.save()
         return int(any(p["estado"] != "ok" for p in self.summary["pasos"]))
 
 
 def main(argv):
-    modo = "tras-alta" if "--tras-alta" in argv else "cadena"
-    # Las dos cadenas usan el mismo Chrome y los mismos archivos: nunca corren juntas (la segunda espera).
+    # Una única cadena usa Chrome y los archivos de publicación.
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     with open(LOG_DIR / "cadena.lock", "w") as lock:
         import fcntl
         fcntl.flock(lock, fcntl.LOCK_EX)
-        return Cadena(modo=modo).run()
+        return Cadena().run()
 
 
 if __name__ == "__main__":
