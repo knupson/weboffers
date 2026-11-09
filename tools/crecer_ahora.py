@@ -18,8 +18,18 @@ import amazon_prices  # noqa: E402
 # Pausa entre páginas de Amazon para esta corrida (s). Medido 05/11: 1.095 consultas sin pausa en 14 min, 0 cortes.
 amazon_prices.PAUSE_SECONDS = float(os.getenv("CRECER_PAUSA_S", "5"))
 
-out = Path("/app/output")
-sys.stdout = worker.DailyLog(out / "logs", sys.stdout)
-mep = (rates.get_rates() or {}).get("mep")
-print(f"Catálogo: alta forzada a pedido, MEP={mep}.", flush=True)
-catalog_auto.maybe_grow("/app/data/catalog.json", out, datetime.now(timezone.utc), mep=mep, force=True)
+def main(output=Path("/app/output"), catalog="/app/data/catalog.json"):
+    sys.stdout = worker.DailyLog(output / "logs", sys.stdout)
+    try:
+        mep = (rates.get_rates() or {}).get("mep")
+        print(f"Catálogo: alta forzada a pedido, MEP={mep}.", flush=True)
+        catalog_auto.maybe_grow(catalog, output, datetime.now(timezone.utc), mep=mep, force=True)
+        from alta_state import read_json
+        return 0 if read_json(output / "catalog-auto-state.json", {}).get("status") == "ok" else 1
+    except Exception as exc:
+        print(f"CATALOGO_ERROR {type(exc).__name__}: {exc}", flush=True)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

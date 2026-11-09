@@ -14,6 +14,7 @@ import requests
 
 import ml_prices
 from tools import discover_products as discovery
+from buscar_log import BuscarLog, line
 
 RAICES = ("MLA1648", "MLA1000", "MLA1051", "MLA1144", "MLA1039")  # Computación, Electrónica, Celulares, Consolas, Cámaras
 PROFUNDIDAD = 2
@@ -62,93 +63,157 @@ def _get(path, **params):
     return r
 
 
-def categorias(raiz, profundidad=PROFUNDIDAD, budget=None):
-    if budget and budget.expired():
-        return []
-    r = _get(f"/categories/{raiz}")
-    if not r.ok:
-        return []
-    hijos = r.json().get("children_categories") or []
+def categorias(raiz, profundidad=PROFUNDIDAD, journal=None):
+    key = f"arbol:{raiz}"
+    saved = journal.resolved("categoria").get(key) if journal else None
+    if saved:
+        hijos = saved["children"]
+    else:
+        try:
+            r = _get(f"/categories/{raiz}")
+            r.raise_for_status()
+            hijos = r.json().get("children_categories") or []
+        except (requests.RequestException, ValueError) as exc:
+            line("BUSCAR_CATEGORIA", id=raiz, estado="error", motivo=str(exc))
+            raise
+        line("BUSCAR_CATEGORIA", id=raiz, estado="ok", n=len(hijos))
+        if journal:
+            journal.append("categoria", key, "ok", children=hijos)
     out = [raiz]
     if profundidad > 0:
         for h in hijos:
-            if budget and budget.expired():
-                break
-            out += categorias(h["id"], profundidad - 1, budget=budget)
+            out += categorias(h["id"], profundidad - 1, journal=journal)
     return out
 
 
-def mas_vendidos_ml(catalog_ids_existentes, budget=None):
-    """{catalogId: categoria} de los más vendidos que no están en el catálogo."""
+def mas_vendidos_ml(catalog_ids_existentes, journal=None):
+    """No esconder categorías fallidas como si fueran listas vacías."""
     vistos = {}
     for raiz in RAICES:
-        if budget and budget.expired():
-            break
-        for cat in categorias(raiz, budget=budget):
-            if budget and budget.expired():
-                break
-            r = _get(f"/highlights/MLA/category/{cat}")
-            if not r.ok:
-                continue
-            for x in r.json().get("content") or []:
+        for cat in categorias(raiz, journal=journal):
+            saved = journal.resolved("destacados").get(cat) if journal else None
+            if saved:
+                content = saved["content"]
+            else:
+                try:
+                    r = _get(f"/highlights/MLA/category/{cat}")
+                    r.raise_for_status()
+                    content = r.json().get("content") or []
+                except (requests.RequestException, ValueError) as exc:
+                    line("BUSCAR_CATEGORIA", id=cat, estado="error", motivo=str(exc))
+                    raise
+                line("BUSCAR_CATEGORIA", id=cat, estado="ok", n=len(content))
+                if journal:
+                    journal.append("destacados", cat, "ok", content=content)
+            for x in content:
                 if x.get("type") == "PRODUCT" and x.get("id") not in catalog_ids_existentes:
                     vistos.setdefault(x["id"], cat)
     return vistos
 
 
-def agregar_identificadores(filas, consulta_ar=None, lote=5):
-    """Suma a cada par el número de modelo, UPC y GTIN de la página de Amazon (servicio amazon-ar, la misma
-    consulta de página que ya usa el envío) para que el validador compare identificadores exactos (05/11)."""
+def agregar_identificadores(filas, consulta_ar=None, lote=5, journal=None):
+    """Guarda evidencia por ASIN y no confunde servicio caído con ausencia de identificadores."""
     import amazon_prices
     consulta_ar = consulta_ar or (lambda asins: amazon_prices.fetch_ar_shipping(amazon_prices.ar_url(), asins, "US"))
     asins = list(dict.fromkeys(f["asin"] for f in filas if f.get("store", "US") == "US"))
-    ids = {}
-    for i in range(0, len(asins), lote):
+    saved = journal.resolved("ident") if journal else {}
+    ids = {asin: row["identifiers"] for asin, row in saved.items()}
+    missing = [asin for asin in asins if asin not in ids]
+    for i in range(0, len(missing), lote):
+        batch = missing[i:i + lote]
         try:
-            for asin, item in (consulta_ar(asins[i:i + lote]) or {}).items():
-                if isinstance(item, dict) and isinstance(item.get("identifiers"), dict):
-                    ids[asin] = item["identifiers"]
-        except (requests.RequestException, ValueError, KeyError, TypeError):
-            continue
+            response = consulta_ar(batch) or {}
+            if not all(isinstance(response.get(asin), dict) for asin in batch):
+                raise ValueError("El servicio de identificadores no devolvió todos los ASIN")
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            for asin in batch:
+                line("IDENT", asin=asin, estado="error", motivo=str(exc))
+                if journal:
+                    journal.append("ident_error", asin, "error", str(exc))
+            raise
+        errors = []
+        for asin in batch:
+            if response[asin].get("error") or not isinstance(response[asin].get("identifiers"), dict):
+                reason = response[asin].get("error") or "respuesta_sin_identificadores"
+                line("IDENT", asin=asin, estado="error", motivo=reason)
+                if journal:
+                    journal.append("ident_error", asin, "error", reason)
+                errors.append(f"{asin}: {reason}")
+                continue
+            ids[asin] = response[asin].get("identifiers") or {}
+            status = "ok" if ids[asin] else "sin_identificadores"
+            if journal:
+                journal.append("ident", asin, status, identifiers=ids[asin])
+            line("IDENT", asin=asin, estado=status)
+        if errors:
+            raise ValueError("Identificadores: " + ", ".join(errors))
+        if i + lote < len(missing):
+            time.sleep(amazon_prices.PAUSE_SECONDS)
     for f in filas:
         if f["asin"] in ids:
             f["amazonIds"] = ids[f["asin"]]
-    return len(ids)
+    return sum(bool(ids.get(asin)) for asin in asins)
 
 
-def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=None, limite=None, budget=None, state=None):
+def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=None, limite=None, state=None, output=None, journal=None, on_product=None, progress=None):
     """Lista en el formato de discover_products: [{asin, amazonTitle, brand, amazonPriceUsd, ml: [...]}]."""
-    out, vistos_asin = [], set()
-    productos = list(mas_vendidos_ml(catalog_ids_existentes, **({"budget": budget} if budget else {})))
+    journal = journal or BuscarLog(output or "/app/output")
+    resolved = journal.resolved("ml")
+    out = [p for r in resolved.values() for p in r.get("pairs", [])]
+    vistos_asin = {p["asin"] for p in out}
+    productos = list(mas_vendidos_ml(catalog_ids_existentes, journal=journal))
     # Guardar el próximo catalogId evita desplazar el cursor si salen productos de la lista.
     cursor = (state or {}).get("cursorMl")
     start = productos.index(cursor) if cursor in productos else 0
     productos = productos[start:] + productos[:start]
     print(f"Catálogo desde ML: {len(productos)} más vendidos fuera del catálogo.", flush=True)
-    reviewed = 0
-    for n, pid in enumerate(productos, start=1):
-        if budget and budget.check(n - 1, len(productos)):
-            break
-        if limite and n > limite:
-            break
-        reviewed = n
+
+    def finish(pid, status, reason, pairs):
+        journal.append("ml", pid, status, reason, pairs=pairs)
+        line("BUSCAR_ML", id=pid, estado=status, motivo=reason, pares=len(pairs))
         if state is not None:
             state["cursorMl"] = productos[n % len(productos)]
+            state["ultimoCatalogId"] = pid
+            state["resolvedMl"] = len(journal.resolved("ml"))
+        if progress:
+            progress()
+        for pair in pairs:
+            if on_product:
+                on_product(pair)
+
+    for n, pid in enumerate(productos, start=1):
+        if pid in resolved:
+            line("BUSCAR_ML", id=pid, estado="salteado", motivo="resuelto_hoy")
+            continue
+        if limite and n > limite:
+            break
         try:
             best = ml_prices.cheapest_new(ml_prices.fetch_items(pid))
-        except (requests.RequestException, ValueError, KeyError, TypeError):
-            best = None
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            finish(pid, "error_precio", str(exc), [])
+            if failures is not None:
+                failures.append({"catalogId": pid, "motivo": type(exc).__name__})
+            continue
         if not best or not best[1]:
+            finish(pid, "sin_precio", "sin_vendedor_nuevo_local", [])
             continue
         precio, item_id = best
         if not (ML_MIN_USD <= precio / mep <= ML_MAX_USD):
+            finish(pid, "fuera_de_rango", f"precio_usd={precio / mep}", [])
             continue
-        if budget and budget.check(reviewed, len(productos)):
-            break
-        r = _get(f"/products/{pid}")
-        ficha = r.json() if r.ok else {}
+        try:
+            r = _get(f"/products/{pid}")
+            r.raise_for_status()
+            ficha = r.json()
+            journal.append("ficha_ml", pid, "ok", product=ficha)
+        except (requests.RequestException, ValueError) as exc:
+            finish(pid, "sin_ficha", str(exc), [])
+            if failures is not None:
+                failures.append({"catalogId": pid, "motivo": type(exc).__name__})
+            continue
         nombre = (ficha.get("name") or "").strip()
         if not nombre:
+            finish(pid, "sin_ficha", "sin_nombre", [])
             continue
         attrs = {x.get("id"): (x.get("value_name") or "").strip() for x in ficha.get("attributes") or []}
         marca_modelo = " ".join(filter(None, [attrs.get("BRAND"), attrs.get("MODEL") or attrs.get("ALPHANUMERIC_MODEL")]))
@@ -164,23 +229,24 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
         gtin = (attrs.get("GTIN") or "").split(",")[0].strip()
         if gtin.isdigit() and len(gtin) >= 8:
             consultas.append(gtin)
-        resultados, cortar = [], False
+        resultados, errors, descartes = [], [], {"patrocinados": 0, "filtro_amazon": 0}
+        first_pair = len(out)
         for consulta in consultas:
-            if budget and budget.expired():
-                cortar = True
-                break
             try:
                 resultados += discovery.fetch_search_results(consulta, limit=RESULTADOS_AMAZON, **({"get": get} if get else {}))
             except discovery.PageBudgetExhausted:
-                cortar = True
-                break
+                line("BUSCAR_ML", id=pid, estado="interrumpido", motivo="limite_paginas")
+                raise
             except requests.RequestException as exc:
+                errors.append(type(exc).__name__)
                 if failures is not None:
                     failures.append({"catalogId": pid, "motivo": f"busqueda_amazon:{type(exc).__name__}"})
         for item in resultados:
             if item.get("is_sponsored"):
+                descartes["patrocinados"] += 1
                 continue
             if not discovery.should_keep_amazon_item(item, existing_asins, vistos_asin):
+                descartes["filtro_amazon"] += 1
                 continue
             asin = item["asin"].strip()
             vistos_asin.add(asin)
@@ -190,12 +256,9 @@ def candidatos(existing_asins, catalog_ids_existentes, mep, get=None, failures=N
                         "amazonCategory": categoria_ml(ficha.get("domain_id")) or (item.get("title") or "").strip(),
                         "amazonPriceUsd": discovery.extract_price_usd(item),
                         "ml": [{"catalogId": pid, "name": nombre, "minPrice": precio, "itemId": item_id}]})
-        if cortar:
-            if budget:
-                budget.check(n, len(productos))
-            break
+        pairs = out[first_pair:]
+        finish(pid, "con_pares" if pairs else "sin_pares",
+               ",".join(errors) or f"consultas_completas descartes={descartes}", pairs)
         if n % 25 == 0:
             print(f"Catálogo desde ML: {n}/{len(productos)} revisados, {len(out)} pares para validar.", flush=True)
-    if budget:
-        budget.check(reviewed, len(productos))
     return out

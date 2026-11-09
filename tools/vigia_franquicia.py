@@ -194,7 +194,8 @@ def chequear_cadena(hoy, logs_dir):
         return {"cadena": f"falta el resumen válido de la cadena de madrugada ({exc})"}
     problemas = {}
     if not resumen.get("fin"):
-        return problemas
+        activos = ", ".join(p["paso"] for p in resumen["pasos"] if p.get("estado") == "en_curso")
+        return {"cadena-interrumpida": f"la cadena se interrumpió desde {resumen.get('inicio')}; paso en_curso={activos or 'sin paso registrado'}"}
     pasos = {p["paso"]: p for p in resumen["pasos"]}
     obligatorios = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")]
     obligatorios += [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]

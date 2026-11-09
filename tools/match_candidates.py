@@ -611,7 +611,7 @@ def unique_slug(brand, evidence, name, used):
     return slug
 
 
-def match_products(products, mep, catalog=(), products_cache=None):
+def match_products(products, mep, catalog=(), products_cache=None, on_result=None, journal=None):
     if not positive_number(mep):
         raise ValueError("MEP inválido; indicá --mep con un valor positivo.")
     if not isinstance(products, list):
@@ -622,12 +622,23 @@ def match_products(products, mep, catalog=(), products_cache=None):
     if products_cache is not None and (not isinstance(products_cache, dict)
             or any(not isinstance(value, dict) for value in products_cache.values())):
         raise ValueError("El caché debe ser un diccionario de productos ML.")
-    cache = dict(products_cache or {})
+    from buscar_log import line
+    cache = {r["id"]: r["product"] for r in journal.records if r["stage"] == "ficha_ml"} if journal else {}
+    cache.update(products_cache or {})
+
+    def emit(status, row):
+        line("MATCH", asin=row.get("asin"), catalogId=row.get("catalogId"), estado=status,
+             motivo=row.get("reason") or "validado", mlPrecio=row.get("mlPrice"), amazonUsd=row.get("amazonPriceUsd"))
+        if on_result:
+            on_result(status, row)
+        if journal:
+            journal.append("match", row.get("asin") or str(row.get("index")), status,
+                           row.get("reason", ""), row=row)
+
     for index, amazon in enumerate(products, 1):
         if not isinstance(amazon, dict):
             result["rejected"].append({"reason": "producto inválido", "index": index})
-            if index % 50 == 0:
-                print(f"Procesados {index}/{len(products)} productos", flush=True)
+            emit("rejected", result["rejected"][-1])
             continue
         chosen = None
         failures = []
@@ -643,10 +654,13 @@ def match_products(products, mep, catalog=(), products_cache=None):
                 try:
                     payload = ml_prices.get_json(f"/products/{catalog_id}")
                     cache[catalog_id] = payload if isinstance(payload, dict) else {}
-                except (requests.RequestException, ValueError, KeyError, TypeError):
+                except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
                     cache[catalog_id] = {}
+                    line("MATCH_FICHA", catalogId=catalog_id, estado="error", motivo=str(exc))
                 finally:
                     ml_prices.pause()
+                if journal:
+                    journal.append("ficha_ml", catalog_id, "ok" if cache[catalog_id] else "sin_ficha", product=cache[catalog_id])
             product = cache[catalog_id]
             status, reason, evidence = evaluate(amazon, candidate, product, mep)
             score = bool(evidence["brand"]) + 2 * bool(evidence["model"]) + bool(evidence["capacity"])
@@ -681,6 +695,7 @@ def match_products(products, mep, catalog=(), products_cache=None):
             if reason:
                 row["reason"] = reason
             result[status].append(row)
+            emit(status, row)
         else:
             best = max(failures, key=lambda failure: failure.get("score", -1), default={})
             result["rejected"].append({**{key: best.get(key, "") for key in
@@ -689,6 +704,7 @@ def match_products(products, mep, catalog=(), products_cache=None):
                                        "asin": amazon.get("asin"), "amazonTitle": amazon.get("amazonTitle"),
                                        "reason": best.get("reason", "sin candidatos"),
                                        "candidates": failures})
+            emit("rejected", result["rejected"][-1])
         if index % 50 == 0:
             print(f"Procesados {index}/{len(products)} productos", flush=True)
     result["summary"] = {key: len(result[key]) for key in ("accepted", "doubtful", "rejected")}

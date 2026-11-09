@@ -16,7 +16,7 @@ import worker
     ("MLA2", "MLA3", ["MLA3", "MLA1", "MLA2"]),
     ("MLA3", "MLA1", ["MLA1", "MLA2", "MLA3"]),
 ])
-def test_catalogo_corte_guarda_pares_y_cursor(tmp_path, monkeypatch, capsys, cursor, next_cursor, order):
+def test_catalogo_ignora_corte_y_completa_con_cursor(tmp_path, monkeypatch, capsys, cursor, next_cursor, order):
     auto = worker.catalog_auto
     ml = auto.crecer_desde_ml
     reloj = [0.0]
@@ -53,54 +53,33 @@ def test_catalogo_corte_guarda_pares_y_cursor(tmp_path, monkeypatch, capsys, cur
     assert auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 9, tzinfo=timezone.utc), mep=1000, force=True)
     state = json.loads(state_path.read_text())
     assert state["status"] == "ok" and state["added"] == 1
-    assert state["cursorMl"] == next_cursor and state["extra"] == "conservar"
+    assert state["cursorMl"] == cursor and state["extra"] == "conservar"
     assert state["week"] == "2026-W45"
     assert {"slot", "pages", "revision", "motivos"} <= state.keys()
     assert len(json.loads((tmp_path / "altas-pendientes.json").read_text())) == 1
     assert len(json.loads((tmp_path / "match-results.json").read_text())["accepted"]) == 1
-    assert visited == [cursor]
-    assert capsys.readouterr().out.count("CATALOGO_CORTE_TIEMPO revisados=1 de 3") == 1
+    start = ["MLA1", "MLA2", "MLA3"].index(cursor)
+    expected = ["MLA1", "MLA2", "MLA3"][start:] + ["MLA1", "MLA2", "MLA3"][:start]
+    assert visited == expected
+    assert "CATALOGO_CORTE_TIEMPO" not in capsys.readouterr().out
     # La corrida siguiente retoma desde el cursor y cruza el final de la lista.
     reloj[0] = 0
     monkeypatch.delenv("CATALOG_AUTO_MAX_SECONDS")
     auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 10, tzinfo=timezone.utc), mep=1000, force=True)
-    assert visited == [cursor, *order]
-    assert json.loads(state_path.read_text())["cursorMl"] == next_cursor
+    assert visited == expected * 2
+    assert json.loads(state_path.read_text())["cursorMl"] == cursor
 
 
-def test_discovery_corte_conserva_resultados_parciales(tmp_path, monkeypatch, capsys):
-    discovery = worker.catalog_auto.discovery
-    reloj = [0]
-    monkeypatch.setattr(discovery.time, "monotonic", lambda: reloj[0])
-    monkeypatch.setattr(discovery.time, "sleep", lambda seconds: None)
-    monkeypatch.setattr(discovery.ml_prices, "pause", lambda: None)
-    def search(query):
-        reloj[0] = 11
-        return [{"id": "MLA1", "name": "Samsung 990 PRO"}]
-    monkeypatch.setattr(discovery.ml_prices, "search_products", search)
-    rows = [{"asin": asin, "title": "Samsung 990 PRO 1TB", "price": 150} for asin in ("A", "B")]
-    get = Mock(return_value=Mock(json=lambda: {"items": rows}))
-    dest = tmp_path / "discovery.json"
-    results = discovery.discover_products("unused", dest, categories=[{"id": "pc", "name": "Computers"}],
-        get=get, existing_asins=set(), budget=discovery.TimeBudget(10))
-    assert [r["asin"] for r in results] == ["A"]
-    assert json.loads(dest.read_text()) == results
-    assert capsys.readouterr().out.count("CATALOGO_CORTE_TIEMPO revisados=1 de 2") == 1
-
-
-def test_scraper_corta_pausa_larga_sin_consumir_otra_pagina(monkeypatch):
+def test_scraper_pausa_corta_tambien_despues_de_cien_paginas(monkeypatch):
     auto = worker.catalog_auto
-    reloj = [0]
-    monkeypatch.setattr(auto.time, "monotonic", lambda: reloj[0])
-    monkeypatch.setattr(auto.time, "sleep", lambda seconds: reloj.__setitem__(0, reloj[0] + seconds))
-    get = Mock()
-    monkeypatch.setattr(auto.requests, "get", get)
-    scraper = auto.PacedScraper(1000, budget=auto.discovery.TimeBudget(10))
+    pauses = []
+    monkeypatch.setattr(auto.time, "sleep", pauses.append)
+    monkeypatch.setattr(auto.requests, "get", lambda *a, **k: Mock(json=lambda: {"results": []}))
+    scraper = auto.PacedScraper(1000)
     scraper.pages = 100
-    with pytest.raises(auto.discovery.PageBudgetExhausted):
-        scraper.get("http://scraper")
-    assert reloj[0] == 10 and scraper.pages == 100
-    get.assert_not_called()
+    scraper.get("http://scraper")
+    assert pauses == [auto.amazon_prices.PAUSE_SECONDS]
+    assert scraper.pages == 101 and scraper.failures == 0
 
 
 @pytest.fixture(autouse=True)

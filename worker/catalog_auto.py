@@ -21,7 +21,9 @@ import ml_prices
 import publish
 import publicacion
 from alta_state import read_json, rejected_asins, duplicate, update_state
+from refresh_lock import locked_refresh
 from article_log import alta_line
+from buscar_log import BuscarLog, line
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import discover_products as discovery, match_candidates as matching
@@ -35,38 +37,36 @@ ART = timezone(timedelta(hours=-3))
 
 class PacedScraper:
     """Cuenta también reintentos y categorías; corta antes de agotar el presupuesto."""
-    def __init__(self, limit, budget=None):
+    def __init__(self, limit, journal=None, progress=None):
         self.limit = max(0, limit)
         self.pages = 0
         self.valid = 0
         self.failures = 0
-        self.budget = budget
+        self.journal, self.progress = journal, progress
 
     def pause(self, seconds):
-        if self.budget:
-            seconds = min(seconds, max(0, self.budget.deadline - time.monotonic()))
         time.sleep(seconds)
-        if self.budget and self.budget.expired():
-            raise discovery.PageBudgetExhausted()
 
     def get(self, url, **kwargs):
         for attempt in range(2):
-            if self.budget and self.budget.expired():
-                raise discovery.PageBudgetExhausted()
             if self.pages >= self.limit:
                 raise discovery.PageBudgetExhausted()
             if self.pages:
-                self.pause(300 if self.pages % 100 == 0 else amazon_prices.PAUSE_SECONDS)
+                self.pause(amazon_prices.PAUSE_SECONDS)
             amazon_prices.charge_pages(1)
             self.pages += 1
             try:
                 response = requests.get(url, **kwargs)
                 response.raise_for_status()
                 payload = response.json() or {}
-                if payload.get("items") or payload.get("results") or payload.get("categories"):
+                if isinstance(payload, dict) and any(isinstance(payload.get(k), list) for k in ("items", "results", "categories")):
                     self.valid += 1
+                    count = sum(len(payload.get(k) or []) for k in ("items", "results", "categories"))
+                    self.page_line(url, kwargs, attempt, "valida" if count else "vacia", count)
                     return response
-            except (requests.RequestException, ValueError):
+                raise ValueError("Respuesta sin listas de resultados")
+            except (requests.RequestException, ValueError) as exc:
+                self.page_line(url, kwargs, attempt, type(exc).__name__, 0, str(exc))
                 if attempt:
                     self.failures += 1
                     raise
@@ -74,6 +74,16 @@ class PacedScraper:
                 self.pause(amazon_prices.BACKOFF_SECONDS)
         self.failures += 1
         return response
+
+    def page_line(self, url, kwargs, attempt, status, count, reason=""):
+        line("AMAZON_PAGINA", n=self.pages, url=url, params=kwargs.get("params"),
+             estado=status, motivo=reason or "respuesta_valida", intento=attempt + 1, items=count,
+             pausa_s=amazon_prices.BACKOFF_SECONDS if status not in ("valida", "vacia") and not attempt else 0)
+        if self.journal:
+            self.journal.append("pagina", str(self.pages), status, reason or "respuesta_valida",
+                                url=url, params=kwargs.get("params"), items=count, attempt=attempt + 1)
+        if self.progress:
+            self.progress()
 
 
 def fetch_photo(entry, output):
@@ -110,11 +120,11 @@ def mismo_producto(row, existente):
     return not cap_a or not cap_b or max(cap_a) == max(cap_b)
 
 
-def add_accepted(catalog, matches, output, today):
+def add_accepted(catalog, matches, output, today, journal=None):
     """Valida, obtiene la foto y persiste pendientes; nunca escribe catalog-auto."""
     output = Path(output)
     return update_state(catalog, output / "altas.json",
-                        lambda: _add_accepted(catalog, matches, output, today))
+                        lambda: _add_accepted(catalog, matches, output, today, journal=journal))
 
 
 def pending_rejection(row, catalog, rejected):
@@ -142,7 +152,7 @@ def build_pending(row, catalog, output, today):
     return entry
 
 
-def _add_accepted(catalog, matches, output, today):
+def _add_accepted(catalog, matches, output, today, journal=None):
     pending_path = output / "altas-pendientes.json"
     pending = read_catalog(pending_path) if pending_path.exists() else []
     review_path = output / "altas-revision.json"
@@ -154,116 +164,169 @@ def _add_accepted(catalog, matches, output, today):
     catalog = catalog + read_json(output / "catalog-auto.json", []) + pending
     rejected = rejected_asins(output, today)
     added, failures = [], []
-    for row in matches["accepted"]:
+    journal = journal or BuscarLog(output, today)
+
+    def decide(row):
         usd = row.get("amazonPriceUsd")
         reason = pending_rejection(row, catalog + added, rejected)
         if reason:
             print(alta_line(row, "descartado", reason, {"precio": usd}), flush=True)
-            continue
+            return "descartado", reason
         key = (row["asin"], row["catalogId"])
         if key in review or not strong_identifier_match(row):
             review[key] = {**row, "amazonIds": row.get("amazonIds") or {},
                            "mlIds": row.get("mlIds") or {},
                            "motivoRevision": "sin_identificador_fuerte",
                            "revisionDesde": review.get(key, {}).get("revisionDesde", today)}
+            publish.write_atomic(review_path, list(review.values()))
             print(alta_line(row, "revision", "sin_identificador_fuerte", {"precio": usd}), flush=True)
-            continue
+            return "revision", "sin_identificador_fuerte"
+        entry = build_pending(row, catalog + added, output, today)
+        if entry is None:
+            failures.append({"slug": row["slug"], "motivo": "sin_foto"})
+            print(alta_line(row, "descartado", "sin_foto", {"precio": usd}), flush=True)
+            return "descartado", "sin_foto"
+        added.append(entry)
+        publish.write_atomic(pending_path, pending + added)
+        print(alta_line(row, "pendiente_envio", item={"precio": usd}), flush=True)
+        return "pendiente_envio", "validado"
+
+    for row in matches["accepted"]:
         try:
-            entry = build_pending(row, catalog + added, output, today)
-            if entry is None:
-                failures.append({"slug": row["slug"], "motivo": "sin_foto"})
-                print(alta_line(row, "descartado", "sin_foto", {"precio": usd}), flush=True)
-                continue
-            added.append(entry)
-            print(alta_line(row, "pendiente_envio", item={"precio": usd}), flush=True)
-        except (requests.RequestException, OSError, ValueError, KeyError, TypeError) as exc:
+            status, reason = decide(row)
+        except Exception as exc:
             failures.append({"slug": row.get("slug"), "motivo": type(exc).__name__})
-            print(alta_line(row, "descartado", type(exc).__name__, {"precio": usd, "text": str(exc)}), flush=True)
+            status, reason = "descartado", type(exc).__name__
+            print(alta_line(row, status, reason, {"text": str(exc)}), flush=True)
+        journal.append("alta", row.get("asin"), status, reason, row=row)
     publish.write_atomic(pending_path, pending + added)
     publish.write_atomic(review_path, list(review.values()))
     return added, failures
 
 
+@locked_refresh
 def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
-    """Búsqueda diaria sin ventana horaria; force permite una invocación explícita."""
-    started = time.monotonic()
+    """Diario durable por ítem; el bloqueo permite reconocer un running abandonado."""
     now = (now or datetime.now(timezone.utc)).astimezone(ART)
     output = Path(output)
     state_path = output / "catalog-auto-state.json"
-    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
-    # El control del lunes espera la semana del domingo. La corrida completa
-    # la jornada anterior, incluso si se demora, sin cambiar su slot diario.
-    year, week, _ = (now - timedelta(days=1)).isocalendar()
-    slot = now.date().isoformat()
-    if not force and str(state.get("slot", "")).startswith(slot):
-        return False
-    # Registrar el intento antes de consultar evita repetirlo automáticamente el mismo día.
-    state.update({"slot": slot, "week": f"{year}-W{week:02d}", "status": "running", "at": now.isoformat()})
-    publish.write_atomic(state_path, state)
+    state = read_json(state_path, {})
     today = now.date().isoformat()
-    added, failures, total = [], [], 0
+    journal = BuscarLog(output, today)
+    if state.get("status") == "running":
+        line("CATALOGO_INTERRUMPIDO", ultimoCatalogId=state.get("ultimoCatalogId"), at=state.get("at"))
+        journal.append("corrida", state.get("slot", today), "interrumpida", "running_con_lock_libre", previous=state.copy())
+        state.update(status="interrupted", interruptedAt=now.isoformat())
+        publish.write_atomic(state_path, state)
+    if not force and state.get("slot") == today and state.get("status") == "ok":
+        return False
+    year, week, _ = (now - timedelta(days=1)).isocalendar()
+    state.update(slot=today, week=f"{year}-W{week:02d}", status="running", at=now.isoformat())
+    added, failures, scraper = [], [], None
+    total = 0
     fatal = False
-    scraper = None
+
+    def progress():
+        state.update(pages=scraper.pages if scraper else len(journal.resolved("pagina")),
+                     added=sum(r["result"] == "pendiente_envio" for r in journal.records if r["stage"] == "alta"),
+                     resolvedMl=len(journal.resolved("ml")),
+                     ultimoCatalogId=state.get("ultimoCatalogId"),
+                     revision=len(read_json(output / "altas-revision.json", [])))
+        publish.write_atomic(state_path, state)
+
+    progress()
     try:
-        seconds = os.getenv("CATALOG_AUTO_MAX_SECONDS")
-        budget = discovery.TimeBudget(started + max(0, float(seconds))) if seconds else None
         if not ml_prices.is_configured() or not matching.positive_number(mep):
             raise ValueError("Faltan credenciales de ML o cotización MEP.")
-        auto_path = output / "catalog-auto.json"
-        catalog = load_catalog(catalog_path, auto_path)
+        catalog = load_catalog(catalog_path, output / "catalog-auto.json")
         pending = read_json(output / "altas-pendientes.json", [])
-        run_path = output / f"amazon-run-{today}.json"
-        runs = json.loads(run_path.read_text(encoding="utf-8")) if run_path.exists() else {}
         amazon_prices.configure_budget(output / "amazon-prices.json", today)
-        # 05/11: sin topes inventados (ni el 650/día ni un 400/corrida): no hay límite medido. El descubrimiento
-        # termina solo (categorías x más vendidos + búsquedas). Sólo se limita si se configura la variable.
         tope = os.getenv("CATALOG_AUTO_MAX_PAGES")
-        scraper = PacedScraper(int(tope) if tope else 10**9, budget=budget)
-        if not scraper.limit:
-            raise ValueError("Sin presupuesto diario de páginas de Amazon.")
+        scraper = PacedScraper(int(tope) if tope else 10**9, journal=journal, progress=progress)
+        pages = [r for r in journal.records if r["stage"] == "pagina"]
+        scraper.pages = len(pages)
+        scraper.valid = sum(r["result"] in ("valida", "vacia") for r in pages)
         existing_asins = {p.get("asin") for p in catalog + pending} | rejected_asins(output, today)
         existing_asins.update(item["asin"] for item in publicacion.cargar(output).values()
                               if item["situacion"] == "no_revisar" and item["hasta"] > today)
+        decided = journal.resolved("match")
+        matches = {"accepted": [], "doubtful": [], "rejected": []}
+        for record in decided.values():
+            matches[record["result"]].append(record["row"])
+
+        def on_result(status, row):
+            nonlocal total
+            # Primero la cola: si muere entre cola y diario, la repetición es
+            # idempotente bajo altas.lock y no vuelve a descargar la foto.
+            if status == "accepted":
+                new, errors = add_accepted(catalog, {"accepted": [row]}, output, today, journal=journal)
+                added.extend(new)
+                failures.extend(errors)
+                total += 1
+            elif status == "doubtful":
+                def save_review():
+                    path = output / "altas-revision.json"
+                    rows = read_json(path, [])
+                    key = (row.get("asin"), row.get("catalogId"))
+                    if key not in {(r.get("asin"), r.get("catalogId")) for r in rows}:
+                        rows.append({**row, "motivoRevision": row.get("reason", "matching_dudoso"), "revisionDesde": today})
+                        publish.write_atomic(path, rows)
+                update_state(catalog, output / "altas.json", save_review)
+            matches[status].append(row)
+            publish.write_atomic(output / "match-results.json", matches)
+            progress()
+
+        def process(product):
+            nonlocal fatal
+            asin = product["asin"]
+            if asin in decided:
+                return
+            if product.get("ml"):
+                try:
+                    crecer_desde_ml.agregar_identificadores([product], journal=journal)
+                except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                    # La evidencia de descubrimiento ya está guardada. Seguir
+                    # bajando los demás productos, sin inventar identificadores
+                    # ni dar por decidido este match: se reintenta desde disco.
+                    fatal = True
+                    failures.append({"asin": asin, "motivo": "identificadores_no_disponibles", "detalle": str(exc)})
+                    return
+            # La ficha ML descargada durante el descubrimiento también se reutiliza.
+            matching.match_products([product], mep,
+                catalog + read_json(output / "altas-pendientes.json", []),
+                on_result=on_result, journal=journal)
+            decided.update(journal.resolved("match"))
+
+        # Reanudar también el intervalo entre resolver el producto y encolarlo.
+        for record in list(journal.records):
+            if record["stage"] == "amazon":
+                process(record["product"])
+            elif record["stage"] == "ml":
+                for product in record.get("pairs", []):
+                    process(product)
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
             get=scraper.get, existing_asins=existing_asins, failures=failures,
-            **({"budget": budget} if budget else {}))
-        # 05/11: también al revés, desde lo que ML vende en Argentina (rinde mucho más que partir de Amazon).
+            journal=journal, on_product=process)
         if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1":
+            review = read_json(output / "altas-revision.json", [])
             desde_ml = crecer_desde_ml.candidatos(existing_asins | {p["asin"] for p in products},
-                                                  {(p.get("ml") or {}).get("catalogId") for p in catalog + pending},
-                                                  mep, get=scraper.get, failures=failures, budget=budget, state=state)
+                {(p.get("ml") or {}).get("catalogId") for p in catalog + pending} |
+                {r.get("catalogId") for r in review}, mep, get=scraper.get,
+                failures=failures, state=state, journal=journal, on_product=process, progress=progress)
             publish.write_atomic(output / "discovery-desde-ml.json", desde_ml)
-            products = products + desde_ml
-        if not scraper.valid and not (budget and budget.expired()):
+        # Reanudar desde disco no necesita descargar páginas nuevas.
+        if not scraper.valid and not journal.resolved("amazon_lista") and not journal.resolved("ml"):
             raise ValueError("El scraper no devolvió páginas válidas.")
-        con_ids = crecer_desde_ml.agregar_identificadores(products)
-        print(f"Catálogo: identificadores de Amazon para {con_ids} de {len(products)} pares.", flush=True)
-        matches = matching.match_products(products, mep, catalog + pending)
-        publish.write_atomic(output / "match-results.json", matches)
-        total = len(matches["accepted"])
-        added, photo_failures = add_accepted(catalog, matches, output, today)
-        failures.extend(photo_failures)
         if scraper.failures:
             failures.append({"motivo": "paginas_sin_datos", "total": scraper.failures})
-            # Muchas páginas vacías sí es una falla de la corrida (freno o scraper roto), no un caso suelto.
             fatal = fatal or scraper.failures > 0.3 * max(1, scraper.pages)
     except Exception as exc:
-        added = []
-        failures.append({"motivo": type(exc).__name__})
+        failures.append({"motivo": type(exc).__name__, "detalle": str(exc)})
         fatal = True
-        # 09/11: sin el mensaje, «ValueError» no decía cuál de las tres validaciones cortó la corrida.
-        print(f"CATALOGO_ERROR {type(exc).__name__}: {exc}", flush=True)
-    # 05/11: fallas sueltas (una búsqueda HTTPError, una foto) no marcan la corrida como fallida: quedan contadas.
-    status = "failed" if fatal else "ok"
-    state.update({"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
-                                    "added": len(added), "pages": scraper.pages if scraper else 0,
-                                    # 07/11: pares en altas-revision.json; estado.json lo publica y el control de las 07:30 pide «revisá las altas».
-                                    "revision": len(read_json(output / "altas-revision.json", [])),
-                                    "motivos": sorted({f.get("motivo") for f in failures if f.get("motivo")})})
-    publish.write_atomic(state_path, state)
+        line("CATALOGO_ERROR", tipo=type(exc).__name__, motivo=str(exc))
+    state.update(status="failed" if fatal else "ok", motivos=sorted({f["motivo"] for f in failures}))
+    progress()
     amazon_prices.write_run_log(output / "amazon-prices.json", today, "catalogo", len(added), total, log_failures=failures)
-    # Mismo canal de fallas que el deployer: marcador persistido en los logs de Docker.
     marker = "DEPLOY_FAIL" if fatal else "CATALOGO_OK"
-    revision = len(read_json(output / "altas-revision.json", []))
-    print(f"{marker} catálogo: pendientes={len(added)}, revision={revision}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
+    print(f"{marker} catálogo: pendientes={len(added)}, revision={state['revision']}, aceptados={total}, páginas={scraper.pages if scraper else 0}, fallas={len(failures)}.", flush=True)
     return True

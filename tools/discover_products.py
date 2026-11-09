@@ -8,7 +8,6 @@ Contenedor:
   docker exec -i franquicia400-weboffers-worker-1 python /app/tools/discover_products.py
 """
 import argparse
-from datetime import datetime, timedelta, timezone
 import json
 import math
 import os
@@ -26,6 +25,7 @@ sys.path.insert(0, str(ROOT))
 
 import ml_prices  # noqa: E402
 import publish  # noqa: E402
+from buscar_log import BuscarLog, line
 
 DEFAULT_SCRAPER_URL = "http://weboffers-amazon-scraper:8000"
 DEFAULT_OUTPUT_PATH = "/app/output/discovery-candidates.json"
@@ -216,25 +216,6 @@ CAPACITY_TOKEN_RE = re.compile(r"\b\d+(?:\.\d+)?\s*(?:TB|GB|MB|W|mAh|Hz|K|mm|inc
 
 class PageBudgetExhausted(Exception):
     """Se alcanzó el máximo de páginas de la corrida."""
-
-
-class TimeBudget:
-    """Plazo compartido de recolección; el matching queda fuera del corte."""
-    def __init__(self, deadline):
-        self.deadline = deadline
-        self.logged = False
-
-    def expired(self):
-        return time.monotonic() >= self.deadline
-
-    def check(self, reviewed, total):
-        if not self.expired():
-            return False
-        if not self.logged:
-            stamp = datetime.now(timezone(timedelta(hours=-3))).strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{stamp} CATALOGO_CORTE_TIEMPO revisados={reviewed} de {total}", flush=True)
-            self.logged = True
-        return True
 
 
 def scraper_url(url=None):
@@ -490,28 +471,30 @@ def clean_title_for_ml(title, brand=""):
     return re.sub(r"\s+", " ", query).strip()
 
 
-def find_ml_candidates(query, budget=None):
+def find_ml_candidates(query):
     """Busca en el catálogo de ML los top 5 productos y obtiene el menor precio nuevo e itemId."""
     found = []
     results = ml_prices.search_products(query)[:CANDIDATES_PER_PRODUCT]
     ml_prices.pause()
     for result in results:
-        if budget and budget.expired():
-            break
         if not isinstance(result, dict) or not result.get("id"):
+            line("BUSCAR_CANDIDATO_ML", id="ausente", estado="descartado", motivo="resultado_invalido")
             continue
         catalog_id = result["id"]
         try:
             items = ml_prices.fetch_items(catalog_id)
             best = ml_prices.cheapest_new(items)
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-            print(f"  candidato {catalog_id} sin precio ({type(exc).__name__})", flush=True)
-            best = None
+            line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="error", motivo=str(exc))
+            ml_prices.pause()
+            continue
         ml_prices.pause()
         if best is None:
+            line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="sin_precio", motivo="sin_vendedor_nuevo_local")
             continue
         min_price, item_id = best
         if min_price is None or not item_id:
+            line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="sin_precio", motivo="precio_o_item_ausente")
             continue
         found.append({
             "catalogId": catalog_id,
@@ -519,13 +502,17 @@ def find_ml_candidates(query, budget=None):
             "minPrice": min_price,
             "itemId": item_id,
         })
+        line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="con_precio", motivo="vendedor_nuevo_local")
     return found
 
 
-def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None, get=None):
+def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None, get=None, journal=None):
     """Reúne y filtra productos de best-sellers y búsquedas adicionales."""
     try:
-        cats = categories if categories is not None else (discover_categories(base_url=base_url, get=get) if get else discover_categories(base_url=base_url))
+        saved = journal.resolved("amazon_categorias").get("raices") if journal else None
+        cats = saved["categories"] if saved else (categories if categories is not None else (discover_categories(base_url=base_url, get=get) if get else discover_categories(base_url=base_url)))
+        if journal and not saved:
+            journal.append("amazon_categorias", "raices", "ok", categories=cats)
     except PageBudgetExhausted:
         cats = []
     raw_items = []
@@ -535,7 +522,10 @@ def collect_amazon_candidates(existing_asins, queries=None, categories=None, bas
         if is_excluded_department(cat_name):
             continue
         try:
-            items = fetch_bestsellers_for_category(cat_id, cat_name, base_url=base_url, **({"get": get} if get else {}))
+            saved = journal.resolved("amazon_lista").get(cat_id) if journal else None
+            items = saved["items"] if saved else fetch_bestsellers_for_category(cat_id, cat_name, base_url=base_url, **({"get": get} if get else {}))
+            if journal and not saved:
+                journal.append("amazon_lista", cat_id, "ok", items=items)
             raw_items.extend(items)
         except PageBudgetExhausted:
             break
@@ -548,7 +538,10 @@ def collect_amazon_candidates(existing_asins, queries=None, categories=None, bas
         if not q:
             continue
         try:
-            items = fetch_search_results(q, base_url=base_url, **({"get": get} if get else {}))
+            saved = journal.resolved("amazon_lista").get("search:" + q) if journal else None
+            items = saved["items"] if saved else fetch_search_results(q, base_url=base_url, **({"get": get} if get else {}))
+            if journal and not saved:
+                journal.append("amazon_lista", "search:" + q, "ok", items=items)
             raw_items.extend(items)
         except PageBudgetExhausted:
             break
@@ -560,6 +553,11 @@ def collect_amazon_candidates(existing_asins, queries=None, categories=None, bas
     seen_asins = set()
     for item in raw_items:
         if not should_keep_amazon_item(item, existing_asins, seen_asins):
+            asin = item.get("asin", "sin_asin")
+            reason = "existente" if asin in existing_asins else "duplicado" if asin in seen_asins else "filtro_amazon"
+            line("BUSCAR_AMAZON", asin=asin, estado="descartado", motivo=reason)
+            if journal:
+                journal.append("amazon_filtro", asin, "descartado", reason)
             continue
         asin = item["asin"].strip()
         seen_asins.add(asin)
@@ -585,30 +583,34 @@ def discover_products(
     get=None,
     existing_asins=None,
     failures=None,
-    budget=None,
+    journal=None,
+    on_product=None,
 ):
+    journal = journal or BuscarLog(Path(output_path).parent)
+    resolved = journal.resolved("amazon")
     existing_asins = load_existing_asins(catalog_path) if existing_asins is None else existing_asins
     amazon_candidates = collect_amazon_candidates(
         existing_asins=existing_asins,
         queries=queries,
         categories=categories,
         base_url=base_url,
-        **({"get": get} if get else {}),
+        **({"get": get} if get else {}), journal=journal,
     )
     total = len(amazon_candidates)
-    results = []
+    results = [r["product"] for r in resolved.values()]
     for idx, candidate in enumerate(amazon_candidates, start=1):
-        if budget and budget.check(idx - 1, total):
-            break
+        if candidate["asin"] in resolved:
+            continue
         query = clean_title_for_ml(candidate["amazonTitle"], candidate["brand"])
+        reason = "consulta_ml_resuelta"
         try:
-            ml_list = find_ml_candidates(query, **({"budget": budget} if budget else {}))
+            ml_list = find_ml_candidates(query)
         except requests.RequestException as exc:
-            print(f"  búsqueda ML fallida para {candidate['asin']} ({type(exc).__name__})", flush=True)
+            reason = f"{type(exc).__name__}:{exc}"
             if failures is not None:
                 failures.append({"asin": candidate["asin"], "motivo": type(exc).__name__})
             ml_list = []
-        results.append({
+        product = {
             "asin": candidate["asin"],
             "store": "US",
             "amazonTitle": candidate["amazonTitle"],
@@ -616,15 +618,18 @@ def discover_products(
             "amazonCategory": candidate["amazonCategory"],
             "amazonPriceUsd": candidate["amazonPriceUsd"],
             "ml": ml_list,
-        })
+        }
+        journal.append("amazon", candidate["asin"], "con_pares" if ml_list else "sin_pares", reason, product=product)
+        line("BUSCAR_AMAZON", asin=candidate["asin"], estado="con_pares" if ml_list else "sin_pares", motivo=reason)
+        results.append(product)
+        if on_product:
+            on_product(product)
         if idx % PROGRESS_EVERY == 0:
             print(f"Progreso: {idx}/{total} productos procesados.", flush=True)
         if idx % CHECKPOINT_EVERY == 0:
             publish.write_atomic(output_path, results)
             print(f"Checkpoint guardado en {output_path} ({len(results)} productos).", flush=True)
 
-    if budget:
-        budget.check(len(results), total)
     publish.write_atomic(output_path, results)
     print(f"Descubrimiento finalizado en {output_path}: productos={len(results)}.", flush=True)
     return results

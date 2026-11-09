@@ -19,6 +19,13 @@ AMAZON_TIMEOUT = 5400
 ML_TIMEOUT = 1800
 DEPLOY_TIMEOUT = 1800
 GLOBAL_TIMEOUT = 12000
+# Auditoría 09/11: 425/1779 IDs en 5100 s; extrapolación 21.348 s.
+# 24 h es sólo el fusible de seguridad (4 veces ese recorrido extrapolado);
+# no es un presupuesto interno ni descuenta tiempo a los pasos siguientes.
+BUSCAR_TIMEOUT = 24 * 3600
+# Es el paso corto de cotizaciones: rates consulta tres endpoints con timeout
+# de 20 s cada uno; 120 s cubren esos 60 s más inicio/escritura del proceso.
+OFFERS_TIMEOUT = 120
 HEARTBEAT = 30
 ART = timezone(timedelta(hours=-3))
 LOG_DIR = Path("/home/claude/logs")
@@ -189,7 +196,11 @@ class Cadena:
         self.summary["pasos"].append(record)
         self.save()
         self.log(f"PASO_INICIO {nombre}")
-        deadline = min(self.deadline, self.step_start + timeout)
+        # El alta puede durar horas: cada paso tiene su plazo completo.
+        # Deploy/estado conservan además su plazo aunque venciera el global.
+        deadline = self.step_start + timeout
+        if self.bloque != "alta" and paso not in ("deploy", "estado"):
+            deadline = min(self.deadline, deadline)
         try:
             if self.clock() >= deadline:
                 raise TimeoutError("timeout global")
@@ -206,10 +217,8 @@ class Cadena:
                 seconds = max(1, int(deadline - self.clock()))
                 scripts = {"buscar": "crecer_ahora", "dudosos": "dudosos_nvidia", "altas": "confirmar_altas"}
                 script = [f"/app/tools/{scripts[paso]}.py"] if paso in scripts else ["/app/tools/refresh_ahora.py", paso]
-                # Reservar 15 minutos para identificadores, matching, fotos y escritura antes del KILL.
-                env = {"CATALOG_AUTO_MAX_SECONDS": max(0, seconds - 900)} if paso == "buscar" else None
                 out = self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
-                                                    *script, cwd="/app/worker", env=env), deadline, paso)
+                                                    *script, cwd="/app/worker"), deadline, paso)
                 if paso == "altas":
                     m = re.search(r"ALTAS_OK promovidas=(\d+)", out or "")
                     self.promovidas = int(m[1]) if m else None
@@ -241,9 +250,9 @@ class Cadena:
             self.save()
             return 1
         self.promovidas = self.vencidos = None
-        verificacion = (("offers", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
+        verificacion = (("offers", OFFERS_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
-        alta = (("buscar", AMAZON_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
+        alta = (("buscar", BUSCAR_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
                 ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
                 ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         verificacion_fallida = False

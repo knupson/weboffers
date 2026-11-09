@@ -162,7 +162,7 @@ def test_modo_viaja_en_el_entorno(tmp_path):
 
 
 @pytest.mark.parametrize("remaining", [5400, 1000, 500])
-def test_buscar_reserva_tiempo_antes_del_kill(tmp_path, remaining):
+def test_buscar_tiene_plazo_propio_sin_corte_interno(tmp_path, remaining):
     reloj = Reloj()
     commands = []
     def spawn(command, **kwargs):
@@ -171,12 +171,28 @@ def test_buscar_reserva_tiempo_antes_del_kill(tmp_path, remaining):
     runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
     runner.bloque = "alta"
     runner.deadline = remaining
-    runner.step("buscar", cadena.AMAZON_TIMEOUT)
+    runner.step("buscar", cadena.BUSCAR_TIMEOUT)
     command = commands[0]
-    env = f"CATALOG_AUTO_MAX_SECONDS={max(0, remaining - 900)}"
-    assert command[command.index(env) - 1] == "-e"
-    assert command.index(env) < command.index(cadena.WORKER)
-    assert command[command.index("timeout"):command.index("python")] == ["timeout", "-s", "KILL", str(remaining)]
+    assert not any("CATALOG_AUTO_MAX_SECONDS" in arg for arg in command)
+    assert command[command.index("timeout"):command.index("python")] == ["timeout", "-s", "KILL", str(cadena.BUSCAR_TIMEOUT)]
+
+
+@pytest.mark.parametrize("bloque", ["verificacion", "alta"])
+def test_deploy_y_estado_conservan_plazo_completo(tmp_path, bloque):
+    reloj = Reloj()
+    commands = []
+    def spawn(command, **kwargs):
+        commands.append(command)
+        return Hijo(reloj, seconds=70, out="DEPLOY_OK desglose=/state/logs/desglose-2026-11-06-0330.log\n")
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = bloque
+    runner.deadline = 0
+    runner.step("deploy", cadena.DEPLOY_TIMEOUT)
+    runner.step("estado", cadena.ALTAS_TIMEOUT)
+    assert [p["estado"] for p in runner.summary["pasos"]] == ["ok", "ok"]
+    assert [p["segundos"] for p in runner.summary["pasos"]] == [140, 70]
+    assert len(commands) == 3
+
 
 
 def test_falla_verificacion_alta_corre_igual(tmp_path):
@@ -268,7 +284,9 @@ def test_timeout_del_bloque_no_impide_el_alta(tmp_path):
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
     runner.deadline = reloj.clock()
     assert runner.run() == 1
-    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:7])
+    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:5])
+    assert runner.summary["pasos"][5]["motivo"] == "deploy sin DEPLOY_OK"
+    assert runner.summary["pasos"][6]["motivo"] == "sin desglose"
     assert any("/app/tools/crecer_ahora.py" in c for c in comandos)
     assert len(runner.summary["pasos"]) == 13
 
