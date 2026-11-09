@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 from unittest.mock import Mock
@@ -155,6 +155,21 @@ def test_rates_mapping(monkeypatch):
     assert datetime.fromisoformat(result["fetchedAt"]).tzinfo is not None
     assert [call.args[0].rsplit("/", 1)[-1] for call in get.call_args_list] == [
         "bolsa", "tarjeta", "oficial"]
+
+
+def test_stale_rate_does_not_drop_fresh_mep(monkeypatch):
+    """09/11: DolarAPI dejó tarjeta y oficial con fecha 05/11 y el MEP vigente se perdía con ellos:
+    el alta nocturna falló toda la noche con «Faltan credenciales de ML o cotización MEP»."""
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(days=4)).isoformat()
+    bodies = [{"venta": 1587.9, "fechaActualizacion": now.isoformat()},
+              {"venta": 2041, "fechaActualizacion": old},
+              {"venta": 1570, "fechaActualizacion": old}]
+    monkeypatch.setattr(requests, "get", Mock(side_effect=[Mock(json=Mock(return_value=b)) for b in bodies]))
+    result = rates.get_rates()
+    assert result["mep"] == 1587.9
+    # Lo vencido no se rellena: no aparece.
+    assert "tarjeta" not in result and "oficial" not in result
 
 
 def test_eur_usd_mapping(monkeypatch):

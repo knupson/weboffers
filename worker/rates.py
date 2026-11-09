@@ -15,31 +15,40 @@ def provider_date(body):
     return updated, stamp
 
 
+def _fetch_rate(endpoint):
+    response = requests.get(f"https://dolarapi.com/v1/dolares/{endpoint}", timeout=20)
+    response.raise_for_status()
+    body = response.json()
+    date = provider_date(body)
+    value = body["venta"]
+    if isinstance(value, bool):
+        raise ValueError("venta booleana")
+    value = float(value)
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f"venta inválida {value}")
+    return value, date
+
+
 def get_rates():
-    try:
-        rates = {}
-        dates = []
-        for key, endpoint in (("mep", "bolsa"), ("tarjeta", "tarjeta"), ("oficial", "oficial")):
-            response = requests.get(
-                f"https://dolarapi.com/v1/dolares/{endpoint}", timeout=20
-            )
-            response.raise_for_status()
-            body = response.json()
-            dates.append(provider_date(body))
-            value = body["venta"]
-            if isinstance(value, bool):
-                return None
-            value = float(value)
-            if not math.isfinite(value) or value <= 0:
-                return None
-            rates[key] = value
-        return {
-            **rates,
-            "fetchedAt": min(dates)[1],
-            "source": "dolarapi.com",
-        }
-    except Exception:
+    """Cada cotización se valida sola (09/11): si DolarAPI deja la tarjeta vencida, el MEP del día no se pierde.
+    La que no pasa se omite, nunca se rellena con un valor viejo. Sin ninguna válida devuelve None."""
+    rates = {}
+    dates = []
+    for key, endpoint in (("mep", "bolsa"), ("tarjeta", "tarjeta"), ("oficial", "oficial")):
+        try:
+            value, date = _fetch_rate(endpoint)
+        except Exception as exc:
+            print(f"COTIZACION_OMITIDA {key} {type(exc).__name__}: {exc}", flush=True)
+            continue
+        rates[key] = value
+        dates.append(date)
+    if not rates:
         return None
+    return {
+        **rates,
+        "fetchedAt": min(dates)[1],
+        "source": "dolarapi.com",
+    }
 
 
 def get_eur_usd(oficial=None):

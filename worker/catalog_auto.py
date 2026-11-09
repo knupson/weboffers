@@ -240,6 +240,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         added = []
         failures.append({"motivo": type(exc).__name__})
         fatal = True
+        # 09/11: sin el mensaje, «ValueError» no decía cuál de las tres validaciones cortó la corrida.
+        print(f"CATALOGO_ERROR {type(exc).__name__}: {exc}", flush=True)
     # 05/11: fallas sueltas (una búsqueda HTTPError, una foto) no marcan la corrida como fallida: quedan contadas.
     status = "failed" if fatal else "ok"
     publish.write_atomic(state_path, {"slot": slot, "week": f"{year}-W{week:02d}", "status": status, "at": now.isoformat(),
