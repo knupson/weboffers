@@ -28,7 +28,7 @@ DEPLOYER = "franquicia400-weboffers-deployer-1"
 CONTENEDORES = [WORKER, DEPLOYER, "franquicia400-weboffers-amazon-ar-1", "franquicia400-weboffers-amazon-scraper-1"]
 LOGS_WORKER = "/opt/docker/franquicia400/worker/output/logs"
 # Líneas del log del worker que son fallas reales (no ruido esperado).
-MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA|TELEGRAM_INCIERTO|PUBLICACION_ALERTA|DUDOSO_PARA_ALEJANDRO")
+MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|DEPLOY_ALERT caída|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA|TELEGRAM_INCIERTO|PUBLICACION_ALERTA|PUBLICACION_SIN_ESTADO|PUBLICACION_ESTADO_INVALIDO|DUDOSO_PARA_ALEJANDRO")
 ML_FALLAS_TOLERADAS = 3  # "no se pudo consultar" sueltas por día antes de avisar
 SIN_LATIDO_MIN = 75      # el worker imprime al menos una vez por hora
 
@@ -133,8 +133,8 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     except Exception:  # noqa: BLE001
         code, out = 1, ""
     for linea in (out.splitlines() if code == 0 else []):
-        if "DEPLOY_FAIL" in linea:
-            problemas["deploy:" + linea[25:90]] = f"el despliegue falló: {linea[25:180]}"
+        if "DEPLOY_FAIL" in linea or "DEPLOY_ALERT caída" in linea:
+            problemas["deploy:" + linea[25:90]] = f"el despliegue registró: {linea[25:180]}"
 
     if (ahora.hour, ahora.minute) >= (4, 30):
         # Relevamiento del envío AR con Chrome (cadena 03:30): sin él no se confirman envíos (REGLA 0).
@@ -161,8 +161,28 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     return problemas
 
 
+def cadena_en_curso(logs_dir):
+    """El archivo puede existir siempre; importa si flock está tomado."""
+    try:
+        import fcntl
+    except ImportError:
+        return False  # El host de la cadena usa Linux.
+    try:
+        with open(os.path.join(logs_dir, "cadena.lock"), "rb") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+            fcntl.flock(lock, fcntl.LOCK_UN)
+    except FileNotFoundError:
+        pass
+    return False
+
+
 def chequear_cadena(hoy, logs_dir):
     """Lee el resumen local del host; detecta también una cadena interrumpida."""
+    if cadena_en_curso(logs_dir):
+        return {}
     try:
         with open(os.path.join(logs_dir, f"cadena-{hoy}.json"), encoding="utf-8") as fh:
             resumen = json.load(fh)
@@ -173,8 +193,10 @@ def chequear_cadena(hoy, logs_dir):
     except (OSError, ValueError, TypeError) as exc:
         return {"cadena": f"falta el resumen válido de la cadena de madrugada ({exc})"}
     problemas = {}
+    if not resumen.get("fin"):
+        return problemas
     pasos = {p["paso"]: p for p in resumen["pasos"]}
-    obligatorios = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "deploy", "estado")]
+    obligatorios = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")]
     obligatorios += [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
     for nombre in dict.fromkeys(obligatorios + list(pasos)):
         paso = pasos.get(nombre, {})

@@ -15,6 +15,36 @@ from publicacion import ART
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_estado_corrupto_no_se_pisa(tmp_path):
+    path = tmp_path / "publicacion.json"
+    original = b'{"historia":'
+    path.write_bytes(original)
+    result = correr(tmp_path, producto("nuevo"))
+    assert result.returncode == 1
+    assert path.read_bytes() == original
+    assert "PUBLICACION_ESTADO_INVALIDO" in result.stdout
+
+
+def test_cli_verificacion_no_renueva_vencidos(tmp_path):
+    state = {"vencido": {**entrada("no_revisar"), "hasta": "2026-11-01"}}
+    path = tmp_path / "publicacion.json"
+    path.write_text(json.dumps(state), encoding="utf-8")
+    result = correr(tmp_path, producto("vencido", "FILTRADO", "ml_hoy"), modo="verificacion")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(path.read_text(encoding="utf-8")) == state
+
+
+def test_falla_masiva_conserva_historia_y_registra_motivos(tmp_path):
+    state = {f"p{i}": entrada() for i in range(12)}
+    path = tmp_path / "publicacion.json"
+    path.write_text(json.dumps(state), encoding="utf-8")
+    result = correr(tmp_path, "\n".join(producto(s, "FILTRADO", "ml_hoy") for s in state), modo="verificacion")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(path.read_text(encoding="utf-8")) == state
+    assert "PUBLICACION_ALERTA_MASIVA" in result.stdout
+    assert "motivos=ml_hoy:12" in result.stdout
+
+
 def producto(slug, resultado="PUBLICADO", motivo=""):
     return (f"PRODUCTO {slug} asin=B{slug} origen=repo {resultado} "
             + (f"{motivo}=FALLA(dato ausente)" if motivo else ""))
@@ -25,18 +55,19 @@ def entrada(situacion="publicado"):
                 intentos=0, ultimoIntento=None, motivo="", asin="Bprevio")
 
 
-def correr(tmp_path, texto, *args):
+def correr(tmp_path, texto, *args, modo="alta"):
     return subprocess.run(
         [sys.executable, str(ROOT / "tools/actualizar_publicacion.py"),
          "--desglose", *(args or ["-"])],
         input=texto, text=True, encoding="utf-8", capture_output=True,
         cwd=ROOT / "worker",
         env={**os.environ, "OUTPUT_PATH": str(tmp_path / "offers.json"),
-             "PYTHONIOENCODING": "utf-8"},
+             "PYTHONIOENCODING": "utf-8", "PUBLICACION_MODO": modo},
     )
 
 
 def test_cli_escribe_estado_y_resumen(tmp_path):
+    (tmp_path / "publicacion.json").write_text("{}", encoding="utf-8")
     antes = datetime.now(ART).date().isoformat()
     result = correr(tmp_path, "\n".join([
         producto("uno"), producto("dos"), producto("tres", "FILTRADO", "envio")]))
@@ -69,10 +100,11 @@ def test_cli_desglose_vacio_no_toca_estado(tmp_path, existe):
 @pytest.mark.parametrize("cantidad", [10, 11])
 def test_alerta_mas_de_10(tmp_path, cantidad):
     state = {f"p{i}": entrada() for i in range(cantidad)}
+    state.update({f"sano{i}": entrada() for i in range(cantidad)})
     (tmp_path / "publicacion.json").write_text(json.dumps(state), encoding="utf-8")
     result = correr(tmp_path, "\n".join(
         producto(s, "FILTRADO", "envio" if i < 6 else "precio")
-        for i, s in enumerate(state)))
+        for i, s in enumerate(list(state)[:cantidad])), modo="verificacion")
     assert result.returncode == 0, result.stderr
     alertas = [l for l in result.stdout.splitlines() if "PUBLICACION_ALERTA " in l]
     if cantidad == 11:
@@ -80,7 +112,7 @@ def test_alerta_mas_de_10(tmp_path, cantidad):
         assert "PUBLICACION_ALERTA salieron=11 motivos=envio:6,precio:5" in alertas[0]
     else:
         assert alertas == []
-    assert f"PUBLICACION_OK publicados=0 republicacion={cantidad} no_revisar=0 salieron={cantidad} republicados=0" in result.stdout
+    assert f"PUBLICACION_OK publicados={cantidad} republicacion={cantidad} no_revisar=0 salieron={cantidad} republicados=0" in result.stdout
 
 
 def test_cli_lee_archivo_y_no_registra_cambios_inexistentes(tmp_path):
@@ -113,7 +145,7 @@ def test_lectura_y_escritura_bajo_lock_compartido(tmp_path):
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8",
             env={**os.environ, "OUTPUT_PATH": str(tmp_path / "offers.json"),
-                 "PYTHONIOENCODING": "utf-8"},
+                 "PYTHONIOENCODING": "utf-8", "PUBLICACION_MODO": "alta"},
         )
         assert process.stdout.readline().strip() == "LISTO"
         with pytest.raises(subprocess.TimeoutExpired):

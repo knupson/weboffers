@@ -118,7 +118,11 @@ class Cadena:
             self.log(stdout)
             self.log(stderr)
         if child.returncode:
-            tail = " | ".join((stderr or stdout).splitlines()[-8:])
+            tail = " | ".join((stderr + "\n" + stdout).splitlines()[-8:])
+            # La ruta del desglose puede quedar fuera de las últimas líneas.
+            report = re.search(r"desglose=\S+", stdout)
+            if report and report[0] not in tail:
+                tail += " | " + report[0]
             reason = "timeout" if child.returncode == 124 else "timeout o SIGKILL" if child.returncode == 137 else "error"
             raise RuntimeError(f"{reason} (código {child.returncode}): {tail}")
         return stdout
@@ -195,7 +199,7 @@ class Cadena:
                 extra = ["--pendientes"] if self.bloque == "alta" else []
                 self.process(["env", f"PUBLICACION_MODO={self.bloque}", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh"), *extra],
                              deadline, paso)
-            elif paso in ("buscar", "dudosos", "altas", "amazon", "ml"):
+            elif paso in ("buscar", "dudosos", "altas", "amazon", "ml", "fichas"):
                 # El timeout dentro del contenedor mata el Python aunque muera docker exec en el host.
                 seconds = max(1, int(deadline - self.clock()))
                 scripts = {"buscar": "crecer_ahora", "dudosos": "dudosos_nvidia", "altas": "confirmar_altas"}
@@ -223,12 +227,22 @@ class Cadena:
             self.save()
 
     def run(self):
+        self.step_start = self.clock()
+        try:
+            self.process(self.docker(WORKER, "python", "/app/tools/actualizar_publicacion.py", "--verificar-estado",
+                                     cwd="/app/worker"), self.clock() + ALTAS_TIMEOUT, "estado_inicial")
+        except Exception as exc:
+            self.log(f"PUBLICACION_INICIO_ABORTADO {exc}")
+            self.summary["fin"] = self.stamp()
+            self.save()
+            return 1
         self.promovidas = self.vencidos = None
-        verificacion = (("offers", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
+        verificacion = (("offers", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         alta = (("buscar", AMAZON_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
                 ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
                 ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
+        verificacion_fallida = False
         for bloque, pasos in (("verificacion", verificacion), ("alta", alta)):
             self.bloque = bloque
             self.desglose = None
@@ -238,12 +252,17 @@ class Cadena:
                 self.deadline = self.clock() + GLOBAL_TIMEOUT
             first = len(self.summary["pasos"])
             for paso, timeout in pasos:
+                if bloque == "alta" and paso == "deploy" and verificacion_fallida:
+                    self.log("ALTA_SIN_DEPLOY verificacion_fallida")
+                    break
                 if bloque == "alta" and paso == "amazon" and self.promovidas == 0 and self.vencidos == 0:
                     self.log("ALTA sin altas promovidas ni no_revisar vencidos; termina el bloque")
                     break
                 self.step(paso, timeout)
             records = self.summary["pasos"][first:]
             failed = sum(p["estado"] != "ok" for p in records)
+            if bloque == "verificacion":
+                verificacion_fallida = bool(failed)
             self.log(f"ETAPA_RESUMEN {bloque} pasos={len(records)} ok={len(records) - failed} fallidos={failed}")
         self.summary["fin"] = self.stamp()
         self.save()

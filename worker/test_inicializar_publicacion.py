@@ -57,6 +57,17 @@ def test_inicial_reparte_los_tres_grupos(tmp_path):
     assert "PUBLICACION_INICIAL publicados=1 republicacion=1 no_revisar=2" in result.stdout
 
 
+def test_inicializar_no_consume_el_intento_de_hoy(tmp_path):
+    import publicacion
+    texto = bloque("2026-11-07", producto("reciente", "PUBLICADO")) + bloque("2026-11-09", producto("reciente"))
+    assert correr(tmp_path, texto).returncode == 0
+    estado = publicacion.cargar(tmp_path)
+    assert estado["reciente"]["ultimoIntento"] == "2026-11-08"
+    nuevo, _ = publicacion.transicion(estado, {"reciente": ("FILTRADO", "envio", "Breciente")},
+                                     "2026-11-09", modo="verificacion")
+    assert nuevo["reciente"]["intentos"] == 2
+
+
 def test_producto_ausente_del_ultimo_desglose_no_entra(tmp_path):
     texto = (
         bloque("2026-11-09", producto("actual", "PUBLICADO")).replace(

@@ -337,6 +337,10 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
 
     estado = publicacion.cargar(Path(prices_path).parent)
     modo = modo_actual()
+    if modo == "alta":
+        # Todo el resto del flujo opera sólo sobre este bloque; los diagnósticos previos quedan intactos.
+        catalog = [p for p in catalog if publicacion.motivo_estado(p, estado, today, modo) is None]
+    fusionar = modo == "alta" and isinstance(previous, dict) and previous.get("date") == today
     salteos = {p["slug"]: m for p in catalog
                if p.get("slug") and (m := motivo_salteo_ml(p, sin_gratis, amazon_items, estado, today, modo, eur_usd))}
     nuevos = set()
@@ -367,10 +371,13 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
             print(ml_line(p, "omitido", reason="credenciales_ml_ausentes"), flush=True)
         return False
     retry = done_slot == slot
-    items = dict(previous.get("items") or {}) if retry else {}
-    absent = list(previous.get("absent") or []) if retry else []
-    failed = []
-    variant_conflict = []
+    items = dict(previous.get("items") or {}) if retry or fusionar else {}
+    absent = list(previous.get("absent") or []) if retry or fusionar else []
+    propios = {p["slug"] for p in catalog}
+    failed = [s for s in (previous.get("failed") or []) if s not in propios] if fusionar else []
+    variant_conflict = [s for s in (previous.get("variantConflict") or []) if s not in propios] if fusionar else []
+    if fusionar:
+        salteos = {**{s: m for s, m in (previous.get("skipped") or {}).items() if s not in propios}, **salteos}
     attempts = previous.get("attempts", 1) + 1 if retry else 1
     consultados = 0
     for product in catalog:

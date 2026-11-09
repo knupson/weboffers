@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "worker"))
 import alta_state
 import publicacion
+from requisitos import modo_actual
 
 
 def log(mensaje):
@@ -26,9 +27,10 @@ def actualizar(texto, output, today=None):
 
     def operation():
         estado = publicacion.cargar(output)
-        nuevo, cuentas = publicacion.transicion(estado, desglose, today)
+        nuevo, cuentas = publicacion.transicion(estado, desglose, today, modo_actual())
         publicacion.guardar(output, nuevo)
-        motivos = Counter()
+        motivos = Counter(datos[1] for slug, datos in desglose.items()
+                          if estado.get(slug, {}).get("situacion") == "publicado" and datos[0] == "FILTRADO")
         for slug, item in nuevo.items():
             previo = estado.get(slug)
             if previo == item:
@@ -36,8 +38,6 @@ def actualizar(texto, output, today=None):
             antes = previo["situacion"] if previo else "ausente"
             despues = item["situacion"]
             log(f"PUBLICACION_CAMBIO {slug} {antes}->{despues} motivo={item['motivo']}")
-            if antes == "publicado" and despues == "republicacion":
-                motivos[item["motivo"]] += 1
         if cuentas["salieron"] > publicacion.ALERTA_SALIDAS:
             detalle = ",".join(f"{motivo}:{cantidad}" for motivo, cantidad in sorted(motivos.items()))
             log(f"PUBLICACION_ALERTA salieron={cuentas['salieron']} motivos={detalle}")
@@ -54,12 +54,18 @@ def main():
     import worker
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--desglose", required=True, help="Archivo de desglose o - para leer stdin")
+    entrada = parser.add_mutually_exclusive_group(required=True)
+    entrada.add_argument("--desglose", help="Archivo de desglose o - para leer stdin")
+    entrada.add_argument("--verificar-estado", action="store_true", help="Valida el estado antes de arrancar la cadena")
     args = parser.parse_args()
     output = worker.resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
     sys.stdout = worker.DailyLog(output / "logs", sys.stdout)
     sys.stderr = worker.DailyLog(output / "logs", sys.stderr)
     try:
+        if args.verificar_estado:
+            publicacion.cargar(output)
+            log("PUBLICACION_ESTADO_OK")
+            return 0
         texto = sys.stdin.read() if args.desglose == "-" else Path(args.desglose).read_text(encoding="utf-8")
         actualizar(texto, output)
     except (OSError, ValueError) as error:

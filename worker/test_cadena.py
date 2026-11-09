@@ -94,7 +94,7 @@ def test_bloqueo_compartido_impide_refresh_simultaneos(tmp_path):
     assert segundo.is_set()
 
 
-PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "deploy", "estado")] + [
+PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")] + [
     f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas", "amazon", "ml", "deploy", "estado")]
 
 
@@ -104,6 +104,8 @@ def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, 
 
     def popen(command, **kwargs):
         comandos.append(command)
+        if "--verificar-estado" in command:
+            return Hijo(reloj, out="PUBLICACION_ESTADO_OK\n")
         actual = runner.summary["pasos"][-1]
         runner.llamadas.append((actual["bloque"], command))
         assert actual["estado"] == "en_curso"
@@ -128,10 +130,10 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     assert code == 0
     assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
-    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 6 + ["alta"] * 8
+    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 8
     assert runner.summary["fin"]
-    assert comandos[7][-1] == "/app/tools/crecer_ahora.py"
-    assert comandos[8][-1] == "/app/tools/dudosos_nvidia.py"
+    assert comandos[9][-1] == "/app/tools/crecer_ahora.py"
+    assert comandos[10][-1] == "/app/tools/dudosos_nvidia.py"
     chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
     assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
     deploy = [c for c in comandos if "/app/deploy.mjs" in c]
@@ -141,8 +143,8 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
 def test_cada_paso_una_vez(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     pares = [(p["bloque"], p["paso"]) for p in runner.summary["pasos"]]
-    assert len(pares) == len(set(pares)) == 14
-    assert len(comandos) == 16  # Los dos deploy copian su desglose al log.
+    assert len(pares) == len(set(pares)) == 15
+    assert len(comandos) == 18  # Los dos deploy copian su desglose al log.
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -162,12 +164,55 @@ def test_modo_viaja_en_el_entorno(tmp_path):
 def test_falla_verificacion_alta_corre_igual(tmp_path):
     runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
     assert code == 1
-    assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
-    assert all(p["estado"] == "ok" for p in runner.summary["pasos"][6:])
+    assert [p["paso"] for p in runner.summary["pasos"]] == PASOS[:-2]
+    assert all(p["estado"] == "ok" for p in runner.summary["pasos"][7:])
     log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
     assert "PASO_SIGUE verificacion:amazon 30.0s" in log and "PASO_SIGUE verificacion:amazon 60.0s" in log
     assert "ETAPA_RESUMEN verificacion" in log and "ETAPA_RESUMEN alta" in log
     assert all(line.startswith("2026-11-06 03:") for line in log.splitlines())
+
+
+def test_alta_no_despliega_si_verificacion_fallo(tmp_path):
+    runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
+    assert code == 1
+    alta = [p["paso"] for p in runner.summary["pasos"] if p["bloque"] == "alta"]
+    assert alta == [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas", "amazon", "ml")]
+    assert not any("--ahora" in c for c in comandos)
+    assert "ALTA_SIN_DEPLOY verificacion_fallida" in (tmp_path / "cadena-2026-11-06.log").read_text()
+
+
+def test_sin_estado_no_arranca(tmp_path):
+    reloj, comandos = Reloj(), []
+    def popen(command, **kwargs):
+        comandos.append(command)
+        return Hijo(reloj, code=1, out="PUBLICACION_SIN_ESTADO falta publicacion.json\n")
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    assert runner.run() == 1
+    assert runner.summary["pasos"] == []
+    assert len(comandos) == 1
+    assert "--verificar-estado" in comandos[0]
+    assert runner.summary["fin"]
+
+
+def test_deploy_fallido_copia_desglose_aunque_haya_stderr(tmp_path):
+    reloj, comandos = Reloj(), []
+    ruta = "/state/logs/desglose-2026-11-06-0330.log"
+    def popen(command, **kwargs):
+        comandos.append(command)
+        if "cat" in command:
+            return Hijo(reloj, out="PRODUCTO prueba asin=BPRUEBA origen=repo FILTRADO\n")
+        return Hijo(reloj, code=1, out=f"DEPLOY_FAIL prueba desglose={ruta}\n", err="advertencia de git\n")
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.step("deploy", 100)
+    assert comandos[-1][-2:] == ["cat", ruta]
+    assert "PRODUCTO prueba" in (tmp_path / "cadena-2026-11-06.log").read_text()
+
+
+def test_fichas_se_ejecuta_una_vez_en_verificacion(tmp_path):
+    runner, comandos, code = corrida(tmp_path)
+    assert code == 0
+    assert [p["paso"] for p in runner.summary["pasos"]].count("verificacion:fichas") == 1
+    assert any(c[-2:] == ["/app/tools/refresh_ahora.py", "fichas"] for c in comandos)
 
 
 def test_estado_recibe_el_desglose_del_deploy(tmp_path):
@@ -185,11 +230,11 @@ def test_estado_falla_sin_desglose(tmp_path):
     runner, _, code = corrida(tmp_path, sin_desglose=True)
     assert code == 1
     estados = [p for p in runner.summary["pasos"] if p["paso"].endswith(":estado")]
-    assert len(estados) == 2
+    assert len(estados) == 1
     assert all(p["estado"] == "fail" and p["motivo"] == "sin desglose" for p in estados)
 
 
-@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:10]), (1, PASOS)])
+@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:11]), (1, PASOS)])
 def test_sin_altas_promovidas_corta_solo_sin_vencidos(tmp_path, vencidos, esperados):
     runner, _, code = corrida(tmp_path, promovidas=0, vencidos=vencidos)
     assert code == 0
@@ -205,9 +250,9 @@ def test_timeout_del_bloque_no_impide_el_alta(tmp_path):
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
     runner.deadline = reloj.clock()
     assert runner.run() == 1
-    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:6])
+    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:7])
     assert any("/app/tools/crecer_ahora.py" in c for c in comandos)
-    assert len(runner.summary["pasos"]) == 14
+    assert len(runner.summary["pasos"]) == 13
 
 
 def test_deploy_fallido_no_reutiliza_el_desglose_anterior(tmp_path):
@@ -253,7 +298,7 @@ def test_segunda_corrida_mismo_dia_sin_cambios_termina_ok(tmp_path):
 def test_offers_una_vez_antes_de_chrome(tmp_path):
     runner, commands, code = corrida(tmp_path)
     assert code == 0
-    assert commands[0] == ["docker", "exec", "-e", "PUBLICACION_MODO=verificacion", "-w", "/app/worker",
+    assert commands[1] == ["docker", "exec", "-e", "PUBLICACION_MODO=verificacion", "-w", "/app/worker",
                            cadena.WORKER, "python", "-c", "import worker; worker.publicar_offers()"]
     assert sum("import worker; worker.publicar_offers()" in c for c in commands) == 1
 

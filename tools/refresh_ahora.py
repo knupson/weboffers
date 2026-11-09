@@ -9,6 +9,8 @@ import traceback
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "worker"))
 import worker
+import publicacion
+from requisitos import motivo_total
 
 
 def main(paso):
@@ -19,6 +21,14 @@ def main(paso):
     print(f"REFRESH_INICIO {paso}", flush=True)
     try:
         catalog = worker.load_catalog(worker.resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json")), output / "catalog-auto.json")
+        if paso == "fichas":
+            now = datetime.now(timezone.utc)
+            estado = publicacion.cargar(output)
+            today = now.astimezone(publicacion.ART).date().isoformat()
+            catalog = [p for p in catalog if motivo_total(p, estado, today, "verificacion") is None]
+            worker.ml_fichas.refresh_optional(catalog, output / "ml-fichas.json", now)
+            print(f"REFRESH_OK {paso} {time.monotonic() - start:.1f}s", flush=True)
+            return 0
         current = worker.rates.get_rates() or {}
         eur_usd = worker.rates.get_eur_usd(current.get("oficial")) if current else None
         amazon = worker.resolve_path(os.environ.get("AMAZON_PRICES_PATH", "output/amazon-prices.json"))
@@ -46,5 +56,5 @@ def main(paso):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("paso", choices=("amazon", "ml"))
+    parser.add_argument("paso", choices=("amazon", "ml", "fichas"))
     sys.exit(main(parser.parse_args().paso))

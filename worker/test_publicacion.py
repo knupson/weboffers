@@ -28,6 +28,39 @@ def test_constantes():
     assert (NO_REVISAR_DIAS, REPUBLICACION_INTENTOS, ALERTA_SALIDAS) == (7, 3, 10)
 
 
+def test_vencido_no_se_renueva_en_verificacion():
+    estado = {"vencido": entrada("no_revisar", hasta=TODAY)}
+    nuevo, _ = transicion(estado, {"vencido": ("FILTRADO", "ml_hoy", ASIN),
+                                  "sin_entrada": ("FILTRADO", "ml_hoy", ASIN)}, TODAY,
+                          modo="verificacion")
+    assert nuevo == estado
+
+
+def test_alta_no_mueve_publicados_ni_republicacion():
+    estado = {s: entrada(s) for s in ("publicado", "republicacion")}
+    nuevo, _ = transicion(estado, {s: ("FILTRADO", "ml_hoy", ASIN) for s in estado},
+                          TODAY, modo="alta")
+    assert nuevo == estado
+
+
+@pytest.mark.parametrize("salidas,congela", [(2, False), (3, True), (4, True)])
+def test_falla_masiva_no_avanza_intentos(salidas, congela, capsys):
+    estado = {f"p{i}": entrada("publicado") for i in range(4)}
+    estado["reintento"] = entrada("republicacion", intentos=2)
+    desglose = {f"p{i}": ("FILTRADO" if i < salidas else "PUBLICADO", "ml_hoy", ASIN)
+               for i in range(4)}
+    desglose["reintento"] = ("FILTRADO", "ml_hoy", ASIN)
+    nuevo, _ = transicion(estado, desglose, TODAY, modo="verificacion")
+    assert (nuevo == estado) == congela
+    assert ("PUBLICACION_ALERTA_MASIVA" in capsys.readouterr().out) == congela
+
+
+def test_estado_corrupto_levanta_error(tmp_path):
+    (tmp_path / "publicacion.json").write_text("{", encoding="utf-8")
+    with pytest.raises(ValueError):
+        cargar(tmp_path)
+
+
 def test_parse_desglose():
     texto = """2026-11-09 07:10:38 PRODUCTO asus-tuf-gaming-vg27aq3a asin=B0BZR9TMBJ origen=repo FILTRADO envia_ar=ok(true) envio_gratis=FALLA(2026-11-09 gratis=false) verificado=ok(true) asin=ok(B0BZR9TMBJ) imagen=ok(/products/asus-tuf-gaming-vg27aq3a.webp) ml_presente=FALLA(ausente) ml_precio=FALLA(ausente) ml_hoy=FALLA(ausente $ausente) amazon_ars=FALLA(ausente) amazon_usd=FALLA(USD ausente) amazon_rango=FALLA(USD ausente) amazon_fuente=FALLA(ausente) amazon_hoy=FALLA(ausente)
 2026-11-09 07:10:38 PRODUCTO sandisk-extreme-portable-ssd-1tb asin=B08GTYFC37 origen=repo PUBLICADO envia_ar=ok(true) envio_gratis=ok(2026-11-09 gratis=true) verificado=ok(true) asin=ok(B08GTYFC37) imagen=ok(/products/sandisk-extreme-portable-ssd-1tb.webp) ml_presente=ok(presente) ml_precio=ok(498000) ml_hoy=ok(2026-11-09 $498000) amazon_ars=ok(440000) amazon_usd=ok(USD 219.99) amazon_rango=ok(USD 219.99) amazon_fuente=ok(amazon) amazon_hoy=ok(2026-11-09)
@@ -43,7 +76,7 @@ def test_parse_desglose():
 @pytest.mark.parametrize("resultado", ["PUBLICADO", "FILTRADO"])
 def test_candidato_o_no_revisar_vencido(anterior, resultado):
     estado = {} if anterior is None else {"producto": anterior}
-    nuevo, cuentas = transicion(estado, {"producto": (resultado, "ml_hoy", ASIN)}, TODAY)
+    nuevo, cuentas = transicion(estado, {"producto": (resultado, "ml_hoy", ASIN)}, TODAY, modo="alta")
     publicado = resultado == "PUBLICADO"
     assert nuevo["producto"] == entrada(
         "publicado" if publicado else "no_revisar", desde=TODAY,
@@ -56,38 +89,38 @@ def test_candidato_o_no_revisar_vencido(anterior, resultado):
 @pytest.mark.parametrize("resultado", ["PUBLICADO", "FILTRADO"])
 def test_no_revisar_vigente_no_cambia(resultado):
     estado = {"producto": entrada("no_revisar", hasta="2026-11-13")}
-    nuevo, cuentas = transicion(estado, {"producto": (resultado, "ml_hoy", ASIN)}, TODAY)
+    nuevo, cuentas = transicion(estado, {"producto": (resultado, "ml_hoy", ASIN)}, TODAY, modo="verificacion")
     assert nuevo == estado
     assert cuentas == CUENTAS
 
 
 def test_publicado_que_cumple_no_cambia():
     estado = {"producto": entrada("publicado")}
-    nuevo, cuentas = transicion(estado, {"producto": ("PUBLICADO", "", ASIN)}, TODAY)
+    nuevo, cuentas = transicion(estado, {"producto": ("PUBLICADO", "", ASIN)}, TODAY, modo="verificacion")
     assert nuevo == estado
     assert cuentas == CUENTAS
 
 
 def test_publicado_que_falla_va_a_republicacion():
-    estado = {"producto": entrada("publicado")}
-    nuevo, cuentas = transicion(estado, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY)
+    estado = {"producto": entrada("publicado"), "sano": entrada("publicado")}
+    nuevo, cuentas = transicion(estado, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY, modo="verificacion")
     assert nuevo["producto"] == entrada("republicacion", desde=TODAY, motivo="ml_hoy")
     assert cuentas == {**CUENTAS, "salieron": 1}
-    repetido, cuentas = transicion(nuevo, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY)
+    repetido, cuentas = transicion(nuevo, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY, modo="verificacion")
     assert repetido == nuevo
     assert cuentas == CUENTAS
 
 
 def test_republicacion_que_cumple_se_publica():
     estado = {"producto": entrada("republicacion", intentos=2, ultimoIntento="2026-11-11")}
-    nuevo, cuentas = transicion(estado, {"producto": ("PUBLICADO", "", ASIN)}, TODAY)
+    nuevo, cuentas = transicion(estado, {"producto": ("PUBLICADO", "", ASIN)}, TODAY, modo="verificacion")
     assert nuevo["producto"] == entrada("publicado", desde=TODAY)
     assert cuentas == {**CUENTAS, "republicados": 1}
 
 
 def test_tercer_fallo_va_a_no_revisar_7_dias():
     estado = {"producto": entrada("republicacion", intentos=2, ultimoIntento="2026-11-11")}
-    nuevo, cuentas = transicion(estado, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY)
+    nuevo, cuentas = transicion(estado, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY, modo="verificacion")
     assert nuevo["producto"] == entrada("no_revisar", desde=TODAY,
                                          hasta="2026-11-19", intentos=3,
                                          ultimoIntento=TODAY, motivo="ml_hoy")
@@ -97,11 +130,11 @@ def test_tercer_fallo_va_a_no_revisar_7_dias():
 def test_un_intento_por_dia():
     estado = {"producto": entrada("republicacion")}
     desglose = {"producto": ("FILTRADO", "ml_hoy", ASIN)}
-    nuevo, cuentas = transicion(estado, desglose, TODAY)
+    nuevo, cuentas = transicion(estado, desglose, TODAY, modo="verificacion")
     assert nuevo["producto"] == entrada("republicacion", intentos=1,
                                          ultimoIntento=TODAY, motivo="ml_hoy")
     assert cuentas == CUENTAS
-    repetido, cuentas = transicion(nuevo, desglose, TODAY)
+    repetido, cuentas = transicion(nuevo, desglose, TODAY, modo="verificacion")
     assert repetido == nuevo
     assert cuentas == CUENTAS
 
@@ -109,18 +142,19 @@ def test_un_intento_por_dia():
 def test_ausentes_no_cambian_y_no_muta_entrada():
     estado = {"ausente": entrada("publicado"), "producto": entrada("republicacion")}
     original = deepcopy(estado)
-    nuevo, _ = transicion(estado, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY)
+    nuevo, _ = transicion(estado, {"producto": ("FILTRADO", "ml_hoy", ASIN)}, TODAY, modo="verificacion")
     assert estado == original
     assert nuevo["ausente"] == estado["ausente"]
 
 
 @pytest.mark.parametrize("cantidad,alerta", [(10, False), (11, True), (116, True)])
-def test_salida_masiva_va_a_republicacion_y_alerta(cantidad, alerta, capsys):
+def test_salida_hasta_la_mitad_va_a_republicacion_y_alerta(cantidad, alerta, capsys):
     estado = {f"producto-{i}": entrada("publicado") for i in range(cantidad)}
     desglose = {slug: ("FILTRADO", "ml_hoy", ASIN) for slug in estado}
-    nuevo, cuentas = transicion(estado, desglose, TODAY)
-    assert len(nuevo) == cantidad
-    assert all(item["situacion"] == "republicacion" for item in nuevo.values())
+    estado.update({f"sano-{i}": entrada("publicado") for i in range(cantidad)})
+    nuevo, cuentas = transicion(estado, desglose, TODAY, modo="verificacion")
+    assert len(nuevo) == cantidad * 2
+    assert all(nuevo[slug]["situacion"] == "republicacion" for slug in desglose)
     assert cuentas == {**CUENTAS, "salieron": cantidad}
     assert ("PUBLICACION_ALERTA_SALIDAS" in capsys.readouterr().out) == alerta
 
@@ -141,17 +175,20 @@ def test_motivo_estado_modos(anterior, verificacion, alta):
 
 
 def test_estado_ausente(tmp_path, capsys):
-    assert cargar(tmp_path) == {}
-    assert "PUBLICACION_ESTADO_INVALIDO" in capsys.readouterr().out
+    with pytest.raises(ValueError, match="PUBLICACION_SIN_ESTADO"):
+        cargar(tmp_path)
+    assert "PUBLICACION_SIN_ESTADO" in capsys.readouterr().out
     (tmp_path / "publicacion.json").write_text("{", encoding="utf-8")
-    assert cargar(tmp_path) == {}
+    with pytest.raises(ValueError, match="PUBLICACION_ESTADO_INVALIDO"):
+        cargar(tmp_path)
     assert "PUBLICACION_ESTADO_INVALIDO" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("contenido", ["[]", "null", '{"producto": {}}'])
 def test_estado_invalido(tmp_path, capsys, contenido):
     (tmp_path / "publicacion.json").write_text(contenido, encoding="utf-8")
-    assert cargar(tmp_path) == {}
+    with pytest.raises(ValueError, match="PUBLICACION_ESTADO_INVALIDO"):
+        cargar(tmp_path)
     assert "PUBLICACION_ESTADO_INVALIDO" in capsys.readouterr().out
 
 

@@ -47,9 +47,32 @@ def confirm(catalog_path, output, today=None):
 
 
 def _confirm(catalog_path, output, today):
+    estado = publicacion.cargar(output)
     pending = read_json(output / "altas-pendientes.json", [])
     remaining, promoted = [], []
     rejected_count = 0
+    catalog = load_catalog(catalog_path, output / "catalog-auto.json")
+    vencidos = 0
+    data = read_json(output / f"ar-chrome-{today}.json", {})
+    try:
+        data = chrome_today(data, today)
+    except (ValueError, TypeError):
+        data = {"items": {}}
+    for entry in catalog:
+        item = estado.get(entry["slug"])
+        if not item or item["situacion"] != "no_revisar" or item["hasta"] > today:
+            continue
+        motivo = motivo_total(entry, estado, today, "alta")
+        evidencia = data["items"].get(entry["asin"]) or {}
+        if not motivo and not (evidencia.get("ships") is True and evidencia.get("free") is True):
+            motivo = "sin_envio_gratis_chrome_hoy"
+        if motivo:
+            estado[entry["slug"]] = publicacion._entrada("no_revisar", today, motivo, entry["asin"])
+            print(alta_line(entry, "rechazada", motivo, evidencia), flush=True)
+        else:
+            vencidos += 1
+            print(alta_line(entry, "confirmada", "envio_gratis_chrome_hoy", evidencia), flush=True)
+    publicacion.guardar(output, estado)
     if pending:
         data = chrome_today(read_json(output / f"ar-chrome-{today}.json", {}), today)
         automatic = read_json(output / "catalog-auto.json", [])
@@ -97,11 +120,6 @@ def _confirm(catalog_path, output, today):
         if promoted:
             write_atomic(output / "catalog-auto.json", automatic + promoted)
         write_atomic(output / "altas-pendientes.json", remaining)
-    estado = publicacion.cargar(output)
-    catalog = load_catalog(catalog_path, output / "catalog-auto.json")
-    vencidos = sum(1 for entry in catalog
-                   if (item := estado.get(entry["slug"])) and item["situacion"] == "no_revisar"
-                   and motivo_total(entry, estado, today, "alta", stores=("US",)) is None)
     stamp = datetime.now(ART).strftime("%Y-%m-%d %H:%M:%S")
     print(f"{stamp} ALTAS_OK promovidas={len(promoted)} rechazadas={rejected_count} "
           f"siguen_pendientes={len(remaining)} vencidos={vencidos}", flush=True)

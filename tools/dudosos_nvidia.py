@@ -142,8 +142,11 @@ def run(catalog, output, post=requests.post):
 
 def main():
     import worker
+    output = worker.resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
+    sys.stdout = worker.DailyLog(output / "logs", sys.stdout)
+    sys.stderr = worker.DailyLog(output / "logs", sys.stderr)
     return run(worker.resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json")),
-               worker.resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent)
+               output)
 
 
 if __name__ == "__main__":

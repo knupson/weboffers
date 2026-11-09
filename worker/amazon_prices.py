@@ -388,6 +388,9 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     salteos = {p["slug"]: m for p in catalog
                if (m := motivo_total(p, estado, today, modo, tuple(STORE_CURRENCY)))}
     candidates = [p for p in catalog if p["slug"] not in salteos]
+    if modo == "alta":
+        # El alta suma sólo al archivo de hoy; nunca reintenta ni borra la verificación.
+        return price_new_products(candidates, prices_path, local, base_url)
     if isinstance(previous, dict) and previous.get("date") == today:
         refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
         if force:
@@ -478,6 +481,9 @@ def price_new_products(candidates, prices_path, local, base_url):
     """08/11: un alta confirmada después de la corrida entraba al catálogo sin precio de Amazon
     (los reintentos sólo miran lo que falló). Con force se consultan los que no se pidieron hoy."""
     previous = load_json(prices_path, None)
+    alta = modo_actual() == "alta"
+    if alta and (not isinstance(previous, dict) or previous.get("date") != local.date().isoformat()):
+        previous = {"date": local.date().isoformat(), "items": {}}
     if not base_url or not isinstance(previous, dict):
         return False
     today = previous["date"]
@@ -485,6 +491,12 @@ def price_new_products(candidates, prices_path, local, base_url):
     run_log = load_json(Path(prices_path).with_name(f"amazon-run-{today}.json"), {})
     seen = set(items) | set(previous.get("outOfRange") or {}) | {
         f.get("slug") for p in (run_log.get("passes") or []) for f in (p.get("fallas") or [])}
+    if alta:
+        estado = publicacion.cargar(Path(prices_path).parent)
+        vencidos = {p["slug"] for p in candidates
+                    if (item := estado.get(p["slug"])) and item["situacion"] == "no_revisar"
+                    and item["hasta"] <= today}
+        seen.difference_update(vencidos - set(items))
     nuevos = [p for p in candidates if p["slug"] not in seen]
     if not nuevos:
         return False
@@ -498,10 +510,19 @@ def price_new_products(candidates, prices_path, local, base_url):
     ar_shipping = merge_ar_shipping(previous, items, local.date())
     ar_shipping.update(chrome_shipping(candidates, prices_path, today))
     run = dict(previous.get("run") or {})
-    missing_reasons, run["faltan"] = missing_state(candidates, items, previous.get("outOfRange") or {},
-                                                   {**(previous.get("missingReasons") or {}), **last_reasons(nuevos)})
-    publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run,
-                                       "missingReasons": missing_reasons})
+    missing_reasons = dict(previous.get("missingReasons") or {})
+    for p in nuevos:
+        missing_reasons.pop(p["slug"], None)
+    missing_reasons.update(missing_state(nuevos, items, {}, last_reasons(nuevos))[0])
+    motivos = {}
+    for reason in missing_reasons.values():
+        motivos[reason] = motivos.get(reason, 0) + 1
+    run["faltan"] = {"total": len(missing_reasons), "motivos": motivos}
+    queried = {p["slug"] for p in nuevos}
+    out_of_range = {s: item for s, item in (previous.get("outOfRange") or {}).items() if s not in queried}
+    publish.write_atomic(prices_path, {**previous, "generatedAt": local.isoformat(), "items": items,
+                                       "arShipping": ar_shipping, "run": run,
+                                       "missingReasons": missing_reasons, "outOfRange": out_of_range})
     print(f"Amazon: productos nuevos, recuperados={ok} de {len(nuevos)}, total={len(items)}.", flush=True)
     fallas = [{"slug": p["slug"], "asin": p["asin"], "motivo": "sin_precio_nuevo"} for p in nuevos if p["slug"] not in got]
     write_run_log(prices_path, today, "nuevos", ok, len(nuevos), fallas)

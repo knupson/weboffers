@@ -42,6 +42,8 @@ def setup_job(tmp_path, monkeypatch):
     repo = tmp_path / "catalog.json"
     repo.write_text(json.dumps([{"asin": "EXISTENTE", "slug": "existente", "category": "Almacenamiento"}]))
     output = tmp_path / "output"
+    import publicacion
+    publicacion.guardar(output, {})
     monkeypatch.setattr(auto.ml_prices, "is_configured", lambda: True)
     def discover(*args, **kwargs):
         kwargs["get"].__self__.valid = 1
@@ -72,7 +74,7 @@ def test_sin_ventana_horaria(setup_job, hora):
 @pytest.mark.parametrize("status,pages", [("failed", 0), ("failed", 1), ("running", 0), ("ok", 1)])
 def test_sin_reintento_por_hora(setup_job, status, pages):
     repo, output, discover = setup_job
-    output.mkdir(parents=True)
+    output.mkdir(parents=True, exist_ok=True)
     (output / "catalog-auto-state.json").write_text(json.dumps({
         "slot": "2026-11-09", "status": status, "pages": pages, "at": "2026-11-09T00:00:00-03:00"}))
     assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T20:00:00-03:00"), mep=1000)

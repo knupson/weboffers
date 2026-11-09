@@ -67,7 +67,7 @@ def inicializar(texto, output, today=None, forzar=False):
                     hasta = hoy + timedelta(days=publicacion.NO_REVISAR_DIAS)
                 else:
                     situacion = "republicacion"
-                ultimo_intento = hoy.isoformat() if intentos else None
+                ultimo_intento = (hoy - timedelta(days=1)).isoformat() if intentos else None
             else:
                 situacion = "no_revisar"
                 hasta = hoy + timedelta(days=crc32(asin.encode("utf-8")) % 7 + 1)

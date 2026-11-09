@@ -25,6 +25,7 @@ AFTER_SEVEN = datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc)  # 09:00 ART
 
 @pytest.fixture(autouse=True)
 def amazon_hoy(tmp_path):
+    (tmp_path / "publicacion.json").write_text("{}", encoding="utf-8")
     """08/11: ML sólo consulta lo que tiene precio de Amazon de hoy en rango. Por defecto, todos lo tienen."""
     (tmp_path / "amazon-prices.json").write_text(json.dumps({"date": "2026-10-30", "items": {
         slug: {"amount": 200.0, "currency": "USD", "checked": "2026-10-30"}
@@ -559,4 +560,4 @@ def test_ml_consulta_solo_el_proceso_actual(tmp_path, monkeypatch, modo, esperad
     assert ml_prices.maybe_refresh(CATALOG[:2], path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
     data = json.loads(path.read_text())
     assert set(data["items"]) == esperados
-    assert set(data["skipped"]) == {"monitor", "ssd"} - esperados
+    assert set(data["skipped"]) == ({"monitor", "ssd"} - esperados if modo == "verificacion" else set())

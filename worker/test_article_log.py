@@ -38,6 +38,8 @@ def test_amazon_omite_cada_producto_con_valor_y_motivo(capsys):
 
 
 def test_pasada_sin_consulta_deja_una_sola_linea(tmp_path, monkeypatch, capsys):
+    import publicacion
+    publicacion.guardar(tmp_path, {"kindle": publicacion._entrada("publicado", "2026-11-06", "", "B0CFPJYX7P")})
     now = datetime(2026, 11, 6, 15, tzinfo=timezone.utc)
     product = {'slug': 'kindle', 'asin': 'B0CFPJYX7P', 'store': 'US', 'verified': True, 'ml': {'catalogId': 'MLA123'}}
     amz = tmp_path / 'amazon-prices.json'

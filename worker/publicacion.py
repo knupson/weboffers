@@ -45,8 +45,9 @@ def cargar(output: Path) -> dict:
         _validar(estado)
         return estado
     except (OSError, ValueError, TypeError, KeyError) as error:
-        _log(f"PUBLICACION_ESTADO_INVALIDO {error}")
-        return {}
+        marca = "PUBLICACION_SIN_ESTADO" if isinstance(error, FileNotFoundError) else "PUBLICACION_ESTADO_INVALIDO"
+        _log(f"{marca} {error}")
+        raise ValueError(f"{marca}: no se pudo leer el estado de publicación") from error
 
 
 def guardar(output: Path, estado: dict) -> None:
@@ -91,12 +92,24 @@ def _entrada(situacion: str, today: str, motivo: str, asin: str) -> dict:
 
 
 def transicion(
-    estado: dict, desglose: dict[str, tuple[str, str, str]], today: str,
+    estado: dict, desglose: dict[str, tuple[str, str, str]], today: str, modo: str,
 ) -> tuple[dict, dict]:
     nuevo = deepcopy(estado)
     cuentas = {"salieron": 0, "republicados": 0, "a_no_revisar": 0,
                "nuevos_publicados": 0}
+    if modo not in {"alta", "verificacion"}:
+        raise ValueError("Modo de publicación inválido")
+    publicados = sum(item["situacion"] == "publicado" for item in estado.values())
+    salieron = sum(estado.get(slug, {}).get("situacion") == "publicado" and datos[0] == "FILTRADO"
+                   for slug, datos in desglose.items())
+    if modo == "verificacion" and salieron * 2 > publicados:
+        cuentas["salieron"] = salieron
+        _log(f"PUBLICACION_ALERTA_MASIVA salieron={salieron} publicados={publicados}; "
+             "se conserva la situación y no se avanzan intentos")
+        return nuevo, cuentas
     for slug, (resultado, motivo, asin) in desglose.items():
+        if motivo_estado({"slug": slug}, estado, today, modo):
+            continue
         item = nuevo.get(slug)
         situacion = item["situacion"] if item else None
         if situacion == "no_revisar" and item["hasta"] > today:

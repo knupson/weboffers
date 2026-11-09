@@ -53,6 +53,8 @@ def snapshot(items, day=TODAY):
 
 @pytest.fixture
 def state(tmp_path):
+    import publicacion
+    publicacion.guardar(tmp_path, {})
     repo = tmp_path / "catalog.json"
     save(repo, [{"asin": "REPO", "slug": "repo", "store": "US", "verified": True,
                  "ml": {"catalogId": "MLAREPO"}, "image": "/products/repo.webp"}])
@@ -157,7 +159,7 @@ def test_descubrimientos_excluyen_rechazos_y_pendientes(setup_job, monkeypatch, 
     from datetime import datetime, timedelta
     from unittest.mock import Mock
     repo, output, discover = setup_job
-    output.mkdir()
+    output.mkdir(exist_ok=True)
     now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
     save(output / "altas-rechazadas.json", {"RECHAZADO": {"fecha": (now.date() - timedelta(days=days)).isoformat()}})
     save(output / "altas-pendientes.json", [pending()])
@@ -173,7 +175,7 @@ def test_descubrimientos_excluyen_rechazos_y_pendientes(setup_job, monkeypatch, 
 @pytest.mark.parametrize("collision", ["asin", "slug", "catalogId"])
 def test_fase_a_deduplica_con_pendientes(setup_job, collision, capsys):
     repo, output, _ = setup_job
-    output.mkdir()
+    output.mkdir(exist_ok=True)
     row = candidate()
     entry = pending()
     if collision == "catalogId":
@@ -212,5 +214,6 @@ def test_altas_ok_cuenta_vencidos_con_los_mismos_requisitos_de_chrome(state, cap
                     "ultimoIntento": None, "intentos": 0, "motivo": "sin_envio"}
         for p in productos
     })
+    save(output / f"ar-chrome-{TODAY}.json", snapshot({p["asin"]: {"ships": True, "free": True} for p in productos}))
     confirmation.confirm(repo, output, TODAY)
-    assert "vencidos=2" in capsys.readouterr().out
+    assert "vencidos=3" in capsys.readouterr().out

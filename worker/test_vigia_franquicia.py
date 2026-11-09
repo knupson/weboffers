@@ -5,7 +5,7 @@ from tools import vigia_franquicia as v
 
 ART = v.rf.ART
 HOY = datetime.datetime(2026, 11, 5, 10, 0, tzinfo=ART)
-PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "deploy", "estado")] + [
+PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")] + [
     f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
 TODOS = "\n".join(v.CONTENEDORES)
 
@@ -34,7 +34,7 @@ def log(tmp_path, *lineas):
 
 def correr(tmp_path, **kw):
     (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({
-        "fecha": "2026-11-05", "pasos": [{"paso": p, "estado": "ok"} for p in PASOS]
+        "fecha": "2026-11-05", "fin": "2026-11-05T05:00:00-03:00", "pasos": [{"paso": p, "estado": "ok"} for p in PASOS]
     }), encoding="utf-8")
     args = dict(cadena_dir=str(tmp_path), internet=lambda: True, sh=fake_sh(), leer=leer_ok, bajar=bajar_ok, logs_dir=str(tmp_path))
     args.update(kw)
@@ -97,6 +97,12 @@ def test_deploy_fail_en_log_del_deployer(tmp_path):
     assert any(k.startswith("deploy:") for k in p)
 
 
+def test_caida_brusca_avisa_desde_log_del_deployer(tmp_path):
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker")
+    p = correr(tmp_path, sh=fake_sh(deployer="2026-11-05 09:00:00 DEPLOY_ALERT caída brusca de 116 a 20"))
+    assert any(k.startswith("deploy:") and "caída brusca" in texto for k, texto in p.items())
+
+
 def test_avisa_una_vez_y_reintenta_si_no_sale(tmp_path, monkeypatch):
     monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
     monkeypatch.setattr(v, "chequeos", lambda ahora: {"latido": "el worker no da señales"})
@@ -151,7 +157,7 @@ def test_cadena_faltante_fallida_e_interrumpida(tmp_path):
     hoy = "2026-11-05"
     assert "cadena" in v.chequear_cadena(hoy, tmp_path)
     p = tmp_path / f"cadena-{hoy}.json"
-    p.write_text(json.dumps({"fecha": hoy, "pasos": [
+    p.write_text(json.dumps({"fecha": hoy, "fin": hoy + "T05:00:00-03:00", "pasos": [
         *[{"paso": name, "estado": "ok"} for name in PASOS if name != "verificacion:deploy"],
         {"paso": "verificacion:amazon", "estado": "fail", "motivo": "timeout"},
         {"paso": "verificacion:ml", "estado": "en_curso"}]}), encoding="utf-8")
@@ -194,5 +200,5 @@ def test_alta_ok_no_oculta_falla_verificacion_y_controla_todos_los_pasos(tmp_pat
     for name in PASOS + [f"alta:{p}" for p in ("amazon", "ml", "deploy", "estado")]:
         steps = [{"paso": p, "estado": "fail" if p == name else "ok"} for p in
                  PASOS + [f"alta:{p}" for p in ("amazon", "ml", "deploy", "estado")]]
-        (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({"fecha": "2026-11-05", "pasos": steps}))
+        (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({"fecha": "2026-11-05", "fin": "2026-11-05T05:00:00-03:00", "pasos": steps}))
         assert set(v.chequear_cadena("2026-11-05", tmp_path)) == {f"cadena:{name}"}
