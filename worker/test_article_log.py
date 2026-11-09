@@ -95,6 +95,9 @@ def test_amazon_chrome_scraper_exitos_y_fallas(tmp_path, monkeypatch, capsys):
 
 @pytest.mark.parametrize('status', ['ok', 'absent', 'failed', 'variantConflict'])
 def test_ml_resultados_por_producto(tmp_path, monkeypatch, capsys, status):
+    import publicacion
+    publicacion.guardar(tmp_path, {"monitor": publicacion._entrada(
+        "publicado", "2026-11-06", "", "B0MON")})
     p = {'slug': 'monitor', 'verified': True, 'asin': 'B0MON', 'image': '/p.webp', 'store': 'US',
          'ml': {'catalogId': 'MLA123', 'price': 650000}}
     # 08/11: ML sólo consulta lo que tiene precio de Amazon de hoy.

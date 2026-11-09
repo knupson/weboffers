@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from alta_state import read_json, update_state
 from article_log import chrome_line
 from catalog import load_catalog
-from requisitos import motivo_catalogo, resumen_etapa
+from requisitos import motivo_total, modo_actual, resumen_etapa
+import publicacion
 from publish import write_atomic
 from tools.confirmar_altas import chrome_today
 
@@ -24,7 +25,14 @@ def hora():
 def asin_list(catalog_path, output, pending_only=False):
     output = Path(output)
     pending = read_json(output / "altas-pendientes.json", [])
-    catalog = [] if pending_only else load_catalog(catalog_path, output / "catalog-auto.json")
+    estado = publicacion.cargar(output)
+    today = hora()[:10]
+    modo = modo_actual()
+    catalog = load_catalog(catalog_path, output / "catalog-auto.json")
+    if pending_only:
+        catalog = [p for p in catalog if modo == "alta"
+                   and (item := estado.get(p["slug"]))
+                   and item["situacion"] == "no_revisar" and item["hasta"] <= today]
     slugs = {}
     salteos = {}
     otra_tienda = 0
@@ -34,7 +42,7 @@ def asin_list(catalog_path, output, pending_only=False):
             otra_tienda += 1
             continue
         # 08/11: requisitos del catálogo (worker/requisitos.py), los mismos que exige el deploy.
-        motivo = motivo_catalogo(entry, stores=("US",))
+        motivo = motivo_total(entry, estado, today, modo, stores=("US",))
         if motivo:
             salteos[entry.get("slug")] = motivo
             print(f"{hora()} CHROME_SALTEO slug={entry.get('slug')} asin={entry.get('asin')} motivo={motivo}",

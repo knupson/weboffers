@@ -19,6 +19,7 @@ import amazon_prices
 from catalog import load_catalog, read_catalog
 import ml_prices
 import publish
+import publicacion
 from alta_state import read_json, rejected_asins, duplicate, update_state
 from article_log import alta_line
 
@@ -214,6 +215,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         if not scraper.limit:
             raise ValueError("Sin presupuesto diario de páginas de Amazon.")
         existing_asins = {p.get("asin") for p in catalog + pending} | rejected_asins(output, today)
+        existing_asins.update(item["asin"] for item in publicacion.cargar(output).values()
+                              if item["situacion"] == "no_revisar" and item["hasta"] > today)
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
             get=scraper.get, existing_asins=existing_asins, failures=failures)
         # 05/11: también al revés, desde lo que ML vende en Argentina (rinde mucho más que partir de Amazon).

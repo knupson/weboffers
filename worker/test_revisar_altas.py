@@ -80,7 +80,7 @@ def test_aprobar_misma_entrada_que_alta_automatica(state, tmp_path, capsys):
     assert "REVISION_OK aprobadas=1 rechazadas=0 siguen=0" in log
 
 
-def test_rechazar_conserva_rechazos_y_ventana_de_14_dias(state, capsys):
+def test_rechazar_conserva_rechazos_y_ventana_de_7_dias(state, capsys):
     _, output, row, photo = state
     previous = {"fecha": "2026-11-06", "motivo": "envio_pago", "texto": "Prueba"}
     save(output / "altas-rechazadas.json", {"OTRO": previous})
@@ -88,8 +88,8 @@ def test_rechazar_conserva_rechazos_y_ventana_de_14_dias(state, capsys):
     assert read_json(output / "altas-rechazadas.json", {}) == {
         "OTRO": previous, row["asin"]: {"fecha": TODAY, "motivo": "revision: Mismo modelo", "texto": ""}}
     assert read_json(output / "altas-revision.json", None) == []
-    assert row["asin"] in rejected_asins(output, "2026-11-20")
-    assert row["asin"] not in rejected_asins(output, "2026-11-21")
+    assert row["asin"] in rejected_asins(output, "2026-11-13")
+    assert row["asin"] not in rejected_asins(output, "2026-11-14")
     assert not (output / "altas-pendientes.json").exists()
     photo.assert_not_called()
     assert "REVISION_OK aprobadas=0 rechazadas=1 siguen=0" in capsys.readouterr().out

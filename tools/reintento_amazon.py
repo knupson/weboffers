@@ -1,7 +1,9 @@
 # Reintento de Amazon SOLO para los productos sin precio de hoy (2.a corrida del dia, parcial).
 # Corre dentro del contenedor: docker exec -i -w /app/worker franquicia400-weboffers-worker-1 python - < este_archivo
 import json, datetime
+from pathlib import Path
 import amazon_prices as a, publish
+import publicacion
 
 catalog = json.load(open("/app/data/catalog.json", encoding="utf-8"))
 path = "/app/output/amazon-prices.json"
@@ -10,9 +12,11 @@ hoy = datetime.datetime.now(a.ART).date().isoformat()
 assert prev.get("date") == hoy, "el archivo no es de hoy"
 items = prev["items"]
 # 08/11: mismos requisitos que la cadena (worker/requisitos.py) y nada que el Chrome de hoy vio sin envío gratis.
-from requisitos import motivo_catalogo
+from requisitos import motivo_total, modo_actual
+estado = publicacion.cargar(Path(path).parent)
+modo = modo_actual()
 sin_gratis = a.chrome_sin_envio_gratis(path, hoy)
-cands = [p for p in catalog if not motivo_catalogo(p, tuple(a.STORE_CURRENCY)) and p["slug"] not in items
+cands = [p for p in catalog if not motivo_total(p, estado, hoy, modo, tuple(a.STORE_CURRENCY)) and p["slug"] not in items
          and not (p.get("store") == "US" and p.get("asin") in sin_gratis)]
 print("faltaban:", len(cands), flush=True)
 base = a.scraper_url()

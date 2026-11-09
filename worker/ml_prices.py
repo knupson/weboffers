@@ -2,7 +2,8 @@
 
 from refresh_lock import locked_refresh
 from article_log import ml_line
-from requisitos import motivo_catalogo, resumen_etapa
+from requisitos import motivo_total, modo_actual, resumen_etapa
+import publicacion
 
 from datetime import date, datetime, timedelta, timezone
 import json
@@ -293,13 +294,13 @@ def functional_conflicts(product, amazon_items):
     return [c for c in variant_conflicts(amazon_title, ml_name) if c != "color"]
 
 
-def motivo_salteo_ml(product, sin_gratis, amazon_items, eur_usd=None):
+def motivo_salteo_ml(product, sin_gratis, amazon_items, estado, today, modo, eur_usd=None):
     """Por qué ML no consulta este producto (08/11), o None: lo vio fallar una etapa anterior.
 
     Orden: requisitos del catálogo, envío visto por Chrome hoy, precio de Amazon de hoy en rango.
     """
     from amazon_prices import RANGE_MIN, RANGE_MAX
-    motivo = motivo_catalogo(product)
+    motivo = motivo_total(product, estado, today, modo)
     if motivo:
         return motivo
     if product.get("store") == "US" and product.get("asin") in sin_gratis:
@@ -334,8 +335,10 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     sin_gratis = chrome_sin_envio_gratis(amazon_prices_path, today)
     amazon_items = load_amazon_prices(amazon_prices_path, local.date())
 
+    estado = publicacion.cargar(Path(prices_path).parent)
+    modo = modo_actual()
     salteos = {p["slug"]: m for p in catalog
-               if p.get("slug") and (m := motivo_salteo_ml(p, sin_gratis, amazon_items, eur_usd))}
+               if p.get("slug") and (m := motivo_salteo_ml(p, sin_gratis, amazon_items, estado, today, modo, eur_usd))}
     nuevos = set()
     if extra_slot is not None and local.hour >= EXTRA_REFRESH_HOUR and done_slot != extra_slot:
         slot = extra_slot

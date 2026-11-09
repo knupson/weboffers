@@ -61,6 +61,9 @@ def test_ml_partial_hourly_retries_keep_successes(tmp_path, monkeypatch):
     monkeypatch.setattr(ml, "fetch_items", fetch)
     catalog = [{"slug": s, "verified": True, "asin": "B0" + s, "image": "/p.webp", "store": "US",
                 "ml": {"catalogId": s}} for s in ("OK", "FAIL")]
+    import publicacion
+    publicacion.guardar(tmp_path, {p["slug"]: publicacion._entrada(
+        "publicado", "2026-11-05", "", p["asin"]) for p in catalog})
     path = tmp_path / "ml-prices.json"
     now = datetime(2026, 11, 5, 6, tzinfo=ml.ART)
     # 08/11: ML sólo consulta lo que tiene precio de Amazon de hoy.

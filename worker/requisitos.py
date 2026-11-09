@@ -6,6 +6,18 @@ un producto que no los cumple no se consulta en ningún lado y queda una línea 
 Son los mismos controles que aplica el deploy (src/lib/data.ts, comparableChecks): verificado, asin, imagen y ML.
 """
 from collections import Counter
+import os
+
+import publicacion
+
+
+def modo_actual() -> str:
+    return os.environ.get("PUBLICACION_MODO", "verificacion")
+
+
+def motivo_total(product, estado, today, modo, stores=("US", "ES")) -> str | None:
+    """Primer requisito del catálogo o del estado que impide consultar."""
+    return motivo_catalogo(product, stores) or publicacion.motivo_estado(product, estado, today, modo)
 
 
 def motivo_catalogo(product, stores=("US", "ES")):

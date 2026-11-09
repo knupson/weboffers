@@ -16,6 +16,8 @@ AFTER_SEVEN = datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc)  # 09:00 ART
 
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
+    # Los casos previos consultan productos sin estado, como el proceso de alta.
+    monkeypatch.setenv("PUBLICACION_MODO", "alta")
     monkeypatch.setenv("AMAZON_SCRAPER_URL", "http://scraper:8000")
     monkeypatch.delenv("AMAZON_AR_URL", raising=False)
     monkeypatch.setattr(amazon_prices, "PAUSE_SECONDS", 0)
@@ -806,3 +808,38 @@ def test_chrome_paid_shipping_skips_scraper(tmp_path, monkeypatch):
                                                           tmp_path / "amazon-prices.json")
     assert pedidos == ["sindato"]
     assert items == {} and ok == 0 and missing == 3
+
+
+
+def test_amazon_saltea_no_revisar(tmp_path, monkeypatch, capsys):
+    import publicacion
+    from test_requisitos import producto
+    monkeypatch.setenv("PUBLICACION_MODO", "verificacion")
+    publicacion.guardar(tmp_path, {"producto": publicacion._entrada(
+        "no_revisar", "2026-10-29", "sin_envio", "PRODUCTO")})
+    fetch = Mock(return_value=({}, 0, 0))
+    monkeypatch.setattr(amazon_prices, "fetch_prices", fetch)
+    out = tmp_path / "amazon-prices.json"
+    assert amazon_prices.maybe_refresh([producto()], out, AFTER_SEVEN)
+    assert all(not call.args[1] for call in fetch.call_args_list)
+    log = capsys.readouterr().out
+    assert "omitido_no_revisar" in log
+    assert "ETAPA_RESUMEN amazon entran=1 salteados=1 motivos_salteo=no_revisar:1" in log
+
+
+@pytest.mark.parametrize("modo,esperados", [("verificacion", {"publicado", "republicacion"}),
+                                          ("alta", {"nuevo", "vencido"})])
+def test_amazon_consulta_solo_el_proceso_actual(tmp_path, monkeypatch, modo, esperados):
+    import publicacion
+    from test_requisitos import producto
+    monkeypatch.setenv("PUBLICACION_MODO", modo)
+    catalog = [producto(s) for s in ("publicado", "republicacion", "nuevo", "vencido")]
+    publicacion.guardar(tmp_path, {
+        s: publicacion._entrada(situacion, fecha, "", s.upper())
+        for s, situacion, fecha in (("publicado", "publicado", "2026-10-30"),
+                                    ("republicacion", "republicacion", "2026-10-30"),
+                                    ("vencido", "no_revisar", "2026-10-23"))})
+    fetch = Mock(return_value=({}, 0, len(esperados)))
+    monkeypatch.setattr(amazon_prices, "fetch_prices", fetch)
+    assert amazon_prices.maybe_refresh(catalog, tmp_path / "amazon-prices.json", AFTER_SEVEN)
+    assert {p["slug"] for call in fetch.call_args_list for p in call.args[1]} == esperados

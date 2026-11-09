@@ -349,3 +349,19 @@ def test_strong_ids_do_not_bypass_validator(setup_job):
     auto.add_accepted([], {"accepted": [], "rejected": [candidate()], "doubtful": [candidate()]}, output, "2026-11-07")
     assert json.loads((output / "altas-pendientes.json").read_text()) == []
     assert json.loads((output / "altas-revision.json").read_text()) == []
+
+
+
+def test_descubrimiento_respeta_no_revisar(setup_job, monkeypatch):
+    import publicacion
+    repo, output, discover = setup_job
+    publicacion.guardar(output, {
+        s: publicacion._entrada("no_revisar", fecha, "sin_envio", s.upper())
+        for s, fecha in (("vigente", "2026-11-02"), ("vencido", "2026-11-01"))})
+    desde_ml = Mock(return_value=[])
+    monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    for asins in (discover.call_args.kwargs["existing_asins"], desde_ml.call_args.args[0]):
+        assert "VIGENTE" in asins
+        assert "VENCIDO" not in asins
+        assert "EXISTENTE" in asins

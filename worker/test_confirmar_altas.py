@@ -104,7 +104,8 @@ def test_no_promueve_evidencia_vieja_ni_sin_archivo(state):
     assert (output / "altas-pendientes.json").read_bytes() == before
 
 
-def test_lista_chrome_incluye_pendientes_y_modo_solo_pendientes(state):
+def test_lista_chrome_incluye_pendientes_y_modo_solo_pendientes(state, monkeypatch):
+    monkeypatch.setenv("PUBLICACION_MODO", "alta")
     repo, output = state
     assert altas_chrome.asin_list(repo, output).split() == ["REPO:repo", "EXISTENTE:existente", "NUEVO:nuevo"]
     assert altas_chrome.asin_list(repo, output, pending_only=True) == "NUEVO:nuevo"
@@ -126,7 +127,7 @@ def test_fusion_chrome_conserva_resto_y_actualiza_pendientes(state):
     assert (output / f"ar-chrome-{TODAY}.json").read_bytes() == before
 
 
-@pytest.mark.parametrize("days,skip", [(0, True), (13, True), (14, False)])
+@pytest.mark.parametrize("days,skip", [(0, True), (6, True), (7, False)])
 def test_descubrimientos_excluyen_rechazos_y_pendientes(setup_job, monkeypatch, days, skip):
     from datetime import datetime, timedelta
     from unittest.mock import Mock

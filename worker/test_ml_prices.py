@@ -34,6 +34,8 @@ def amazon_hoy(tmp_path):
 
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
+    # Los casos previos consultan productos sin estado, como el proceso de alta.
+    monkeypatch.setenv("PUBLICACION_MODO", "alta")
     monkeypatch.setenv("ML_CLIENT_ID", "id")
     monkeypatch.setenv("ML_CLIENT_SECRET", "secret")
     monkeypatch.setattr(ml_prices, "PAUSE_SECONDS", 0)
@@ -531,3 +533,30 @@ def test_ml_saltea_fuera_de_rango_y_sin_imagen(tmp_path, monkeypatch):
     ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
     assert get.call_count == 0
     assert json.loads(prices.read_text(encoding="utf-8"))["skipped"] == {"monitor": "amazon_fuera_de_rango", "ssd": "sin_imagen"}
+
+
+
+def test_ml_saltea_no_publicado_en_verificacion(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PUBLICACION_MODO", "verificacion")
+    get = Mock()
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    out = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG[:1], out, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
+    assert json.loads(out.read_text())["skipped"] == {"monitor": "no_publicado"}
+    get.assert_not_called()
+    assert "ETAPA_RESUMEN ml entran=1 salteados=1 motivos_salteo=no_publicado:1" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("modo,esperados", [("verificacion", {"monitor"}), ("alta", {"ssd"})])
+def test_ml_consulta_solo_el_proceso_actual(tmp_path, monkeypatch, modo, esperados):
+    import publicacion
+    monkeypatch.setenv("PUBLICACION_MODO", modo)
+    publicacion.guardar(tmp_path, {"monitor": publicacion._entrada(
+        "republicacion", "2026-10-30", "", "B0MON")})
+    fetch = Mock(return_value=[{"price": 700000, "id": "MLA123"}])
+    monkeypatch.setattr(ml_prices, "fetch_items", fetch)
+    path = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG[:2], path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
+    data = json.loads(path.read_text())
+    assert set(data["items"]) == esperados
+    assert set(data["skipped"]) == {"monitor", "ssd"} - esperados

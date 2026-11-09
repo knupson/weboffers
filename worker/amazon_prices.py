@@ -2,7 +2,8 @@
 
 from refresh_lock import locked_refresh
 from article_log import amazon_line, chrome_line, value
-from requisitos import motivo_catalogo, resumen_etapa
+from requisitos import motivo_total, modo_actual, resumen_etapa
+import publicacion
 
 from datetime import date, datetime, timedelta, timezone
 from itertools import groupby
@@ -382,7 +383,10 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     ml_path = Path(os.environ.get("ML_PRICES_PATH", str(Path(prices_path).with_name("ml-prices.json"))))
     ml_prices = load_json(ml_path, None)
     # 08/11: requisitos del catálogo (requisitos.py), los mismos que exige el deploy; lo que no cumple no se consulta.
-    salteos = {p["slug"]: m for p in catalog if (m := motivo_catalogo(p, tuple(STORE_CURRENCY)))}
+    estado = publicacion.cargar(Path(prices_path).parent)
+    modo = modo_actual()
+    salteos = {p["slug"]: m for p in catalog
+               if (m := motivo_total(p, estado, today, modo, tuple(STORE_CURRENCY)))}
     candidates = [p for p in catalog if p["slug"] not in salteos]
     if isinstance(previous, dict) and previous.get("date") == today:
         refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
