@@ -19,6 +19,20 @@ Hoy (medido el 09/11 en `cadena-2026-11-09.log`) la cadena de las 03:30 reconsul
 
 Medido el 09/11 (`desglose-*.log` del deployer, desde 07/11 03:53): de los 175 no publicados hoy, 5 estuvieron publicados alguna vez desde el 07/11 y 170 nunca.
 
+> «Todos los script se tienen que correr 1 sola vez por dia. Se acaba lo de noctura, mañana, etc.»
+
+## Una corrida por día
+
+Una sola corrida diaria (cron 03:30, el horario actual de la cadena), encadenada, y cada script corre una vez:
+
+1. Proceso 2 + 4: Chrome (publicados + republicación) → Amazon → ML → deploy → estado.
+2. Proceso 1, búsqueda: alta de candidatos nuevos (`catalog_auto`, sin ventana 20:00–03:00 ni reintentos por hora).
+3. Proceso 3: dudosos con NVIDIA.
+4. Proceso 1, confirmación: Chrome (pendientes + «no revisar» vencidos) → altas → Amazon → ML → deploy → estado.
+
+Se eliminan: los reintentos por hora del worker (Amazon desde 06:00, slots de ML, alta 20:00–03:00, fichas ML), la unidad `franquicia-tras-alta.path` y el bucle de 10 minutos del deployer (pasa a desplegar sólo cuando lo llama la corrida). Un paso que falla se reintenta dentro de la misma corrida (regla 5 de AGENTS.md), no en otra hora.
+Queda fuera (decisión de Claude, no son procesos de publicación): las publicaciones de Telegram 12:00/20:00, Meta, los recordatorios y los vigías.
+
 ## Estados (lo único que ve Alejandro)
 
 Un producto está **publicado** o **no publicado**. Internamente, un no publicado puede estar en una de estas situaciones; ninguna es visible ni se le reporta como «catálogo»:

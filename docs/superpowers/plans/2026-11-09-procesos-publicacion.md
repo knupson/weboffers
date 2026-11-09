@@ -110,22 +110,27 @@ Reglas de `transicion` (sólo productos presentes en el desglose; los ausentes n
 - [ ] **Step 4:** Mismo comando → PASS.
 - [ ] **Step 5:** Commit `feat(publicacion): el desglose de cada deploy mueve a cada producto de situación`.
 
-### Task 4: `tools/cadena.py` — dos corridas separadas
+### Task 4: `tools/cadena.py` — una corrida diaria con los procesos en orden
 
 **Files:**
-- Modify: `tools/cadena.py:183-226`
-- Test: `worker/test_cadena.py`
+- Modify: `tools/cadena.py:183-238`, `worker/worker.py:68-90` (bucle), `worker/catalog_auto.py:176-196` (ventana horaria), `worker/deployer/deploy.mjs` (bucle de 10 min), crontab de la VM, unidad `franquicia-tras-alta.path`
+- Test: `worker/test_cadena.py`, `worker/test_worker.py`, `worker/test_catalog_auto.py`, `worker/test_deployer.py`
 
-Cambios:
-- Modo `cadena` (proceso 2 + 4, cron 03:30): pasos `chrome → amazon → ml → deploy → estado`. Sin `altas`. Exporta `PUBLICACION_MODO=verificacion` a cada `docker exec` (`-e PUBLICACION_MODO=…`) y a `envio_ar_chrome.sh`.
-- Modo `tras-alta` (proceso 1 + 3, lo dispara `alta-terminada.json`): pasos `dudosos → chrome --pendientes → altas → amazon → ml → deploy --ahora → estado`, con `PUBLICACION_MODO=alta`. El corte «sin altas promovidas» sólo aplica si además no hay `no_revisar` vencidos para consultar (`ALTAS_OK … vencidos=N` lo informa; ver Task 2).
+Cambios (pedido literal: «Todos los script se tienen que correr 1 sola vez por dia»):
+- Una sola corrida (cron 03:30, `cadena.py`), en este orden y cada paso una vez: **verificación** `chrome → amazon → ml → deploy → estado` con `PUBLICACION_MODO=verificacion`; después **alta** `buscar → dudosos → chrome --pendientes → altas → amazon → ml → deploy --ahora → estado` con `PUBLICACION_MODO=alta`. El modo viaja con `-e PUBLICACION_MODO=…` en cada `docker exec` y a `envio_ar_chrome.sh`. Si el bloque de verificación falla, el de alta corre igual (procesos separados); cada bloque deja su `ETAPA_RESUMEN`.
+- Paso `buscar`: `python /app/tools/crecer_ahora.py` (ya existe, llama `maybe_grow(force=True)`). `maybe_grow` deja de tener ventana 20:00–03:00 y de reintentar por hora; el bucle del worker deja de llamarlo.
+- Bucle del worker (`worker.py main`): queda sólo Telegram (`POST_HOURS = (12, 20)`, fuera de alcance). Amazon, ML, fichas ML y alta salen del bucle; los corre la cadena.
+- Deployer: sin bucle de 10 minutos; despliega sólo con `deploy.mjs` llamado por la cadena (`--ahora` en el segundo deploy, como hoy).
+- Se borra la unidad `franquicia-tras-alta.path` y el `alta-terminada.json` deja de usarse.
+- El corte «sin altas promovidas» del bloque alta sólo aplica si tampoco hay `no_revisar` vencidos (`ALTAS_OK … vencidos=N`, Task 2).
 - Paso `estado`: `sh -c "docker exec DEPLOYER cat <desglose> | docker exec -i -w /app/worker WORKER python /app/tools/actualizar_publicacion.py --desglose -"`, con la ruta guardada por `deploy`/`deploy_ahora` en `self.desglose`. Sin desglose → `PASO_FAIL estado sin desglose`.
 
-- [ ] **Step 1: Failing tests** con el `popen` falso que ya usa `test_cadena.py`: `test_cadena_no_corre_altas_y_termina_en_estado` (secuencia de comandos), `test_modo_viaja_en_el_entorno` (`-e PUBLICACION_MODO=verificacion` en amazon/ml), `test_tras_alta_empieza_por_dudosos`, `test_estado_recibe_el_desglose_del_deploy`.
-- [ ] **Step 2:** `python -m pytest worker/test_cadena.py -q` → FAIL.
+- [ ] **Step 1: Failing tests** con el `popen` falso que ya usa `test_cadena.py`: `test_orden_verificacion_y_despues_alta` (secuencia exacta de los 13 pasos), `test_cada_paso_una_vez`, `test_modo_viaja_en_el_entorno`, `test_falla_verificacion_alta_corre_igual`, `test_estado_recibe_el_desglose_del_deploy`; en `test_worker.py` `test_bucle_no_llama_precios_ni_alta`; en `test_catalog_auto.py` `test_sin_ventana_horaria` (reemplaza a `test_retry_missing_mep_before_three`, `test_failed_before_scraping_retries_same_night` y `test_expired_running_retries`); en `test_deployer.py` `test_sin_bucle_de_reintento`.
+- [ ] **Step 2:** `python -m pytest worker/test_cadena.py worker/test_worker.py worker/test_catalog_auto.py worker/test_deployer.py -q` → FAIL.
 - [ ] **Step 3:** Implementar.
 - [ ] **Step 4:** Mismo comando → PASS.
-- [ ] **Step 5:** Commit `feat(cadena): verificación de publicados y alta de nuevos en corridas separadas`.
+- [ ] **Step 5:** Commit `feat(cadena): una corrida por día; verificación y alta como bloques separados`.
+- [ ] **Step 6 (en Task 7, al desplegar):** `ssh docker 'sudo systemctl disable --now franquicia-tras-alta.path'` y confirmar con `systemctl is-enabled` → `disabled`; el crontab queda con una sola línea de `cadena.py` (03:30).
 
 ### Task 5: Arranque del estado (`tools/inicializar_publicacion.py`)
 
