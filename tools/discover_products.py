@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT))
 
 import ml_prices  # noqa: E402
 import publish  # noqa: E402
+from buscar_log import BuscarLog, line, check_stop
 
 DEFAULT_SCRAPER_URL = "http://weboffers-amazon-scraper:8000"
 DEFAULT_OUTPUT_PATH = "/app/output/discovery-candidates.json"
@@ -255,17 +256,20 @@ def fetch_bestseller_categories(parent_category="", base_url=None, get=None):
     params = {"country": "US"}
     if parent_category:
         params["category"] = parent_category
+    check_stop()
     response = (get or requests.get)(
         f"{scraper_url(base_url)}/best-sellers/categories",
         params=params,
         timeout=HTTP_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-    payload = response.json() or {}
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Respuesta del scraper inválida")
     return payload.get("categories") or []
 
 
-def discover_categories(base_url=None, all_departments=False, get=None):
+def discover_categories(base_url=None, all_departments=False, get=None, journal=None, failures=None):
     """Descubre los IDs/paths de categorías tecnológicas relevantes en Amazon US."""
     discovered = []
     seen = set()
@@ -297,8 +301,12 @@ def discover_categories(base_url=None, all_departments=False, get=None):
     for dept_id, dept_name in seed_to_expand:
         try:
             sub_cats = fetch_bestseller_categories(dept_id, base_url=base_url, get=get)
-        except requests.RequestException as exc:
-            print(f"Categoría raíz {dept_id} falló ({type(exc).__name__})", flush=True)
+        except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
+            line("BUSCAR_AMAZON", categoria=dept_id, estado="error", motivo=str(exc))
+            if journal:
+                journal.append("amazon_error", dept_id, "error", str(exc))
+            if failures is not None:
+                failures.append({"categoria": dept_id, "motivo": str(exc)})
             sub_cats = []
         scraper_pause()
         matched_in_dept = 0
@@ -321,14 +329,19 @@ def discover_categories(base_url=None, all_departments=False, get=None):
 
 
 def fetch_bestsellers_for_category(category_id, category_name="", base_url=None, limit=TOP_PER_CATEGORY, get=None):
+    check_stop()
     response = (get or requests.get)(
         f"{scraper_url(base_url)}/best-sellers",
         params={"category": category_id, "country": "US", "page": 1},
         timeout=HTTP_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-    payload = response.json() or {}
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Respuesta del scraper inválida")
     raw_items = payload.get("items") or payload.get("results") or []
+    if not isinstance(raw_items, list) or payload.get("error"):
+        raise ValueError("Lista de Amazon inválida")
     resolved_cat = category_name or payload.get("title") or category_id
     out = []
     for item in raw_items[:limit]:
@@ -340,14 +353,19 @@ def fetch_bestsellers_for_category(category_id, category_name="", base_url=None,
 
 
 def fetch_search_results(query, base_url=None, limit=TOP_PER_CATEGORY, get=None):
+    check_stop()
     response = (get or requests.get)(
         f"{scraper_url(base_url)}/search",
         params={"query": query, "country": "US", "page": 1},
         timeout=HTTP_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-    payload = response.json() or {}
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Respuesta del scraper inválida")
     raw_items = payload.get("results") or payload.get("items") or []
+    if not isinstance(raw_items, list) or payload.get("error"):
+        raise ValueError("Búsqueda de Amazon inválida")
     out = []
     for item in raw_items[:limit]:
         if isinstance(item, dict):
@@ -470,26 +488,38 @@ def clean_title_for_ml(title, brand=""):
     return re.sub(r"\s+", " ", query).strip()
 
 
-def find_ml_candidates(query):
+def find_ml_candidates(query, failures=None):
     """Busca en el catálogo de ML los top 5 productos y obtiene el menor precio nuevo e itemId."""
     found = []
-    results = ml_prices.search_products(query)[:CANDIDATES_PER_PRODUCT]
+    results = ml_prices.search_products(query)
+    if not isinstance(results, list):
+        raise ValueError("Respuesta de búsqueda ML inválida")
+    results = results[:CANDIDATES_PER_PRODUCT]
     ml_prices.pause()
     for result in results:
+        check_stop()
         if not isinstance(result, dict) or not result.get("id"):
+            if failures is not None:
+                failures.append({"motivo": "resultado_invalido"})
+            line("BUSCAR_CANDIDATO_ML", id="ausente", estado="descartado", motivo="resultado_invalido")
             continue
         catalog_id = result["id"]
         try:
             items = ml_prices.fetch_items(catalog_id)
             best = ml_prices.cheapest_new(items)
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-            print(f"  candidato {catalog_id} sin precio ({type(exc).__name__})", flush=True)
-            best = None
+            if failures is not None:
+                failures.append({"catalogId": catalog_id, "motivo": str(exc)})
+            line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="error", motivo=str(exc))
+            ml_prices.pause()
+            continue
         ml_prices.pause()
         if best is None:
+            line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="sin_precio", motivo="sin_vendedor_nuevo_local")
             continue
         min_price, item_id = best
         if min_price is None or not item_id:
+            line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="sin_precio", motivo="precio_o_item_ausente")
             continue
         found.append({
             "catalogId": catalog_id,
@@ -497,25 +527,57 @@ def find_ml_candidates(query):
             "minPrice": min_price,
             "itemId": item_id,
         })
+        line("BUSCAR_CANDIDATO_ML", id=catalog_id, estado="con_precio", motivo="vendedor_nuevo_local")
     return found
 
 
-def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None, get=None):
+def collect_amazon_candidates(existing_asins, queries=None, categories=None, base_url=None, get=None, journal=None, failures=None):
     """Reúne y filtra productos de best-sellers y búsquedas adicionales."""
-    cats = categories if categories is not None else (discover_categories(base_url=base_url, get=get) if get else discover_categories(base_url=base_url))
+    category_errors = []
+    try:
+        saved = journal.resolved("amazon_categorias").get("raices") if journal else None
+        cats = saved["categories"] if saved else (categories if categories is not None else discover_categories(base_url=base_url, get=get, journal=journal, failures=category_errors))
+        if failures is not None:
+            failures.extend(category_errors)
+        if journal and not saved and not category_errors:
+            journal.append("amazon_categorias", "raices", "ok", categories=cats)
+    except PageBudgetExhausted:
+        line("BUSCAR_AMAZON", estado="interrumpido", motivo="limite_paginas")
+        if journal:
+            journal.stop_reason = "limite_paginas"
+        cats = []
+    except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
+        line("BUSCAR_AMAZON", estado="error", motivo=str(exc))
+        if journal:
+            journal.append("amazon_error", "raices", "error", str(exc))
+        if failures is not None:
+            failures.append({"motivo": str(exc)})
+        cats = []
     raw_items = []
     for cat in cats:
+        check_stop()
         cat_id = cat["id"] if isinstance(cat, dict) else str(cat)
         cat_name = cat.get("name", cat_id) if isinstance(cat, dict) else str(cat)
         if is_excluded_department(cat_name):
+            line("BUSCAR_AMAZON", categoria=cat_id, estado="salteado", motivo="departamento_excluido")
             continue
         try:
-            items = fetch_bestsellers_for_category(cat_id, cat_name, base_url=base_url, **({"get": get} if get else {}))
+            saved = journal.resolved("amazon_lista").get(cat_id) if journal else None
+            items = saved["items"] if saved else fetch_bestsellers_for_category(cat_id, cat_name, base_url=base_url, **({"get": get} if get else {}))
+            if journal and not saved and items:
+                journal.append("amazon_lista", cat_id, "ok", items=items)
             raw_items.extend(items)
         except PageBudgetExhausted:
+            line("BUSCAR_AMAZON", estado="interrumpido", motivo="limite_paginas")
+            if journal:
+                journal.stop_reason = "limite_paginas"
             break
-        except requests.RequestException as exc:
-            print(f"Best sellers {cat_id} falló ({type(exc).__name__})", flush=True)
+        except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
+            line("BUSCAR_AMAZON", categoria=cat_id, estado="error", motivo=str(exc))
+            if journal:
+                journal.append("amazon_error", cat_id, "error", str(exc))
+            if failures is not None:
+                failures.append({"categoria": cat_id, "motivo": str(exc)})
         scraper_pause()
 
     for query in queries or []:
@@ -523,18 +585,38 @@ def collect_amazon_candidates(existing_asins, queries=None, categories=None, bas
         if not q:
             continue
         try:
-            items = fetch_search_results(q, base_url=base_url, **({"get": get} if get else {}))
+            saved = journal.resolved("amazon_lista").get("search:" + q) if journal else None
+            items = saved["items"] if saved else fetch_search_results(q, base_url=base_url, **({"get": get} if get else {}))
+            if journal and not saved and items:
+                journal.append("amazon_lista", "search:" + q, "ok", items=items)
             raw_items.extend(items)
         except PageBudgetExhausted:
+            line("BUSCAR_AMAZON", estado="interrumpido", motivo="limite_paginas")
+            if journal:
+                journal.stop_reason = "limite_paginas"
             break
-        except requests.RequestException as exc:
-            print(f"Búsqueda '{q}' falló ({type(exc).__name__})", flush=True)
+        except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
+            line("BUSCAR_AMAZON", consulta=q, estado="error", motivo=str(exc))
+            if journal:
+                journal.append("amazon_error", "search:" + q, "error", str(exc))
+            if failures is not None:
+                failures.append({"consulta": q, "motivo": str(exc)})
         scraper_pause()
 
     filtered = []
     seen_asins = set()
     for item in raw_items:
         if not should_keep_amazon_item(item, existing_asins, seen_asins):
+            asin = item.get("asin", "sin_asin")
+            reason = "existente" if asin in existing_asins else "duplicado" if asin in seen_asins else "filtro_amazon"
+            price = extract_price_usd(item)
+            if reason == "filtro_amazon" and price is not None and not MIN_PRICE_USD <= price <= MAX_PRICE_USD:
+                reason = "precio_fuera_de_rango"
+            line("BUSCAR_AMAZON", asin=asin, estado="descartado", motivo=reason)
+            if journal:
+                journal.append("amazon_filtro", asin, "descartado", reason)
+                if reason in ("existente", "duplicado", "precio_fuera_de_rango"):
+                    journal.append("amazon", asin, "fuera_de_rango" if reason == "precio_fuera_de_rango" else "duplicado", reason)
             continue
         asin = item["asin"].strip()
         seen_asins.add(asin)
@@ -560,27 +642,36 @@ def discover_products(
     get=None,
     existing_asins=None,
     failures=None,
+    journal=None,
+    on_product=None,
 ):
+    journal = journal or BuscarLog(Path(output_path).parent)
+    resolved = journal.resolved("amazon")
     existing_asins = load_existing_asins(catalog_path) if existing_asins is None else existing_asins
     amazon_candidates = collect_amazon_candidates(
         existing_asins=existing_asins,
         queries=queries,
         categories=categories,
         base_url=base_url,
-        **({"get": get} if get else {}),
+        **({"get": get} if get else {}), journal=journal, failures=failures,
     )
     total = len(amazon_candidates)
-    results = []
+    results = [r["product"] for r in journal.records if r["stage"] == "amazon" and r["result"] in ("con_pares", "sin_pares")]
     for idx, candidate in enumerate(amazon_candidates, start=1):
+        check_stop()
+        if candidate["asin"] in resolved:
+            line("BUSCAR_AMAZON", asin=candidate["asin"], estado="salteado", motivo="resuelto_7_dias")
+            continue
         query = clean_title_for_ml(candidate["amazonTitle"], candidate["brand"])
+        reason = "consulta_ml_resuelta"
+        item_errors = []
         try:
-            ml_list = find_ml_candidates(query)
-        except requests.RequestException as exc:
-            print(f"  búsqueda ML fallida para {candidate['asin']} ({type(exc).__name__})", flush=True)
-            if failures is not None:
-                failures.append({"asin": candidate["asin"], "motivo": type(exc).__name__})
+            ml_list = find_ml_candidates(query, failures=item_errors)
+        except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
+            reason = f"{type(exc).__name__}:{exc}"
+            item_errors.append({"asin": candidate["asin"], "motivo": reason})
             ml_list = []
-        results.append({
+        product = {
             "asin": candidate["asin"],
             "store": "US",
             "amazonTitle": candidate["amazonTitle"],
@@ -588,7 +679,18 @@ def discover_products(
             "amazonCategory": candidate["amazonCategory"],
             "amazonPriceUsd": candidate["amazonPriceUsd"],
             "ml": ml_list,
-        })
+        }
+        if item_errors:
+            reason = str(item_errors)
+            product["_discoveryError"] = reason
+            if failures is not None:
+                failures.extend(item_errors)
+        status = "error" if item_errors else "con_pares" if ml_list else "sin_pares"
+        journal.append("amazon", candidate["asin"], status, reason, product=product)
+        line("BUSCAR_AMAZON", asin=candidate["asin"], estado=status, motivo=reason)
+        results.append(product)
+        if on_product:
+            on_product(product)
         if idx % PROGRESS_EVERY == 0:
             print(f"Progreso: {idx}/{total} productos procesados.", flush=True)
         if idx % CHECKPOINT_EVERY == 0:

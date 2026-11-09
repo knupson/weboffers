@@ -12,6 +12,76 @@ import rates
 import worker
 
 
+@pytest.mark.parametrize("cursor,next_cursor,order", [
+    ("MLA2", "MLA3", ["MLA3", "MLA1", "MLA2"]),
+    ("MLA3", "MLA1", ["MLA1", "MLA2", "MLA3"]),
+])
+def test_catalogo_ignora_corte_y_completa_con_cursor(tmp_path, monkeypatch, capsys, cursor, next_cursor, order):
+    auto = worker.catalog_auto
+    ml = auto.crecer_desde_ml
+    reloj = [0.0]
+    monkeypatch.setattr(auto.time, "monotonic", lambda: reloj[0])
+    monkeypatch.setattr(auto.time, "sleep", lambda seconds: None)
+    monkeypatch.setenv("CATALOG_AUTO_MAX_SECONDS", "10")
+    monkeypatch.setattr(auto.ml_prices, "is_configured", lambda: True)
+    repo = tmp_path / "catalog.json"
+    repo.write_text(json.dumps([{"asin": "EXISTENTE", "slug": "existente", "category": "Almacenamiento"}]))
+    auto.publicacion.guardar(tmp_path, {})
+    state_path = tmp_path / "catalog-auto-state.json"
+    state_path.write_text(json.dumps({"cursorMl": cursor, "extra": "conservar"}))
+    monkeypatch.setattr(auto.discovery, "discover_categories", lambda **kw: [])
+    monkeypatch.setattr(ml, "mas_vendidos_ml", lambda *a, **kw: dict.fromkeys(["MLA1", "MLA2", "MLA3"]))
+    visited = []
+    def items(pid):
+        visited.append(pid)
+        return [{"price": 200000, "condition": "new", "id": "MLA456"}]
+    monkeypatch.setattr(auto.ml_prices, "fetch_items", items)
+    monkeypatch.setattr(auto.ml_prices, "cheapest_new", lambda items: (200000, "MLA456"))
+    ficha = {"name": "Samsung 990 PRO 1TB", "domain_id": "MLA-SOLID_STATE_DRIVES", "attributes": [
+        {"id": "BRAND", "value_name": "Samsung"}, {"id": "MODEL", "value_name": "990 PRO"},
+        {"id": "ALPHANUMERIC_MODEL", "value_name": "MZ-V9P1T0B"}]}
+    monkeypatch.setattr(ml, "_get", lambda *a, **kw: Mock(ok=True, json=lambda: ficha))
+    monkeypatch.setattr(auto.ml_prices, "get_json", lambda *a, **kw: ficha)
+    monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
+    def get(*a, **kw):
+        reloj[0] = 11.0
+        return Mock(json=lambda: {"items": [{"asin": "B000000001", "title": "Samsung 990 PRO 1TB MZ-V9P1T0B", "price": 150}]})
+    monkeypatch.setattr(auto.requests, "get", get)
+    monkeypatch.setattr(auto.amazon_prices, "fetch_ar_shipping", lambda *a: {
+        "B000000001": {"identifiers": {"model_number": "MZ-V9P1T0B"}}})
+    monkeypatch.setattr(auto, "fetch_photo", lambda entry, output: entry.update(image="/products/test.webp") or True)
+    assert auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 9, tzinfo=timezone.utc), mep=1000, force=True)
+    state = json.loads(state_path.read_text())
+    assert state["status"] == "ok" and state["added"] == 1
+    assert state["cursorMl"] == cursor and state["extra"] == "conservar"
+    assert state["week"] == "2026-W45"
+    assert {"slot", "pages", "revision", "motivos"} <= state.keys()
+    assert len(json.loads((tmp_path / "altas-pendientes.json").read_text())) == 1
+    assert len(json.loads((tmp_path / "match-results.json").read_text())["accepted"]) == 1
+    start = ["MLA1", "MLA2", "MLA3"].index(cursor)
+    expected = ["MLA1", "MLA2", "MLA3"][start:] + ["MLA1", "MLA2", "MLA3"][:start]
+    assert visited == expected
+    assert "CATALOGO_CORTE_TIEMPO" not in capsys.readouterr().out
+    # La corrida siguiente retoma desde el cursor y cruza el final de la lista.
+    reloj[0] = 0
+    monkeypatch.delenv("CATALOG_AUTO_MAX_SECONDS")
+    auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 10, tzinfo=timezone.utc), mep=1000, force=True)
+    assert visited == expected  # Definitivos vigentes durante siete días.
+    assert json.loads(state_path.read_text())["cursorMl"] == cursor
+
+
+def test_scraper_pausa_corta_tambien_despues_de_cien_paginas(monkeypatch):
+    auto = worker.catalog_auto
+    pauses = []
+    monkeypatch.setattr(auto.time, "sleep", pauses.append)
+    monkeypatch.setattr(auto.requests, "get", lambda *a, **k: Mock(json=lambda: {"results": []}))
+    scraper = auto.PacedScraper(1000)
+    scraper.pages = 100
+    scraper.get("http://scraper")
+    assert pauses == [auto.amazon_prices.PAUSE_SECONDS]
+    assert scraper.pages == 101 and scraper.failures == 1
+
+
 @pytest.fixture(autouse=True)
 def local_temp_files(tmp_path, monkeypatch):
     # pytest se ejecuta con --basetemp dentro de worker/.

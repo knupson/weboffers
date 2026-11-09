@@ -47,10 +47,18 @@ def setup_job(tmp_path, monkeypatch):
     monkeypatch.setattr(auto.ml_prices, "is_configured", lambda: True)
     def discover(*args, **kwargs):
         kwargs["get"].__self__.valid = 1
-        return []
+        row = {"asin": "B000000001", "amazonTitle": "Samsung T9 SSD", "ml": []}
+        kwargs["on_product"](row)
+        return [row]
     discovery = Mock(side_effect=discover)
     monkeypatch.setattr(auto.discovery, "discover_products", discovery)
-    monkeypatch.setattr(auto.matching, "match_products", lambda *args: {"accepted": [candidate()], "doubtful": [], "rejected": []})
+    def match(*args, **kwargs):
+        row = candidate()
+        kwargs["on_result"]("accepted", row)
+        kwargs["journal"].append("match", row["asin"], "accepted", row=row)
+        return {"accepted": [row], "doubtful": [], "rejected": []}
+    monkeypatch.setattr(auto.matching, "match_products", match)
+    monkeypatch.setattr(auto.crecer_desde_ml, "agregar_identificadores", lambda *a, **k: 0)
     monkeypatch.setattr(auto, "fetch_photo", lambda entry, output: entry.update(image=f"/products/{entry['slug']}.webp") or True)
     monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", lambda *a, **k: [])  # sin API real de ML en los tests
     return repo, output, discovery
@@ -77,10 +85,11 @@ def test_sin_reintento_por_hora(setup_job, status, pages):
     output.mkdir(parents=True, exist_ok=True)
     (output / "catalog-auto-state.json").write_text(json.dumps({
         "slot": "2026-11-09", "status": status, "pages": pages, "at": "2026-11-09T00:00:00-03:00"}))
-    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T20:00:00-03:00"), mep=1000)
-    assert discover.call_count == 0
+    attempted = auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T20:00:00-03:00"), mep=1000)
+    assert attempted == (status != "ok")
+    assert discover.call_count == int(status != "ok")
     assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-10T03:30:00-03:00"), mep=1000)
-    assert discover.call_count == 1
+    assert discover.call_count == 1 + int(status != "ok")
 
 
 def test_force_permite_corrida_explicita(setup_job):
@@ -167,7 +176,7 @@ def test_photo_missing_or_unofficial(tmp_path, monkeypatch, pictures):
 def test_pacing_backoff_and_hard_cap(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
-    get = Mock(side_effect=[Mock(json=lambda: {}), Mock(json=lambda: {"items": [1]})])
+    get = Mock(side_effect=[Mock(json=lambda: {}), Mock(json=lambda: {"items": [{"asin": "A"}]})])
     monkeypatch.setattr(auto.requests, "get", get)
     scraper = auto.PacedScraper(2)
     scraper.get("http://scraper")
@@ -181,14 +190,15 @@ def test_pacing_backoff_and_hard_cap(monkeypatch):
 def test_pause_breaks_consecutive_pages(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
-    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [1]})))
+    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [{"asin": "A"}]})))
     scraper = auto.PacedScraper(150)  # el tope sale del parámetro (05/11: sin tope fijo en el código)
     for _ in range(150):
         scraper.get("http://scraper")
     with pytest.raises(auto.discovery.PageBudgetExhausted):
         scraper.get("http://scraper")
     assert scraper.pages == 150
-    sleep.assert_any_call(300)
+    assert sleep.call_count == 149
+    assert all(call.args == (auto.amazon_prices.PAUSE_SECONDS,) for call in sleep.call_args_list)
 
 
 def test_manual_apply_accepts_match_document(setup_job):
@@ -304,7 +314,11 @@ def test_review_persists_dedupes_and_expires(setup_job):
 
 def test_catalogo_ok_reports_review(setup_job, monkeypatch, capsys):
     repo, output, _ = setup_job
-    monkeypatch.setattr(auto.matching, "match_products", lambda *a: {"accepted": [candidate(amazonIds={})]})
+    def match(*a, **kwargs):
+        row = candidate(amazonIds={})
+        kwargs["on_result"]("accepted", row)
+        return {"accepted": [row]}
+    monkeypatch.setattr(auto.matching, "match_products", match)
     auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
     assert "CATALOGO_OK catálogo: pendientes=0, revision=1," in capsys.readouterr().out
     # El estado lleva la cantidad: estado.json la publica y el control de las 07:30 pide «revisá las altas».

@@ -19,6 +19,16 @@ AMAZON_TIMEOUT = 5400
 ML_TIMEOUT = 1800
 DEPLOY_TIMEOUT = 1800
 GLOBAL_TIMEOUT = 12000
+# Buscar debe liberar la cadena de las 03:30 antes de las 20:00 ART.
+# La reserva cubre los 240 s de identificadores y 60 s para cerrar y persistir.
+BUSCAR_FIN_ART = 20
+BUSCAR_RESERVA = 300
+# Reservar también un minuto para cerrar procesos/logs antes de medianoche.
+ALTA_RESERVA_FIN_DIA = 60
+BUSCAR_TIMEOUT = 24 * 3600
+# Rates: 3×20 s; Creators: 2 tiendas × 2×30 s; hook: 30 s = 210 s,
+# más margen para inicio y escritura (los timeouts HTTP son por lectura).
+OFFERS_TIMEOUT = 300
 HEARTBEAT = 30
 ART = timezone(timedelta(hours=-3))
 LOG_DIR = Path("/home/claude/logs")
@@ -41,6 +51,8 @@ class Cadena:
         self.start = clock()
         self.deadline = self.start + GLOBAL_TIMEOUT
         self.fecha = now().astimezone(ART).date().isoformat()
+        midnight = datetime.fromisoformat(self.fecha).replace(tzinfo=ART) + timedelta(days=1)
+        self.alta_deadline = self.start + (midnight - now().astimezone(ART)).total_seconds() - ALTA_RESERVA_FIN_DIA
         self.summary = dict(fecha=self.fecha, inicio=self.stamp(), fin=None, segundos=0, pasos=[])
         self.save()
 
@@ -127,11 +139,13 @@ class Cadena:
             raise RuntimeError(f"{reason} (código {child.returncode}): {tail}")
         return stdout
 
-    def docker(self, container, *args, cwd=None, stdin=False):
+    def docker(self, container, *args, cwd=None, stdin=False, env=None):
         command = ["docker", "exec"]
         if stdin:
             command.append("-i")
         command += ["-e", f"PUBLICACION_MODO={self.bloque}"]
+        for key, value in (env or {}).items():
+            command += ["-e", f"{key}={value}"]
         if cwd:
             command += ["-w", cwd]
         return command + [container, *args]
@@ -187,7 +201,24 @@ class Cadena:
         self.summary["pasos"].append(record)
         self.save()
         self.log(f"PASO_INICIO {nombre}")
-        deadline = min(self.deadline, self.step_start + timeout)
+        # El alta puede durar horas: cada paso tiene su plazo completo.
+        # Deploy/estado conservan además su plazo aunque venciera el global.
+        deadline = min(self.step_start + timeout, self.alta_deadline)
+        buscar_env = None
+        if self.bloque == "alta":
+            deadline = min(deadline, self.alta_deadline)
+            if paso == "buscar":
+                cutoff = datetime.fromisoformat(self.fecha).replace(hour=BUSCAR_FIN_ART, tzinfo=ART)
+                remaining = (cutoff - self.now().astimezone(ART)).total_seconds()
+                if remaining <= BUSCAR_RESERVA:
+                    record.update(estado="ok", motivo="plazo_buscar", fin=self.stamp(), segundos=0)
+                    self.log("BUSCAR_FIN estado=pausado motivo=plazo_buscar")
+                    self.save()
+                    return
+                deadline = min(deadline, self.clock() + remaining)
+                buscar_env = {"BUSCAR_DEADLINE": str(cutoff.timestamp() - BUSCAR_RESERVA)}
+        if self.bloque != "alta" and paso not in ("deploy", "estado"):
+            deadline = min(self.deadline, deadline)
         try:
             if self.clock() >= deadline:
                 raise TimeoutError("timeout global")
@@ -205,7 +236,7 @@ class Cadena:
                 scripts = {"buscar": "crecer_ahora", "dudosos": "dudosos_nvidia", "altas": "confirmar_altas"}
                 script = [f"/app/tools/{scripts[paso]}.py"] if paso in scripts else ["/app/tools/refresh_ahora.py", paso]
                 out = self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
-                                                    *script, cwd="/app/worker"), deadline, paso)
+                                                    *script, cwd="/app/worker", env=buscar_env), deadline, paso)
                 if paso == "altas":
                     m = re.search(r"ALTAS_OK promovidas=(\d+)", out or "")
                     self.promovidas = int(m[1]) if m else None
@@ -230,16 +261,16 @@ class Cadena:
         self.step_start = self.clock()
         try:
             self.process(self.docker(WORKER, "python", "/app/tools/actualizar_publicacion.py", "--verificar-estado",
-                                     cwd="/app/worker"), self.clock() + ALTAS_TIMEOUT, "estado_inicial")
+                                     cwd="/app/worker"), min(self.clock() + ALTAS_TIMEOUT, self.alta_deadline), "estado_inicial")
         except Exception as exc:
             self.log(f"PUBLICACION_INICIO_ABORTADO {exc}")
             self.summary["fin"] = self.stamp()
             self.save()
             return 1
         self.promovidas = self.vencidos = None
-        verificacion = (("offers", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
+        verificacion = (("offers", OFFERS_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
-        alta = (("buscar", AMAZON_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
+        alta = (("buscar", BUSCAR_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
                 ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
                 ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         verificacion_fallida = False
@@ -252,6 +283,9 @@ class Cadena:
                 self.deadline = self.clock() + GLOBAL_TIMEOUT
             first = len(self.summary["pasos"])
             for paso, timeout in pasos:
+                if self.now().astimezone(ART).date().isoformat() != self.fecha or self.clock() >= self.alta_deadline:
+                    self.log(f"CADENA_FIN bloque={bloque} motivo=fin_dia_ART")
+                    break
                 if bloque == "alta" and paso == "deploy" and verificacion_fallida:
                     self.log("ALTA_SIN_DEPLOY verificacion_fallida")
                     break

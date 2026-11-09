@@ -5,6 +5,7 @@ export function validatePriceFiles(files, now = new Date()) {
   for (const file of files) {
     const data = JSON.parse(readFileSync(file, 'utf8'));
     if (data.date !== today) throw new Error(`${file}: fecha ${data.date}; se requieren precios del ${today} ART`);
+    if (data.completo === false) throw new Error(`${file}: parcial (completo: false); la verificación no dejó los precios de hoy`);
   }
 }
 

@@ -111,6 +111,8 @@ class DailyLog:
         self.stream = stream
         self.dir.mkdir(parents=True, exist_ok=True)
         self._purge()
+        # F-29: cada paso de la cadena abre su DailyLog al empezar; ahí se limpian los temporales que dejó un KILL.
+        publish.limpiar_temporales(self.dir.parent)
         self._log_day = self._now_art().date()
 
     def _now_art(self):
