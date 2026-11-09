@@ -164,6 +164,7 @@ def test_descubrimientos_excluyen_rechazos_y_pendientes(setup_job, monkeypatch, 
     now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
     save(output / "altas-rechazadas.json", {"RECHAZADO": {"fecha": (now.date() - timedelta(days=days)).isoformat()}})
     save(output / "altas-pendientes.json", [pending()])
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")  # modo manual: ML→Amazon
     desde_ml = Mock(return_value=[])
     monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
     auto.maybe_grow(repo, output, now, mep=1000)

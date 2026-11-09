@@ -339,6 +339,7 @@ def test_descubrimiento_respeta_no_revisar(setup_job, monkeypatch):
     publicacion.guardar(output, {
         s: publicacion._entrada("no_revisar", fecha, "sin_envio", s.upper())
         for s, fecha in (("vigente", "2026-11-02"), ("vencido", "2026-11-01"))})
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")  # modo manual: ML→Amazon
     desde_ml = Mock(return_value=[])
     monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
     assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
@@ -346,3 +347,14 @@ def test_descubrimiento_respeta_no_revisar(setup_job, monkeypatch):
         assert "VIGENTE" in asins
         assert "VENCIDO" not in asins
         assert "EXISTENTE" in asins
+
+
+def test_busqueda_diaria_no_recorre_ml_por_defecto(setup_job, monkeypatch):
+    """07/11 (Alejandro): la fuente es Amazon; ML→Amazon sólo a mano."""
+    repo, output, discover = setup_job
+    monkeypatch.delenv("CATALOG_AUTO_DESDE_ML", raising=False)
+    desde_ml = Mock(return_value=[])
+    monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
+    auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    assert discover.called
+    assert not desde_ml.called

@@ -397,3 +397,9 @@ def test_i8_filtros_definitivos_tambien_duran_siete_dias(tmp_path, monkeypatch):
             {"asin": "duplicado", "title": "Samsung T9 SSD", "price": 150}]}))
     # El existente/duplicado no se graba como resuelto: su aparición válida no puede quedar salteada 7 días.
     assert set(BuscarLog(tmp_path, "2026-11-09").resolved("amazon")) == {"barato"}
+
+
+@pytest.fixture(autouse=True)
+def _modo_ml_manual(monkeypatch):
+    """Estos tests cubren el recorrido ML→Amazon, que en la cadena diaria va apagado."""
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")

@@ -320,7 +320,8 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
         products = discovery.discover_products(catalog_path, output / "discovery-candidates.json",
             get=scraper.get, existing_asins=existing_asins, failures=failures,
             journal=journal, on_product=process)
-        if os.getenv("CATALOG_AUTO_DESDE_ML", "1") == "1" and not journal.stop_reason:
+        # 07/11 (Alejandro): la fuente es Amazon; ML→Amazon sólo manual (CATALOG_AUTO_DESDE_ML=1).
+        if os.getenv("CATALOG_AUTO_DESDE_ML", "0") == "1" and not journal.stop_reason:
             review = read_json(output / "altas-revision.json", [])
             desde_ml = crecer_desde_ml.candidatos(existing_asins | {p["asin"] for p in products},
                 {(p.get("ml") or {}).get("catalogId") for p in catalog + pending} |

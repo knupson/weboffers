@@ -306,3 +306,9 @@ def test_ident_lote_persiste_aciertos_aunque_otro_falle(tmp_path):
     assert ml.agregar_identificadores([{"asin": "A"}, {"asin": "B"}], lambda asins: {
         "A": {"error": "bloqueado"}, "B": {"identifiers": {"upc": "123"}}}, journal=BuscarLog(tmp_path)) == 1
     assert set(BuscarLog(tmp_path).resolved("ident")) == {"B"}
+
+
+@pytest.fixture(autouse=True)
+def _modo_ml_manual(monkeypatch):
+    """Estos tests cubren el recorrido ML→Amazon, que en la cadena diaria va apagado."""
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")
