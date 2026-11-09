@@ -172,8 +172,9 @@ def test_fichas_solo_consulta_publicados_y_republicacion(tmp_path, monkeypatch):
 def test_vigia_no_alerta_con_cadena_en_curso(tmp_path, monkeypatch, fin):
     save(tmp_path / f"cadena-{TODAY}.json", {"fecha": TODAY, "fin": fin, "pasos": [
         {"paso": "verificacion:amazon", "estado": "en_curso"}]})
-    if fin:
-        monkeypatch.setattr(vigia_franquicia, "cadena_en_curso", lambda *a: True, raising=False)
+    # Con el lock tomado la cadena está corriendo: nunca alerta, tenga o no `fin`.
+    # (Sin lock y con fin=None es una cadena interrumpida y sí alerta: F-14, test_vigia_franquicia.)
+    monkeypatch.setattr(vigia_franquicia, "cadena_en_curso", lambda *a: True, raising=False)
     assert vigia_franquicia.chequear_cadena(TODAY, tmp_path) == {}
 
 
