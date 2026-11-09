@@ -2,6 +2,7 @@
 
 from refresh_lock import locked_refresh
 from article_log import amazon_line, chrome_line, value
+from requisitos import motivo_catalogo, resumen_etapa
 
 from datetime import date, datetime, timedelta, timezone
 from itertools import groupby
@@ -380,10 +381,9 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     base_url = scraper_url()
     ml_path = Path(os.environ.get("ML_PRICES_PATH", str(Path(prices_path).with_name("ml-prices.json"))))
     ml_prices = load_json(ml_path, None)
-    candidates = [
-        p for p in catalog
-        if p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY
-    ]
+    # 08/11: requisitos del catálogo (requisitos.py), los mismos que exige el deploy; lo que no cumple no se consulta.
+    salteos = {p["slug"]: m for p in catalog if (m := motivo_catalogo(p, tuple(STORE_CURRENCY)))}
+    candidates = [p for p in catalog if p["slug"] not in salteos]
     if isinstance(previous, dict) and previous.get("date") == today:
         refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
         if force:
@@ -393,11 +393,12 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
             print(f"Amazon: sin consulta en esta pasada (ya relevado hoy; reintentos según RETRY_TIMES).", flush=True)
         return refreshed
     for p in catalog:
-        if not (p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY):
-            reason = "sin_verificar" if p.get("verified") is not True else "sin_asin" if not p.get("asin") else "sin_ml" if not p.get("ml") else "tienda_no_admitida"
-            print(amazon_line(p, "memoria", reason=f"omitido_{reason}"), flush=True)
+        if p["slug"] in salteos:
+            print(amazon_line(p, "memoria", reason=f"omitido_{salteos[p['slug']]}"), flush=True)
     all_candidates = candidates
     candidates, skipped = in_range(candidates, previous, today_date, eur_usd, ml_prices)
+    quedan = {p["slug"] for p in candidates}
+    salteos.update({p["slug"]: "memoria_fuera_de_rango_o_sin_ml" for p in all_candidates if p["slug"] not in quedan})
     without_ml = [p["slug"] for p in all_candidates if ml_prices is not None
                   and ml_prices.get("date") == (today_date - timedelta(days=1)).isoformat()
                   and p["slug"] in (ml_prices.get("absent") or [])
@@ -441,6 +442,12 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
                                        "noArOffer": no_offer})
     print(f"Amazon: resumen {json.dumps(run, ensure_ascii=False)}; ritmo de mañana {pace['pause_s']:.0f} s.", flush=True)
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
+    sin_gratis = chrome_sin_envio_gratis(prices_path, today)
+    salteos.update({p["slug"]: sin_gratis[p["asin"]] for p in candidates
+                    if p.get("store") == "US" and p.get("asin") in sin_gratis})
+    print(resumen_etapa("amazon", len(catalog), salteos, consultados=len(candidates) - sum(
+        1 for p in candidates if p["slug"] in salteos), con_precio=ok, sin_precio=missing - sum(
+        1 for p in candidates if p["slug"] in salteos)), flush=True)
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
     if candidates and ok == 0:
         print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)

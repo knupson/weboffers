@@ -10,8 +10,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from alta_state import read_json, update_state
 from article_log import chrome_line
 from catalog import load_catalog
+from requisitos import motivo_catalogo, resumen_etapa
 from publish import write_atomic
 from tools.confirmar_altas import chrome_today
+
+
+def hora():
+    """Hora ART para las líneas que salen por stderr sin DailyLog (regla 5 de AGENTS.md)."""
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone(timedelta(hours=-3))).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def asin_list(catalog_path, output, pending_only=False):
@@ -19,12 +26,25 @@ def asin_list(catalog_path, output, pending_only=False):
     pending = read_json(output / "altas-pendientes.json", [])
     catalog = [] if pending_only else load_catalog(catalog_path, output / "catalog-auto.json")
     slugs = {}
+    salteos = {}
+    otra_tienda = 0
     for entry in catalog + pending:
-        if (entry.get("verified") and entry.get("asin") and entry.get("store") == "US"
-                and (entry.get("ml") or {}).get("catalogId")):
-            names = slugs.setdefault(entry["asin"], [])
-            if entry["slug"] not in names:
-                names.append(entry["slug"])
+        if entry.get("store") != "US":
+            # Chrome sólo releva Amazon US; España sigue a Amazon y ML sin pasar por acá (no es un salteo).
+            otra_tienda += 1
+            continue
+        # 08/11: requisitos del catálogo (worker/requisitos.py), los mismos que exige el deploy.
+        motivo = motivo_catalogo(entry, stores=("US",))
+        if motivo:
+            salteos[entry.get("slug")] = motivo
+            print(f"{hora()} CHROME_SALTEO slug={entry.get('slug')} asin={entry.get('asin')} motivo={motivo}",
+                  file=sys.stderr, flush=True)
+            continue
+        names = slugs.setdefault(entry["asin"], [])
+        if entry["slug"] not in names:
+            names.append(entry["slug"])
+    print(f"{hora()} " + resumen_etapa("chrome", len(catalog + pending) - otra_tienda, salteos, a_relevar=len(slugs),
+                                        otra_tienda_no_pasa_por_chrome=otra_tienda), file=sys.stderr, flush=True)
     return " ".join(asin + ":" + ",".join(names) for asin, names in slugs.items())
 
 

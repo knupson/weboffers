@@ -39,13 +39,13 @@ def ok_item(asin, amount, currency="USD", in_stock=True):
 
 def test_groups_by_store_and_chunks_by_bulk_max(tmp_path, monkeypatch):
     catalog = [
-        {"slug": f"us-{i}", "asin": f"B0000000{i:02d}", "store": "US", "verified": True, "ml": {"price": 1000}}
+        {"slug": f"us-{i}", "asin": f"B0000000{i:02d}", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}
         for i in range(12)
     ] + [
-        {"slug": "es-1", "asin": "B000000099", "store": "ES", "verified": True, "ml": {"price": 1000}},
+        {"slug": "es-1", "asin": "B000000099", "store": "ES", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
         {"slug": "sin-ml", "asin": "B000000088", "store": "US", "verified": True},
-        {"slug": "sin-asin", "asin": "", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "no-verif", "asin": "B000000077", "store": "US", "verified": False, "ml": {"price": 1000}},
+        {"slug": "sin-asin", "asin": "", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "no-verif", "asin": "B000000077", "store": "US", "verified": False, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
 
     calls = []
@@ -100,8 +100,8 @@ def test_accepts_price_with_seller_when_availability_was_not_read():
 
 def test_does_not_keep_previous_when_scraper_fails(tmp_path, monkeypatch, capsys):
     catalog = [
-        {"slug": "ayer", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "tres-dias", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "ayer", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "tres-dias", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({
@@ -125,7 +125,7 @@ def test_skips_before_six_or_already_updated_or_without_url(tmp_path, monkeypatc
     get = Mock(side_effect=AssertionError("no debe llamar al scraper"))
     monkeypatch.setattr(amazon_prices.requests, "get", get)
     out = tmp_path / "amazon-prices.json"
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
 
     before = datetime(2026, 10, 30, 6, 59, tzinfo=timezone.utc)  # 03:59 ART
     assert amazon_prices.maybe_refresh(catalog, out, before) is False
@@ -165,7 +165,7 @@ def test_stores_ships_to_ar_in_chunks_of_bulk_max(tmp_path, monkeypatch):
     monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [
-        {"slug": f"us-{i}", "asin": f"B0000000{i:02d}", "store": "US", "verified": True, "ml": {"price": 1000}}
+        {"slug": f"us-{i}", "asin": f"B0000000{i:02d}", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}
         for i in range(7)
     ]
     calls = []
@@ -197,9 +197,9 @@ def test_ar_error_or_missing_leaves_ships_unknown(tmp_path, monkeypatch):
     monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [
-        {"slug": "ok", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "falla", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "no-envia", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "ok", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "falla", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "no-envia", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
     ar_items = [
         ar_item("B01", True, True),
@@ -219,9 +219,9 @@ def test_ar_calls_agrupadas_por_store_y_con_param_store(tmp_path, monkeypatch):
     monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
     catalog = [
-        {"slug": "us-1", "asin": "B0US1", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "es-1", "asin": "B0ES1", "store": "ES", "verified": True, "ml": {"price": 1000}},
-        {"slug": "us-2", "asin": "B0US2", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "us-1", "asin": "B0US1", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "es-1", "asin": "B0ES1", "store": "ES", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "us-2", "asin": "B0US2", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
     calls = []
 
@@ -253,7 +253,7 @@ def test_ar_calls_agrupadas_por_store_y_con_param_store(tmp_path, monkeypatch):
 def test_ar_ships_que_no_es_booleano_no_se_guarda(tmp_path, monkeypatch, ships):
     monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
     item = ar_item("B01", True, True)
     item["ships"] = ships
     monkeypatch.setattr(amazon_prices.requests, "get", fake_get_router(None, [item]))
@@ -267,7 +267,7 @@ def test_ar_ships_que_no_es_booleano_no_se_guarda(tmp_path, monkeypatch, ships):
 def test_ar_chunk_failure_does_not_break_prices(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(amazon_prices, "AR_SHIPPING_WEEKDAY", AFTER_SEVEN.weekday())  # día de relevamiento
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar:8001")
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
 
     def fake_get(url, params=None, timeout=None):
         if url.endswith("/ar-shipping"):
@@ -294,7 +294,7 @@ def test_empty_ar_url_skips_ar_step(tmp_path, monkeypatch):
 
     monkeypatch.setattr(amazon_prices.requests, "get", fake_get)
     out = tmp_path / "amazon-prices.json"
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
     items = json.loads(out.read_text(encoding="utf-8"))["items"]
     assert "shipsToAr" not in items["p"]
@@ -327,9 +327,9 @@ def test_plausible_sin_lista_o_otra_moneda_acepta():
 def test_ar_shipping_off_day_only_surveys_unconfirmed(tmp_path, monkeypatch):
     # 30/10/2026 es viernes: fuera del lunes sólo se releva lo que no tiene envío confirmado (catálogo o caché).
     catalog = [
-        {"slug": "catalogo", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
-        {"slug": "cache", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "sin-dato", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "catalogo", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp", "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "cache", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "sin-dato", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({"date": "2026-10-29", "items": {}, "arShipping": {"cache": {"ships": True, "free": True, "checked": "2026-10-27"}}}), encoding="utf-8")
@@ -350,8 +350,8 @@ def test_ar_shipping_off_day_only_surveys_unconfirmed(tmp_path, monkeypatch):
 
 def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
     catalog = [
-        {"slug": "ya", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "falta", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "ya", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "falta", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({"date": "2026-10-30", "items": {"ya": {"amount": 10, "currency": "USD", "checked": "2026-10-30"}}}), encoding="utf-8")
@@ -376,9 +376,9 @@ def test_retry_only_missing_once_after_retry_time(tmp_path, monkeypatch):
 def test_force_prices_products_added_after_todays_run(tmp_path, monkeypatch):
     """08/11: 5 altas confirmadas después de la corrida quedaron sin precio de Amazon (reintentos agotados)."""
     catalog = [
-        {"slug": "ya", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "fallo", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}},
-        {"slug": "nuevo", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}},
+        {"slug": "ya", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "fallo", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
+        {"slug": "nuevo", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"},
     ]
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({"date": "2026-10-30", "retryCount": 3, "retryAt": "2026-10-30T07:30:00-03:00",
@@ -420,7 +420,7 @@ def test_ar_shipping_carry_over_and_expiry(tmp_path, monkeypatch, checked, kept)
         "items": {"p": {"amount": 100, "currency": "USD", "checked": "2026-10-29"}},
     }), encoding="utf-8")
     monkeypatch.setattr(amazon_prices.requests, "get", Mock(side_effect=requests.ConnectionError("caído")))
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
     # Ya es 31/10 UTC, pero sigue siendo 30/10 ART.
     now = datetime(2026, 10, 31, 2, 0, tzinfo=timezone.utc)
     assert amazon_prices.maybe_refresh(catalog, out, now) is True
@@ -437,7 +437,7 @@ def test_ar_shipping_updates_only_with_real_survey(tmp_path, monkeypatch, ships)
     old = {"ships": True, "free": True, "checked": "2026-10-29"}
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({"date": "2026-10-29", "items": {}, "arShipping": {"p": old}}), encoding="utf-8")
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
     monkeypatch.setattr(amazon_prices.requests, "get", fake_get_router(None, [ar_item("B01", ships, None)]))
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
     data = json.loads(out.read_text(encoding="utf-8"))
@@ -459,7 +459,7 @@ def test_retry_keeps_ar_shipping_and_merges_todays_survey(tmp_path, monkeypatch)
         "items": {"hoy": {"shipsToAr": today}},
         "arShipping": {"p": old, "hoy": old, "vencido": {**old, "checked": "2026-10-15"}},
     }), encoding="utf-8")
-    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}}]
+    catalog = [{"slug": "p", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}]
     monkeypatch.setattr(amazon_prices.requests, "get", fake_get_router(None, []))
     assert amazon_prices.maybe_refresh(catalog, out, AFTER_SEVEN) is True
     data = json.loads(out.read_text(encoding="utf-8"))
@@ -471,9 +471,9 @@ def test_retry_keeps_ar_shipping_and_merges_todays_survey(tmp_path, monkeypatch)
 def test_each_missing_product_logs_its_reason_and_daily_file(tmp_path, monkeypatch, capsys):
     # 03/11: el log sólo decía «faltantes=41» y se perdía al recrear el contenedor.
     catalog = [
-        {"slug": "ok", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
-        {"slug": "vacio", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
-        {"slug": "agotado", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000}, "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "ok", "asin": "B01", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp", "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "vacio", "asin": "B02", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp", "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
+        {"slug": "agotado", "asin": "B03", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp", "shipsToAr": {"freeShipping": True, "checked": "2026-10-01"}},
     ]
     monkeypatch.setattr(amazon_prices, "scraper_url", lambda: "http://scraper")
     monkeypatch.setattr(amazon_prices, "ar_url", lambda: "")
@@ -523,7 +523,7 @@ def test_empty_batch_waits_and_retries_once(monkeypatch):
             return {a: {"asin": a, "price": None, "buybox": None, "availability": None} for a in asins}
         return {a: {"asin": a, "price": {"amount": 20.0, "currency": "USD"}, "availability": {"is_in_stock": True}} for a in asins}
     monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
-    products = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US", "ml": {"price": 1000}} for i in range(3)]
+    products = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US", "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"} for i in range(3)]
     items, ok, missing = amazon_prices.fetch_prices("http://scraper", products, "2026-11-04")
     assert (ok, missing) == (3, 0) and len(calls) == 2
 
@@ -534,7 +534,7 @@ def test_out_of_stock_does_not_trigger_retry(monkeypatch):
         calls.append(1)
         return {a: {"asin": a, "price": {"amount": 20.0, "currency": "USD"}, "availability": {"is_in_stock": False}} for a in asins}
     monkeypatch.setattr(amazon_prices, "fetch_bulk", fetch)
-    products = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US", "ml": {"price": 1000}} for i in range(3)]
+    products = [{"slug": f"s{i}", "asin": f"B{i}", "store": "US", "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"} for i in range(3)]
     amazon_prices.fetch_prices("http://scraper", products, "2026-11-04")
     assert len(calls) == 1
 
@@ -655,7 +655,7 @@ def test_retry_prices_and_unknown_shipping(tmp_path, monkeypatch):
 
 def test_daily_skip_ml_priority_and_current_out_of_range(tmp_path, monkeypatch):
     monkeypatch.setenv("AMAZON_AR_URL", "http://ar")
-    products = [{"slug": s, "asin": s, "store": "US", "verified": True, "ml": {"price": 1000}}
+    products = [{"slug": s, "asin": s, "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}
                 for s in ["outside", "priority", "cbt"]]
     (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "absent": ["cbt"], "items": {
         "outside": {"price": 1000}, "priority": {"price": 1000}}}))
@@ -717,7 +717,7 @@ def test_ml_missing_is_not_confirmed_absence(tmp_path, monkeypatch, absent, excl
     monkeypatch.setattr(amazon_prices, "fetch_prices", Mock(return_value=({}, 0, 0)))
     monkeypatch.setattr(amazon_prices, "refresh_ar_shipping", lambda *args, **kwargs: {})
     (tmp_path / "ml-prices.json").write_text(json.dumps({"date": "2026-11-03", "items": {}, "absent": absent}))
-    product = {"slug": "a", "asin": "A", "store": "US", "verified": True, "ml": {"price": 1000}}
+    product = {"slug": "a", "asin": "A", "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}
     path = tmp_path / "amazon-prices.json"
     amazon_prices.maybe_refresh([product], path, datetime(2026, 11, 4, 4, tzinfo=amazon_prices.ART))
     assert ("a" in json.loads(path.read_text())["outOfRange"]) is excluded
@@ -766,7 +766,7 @@ def test_force_adelanta_sin_repetir_corrida_ni_cambiar_reintentos(tmp_path, monk
 
 def test_run_guarda_lo_que_falta_tras_cada_reintento(tmp_path, monkeypatch):
     """08/11: estado.json mostraba las 39 fallas de la corrida aunque el reintento recuperó 36."""
-    catalog = [{"slug": s, "asin": a, "store": "US", "verified": True, "ml": {"price": 1000}}
+    catalog = [{"slug": s, "asin": a, "store": "US", "verified": True, "ml": {"price": 1000, "catalogId": "MLA1"}, "image": "/products/x.webp"}
                for s, a in (("ya", "B01"), ("uno", "B02"), ("dos", "B03"))]
     out = tmp_path / "amazon-prices.json"
     out.write_text(json.dumps({"date": "2026-10-30", "run": {"ok": 1, "total": 3, "fallas": 2, "motivos": {"sin_stock": 2}},

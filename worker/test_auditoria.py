@@ -59,9 +59,13 @@ def test_ml_partial_hourly_retries_keep_successes(tmp_path, monkeypatch):
     monkeypatch.setattr(ml, "pause", lambda: None)
     fetch = Mock(side_effect=lambda cid: [{"price": 500}] if cid == "OK" else (_ for _ in ()).throw(requests.ConnectionError()))
     monkeypatch.setattr(ml, "fetch_items", fetch)
-    catalog = [{"slug": s, "verified": True, "ml": {"catalogId": s}} for s in ("OK", "FAIL")]
+    catalog = [{"slug": s, "verified": True, "asin": "B0" + s, "image": "/p.webp", "store": "US",
+                "ml": {"catalogId": s}} for s in ("OK", "FAIL")]
     path = tmp_path / "ml-prices.json"
     now = datetime(2026, 11, 5, 6, tzinfo=ml.ART)
+    # 08/11: ML sólo consulta lo que tiene precio de Amazon de hoy.
+    (tmp_path / "amazon.json").write_text(json.dumps({"date": "2026-11-05", "items": {
+        s: {"amount": 200.0, "currency": "USD", "checked": "2026-11-05"} for s in ("OK", "FAIL")}}))
     assert ml.maybe_refresh(catalog, path, tmp_path / "amazon.json", 1000, now)
     assert not ml.maybe_refresh(catalog, path, tmp_path / "amazon.json", 1000, now)
     for hour in (7, 8):

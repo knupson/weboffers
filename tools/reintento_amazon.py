@@ -9,8 +9,11 @@ prev = json.load(open(path, encoding="utf-8"))
 hoy = datetime.datetime.now(a.ART).date().isoformat()
 assert prev.get("date") == hoy, "el archivo no es de hoy"
 items = prev["items"]
-cands = [p for p in catalog if p.get("verified") is True and p.get("asin") and p.get("ml")
-         and p.get("store") in a.STORE_CURRENCY and p["slug"] not in items]
+# 08/11: mismos requisitos que la cadena (worker/requisitos.py) y nada que el Chrome de hoy vio sin envío gratis.
+from requisitos import motivo_catalogo
+sin_gratis = a.chrome_sin_envio_gratis(path, hoy)
+cands = [p for p in catalog if not motivo_catalogo(p, tuple(a.STORE_CURRENCY)) and p["slug"] not in items
+         and not (p.get("store") == "US" and p.get("asin") in sin_gratis)]
 print("faltaban:", len(cands), flush=True)
 base = a.scraper_url()
 ok = 0

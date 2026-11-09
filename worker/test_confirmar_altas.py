@@ -19,7 +19,7 @@ def save(path, value):
 
 def pending(asin="NUEVO", **changes):
     return dict(asin=asin, slug=asin.lower(), store="US", verified=True,
-                ml={"catalogId": "MLA" + asin}, pendienteDesde="2026-11-05", **changes)
+                ml={"catalogId": "MLA" + asin}, pendienteDesde="2026-11-05", image="/products/x.webp", **changes)
 
 
 def snapshot(items, day=TODAY):
@@ -30,7 +30,7 @@ def snapshot(items, day=TODAY):
 def state(tmp_path):
     repo = tmp_path / "catalog.json"
     save(repo, [{"asin": "REPO", "slug": "repo", "store": "US", "verified": True,
-                 "ml": {"catalogId": "MLAREPO"}}])
+                 "ml": {"catalogId": "MLAREPO"}, "image": "/products/repo.webp"}])
     save(tmp_path / "catalog-auto.json", [pending("EXISTENTE")])
     save(tmp_path / "altas-pendientes.json", [pending()])
     return repo, tmp_path
