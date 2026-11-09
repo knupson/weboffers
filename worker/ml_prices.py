@@ -389,8 +389,10 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
     # retoma lo ya consultado en vez de repetir todo.
     journal = diario.ruta(prices_path, today)
     diario.purgar(prices_path, today)
-    resumidos = {} if retry else {r.get("slug"): r for r in diario.leer(journal)
-                                  if r.get("t") == "consulta" and r.get("slot") == slot and r.get("date") == today}
+    # También al reintentar o ampliar un slot ya hecho: si esa pasada se cortó antes de guardar el archivo, lo que ya
+    # consultó está en el diario (mismo día y mismo slot). Las fallas nunca se anotan, así que no se congelan.
+    resumidos = {r.get("slug"): r for r in diario.leer(journal)
+                 if r.get("t") == "consulta" and r.get("slot") == slot and r.get("date") == today}
     fallaron = []
 
     def consultar(product, catalog_id):

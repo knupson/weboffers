@@ -90,15 +90,36 @@ def snapshot_desde_parcial(texto):
             continue
         if not isinstance(registro, dict) or not registro.get("asin") or not isinstance(registro.get("item"), dict):
             continue
-        items[registro["asin"]] = registro["item"]
+        # Cada ASIN conserva la hora ART en que se leyó: al fusionar sólo entran los de hoy (un relevamiento que cruza la
+        # medianoche no puede dejar lecturas de ayer bajo la fecha de hoy).
+        items[registro["asin"]] = {**registro["item"], "leido": registro["item"].get("leido") or registro.get("t")}
         generado = registro.get("t") or generado
     return {"generado": generado, "items": items}
+
+
+def solo_de_hoy(items, today):
+    """Separa las lecturas cuya hora ART (`leido`) es de `today` de las de otro día. Sin `leido` se aceptan (JSON viejo)."""
+    from datetime import datetime
+    from tools.confirmar_altas import ART
+    validos, descartados = {}, {}
+    for asin, item in items.items():
+        leido = item.get("leido") if isinstance(item, dict) else None
+        try:
+            dia = datetime.fromisoformat(leido).astimezone(ART).date().isoformat() if leido else today
+        except (TypeError, ValueError):
+            dia = None
+        (validos if dia == today else descartados)[asin] = item
+    for asin, item in descartados.items():
+        print(f"{hora()} ENVIO_AR_CHROME_DESCARTADO asin={asin} leido={item.get('leido') if isinstance(item, dict) else None} "
+              f"no es del {today}; no se guarda como evidencia de hoy.", flush=True)
+    return validos
 
 
 def merge_chrome(output, today, incoming):
     """Fusiona sólo la evidencia recibida; conserva los demás ASIN y metadatos."""
     output = Path(output)
     chrome_today(incoming, today)
+    incoming = {**incoming, "items": solo_de_hoy(incoming["items"], today)}
 
     def merge():
         path = output / f"ar-chrome-{today}.json"
@@ -141,6 +162,7 @@ def main():
         fecha = datetime.fromisoformat(data["generado"]).astimezone(ART).date().isoformat() if data.get("generado") else args.fecha
         if fecha != args.fecha:
             print(f"ENVIO_AR_CHROME_AVISO el relevamiento terminó el {fecha} (arrancó el {args.fecha}); se guarda como {fecha}.", flush=True)
+        data = {**data, "items": solo_de_hoy(data["items"], fecha)}
         merge_chrome(output, fecha, data)
         log = DailyLog(output / "logs", io.StringIO())
         entries = load_catalog("/app/data/catalog.json", output / "catalog-auto.json")

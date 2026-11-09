@@ -156,16 +156,36 @@ def ruta_parcial():
     return os.environ.get("AR_CHROME_PARCIAL") or f"/tmp/ar-chrome-parcial-{datetime.now(ART).date()}.jsonl"
 
 
+def anexar_linea(ruta, linea):
+    """Agrega una línea al parcial reparando antes una cola truncada por un KILL, bajo flock (como worker/diario.py)."""
+    try:
+        import fcntl
+    except ImportError:  # sólo en Windows (tests): el contenedor de Chrome es Linux
+        fcntl = None
+    with open(ruta + ".lock", "a+b") as candado:
+        if fcntl:
+            fcntl.flock(candado, fcntl.LOCK_EX)
+        with open(ruta, "a+b") as archivo:
+            archivo.seek(0, os.SEEK_END)
+            size = archivo.tell()
+            if size:
+                archivo.seek(size - 1)
+                if archivo.read(1) != b"\n":
+                    archivo.seek(0)
+                    archivo.truncate(archivo.read().rfind(b"\n") + 1)
+            archivo.seek(0, os.SEEK_END)
+            archivo.write(linea.encode("utf-8") + b"\n")
+            archivo.flush()
+            os.fsync(archivo.fileno())
+
+
 def guardar_parcial(ruta, asin, slugs, item):
     """Una línea JSON por ASIN con flush+fsync: un KILL pierde a lo sumo el ASIN en curso.
 
+    Cada registro lleva su hora ART (`t`): un relevamiento que cruza la medianoche no mezcla días.
     La cadena (tools/envio_ar_chrome.sh) lo fusiona en ar-chrome-AAAA-MM-DD.json aunque el proceso muera."""
-    linea = json.dumps({"t": datetime.now(ART).isoformat(timespec="seconds"), "asin": asin, "slugs": slugs,
-                        "item": item}, ensure_ascii=False)
-    with open(ruta, "a", encoding="utf-8") as archivo:
-        archivo.write(linea + "\n")
-        archivo.flush()
-        os.fsync(archivo.fileno())
+    anexar_linea(ruta, json.dumps({"t": item.get("leido") or datetime.now(ART).isoformat(timespec="seconds"),
+                                   "asin": asin, "slugs": slugs, "item": item}, ensure_ascii=False))
 
 
 async def recorrer(c, ctx, tid, s, asins, slugs, items, parcial):
@@ -187,6 +207,7 @@ async def recorrer(c, ctx, tid, s, asins, slugs, items, parcial):
             except Exception:  # noqa: BLE001
                 pass
             tid, s = await nueva_pestana(c, ctx)
+        items[asin]["leido"] = datetime.now(ART).isoformat(timespec="seconds")
         guardar_parcial(parcial, asin, slugs[asin], items[asin])
         print(chrome_line(slugs[asin], asin, items[asin]), file=sys.stderr, flush=True)
     return tid

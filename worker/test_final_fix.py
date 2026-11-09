@@ -103,8 +103,7 @@ def test_vencido_sin_chrome_se_excluye_aunque_haya_pendientes(tmp_path):
     save(catalog, [producto("vencido", shipsToAr={"freeShipping": True, "checked": "2026-11-02"})])
     save(tmp_path / "altas-pendientes.json", [producto("pendiente")])
     publicacion.guardar(tmp_path, {"vencido": publicacion._entrada("no_revisar", "2026-11-02", "ml_hoy", "VENCIDO")})
-    with pytest.raises(ValueError, match="No hay relevamiento"):
-        confirmar_altas.confirm(catalog, tmp_path, TODAY)
+    confirmar_altas.confirm(catalog, tmp_path, TODAY)  # sin relevamiento ya no aborta: cuenta la noche sin corrida
     # F-19: sin relevamiento de Chrome no se publica (excluido hoy) ni se estira 7 días: se vuelve a mirar mañana.
     assert publicacion.cargar(tmp_path)["vencido"]["hasta"] == "2026-11-10"
 

@@ -88,7 +88,8 @@ def _confirm(catalog_path, output, today):
             print(alta_line(entry, "confirmada", "envio_gratis_chrome_hoy", evidencia), flush=True)
     publicacion.guardar(output, estado)
     if pending:
-        data = chrome_today(read_json(output / f"ar-chrome-{today}.json", {}), today)
+        # Se reutiliza el resultado ya validado arriba; sin relevamiento de hoy, todos los pendientes pasan por el mismo
+        # contador persistido (nochesSinCorrida) que un ASIN al que Chrome no llegó, en vez de abortar sin contarlos.
         automatic = read_json(output / "catalog-auto.json", [])
         catalog = load_catalog(catalog_path, output / "catalog-auto.json")
         rejected = read_json(output / "altas-rechazadas.json", {})

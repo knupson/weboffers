@@ -117,8 +117,10 @@ def test_dudosos_voto_invalido_se_reintenta_el_mismo_dia(cola, monkeypatch):
     assert dudosos.run(output / "catalog.json", output, post=post_falso(*["sin JSON"] * 8)) == 1
     pedidos = []
     monkeypatch.setattr(dudosos.ml_prices, "get_json", lambda url: pedidos.append(url) or {"name": "Ficha"})
-    dudosos.run(output / "catalog.json", output, post=post_falso(*[voto(), voto()] * 4))
-    assert len(pedidos) == 4  # ningún voto era válido: nada contó como «ya decidido»
+    post = post_falso(*[voto(), voto()] * 4)
+    dudosos.run(output / "catalog.json", output, post=post)
+    assert post.call_count == 8  # ningún voto era válido: nada contó como «ya decidido», se votó de nuevo
+    assert pedidos == []  # la ficha ML ya estaba guardada de la primera pasada
 
 
 def test_dudosos_sin_clave_y_con_cola_falla(cola, monkeypatch, capsys):

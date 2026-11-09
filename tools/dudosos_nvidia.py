@@ -96,17 +96,17 @@ def evidence_file(output, pair):
         hashlib.sha256(pair.encode()).hexdigest()[:20] + ".json")
 
 
-def decidido_hoy(path):
-    """Evidencia de hoy con los dos votos válidos: ya se juzgó y un reintento del día no la repite (F-25).
-
-    Con algún voto inválido (falla de red, timeout, sin contenido) no cuenta: es infraestructura, no una decisión."""
+def cargar_registro(path):
+    """Evidencia de hoy de este par, o None si no existe o está ilegible."""
     try:
         record = json.loads(path.read_text(encoding="utf-8"))
-        votes = record["votos"]
-        return (isinstance(votes, list) and len(votes) == 2
-                and all(v.get("decision") in ("aprobar", "rechazar") for v in votes))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        return False
+        return record if isinstance(record, dict) and isinstance(record.get("votos", []), list) else None
+    except (OSError, ValueError):
+        return None
+
+
+def voto_valido(vote):
+    return isinstance(vote, dict) and vote.get("decision") in ("aprobar", "rechazar")
 
 
 def run(catalog, output, post=requests.post):
@@ -123,28 +123,54 @@ def run(catalog, output, post=requests.post):
     queue = sorted(queue, key=lambda row: row.get("revisionDesde") or "", reverse=True)
     for row in queue:
         pair = revisar_altas.pair_key(row)
-        if decidido_hoy(evidence_file(output, pair)):
+        evidence_path = evidence_file(output, pair)
+        evidence_path.parent.mkdir(parents=True, exist_ok=True)
+        record = cargar_registro(evidence_path) or {"fecha": datetime.now(ml_prices.ART).isoformat(), "fila": row, "votos": []}
+        por_modelo = {v.get("modelo"): v for v in record.get("votos", []) if voto_valido(v)}
+        con_votos = all(modelo in por_modelo for modelo in MODELOS)
+        # Estados separados en disco: «votos obtenidos» (votos) y «decisión aplicada» (aplicada). Un corte entre una cosa
+        # y la otra se retoma sin volver a votar.
+        if con_votos and record.get("aplicada", record.get("decision") == "alejandro"):
             saltados += 1
             log(f"DUDOSO_SALTEO par={pair} motivo=evidencia_de_hoy")
             continue
         error = None
-        try:
-            ficha_ml = ml_prices.get_json(f"/products/{row['catalogId']}")
-            if not isinstance(ficha_ml, dict) or not ficha_ml:
-                raise ValueError("Ficha ML vacía")
-        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-            ficha_ml = {}
-            error = f"no se pudo obtener la ficha ML ({type(exc).__name__})"
-        proof = evidencia(row, {}, ficha_ml)
-        votos = ([("invalido", error)] * 2 if error else
-                 [votar(modelo, proof, post=post) for modelo in MODELOS])
+        if con_votos:
+            log(f"DUDOSO_REANUDA par={pair} decision={record.get('decision')} motivo=votos_ya_obtenidos_falta_aplicar")
+        else:
+            proof = record.get("evidencia") if record.get("fichaOk") else None
+            if proof is None:
+                try:
+                    ficha_ml = ml_prices.get_json(f"/products/{row['catalogId']}")
+                    if not isinstance(ficha_ml, dict) or not ficha_ml:
+                        raise ValueError("Ficha ML vacía")
+                    proof = evidencia(row, {}, ficha_ml)
+                    record.update(evidencia=proof, fichaOk=True)
+                    write_atomic(evidence_path, record)
+                    log(f"DUDOSO_FICHA par={pair} estado=ok")
+                except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                    error = f"no se pudo obtener la ficha ML ({type(exc).__name__})"
+                    log(f"DUDOSO_FICHA par={pair} estado=error motivo={type(exc).__name__}")
+            if error:
+                por_modelo = {modelo: {"modelo": modelo, "decision": "invalido", "motivo": error} for modelo in MODELOS}
+                record["votos"] = list(por_modelo.values())
+                write_atomic(evidence_path, record)
+            else:
+                for modelo in MODELOS:
+                    if modelo in por_modelo:
+                        log(f"DUDOSO_VOTO par={pair} modelo={modelo} voto={por_modelo[modelo]['decision']} origen=retomado")
+                        continue
+                    vote, reason = votar(modelo, proof, post=post)
+                    por_modelo[modelo] = {"modelo": modelo, "decision": vote, "motivo": reason}
+                    # Cada voto queda en disco apenas se obtiene: un corte durante el segundo no pierde el primero.
+                    record["votos"] = [por_modelo[m] for m in MODELOS if m in por_modelo]
+                    write_atomic(evidence_path, record)
+                    log(f"DUDOSO_VOTO par={pair} modelo={modelo} voto={vote}")
+        votos = [(por_modelo[m]["decision"], por_modelo[m]["motivo"]) for m in MODELOS]
         decision = decidir(votos)
-        evidence_path = evidence_file(output, pair)
-        evidence_path.parent.mkdir(parents=True, exist_ok=True)
-        record = {"fecha": datetime.now(ml_prices.ART).isoformat(), "fila": row, "evidencia": proof,
-                  "votos": [{"modelo": model, "decision": vote, "motivo": reason}
-                            for model, (vote, reason) in zip(MODELOS, votos)], "decision": decision}
-        # Guardar antes de modificar la cola: un error de escritura no pierde el origen.
+        # Guardar la decisión antes de modificar la cola: un corte o un error de escritura no pierde el origen.
+        record.update(decision=decision, aplicada=(decision == "alejandro"))
+        record.pop("error", None)
         write_atomic(evidence_path, record)
         if decision != "alejandro":
             reason = f"nvidia: {votos[0][1]} | {votos[1][1]}"
@@ -154,9 +180,12 @@ def run(catalog, output, post=requests.post):
             except (requests.RequestException, OSError, ValueError, KeyError, TypeError) as exc:
                 error = f"falló la revisión ({type(exc).__name__})"
             if error:
+                # La decisión queda guardada sin aplicar: el próximo intento la aplica sin repetir los votos.
+                record.update(error=error)
                 decision = "alejandro"
-                record.update(decision=decision, error=error)
-                write_atomic(evidence_path, record)
+            else:
+                record.update(aplicada=True)
+            write_atomic(evidence_path, record)
         counts["revisados"] += 1
         invalidos += all(vote == "invalido" for vote, _ in votos)
         counts[{"aprobar": "aprobados", "rechazar": "rechazados", "alejandro": "para_alejandro"}[decision]] += 1
