@@ -5,6 +5,8 @@ from tools import vigia_franquicia as v
 
 ART = v.rf.ART
 HOY = datetime.datetime(2026, 11, 5, 10, 0, tzinfo=ART)
+PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "deploy", "estado")] + [
+    f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
 TODOS = "\n".join(v.CONTENEDORES)
 
 
@@ -32,7 +34,7 @@ def log(tmp_path, *lineas):
 
 def correr(tmp_path, **kw):
     (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({
-        "fecha": "2026-11-05", "pasos": [{"paso": p, "estado": "ok"} for p in ("chrome", "amazon", "ml", "deploy")]
+        "fecha": "2026-11-05", "pasos": [{"paso": p, "estado": "ok"} for p in PASOS]
     }), encoding="utf-8")
     args = dict(cadena_dir=str(tmp_path), internet=lambda: True, sh=fake_sh(), leer=leer_ok, bajar=bajar_ok, logs_dir=str(tmp_path))
     args.update(kw)
@@ -40,7 +42,7 @@ def correr(tmp_path, **kw):
 
 
 def test_todo_bien_no_avisa(tmp_path):
-    log(tmp_path, "09:16:05 Publicación completa: modo=offline, productos=241, cambios=True.")
+    log(tmp_path, "09:16:05 LATIDO worker")
     assert correr(tmp_path) == {}
 
 
@@ -66,12 +68,12 @@ def test_contenedor_caido_y_fallas_del_log(tmp_path):
 
 def test_latido_con_fecha_en_el_log(tmp_path):
     # Formato real desde el 05/11: «AAAA-MM-DD HH:MM:SS texto».
-    log(tmp_path, "2026-11-05 09:16:05 Publicación completa: modo=offline, productos=241, cambios=True.")
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker")
     assert "latido" not in correr(tmp_path)
 
 
 def test_sin_latido_con_fecha_en_el_log(tmp_path):
-    log(tmp_path, "2026-11-05 07:01:00 Publicación completa: modo=offline, productos=241, cambios=True.")
+    log(tmp_path, "2026-11-05 07:01:00 LATIDO worker")
     assert correr(tmp_path)["latido"] == "el worker no da señales desde las 07:01"
 
 
@@ -150,45 +152,16 @@ def test_cadena_faltante_fallida_e_interrumpida(tmp_path):
     assert "cadena" in v.chequear_cadena(hoy, tmp_path)
     p = tmp_path / f"cadena-{hoy}.json"
     p.write_text(json.dumps({"fecha": hoy, "pasos": [
-        {"paso": "chrome", "estado": "ok"},
-        {"paso": "amazon", "estado": "fail", "motivo": "timeout"},
-        {"paso": "ml", "estado": "en_curso"}]}), encoding="utf-8")
+        *[{"paso": name, "estado": "ok"} for name in PASOS if name != "verificacion:deploy"],
+        {"paso": "verificacion:amazon", "estado": "fail", "motivo": "timeout"},
+        {"paso": "verificacion:ml", "estado": "en_curso"}]}), encoding="utf-8")
     problemas = v.chequear_cadena(hoy, tmp_path)
-    assert set(problemas) == {"cadena:amazon", "cadena:ml", "cadena:deploy"}
-    assert problemas["cadena:amazon"] == "la cadena de madrugada falló en amazon (timeout)"
+    assert set(problemas) == {"cadena:verificacion:amazon", "cadena:verificacion:ml", "cadena:verificacion:deploy"}
+    assert problemas["cadena:verificacion:amazon"] == "la cadena de madrugada falló en verificacion:amazon (timeout)"
     assert "cadena" not in v.chequeos(HOY.replace(hour=5, minute=29), internet=lambda: True,
         sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path / "ausente"))
     assert "cadena" in v.chequeos(HOY.replace(hour=5, minute=30), internet=lambda: True,
         sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path / "ausente"))
-
-
-def test_tras_alta_sin_archivo_ok_fallida_e_interrumpida(tmp_path):
-    hoy = "2026-11-05"
-    ahora = HOY.replace(hour=9, minute=0)
-    # Sin alta nocturna no hay archivo: no es un problema.
-    assert v.chequear_tras_alta(hoy, tmp_path, ahora) == {}
-    p = tmp_path / f"tras-alta-{hoy}.json"
-    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T07:49:47-03:00", "fin": "2026-11-05T07:49:48-03:00",
-        "pasos": [{"paso": "chrome", "estado": "ok"}, {"paso": "altas", "estado": "ok"}]}), encoding="utf-8")
-    assert v.chequear_tras_alta(hoy, tmp_path, ahora) == {}
-    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T07:49:47-03:00", "fin": "2026-11-05T08:10:00-03:00",
-        "pasos": [{"paso": "chrome", "estado": "ok"}, {"paso": "altas", "estado": "ok"},
-                  {"paso": "amazon", "estado": "fail", "motivo": "timeout"}]}), encoding="utf-8")
-    problemas = v.chequear_tras_alta(hoy, tmp_path, ahora)
-    assert problemas == {"tras-alta:amazon": "la confirmación de altas tras el alta nocturna falló en amazon (timeout)"}
-    # Sin «fin» y pasado el tope global de la cadena: se cortó a mitad.
-    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T04:00:00-03:00",
-        "pasos": [{"paso": "chrome", "estado": "en_curso"}]}), encoding="utf-8")
-    assert "tras-alta:interrumpida" in v.chequear_tras_alta(hoy, tmp_path, ahora)
-    # Todavía dentro del tope: está corriendo, no se avisa.
-    assert v.chequear_tras_alta(hoy, tmp_path, HOY.replace(hour=5, minute=0)) == {}
-    p.write_text("{roto", encoding="utf-8")
-    assert "tras-alta" in v.chequear_tras_alta(hoy, tmp_path, ahora)
-    # Integrado en los chequeos a cualquier hora.
-    p.write_text(json.dumps({"fecha": hoy, "inicio": "2026-11-05T07:49:47-03:00", "fin": "2026-11-05T08:10:00-03:00",
-        "pasos": [{"paso": "altas", "estado": "fail", "motivo": "x"}]}), encoding="utf-8")
-    assert "tras-alta:altas" in v.chequeos(HOY.replace(hour=5, minute=0), internet=lambda: True,
-        sh=fake_sh(), leer=leer_ok, logs_dir=str(tmp_path), cadena_dir=str(tmp_path))
 
 
 def test_umami_ip_avisa_si_cambio_la_ip_de_casa():
@@ -206,3 +179,20 @@ def test_umami_ip_avisa_si_cambio_la_ip_de_casa():
     def falla():
         raise OSError("sin red")
     assert v.chequear_umami_ip(sh_env("9.9.9.9"), ip=falla) == {}
+
+
+def test_latido_ignora_otra_actividad_y_mantiene_75_minutos(tmp_path):
+    log(tmp_path, "2026-11-05 08:45:00 LATIDO worker", "2026-11-05 09:59:00 Telegram ok")
+    assert "latido" not in correr(tmp_path)
+    log(tmp_path, "2026-11-05 08:44:59 LATIDO worker", "2026-11-05 09:59:00 Telegram ok")
+    assert "latido" in correr(tmp_path)
+    log(tmp_path, "2026-11-05 09:59:00 Telegram ok")
+    assert "latido" in correr(tmp_path)
+
+
+def test_alta_ok_no_oculta_falla_verificacion_y_controla_todos_los_pasos(tmp_path):
+    for name in PASOS + [f"alta:{p}" for p in ("amazon", "ml", "deploy", "estado")]:
+        steps = [{"paso": p, "estado": "fail" if p == name else "ok"} for p in
+                 PASOS + [f"alta:{p}" for p in ("amazon", "ml", "deploy", "estado")]]
+        (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({"fecha": "2026-11-05", "pasos": steps}))
+        assert set(v.chequear_cadena("2026-11-05", tmp_path)) == {f"cadena:{name}"}

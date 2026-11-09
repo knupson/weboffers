@@ -35,6 +35,25 @@ def resolve_path(value):
     return path if path.is_absolute() else WORKER_DIR / path
 
 
+def publicar_offers():
+    """Genera una vez el offers.json que consume el build como respaldo de cotizaciones."""
+    catalog_path = resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json"))
+    output = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json"))
+    catalog = load_catalog(catalog_path, output.parent / "catalog-auto.json")
+    grouped = {}
+    for entry in catalog:
+        grouped.setdefault(entry["store"], []).append(entry["asin"])
+    current_rates = rates.get_rates()
+    items = []
+    for store, asins in grouped.items():
+        items.extend(creators_api.fetch_items(asins, store))
+    mode = "api" if any(creators_api.is_configured(s) for s in grouped) else "offline"
+    payload = publish.build_offers(datetime.now(timezone.utc).isoformat(), mode, current_rates, items)
+    changed = publish.publish(output, payload, os.environ.get("CF_DEPLOY_HOOK_URL", ""))
+    print(f"Publicación completa: modo={mode}, productos={len(items)}, cambios={changed}.", flush=True)
+    return payload
+
+
 def run_once():
     catalog_path = resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json"))
     output_dir = resolve_path(os.environ.get("OUTPUT_PATH", "output/offers.json")).parent
@@ -137,6 +156,7 @@ def main():
     signal.signal(signal.SIGINT, request_stop)
     print("Worker iniciado.", flush=True)
     while not stop_requested:
+        print("LATIDO worker", flush=True)
         try:
             run_once()
         except Exception as exc:

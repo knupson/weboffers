@@ -164,13 +164,37 @@ def test_api_fetch_assigns_fresh_timestamp_and_rejects_eur(monkeypatch):
     assert post.call_args_list[0].kwargs["data"]["grant_type"] == "client_credentials"
 
 
-def test_loop_honors_stop_flag(monkeypatch):
+def test_loop_honors_stop_flag(monkeypatch, capsys):
     monkeypatch.setattr(worker, "stop_requested", False)
     monkeypatch.setattr(worker.signal, "signal", Mock())
     run = Mock(side_effect=lambda: worker.request_stop(None, None))
     monkeypatch.setattr(worker, "run_once", run)
     worker.main()
     run.assert_called_once()
+    assert capsys.readouterr().out.count("LATIDO worker") == 1
+
+
+def test_publicar_offers_escribe_respaldo_del_dia(tmp_path, monkeypatch):
+    catalog = [{"asin": "A", "store": "US"}, {"asin": "B", "store": "ES"}]
+    monkeypatch.setattr(worker, "load_catalog", lambda *args: catalog)
+    current = {"mep": 1500, "oficial": 1200, "fetchedAt": "2026-11-09T06:30:00Z"}
+    monkeypatch.setattr(rates, "get_rates", lambda: current)
+    fetch = Mock(side_effect=lambda asins, store: [creators_api.empty_item(a, store) for a in asins])
+    monkeypatch.setattr(creators_api, "fetch_items", fetch)
+    worker.publicar_offers()
+    data = json.loads((tmp_path / "offers.json").read_text())
+    assert data["rates"] == current and data["mode"] == "offline"
+    assert [(p["asin"], p["store"]) for p in data["items"]] == [("A", "US"), ("B", "ES")]
+    assert datetime.fromisoformat(data["generatedAt"]).tzinfo is not None
+    assert fetch.call_count == 2
+
+
+def test_publicar_offers_propaga_falla(monkeypatch):
+    monkeypatch.setattr(worker, "load_catalog", lambda *a: [])
+    monkeypatch.setattr(rates, "get_rates", lambda: None)
+    monkeypatch.setattr(publish, "publish", Mock(side_effect=OSError("sin disco")))
+    with pytest.raises(OSError, match="sin disco"):
+        worker.publicar_offers()
 
 
 def test_catalog_entries_are_complete_and_unique():

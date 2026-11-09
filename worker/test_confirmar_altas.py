@@ -1,6 +1,9 @@
 """Alta en dos fases y relevamiento compartido, sin Chrome ni consultas reales."""
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 
 import pytest
 
@@ -8,6 +11,28 @@ from tools import altas_chrome, confirmar_altas as confirmation
 from test_catalog_auto import candidate, setup_job
 import catalog_auto as auto
 from catalog import read_catalog
+
+
+@pytest.mark.parametrize("args,modo,esperado", [
+    ([], None, "verificacion"), (["--pendientes"], None, "alta"),
+    (["--pendientes"], "verificacion", "verificacion"), ([], "alta", "alta"),
+])
+def test_shell_pendientes_selecciona_alta_sin_pisar_modo_explicito(args, modo, esperado):
+    shell = shutil.which("sh")
+    if not shell:
+        pytest.skip("Requiere sh para ejecutar el script real")
+    env = dict(os.environ)
+    env.pop("PUBLICACION_MODO", None)
+    if modo is not None:
+        env["PUBLICACION_MODO"] = modo
+    source = (Path(__file__).parents[1] / "tools/envio_ar_chrome.sh").read_text(encoding="utf-8")
+    # Sin productos: docker falso registra el modo recibido y evita consultas reales.
+    source = 'docker() { printf "%s\\n" "$@" >&2; };\n' + source
+    result = subprocess.run([shell, "-c", source, "envio_ar_chrome.sh", "--con-horarios", *args],
+                            env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert f"PUBLICACION_MODO={esperado}" in result.stderr.splitlines()
+    assert "ENVIO_AR_CHROME_OK sin productos para relevar" in result.stdout
 
 
 TODAY = "2026-11-06"

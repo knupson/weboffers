@@ -57,3 +57,14 @@ def test_sin_bucle_de_reintento(tmp_path):
 def test_contenedor_espera_llamadas_de_la_cadena():
     dockerfile = (Path(__file__).parent / "deployer" / "Dockerfile").read_text()
     assert 'CMD ["sleep", "infinity"]' in dockerfile
+
+
+@pytest.mark.parametrize("result,expected", [("ok", 0), ("skip", 0), ("fail", 1), ("off", 1)])
+def test_entrada_cli_skip_no_es_falla(result, expected):
+    source = (Path(__file__).parent / "deployer" / "deploy.mjs").read_text(encoding="utf-8")
+    # Aislar sólo el despliegue: se ejecuta el guard y el manejo de salida reales.
+    source = source.replace("main({ manual: process.argv.includes('--ahora') })",
+                            "main({ deployFn: async () => " + json.dumps(result) + " })")
+    process = subprocess.run(["node", "--input-type=module", "-e", source, "deploy.mjs"],
+                             capture_output=True, text=True, timeout=10)
+    assert process.returncode == expected, process.stderr

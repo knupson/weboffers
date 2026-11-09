@@ -1,8 +1,0 @@
-[Unit]
-Description=Franquicia 400: Chrome de pendientes, altas, Amazon, ML y deploy tras el alta nocturna
-
-[Service]
-Type=oneshot
-User=claude
-# Log propio: /home/claude/logs/tras-alta-AAAA-MM-DD.log (+ .json). Espera si la cadena de las 03:30 está corriendo.
-ExecStart=/usr/bin/python3 /opt/docker/franquicia400/tools/cadena.py --tras-alta

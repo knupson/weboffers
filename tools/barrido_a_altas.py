@@ -4,8 +4,8 @@ Lee lo que dejó el barrido (US-<fecha>.jsonl + ml-candidatos-<fecha>.jsonl), ar
 de discover_products ({asin, store, amazonTitle, brand, amazonCategory, amazonPriceUsd, ml:[...]}) y los
 pasa por las MISMAS funciones del alta nocturna: tools.match_candidates.match_products (valida marca,
 modelo y precio) y catalog_auto.add_accepted (foto, cola altas-pendientes.json). No publica nada: la
-cadena tras-alta (confirmar envío en Chrome, precios del día, deploy) se dispara con alta-terminada.json,
-como en el alta nocturna. Corre dentro del contenedor del worker:
+cadena diaria confirma envío en Chrome, consulta precios y despliega después.
+Corre dentro del contenedor del worker:
 
   docker exec -i -w /app/worker franquicia400-weboffers-worker-1 python - <dir barrido> [--seco] < tools/barrido_a_altas.py
 """
@@ -88,11 +88,7 @@ def main(argv):
         return 0
     added, failures = catalog_auto.add_accepted(catalog, matches, output, fecha)
     log(f"COLA pendientes_agregados={len(added)} fallas={len(failures)}")
-    # Mismo aviso que el alta nocturna: dispara franquicia-tras-alta.path (confirma envío y despliega).
-    (output / "alta-terminada.json").write_text(json.dumps(
-        {"slot": f"{fecha}-barrido", "status": "ok", "added": len(added),
-         "fin": datetime.now(ART).isoformat(timespec="seconds")}), encoding="utf-8")
-    log(f"FIN alta-terminada.json escrito (added={len(added)})")
+    log(f"FIN pendientes listos para la cadena diaria (added={len(added)})")
     return 0
 
 

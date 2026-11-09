@@ -24,6 +24,19 @@ def candidate(**changes):
     return {**row, **changes}
 
 
+@pytest.mark.parametrize("fecha,week", [("2026-11-09", "2026-W45"), ("2027-01-04", "2026-W53")])
+@pytest.mark.parametrize("hora", [3, 8])
+def test_lunes_0330_conserva_semana_del_domingo(setup_job, fecha, week, hora):
+    from tools.recordatorio_franquicia import control_catalogo
+    repo, output, _ = setup_job
+    now = datetime.fromisoformat(fecha + "T03:30:00-03:00").replace(hour=hora)
+    assert auto.maybe_grow(repo, output, now, mep=1200)
+    state = json.loads((output / "catalog-auto-state.json").read_text())
+    assert state["slot"] == fecha
+    assert state["week"] == week
+    assert control_catalogo(now.replace(hour=7, minute=30), lambda url: json.dumps({"catalogo": state})) == ""
+
+
 @pytest.fixture
 def setup_job(tmp_path, monkeypatch):
     repo = tmp_path / "catalog.json"

@@ -23,6 +23,14 @@ with p.open("a", encoding="utf-8") as log:
 ' "$0" "$@"
 fi
 shift
+# Sin modo explícito, el llamado independiente de confirmar_altas.sh usa alta.
+if [ "${PUBLICACION_MODO+x}" != x ]; then
+    PUBLICACION_MODO=verificacion
+    for arg in "$@"; do
+        [ "$arg" != "--pendientes" ] || PUBLICACION_MODO=alta
+    done
+fi
+export PUBLICACION_MODO
 HOY=$(TZ=America/Argentina/Buenos_Aires date +%F)
 W=franquicia400-weboffers-worker-1
 echo "ENVIO_AR_CHROME inicio"

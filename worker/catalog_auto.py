@@ -180,7 +180,9 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
     output = Path(output)
     state_path = output / "catalog-auto-state.json"
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
-    year, week, _ = now.isocalendar()
+    # El control del lunes espera la semana del domingo. La corrida completa
+    # la jornada anterior, incluso si se demora, sin cambiar su slot diario.
+    year, week, _ = (now - timedelta(days=1)).isocalendar()
     slot = now.date().isoformat()
     if not force and str(state.get("slot", "")).startswith(slot):
         return False

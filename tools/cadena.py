@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Corrida diaria del host: verificación y alta, encadenadas en bloques independientes."""
+import argparse
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -32,6 +33,7 @@ class Cadena:
         self.modo = modo
         self.bloque = "verificacion"
         self.desglose = None
+        self.deploy_skip = False
         self.logs = Path(logs)
         self.logs.mkdir(parents=True, exist_ok=True)
         self.popen, self.clock, self.now, self.sleep = popen, clock, now, sleep
@@ -89,7 +91,7 @@ class Cadena:
                 except subprocess.TimeoutExpired:
                     if self.clock() >= deadline:
                         raise TimeoutError("timeout")
-                    self.log(f"PASO_SIGUE {paso} {self.clock() - self.step_start:.1f}s")
+                    self.log(f"PASO_SIGUE {self.bloque}:{paso} {self.clock() - self.step_start:.1f}s")
         except BaseException as exc:
             # Mata también los procesos locales descendientes del shell de Chrome.
             try:
@@ -132,12 +134,16 @@ class Cadena:
 
     def deploy(self, deadline, ahora=False):
         self.desglose = None
+        self.deploy_skip = False
         try:
             out = self.process(self.docker(DEPLOYER, "node", "/app/deploy.mjs", *(["--ahora"] if ahora else [])),
                                deadline, "deploy")
         except RuntimeError as exc:
             self.copiar_desglose(str(exc), deadline)
             raise
+        if "DEPLOY_SKIP" in out and "DEPLOY_FAIL" not in out and "DEPLOY_OK" not in out:
+            self.deploy_skip = True
+            return
         report = self.copiar_desglose(out, deadline)
         if "DEPLOY_OK" not in out or "DEPLOY_FAIL" in out:
             raise RuntimeError("deploy sin DEPLOY_OK")
@@ -158,6 +164,9 @@ class Cadena:
         self.deploy(deadline, ahora=True)
 
     def estado(self, deadline):
+        if self.deploy_skip:
+            self.log("PUBLICACION_SIN_CAMBIOS")
+            return
         if not self.desglose:
             raise RuntimeError("sin desglose")
         # La ruta sólo se acepta desde el patrón estricto del resultado del deploy.
@@ -169,15 +178,19 @@ class Cadena:
 
     def step(self, paso, timeout):
         self.step_start = self.clock()
-        record = dict(bloque=self.bloque, paso=paso, inicio=self.stamp(), fin=None, segundos=0, estado="en_curso", motivo="")
+        nombre = f"{self.bloque}:{paso}"
+        record = dict(bloque=self.bloque, paso=nombre, inicio=self.stamp(), fin=None, segundos=0, estado="en_curso", motivo="")
         self.summary["pasos"].append(record)
         self.save()
-        self.log(f"PASO_INICIO {paso}")
+        self.log(f"PASO_INICIO {nombre}")
         deadline = min(self.deadline, self.step_start + timeout)
         try:
             if self.clock() >= deadline:
                 raise TimeoutError("timeout global")
-            if paso == "chrome":
+            if paso == "offers":
+                self.process(self.docker(WORKER, "python", "-c", "import worker; worker.publicar_offers()",
+                                         cwd="/app/worker"), deadline, paso)
+            elif paso == "chrome":
                 env_timeout = max(1, int(deadline - self.clock()))
                 extra = ["--pendientes"] if self.bloque == "alta" else []
                 self.process(["env", f"PUBLICACION_MODO={self.bloque}", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh"), *extra],
@@ -206,12 +219,12 @@ class Cadena:
             self.log(traceback.format_exc())
         finally:
             record.update(fin=self.stamp(), segundos=round(self.clock() - self.step_start, 1))
-            self.log(f"PASO_{record['estado'].upper()} {paso} {record['motivo']} {record['segundos']}s")
+            self.log(f"PASO_{record['estado'].upper()} {nombre} {record['motivo']} {record['segundos']}s")
             self.save()
 
     def run(self):
         self.promovidas = self.vencidos = None
-        verificacion = (("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
+        verificacion = (("offers", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         alta = (("buscar", AMAZON_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
                 ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
@@ -219,6 +232,7 @@ class Cadena:
         for bloque, pasos in (("verificacion", verificacion), ("alta", alta)):
             self.bloque = bloque
             self.desglose = None
+            self.deploy_skip = False
             # Cada bloque tiene su propio límite: una verificación agotada no impide el alta.
             if bloque == "alta":
                 self.deadline = self.clock() + GLOBAL_TIMEOUT
@@ -237,6 +251,7 @@ class Cadena:
 
 
 def main(argv):
+    argparse.ArgumentParser(description=__doc__).parse_args(argv)
     # Una única cadena usa Chrome y los archivos de publicación.
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     with open(LOG_DIR / "cadena.lock", "w") as lock:

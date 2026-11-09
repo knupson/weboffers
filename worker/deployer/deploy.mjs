@@ -369,7 +369,7 @@ async function main(opts = {}) {
 
 if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
   main({ manual: process.argv.includes('--ahora') })
-    .then((result) => { process.exitCode = result === 'ok' ? 0 : 1; })
+    .then((result) => { process.exitCode = result === 'ok' || result === 'skip' ? 0 : 1; })
     .catch((error) => { log(`DEPLOY_FAIL ${redact(String(error.message))}`); process.exitCode = 1; });
 }
 

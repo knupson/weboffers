@@ -93,7 +93,6 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     problemas = {}
     if (ahora.hour, ahora.minute) >= (5, 30):
         problemas.update(chequear_cadena(hoy, cadena_dir))
-    problemas.update(chequear_tras_alta(hoy, cadena_dir, ahora))
     if not internet():
         problemas["internet"] = "la VM docker no tiene salida a internet, revisá la ruta por defecto"
         return problemas  # sin internet el resto da falsos positivos
@@ -120,10 +119,10 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
         problemas["ml-fallas"] = f"Mercado Libre: {len(ml_fallas)} consultas fallidas hoy (ver log del worker)"
     if WORKER in vivos:
         # Desde el 05/11 el log lleva la fecha adelante («AAAA-MM-DD HH:MM:SS texto»); se aceptan los dos formatos.
-        horas = (re.match(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) ", l) for l in reversed(lineas))
+        horas = (re.match(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) LATIDO worker$", l) for l in reversed(lineas))
         ultima = next((m.group(1) for m in horas if m), None)
         if ultima is None and ahora.hour >= 2:
-            problemas["latido"] = "el worker no escribió nada en el log de hoy"
+            problemas["latido"] = "el worker no escribió LATIDO worker en el log de hoy"
         elif ultima is not None:
             h = datetime.datetime.combine(ahora.date(), datetime.time.fromisoformat(ultima), rf.ART)
             if (ahora - h).total_seconds() > SIN_LATIDO_MIN * 60:
@@ -175,43 +174,13 @@ def chequear_cadena(hoy, logs_dir):
         return {"cadena": f"falta el resumen válido de la cadena de madrugada ({exc})"}
     problemas = {}
     pasos = {p["paso"]: p for p in resumen["pasos"]}
-    for nombre in ("chrome", "amazon", "ml", "deploy"):
+    obligatorios = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "deploy", "estado")]
+    obligatorios += [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
+    for nombre in dict.fromkeys(obligatorios + list(pasos)):
         paso = pasos.get(nombre, {})
         if paso.get("estado") != "ok":
             motivo = paso.get("motivo") or paso.get("estado") or "paso sin ejecutar"
             problemas[f"cadena:{nombre}"] = f"la cadena de madrugada falló en {nombre} ({motivo})"
-    return problemas
-
-
-TRAS_ALTA_TOPE_S = 12000  # = GLOBAL_TIMEOUT de tools/cadena.py: pasado esto sin «fin», la corrida se cortó.
-
-
-def chequear_tras_alta(hoy, logs_dir, ahora):
-    """Confirmación de altas tras el alta nocturna (cadena.py --tras-alta, 07/11). Sin archivo = no hubo alta."""
-    ruta = os.path.join(logs_dir, f"tras-alta-{hoy}.json")
-    if not os.path.exists(ruta):
-        return {}
-    try:
-        with open(ruta, encoding="utf-8") as fh:
-            resumen = json.load(fh)
-        if not isinstance(resumen, dict) or not isinstance(resumen.get("pasos"), list):
-            raise ValueError("resumen inválido")
-        if any(not isinstance(p, dict) or not isinstance(p.get("paso"), str) for p in resumen["pasos"]):
-            raise ValueError("pasos inválidos")
-    except (OSError, ValueError, TypeError) as exc:
-        return {"tras-alta": f"el resumen de la confirmación de altas está roto ({exc})"}
-    problemas = {}
-    for paso in resumen["pasos"]:
-        if paso.get("estado") == "fail":
-            problemas[f"tras-alta:{paso['paso']}"] = (
-                f"la confirmación de altas tras el alta nocturna falló en {paso['paso']} ({paso.get('motivo') or 'sin motivo'})")
-    if not resumen.get("fin"):
-        try:
-            inicio = datetime.datetime.fromisoformat(resumen.get("inicio", ""))
-        except (TypeError, ValueError):
-            inicio = None
-        if inicio is None or (ahora - inicio).total_seconds() > TRAS_ALTA_TOPE_S:
-            problemas["tras-alta:interrumpida"] = "la confirmación de altas tras el alta nocturna se cortó a mitad (sin «fin»)"
     return problemas
 
 
