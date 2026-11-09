@@ -122,13 +122,14 @@ def test_sin_dato_primera_y_tercera_noche_sin_duplicar_intentos(state, item):
 
 def test_no_promueve_evidencia_vieja_ni_sin_archivo(state):
     repo, output = state
-    before = (output / "altas-pendientes.json").read_bytes()
-    with pytest.raises(ValueError, match="No hay relevamiento de Chrome"):
-        confirmation.confirm(repo, output, TODAY)
+    # Sin archivo, o con evidencia de otro día, nada se promueve ni se rechaza: el pendiente sigue y cuenta la noche
+    # «sin corrida» (nochesSinCorrida), no «sin dato» (nochesSinDato).
+    assert confirmation.confirm(repo, output, TODAY) == {"promovidas": 0, "rechazadas": 0, "siguen_pendientes": 1}
     save(output / f"ar-chrome-{TODAY}.json", snapshot({"NUEVO": {"ships": True, "free": True, "precio": "$150"}}, "2026-11-05"))
-    with pytest.raises(ValueError, match="no es de hoy"):
-        confirmation.confirm(repo, output, TODAY)
-    assert (output / "altas-pendientes.json").read_bytes() == before
+    assert confirmation.confirm(repo, output, TODAY)["promovidas"] == 0
+    fila = read_catalog(output / "altas-pendientes.json")[0]
+    assert fila["nochesSinCorrida"] == 1 and "nochesSinDato" not in fila  # el mismo día no se duplica
+    assert json.loads((output / "altas-rechazadas.json").read_text()) == {}
 
 
 def test_lista_chrome_incluye_pendientes_y_modo_solo_pendientes(state, monkeypatch):

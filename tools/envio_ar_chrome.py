@@ -11,7 +11,9 @@ Salida (stdout): un JSON {"generado": ..., "items": {asin: {"ships", "free", "te
 ships/free: True/False sólo con evidencia en la página; None si no se pudo leer (no cuenta como «no envía»).
 """
 import asyncio
+from datetime import datetime, timedelta, timezone
 import json
+import os
 import re
 import sys
 import time
@@ -24,6 +26,7 @@ from article_log import chrome_line
 import websockets
 
 CDP = "http://127.0.0.1:9222"
+ART = timezone(timedelta(hours=-3))
 TIMEOUT_PRODUCTO = 30
 ESPERA_CARGA = 4
 RECICLAR_CADA = 10  # pestaña nueva cada N productos: libera memoria (05/11 el kernel mató un Chrome por OOM con 3 GB)
@@ -148,6 +151,68 @@ async def leer_producto(c, s, asin):
     return d
 
 
+def ruta_parcial():
+    """Archivo (dentro del contenedor) donde cada ASIN leído queda anotado al instante (F-06)."""
+    return os.environ.get("AR_CHROME_PARCIAL") or f"/tmp/ar-chrome-parcial-{datetime.now(ART).date()}.jsonl"
+
+
+def anexar_linea(ruta, linea):
+    """Agrega una línea al parcial reparando antes una cola truncada por un KILL, bajo flock (como worker/diario.py)."""
+    try:
+        import fcntl
+    except ImportError:  # sólo en Windows (tests): el contenedor de Chrome es Linux
+        fcntl = None
+    with open(ruta + ".lock", "a+b") as candado:
+        if fcntl:
+            fcntl.flock(candado, fcntl.LOCK_EX)
+        with open(ruta, "a+b") as archivo:
+            archivo.seek(0, os.SEEK_END)
+            size = archivo.tell()
+            if size:
+                archivo.seek(size - 1)
+                if archivo.read(1) != b"\n":
+                    archivo.seek(0)
+                    archivo.truncate(archivo.read().rfind(b"\n") + 1)
+            archivo.seek(0, os.SEEK_END)
+            archivo.write(linea.encode("utf-8") + b"\n")
+            archivo.flush()
+            os.fsync(archivo.fileno())
+
+
+def guardar_parcial(ruta, asin, slugs, item):
+    """Una línea JSON por ASIN con flush+fsync: un KILL pierde a lo sumo el ASIN en curso.
+
+    Cada registro lleva su hora ART (`t`): un relevamiento que cruza la medianoche no mezcla días.
+    La cadena (tools/envio_ar_chrome.sh) lo fusiona en ar-chrome-AAAA-MM-DD.json aunque el proceso muera."""
+    anexar_linea(ruta, json.dumps({"t": item.get("leido") or datetime.now(ART).isoformat(timespec="seconds"),
+                                   "asin": asin, "slugs": slugs, "item": item}, ensure_ascii=False))
+
+
+async def recorrer(c, ctx, tid, s, asins, slugs, items, parcial):
+    """Lee cada ASIN, lo anota en el parcial y lo imprime apenas lo tiene. Devuelve la pestaña vigente."""
+    for n, asin in enumerate(asins):
+        if n and n % RECICLAR_CADA == 0:
+            try:
+                await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
+            except Exception:  # noqa: BLE001
+                pass
+            tid, s = await nueva_pestana(c, ctx)
+        try:
+            items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin),
+                                                               (TIMEOUT_PRODUCTO + 2 * ESPERA_CARGA) * (INTENTOS_INTERSTICIAL + 1) + 5))
+        except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
+            items[asin] = {"ships": None, "free": None, "text": None, "motivo": f"error:{type(e).__name__}"}
+            try:
+                await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
+            except Exception:  # noqa: BLE001
+                pass
+            tid, s = await nueva_pestana(c, ctx)
+        items[asin]["leido"] = datetime.now(ART).isoformat(timespec="seconds")
+        guardar_parcial(parcial, asin, slugs[asin], items[asin])
+        print(chrome_line(slugs[asin], asin, items[asin]), file=sys.stderr, flush=True)
+    return tid
+
+
 async def main(asins):
     # También acepta ASIN:slug1,slug2 para conservar la relación con el catálogo.
     slugs = {}
@@ -157,30 +222,14 @@ async def main(asins):
     asins = list(slugs)
     ver = json.load(urllib.request.urlopen(CDP + "/json/version"))
     items, inicio = {}, time.time()
+    parcial = ruta_parcial()
     async with websockets.connect(ver["webSocketDebuggerUrl"], max_size=2**24) as ws:
         c = Cdp(ws)
         lector = asyncio.create_task(c.run())
         ctx = (await c.call("Target.createBrowserContext", {"disposeOnDetach": True}))["browserContextId"]
         tid, s = await nueva_pestana(c, ctx)
         try:
-            for n, asin in enumerate(asins):
-                if n and n % RECICLAR_CADA == 0:
-                    try:
-                        await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
-                    except Exception:  # noqa: BLE001
-                        pass
-                    tid, s = await nueva_pestana(c, ctx)
-                try:
-                    items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin),
-                                                                       (TIMEOUT_PRODUCTO + 2 * ESPERA_CARGA) * (INTENTOS_INTERSTICIAL + 1) + 5))
-                except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
-                    items[asin] = {"ships": None, "free": None, "text": None, "motivo": f"error:{type(e).__name__}"}
-                    try:
-                        await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
-                    except Exception:  # noqa: BLE001
-                        pass
-                    tid, s = await nueva_pestana(c, ctx)
-                print(chrome_line(slugs[asin], asin, items[asin]), file=sys.stderr, flush=True)
+            tid = await recorrer(c, ctx, tid, s, asins, slugs, items, parcial)
         finally:
             try:
                 await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
