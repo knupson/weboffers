@@ -110,7 +110,8 @@ def interpretar_panel(d, previo):
         return {**previo, "panel": f"sin_oferta_elegible:{len(d.get('ofertas') or [])}"}
     precio, oferta = min(elegibles, key=lambda e: e[0])
     return {"ships": True, "free": True, "text": oferta["envio"][:160], "motivo": "panel_ofertas",
-            "precio": oferta["precio"], "vendedor": oferta.get("vendedor")}
+            # Precio canónico: el texto del panel puede traer ruido («$389.67 with 13 percent savings», 10/11).
+            "precio": f"${precio:.2f}", "vendedor": oferta.get("vendedor")}
 
 
 def interpretar(d):
@@ -267,8 +268,12 @@ async def recorrer(c, ctx, tid, s, asins, slugs, items, parcial):
             items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin),
                                                                (TIMEOUT_PRODUCTO + 2 * ESPERA_CARGA) * (INTENTOS_INTERSTICIAL + 1) + 5))
             if abre_panel(items[asin]):
-                items[asin] = interpretar_panel(await asyncio.wait_for(
-                    leer_panel(c, s, asin), TIMEOUT_PRODUCTO + 5), items[asin])
+                # Un fallo del pedido del panel no tira la pestaña ni cambia lo leído en el recuadro: queda anotado.
+                try:
+                    d_panel = await asyncio.wait_for(leer_panel(c, s, asin), TIMEOUT_PRODUCTO + 5)
+                    items[asin] = interpretar_panel(d_panel, items[asin])
+                except Exception as exc:  # noqa: BLE001
+                    items[asin] = {**items[asin], "panel": f"error:{type(exc).__name__}"}
         except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
             items[asin] = {"ships": None, "free": None, "text": None, "motivo": f"error:{type(e).__name__}"}
             try:

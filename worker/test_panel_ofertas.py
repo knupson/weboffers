@@ -39,6 +39,9 @@ def test_elige_la_mas_barata_que_cumple_no_la_primera(monkeypatch):
     r = mod.interpretar_panel(d, PREVIO)
     assert r == {"ships": True, "free": True, "text": "FREE delivery Monday, November 23", "motivo": "panel_ofertas",
                  "precio": "$225.00", "vendedor": "Fabulous Yarn"}
+    # El precio se guarda canónico aunque el panel traiga texto de más (Garmin Venu 3S, 10/11).
+    ruido = {**d, "ofertas": [oferta("$389.67 with 13 percent savings", "FREE delivery Monday, November 23")]}
+    assert mod.interpretar_panel(ruido, PREVIO)["precio"] == "$389.67"
 
 
 def test_sin_elegible_o_panel_dudoso_conserva_el_recuadro(monkeypatch):
