@@ -128,6 +128,11 @@ def fetch_ar_shipping(base_url, asins, store):
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
 
 
+def _usd(texto):
+    m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", texto or "") if isinstance(texto, str) else None
+    return float(m.group(1).replace(",", "")) if m else None
+
+
 def load_ar_chrome(prices_path, today):
     """Relevamiento del día hecho con el Chrome anónimo de la VM (tools/envio_ar_chrome.sh).
 
@@ -140,8 +145,11 @@ def load_ar_chrome(prices_path, today):
     items = data.get("items") if isinstance(data, dict) else None
     if not isinstance(items, dict):
         return {}
+    # 10/11: una oferta tomada del panel de ofertas (motivo panel_ofertas) puede ser de otro vendedor que el precio
+    # del día: se pasa su precio para que offer_mismatch exija que sea la misma oferta (OFFER_TOLERANCE).
     return {asin: {"asin": asin, "ships": it["ships"], "free": it.get("free") if isinstance(it.get("free"), bool) else None,
-                   "text": it.get("text"), "price": None, "condition": None}
+                   "text": it.get("text"), "condition": None,
+                   "price": _usd(it.get("precio")) if it.get("motivo") == "panel_ofertas" else None}
             for asin, it in items.items() if isinstance(it, dict) and isinstance(it.get("ships"), bool)}
 
 

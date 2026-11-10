@@ -61,6 +61,52 @@ if(b){b.click(); return true;} return false;})()"""
 INTENTOS_INTERSTICIAL = 2
 
 
+# 10/11: con «See All Buying Options» el recuadro de compra no tiene oferta destacada, pero el panel de ofertas
+# (/dp/ASIN?aod=1) suele tener otro vendedor con envío gratis a Argentina: de 29 ASIN así (envio_ar_chrome.log,
+# 07-09/11) el panel dio 8 elegibles. Se lee el panel y se elige la oferta MÁS BARATA que cumpla (no la primera).
+# Selectores de worker/barrido/vendor/amazon/parsers.py (offers_page/_offer).
+LEER_PANEL = r"""(() => {const tx=(e)=>e?(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim():'';
+const bloques=[...document.querySelectorAll('#aod-pinned-offer, #aod-offer')];
+return JSON.stringify({deliver:tx(document.getElementById('glow-ingress-block')),
+ lang:(document.documentElement.lang||'').toLowerCase(),
+ captcha:/captcha|Enter the characters you see/i.test(document.body.innerText),
+ lista:!!document.getElementById('aod-offer-list'),
+ ofertas:bloques.map(b=>{const p=b.querySelector('#aod-offer-price')||b;
+  const precio=tx(p.querySelector('.a-price:not([data-a-strike]) .a-offscreen'))||tx(p.querySelector('.aok-offscreen'));
+  return {precio:precio||null,
+   condicion:tx(b.querySelector('#aod-offer-heading'))||(b.id==='aod-pinned-offer'?'New':null),
+   vendedor:tx(b.querySelector('#aod-offer-soldBy a'))||null,
+   envio:tx(b.querySelector('[data-csa-c-delivery-price]'))||null,
+   noEnvia:/cannot be shipped|does not ship/i.test(tx(b))};})})})()"""
+ESPERAS_PANEL = 4  # el panel carga por AJAX: hasta 4 lecturas separadas por ESPERA_CARGA
+
+
+def monto(texto):
+    m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", texto or "")
+    return float(m.group(1).replace(",", "")) if m else None
+
+
+def interpretar_panel(d, previo):
+    """Oferta más barata del panel que sea nueva, de USD 100 a 400, con «FREE delivery» y sin aviso de que no envía.
+    Sin ninguna, se conserva el resultado del recuadro (sin_oferta_ar). Ante la duda, nada se da por bueno."""
+    if not d or d.get("captcha") or not d.get("lista") or (d.get("lang") and not d["lang"].startswith("en")):
+        return {**previo, "panel": "no_leido"}
+    if "argentina" not in (d.get("deliver") or "").lower():
+        return {**previo, "panel": "ubicacion_no_ar"}
+    elegibles = []
+    for oferta in d.get("ofertas") or []:
+        precio = monto(oferta.get("precio"))
+        if (precio is not None and 100 <= precio <= 400 and not oferta.get("noEnvia")
+                and (oferta.get("condicion") or "").strip().lower().startswith("new")
+                and re.match(r"\s*FREE (delivery|shipping)", oferta.get("envio") or "", re.I)):
+            elegibles.append((precio, oferta))
+    if not elegibles:
+        return {**previo, "panel": f"sin_oferta_elegible:{len(d.get('ofertas') or [])}"}
+    precio, oferta = min(elegibles, key=lambda e: e[0])
+    return {"ships": True, "free": True, "text": oferta["envio"][:160], "motivo": "panel_ofertas",
+            "precio": oferta["precio"], "vendedor": oferta.get("vendedor")}
+
+
 def interpretar(d):
     """Traduce lo leído a ships/free con evidencia literal; ante la duda, None."""
     if d.get("captcha"):
@@ -151,6 +197,25 @@ async def leer_producto(c, s, asin):
     return d
 
 
+async def leer_panel(c, s, asin):
+    await c.call("Page.navigate", {"url": f"https://www.amazon.com/dp/{asin}?aod=1&language=en_US"}, s)
+    d = {}
+    for _ in range(ESPERAS_PANEL):
+        await asyncio.sleep(ESPERA_CARGA)
+        r = await c.call("Runtime.evaluate", {"expression": LEER_PANEL, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
+        if r.get("exceptionDetails"):
+            det = r["exceptionDetails"]
+            raise RuntimeError(f"js panel: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
+        d = json.loads((r.get("result") or {}).get("value") or "{}")
+        if d.get("lista") and d.get("ofertas"):
+            break
+    return d
+
+
+def abre_panel(item):
+    return item.get("motivo") == "sin_oferta_ar" and "See All Buying Options" in (item.get("text") or "")
+
+
 def ruta_parcial():
     """Archivo (dentro del contenedor) donde cada ASIN leído queda anotado al instante (F-06)."""
     return os.environ.get("AR_CHROME_PARCIAL") or f"/tmp/ar-chrome-parcial-{datetime.now(ART).date()}.jsonl"
@@ -200,6 +265,9 @@ async def recorrer(c, ctx, tid, s, asins, slugs, items, parcial):
         try:
             items[asin] = interpretar(await asyncio.wait_for(leer_producto(c, s, asin),
                                                                (TIMEOUT_PRODUCTO + 2 * ESPERA_CARGA) * (INTENTOS_INTERSTICIAL + 1) + 5))
+            if abre_panel(items[asin]):
+                items[asin] = interpretar_panel(await asyncio.wait_for(
+                    leer_panel(c, s, asin), (TIMEOUT_PRODUCTO + ESPERA_CARGA) * ESPERAS_PANEL + 5), items[asin])
         except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
             items[asin] = {"ships": None, "free": None, "text": None, "motivo": f"error:{type(e).__name__}"}
             try:
