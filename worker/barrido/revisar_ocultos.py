@@ -2,7 +2,10 @@
 
 Dos tipos, detectados en el HTML de la tarjeta guardada en el JSONL del barrido:
 - «See options»: producto con variantes; se pide el panel de ofertas nuevas (`products.offers`).
-- «Click to see price»: precio escondido en el listado; se pide la ficha (`products.details`).
+- «Click to see price»: precio escondido en el listado; también se pide el panel de ofertas nuevas.
+  La ficha (`products.details`) no sirve: muestra un solo vendedor, suele no traer precio y rota la
+  sesión buscando reseñas (prueba 10/11: el panel recuperó 8 de 13 en <1,2 s cada uno; envío a
+  Argentina confirmado en Chrome en 3 de ellos).
 
 Uso (dentro del contenedor del barrido, con PYTHONPATH=/src/worker):
     python -m barrido.revisar_ocultos --jsonl /app/output/barrido/US-AAAA-MM-DD.jsonl \
@@ -130,7 +133,7 @@ def evaluar(precio, envio, condicion_nueva):
     return not motivos, motivos
 
 
-def revisar_opciones(asin, products, shipping, log):
+def revisar_ofertas(asin, products, shipping, log):
     respuesta = products.offers(asin, "US", condition="new", postal_code="AR")
     ofertas = respuesta.get("offers") or []
     log("OCULTO_OFERTAS", asin=asin, cantidad=len(ofertas), titulo=respuesta.get("title"))
@@ -149,18 +152,6 @@ def revisar_opciones(asin, products, shipping, log):
     if mejor:
         return {"elegible": True, "motivos": [], **mejor}, respuesta
     return {"elegible": False, "motivos": ["sin_oferta_elegible" if ofertas else "sin_ofertas_producto_nuevo"]}, respuesta
-
-
-def revisar_precio_oculto(asin, products, shipping, log):
-    ficha = products.details(asin, "US", postal_code="AR")
-    precio = monto(ficha.get("price"))
-    envio = shipping.parse_delivery(ficha, located=True)
-    clase = shipping.classify_shipping(envio)
-    condicion = (ficha.get("condition") or "new")
-    ok, motivos = evaluar(precio, clase, str(condicion).lower().startswith("new"))
-    log("OCULTO_FICHA", asin=asin, precio=precio, envio_texto=envio.get("text"), envio_clase=clase,
-        condicion=condicion, ubicacion=(ficha.get("delivery") or {}).get("location"), elegible=ok, motivos=motivos)
-    return {"elegible": ok, "motivos": motivos, "precio": precio, "envio_texto": envio.get("text")}, ficha
 
 
 def main(argv=None):
@@ -203,10 +194,7 @@ def main(argv=None):
                 t0 = time.monotonic()
                 log("OCULTO_INICIO", tipo=tipo, asin=asin, titulo=(row.get("title") or "")[:120])
                 try:
-                    if tipo == "opciones":
-                        resultado, crudo = revisar_opciones(asin, products, shipping, log)
-                    else:
-                        resultado, crudo = revisar_precio_oculto(asin, products, shipping, log)
+                    resultado, crudo = revisar_ofertas(asin, products, shipping, log)
                     estado, error = "ok", None
                 except Exception as exc:  # se registra y se sigue con el próximo
                     resultado, crudo, estado = {"elegible": False, "motivos": ["error"]}, None, "error"
