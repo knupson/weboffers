@@ -762,3 +762,29 @@ def test_variant_conflicts_rechaza_otro_producto(amazon, ml, conflicto):
 def test_variant_conflicts_no_rompe_pares_buenos(amazon, ml):
     from variants import variant_conflicts
     assert not {"zona", "switch_tipo"} & set(variant_conflicts(amazon, ml))
+
+
+def _par(titulo, nombre, marca):
+    amazon = {"amazonTitle": titulo, "asin": "B0X", "store": "US", "amazonPriceUsd": 150.0,
+              "amazonCategory": "Herramientas"}
+    cand = {"name": nombre, "itemId": "MLA1", "minPrice": 150.0 * 1500 * 1.5}
+    return match.evaluate(amazon, cand, {"name": nombre, "attributes": [{"id": "BRAND", "value_name": marca}]}, 1500)
+
+
+def test_10_11_herramienta_de_otro_tipo_y_bateria_no_es_modelo():
+    # 08/11: amoladora recta M12 Fuel aceptada contra un taladro percutor M12 Fuel 2504-20.
+    estado, motivo, _ = _par("Milwaukee Electric - M12 Fuel 1/4 INCH Right Angle DIE Grinder",
+                             "Taladro Percutor Milwaukee M12 Fuel 2504-20", "Milwaukee")
+    assert (estado, motivo) == ("rejected", "tipo de producto distinto")
+    assert "m12" not in match.model_tokens("Milwaukee M12 Fuel Grinder")
+    assert match.product_types("Llave de impacto M18") == match.product_types("Impact Wrench M18") == {"impact"}
+
+
+def test_10_11_generacion_distinta_y_configuracion_no_es_modelo():
+    estado, motivo, _ = _par("Patriot Viper Steel DDR4 RAM 16GB (1X16GB) 3200MHz",
+                             "Ram Patriot Viper Elite 5 DDR5 16gb (1x16gb) 6000mhz", "Patriot")
+    assert estado == "rejected"
+    assert "1x16gb" not in match.model_tokens("Patriot 16GB (1X16GB) DDR4")
+    assert match.generations("Samsung 990 PRO PCIe 4.0") == match.generations("SSD Pcie Gen4") == {"pcie": {"4"}}
+    assert match.generations("Router Wi-Fi 6E") != match.generations("Router WiFi 7")
+    assert match.generations("Hub for USB 2.0 devices") == {}

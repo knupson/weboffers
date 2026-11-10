@@ -130,6 +130,20 @@ def ram_quantities(value):
     return {float((left or right)[:-2]) for left, right in matches}
 
 
+def generations(value):
+    """Generación declarada por familia. 10/11: DDR4 contra DDR5 no se comparaba en ningún lado
+    (model_tokens descarta «ddr4» a propósito). Sólo cuenta lo que el texto dice explícitamente."""
+    text = normalize(own_description(value))
+    found = {}
+    for family, pattern in (("ddr", r"\bl?p?ddr(\d)x?\b"),
+                            ("pcie", r"\bpcie\s*(?:gen\s*)?(\d)(?:\.0)?\b"),
+                            ("usb", r"\busb\s*(\d)(?:\.\d)?\b"),
+                            ("wifi", r"\bwi\s?fi\s*(\d+e?)\b")):
+        for match in re.finditer(pattern, text):
+            found.setdefault(family, set()).add(match[1])
+    return found
+
+
 def own_description(value):
     """La compatibilidad nombra otros productos, no el modelo ni el paquete vendido."""
     return re.split(r"\b(?:for|para|compatible (?:with|con))\b", ascii_text(value), maxsplit=1)[0]
@@ -186,6 +200,14 @@ def product_types(value, category=""):
         "cable": r"\b(?:cables?)\b",
         "stand": r"\b(?:stands?|soportes?)\b",
         "controller": r"\b(?:controllers?|control(?:es)?|joysticks?|gamepads?)\b",
+        # 10/11: Milwaukee M12 Fuel amoladora recta aceptada contra un taladro percutor M12 Fuel.
+        # Las frases compuestas van primero: «impact wrench», «llave de impacto», «die grinder».
+        "impact": r"\b(?:impact (?:drivers?|wrench(?:es)?)|atornilladora?s? de impacto|llaves? de impacto"
+                  r"|pistolas? de impacto)\b",
+        "grinder": r"\b(?:(?:die |angle )?grinders?|amoladoras?|esmeriladoras?|rectificadoras?)\b",
+        "drill": r"\b(?:(?:hammer )?drills?|taladros?(?: percutor(?:es)?)?|rotomartillos?)\b",
+        "saw": r"\b(?:saws?|sierras?|serruchos?)\b",
+        "sander": r"\b(?:sanders?|lijadoras?)\b",
     }
     found = set()
     for kind, pattern in groups.items():
@@ -224,6 +246,10 @@ def model_tokens(value):
         if quantities(raw) or re.fullmatch(r"(?:pcie|usb|ddr|wifi|wi-fi|bluetooth|bt|gen)\d+[a-z]*", token):
             continue
         if re.fullmatch(r"\d+(?:hz|khz|mhz|ghz|k|p|mbps|gbps)", token):
+            continue
+        # 10/11: «M12»/«M18» (batería Milwaukee) y «1x16gb» (configuración de memoria) se tomaban como
+        # modelo compartido: Milwaukee amoladora vs taladro y Patriot DDR4 vs DDR5 salían aceptados.
+        if re.fullmatch(r"(?:m12|m18|\d+v(?:max)?|\d+x\d+(?:gb|tb|mb)?)", token):
             continue
         # Duración, protección y canales de audio son especificaciones, no códigos.
         if re.fullmatch(r"(?:\d+(?:hour|hours|hr|hrs|ch)|ip\d{2})", token):
@@ -483,6 +509,10 @@ def evaluate(amazon, candidate, product, mep):
     if bool(combo.search(ascii_text(title).lower())) != bool(combo.search(ascii_text(name).lower())):
         return "rejected", "combo en un solo lado", evidence
     # Compartir el modelo base no vuelve intercambiables las versiones de red celular.
+    a_gen, b_gen = generations(title), generations(" ".join([name, model, attrs.get("LINE", "")]))
+    for family in a_gen.keys() & b_gen.keys():
+        if a_gen[family].isdisjoint(b_gen[family]):
+            return "rejected", f"generación distinta ({family})", evidence
     a_network = set(re.findall(r"\b[345]g\b", normalize(own_description(title))))
     b_network = set(re.findall(r"\b[345]g\b", normalize(own_description(name))))
     if a_network and b_network and a_network != b_network:
