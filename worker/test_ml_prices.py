@@ -561,3 +561,53 @@ def test_ml_consulta_solo_el_proceso_actual(tmp_path, monkeypatch, modo, esperad
     data = json.loads(path.read_text())
     assert set(data["items"]) == esperados
     assert set(data["skipped"]) == ({"monitor", "ssd"} - esperados if modo == "verificacion" else set())
+
+
+def _respuesta(status, body=None, headers=None):
+    r = requests.Response()
+    r.status_code = status
+    r._content = json.dumps(body or {}).encode()
+    r.headers.update(headers or {})
+    r.url = "https://api.mercadolibre.com/products/MLA1"
+    return r
+
+
+def test_429_reintenta_y_respeta_retry_after(monkeypatch, capsys):
+    # 10/11: el 09/11 veinte productos terminaron en error al primer 429 de /products.
+    respuestas = iter([_respuesta(429, headers={"Retry-After": "5"}),
+                       _respuesta(429, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}),
+                       _respuesta(200, {"id": "MLA1"})])
+    monkeypatch.setattr(ml_prices, "get_token", lambda: "t")
+    monkeypatch.setattr(ml_prices.requests, "get", lambda *a, **k: next(respuestas))
+    esperas = []
+    assert ml_prices.get_json("/products/MLA1", sleep=esperas.append) == {"id": "MLA1"}
+    assert esperas == [5.0, 4.0]  # Retry-After numérico; la fecha HTTP cae al backoff del 2.º intento
+    salida = capsys.readouterr().out
+    assert "ML_429_ESPERA path=/products/MLA1 intento=1/3 segundos=5 motivo=retry_after" in salida
+    assert "intento=2/3 segundos=4 motivo=backoff" in salida
+
+
+def test_429_agotado_propaga_el_http_error(monkeypatch):
+    monkeypatch.setattr(ml_prices, "get_token", lambda: "t")
+    pedidos = []
+    monkeypatch.setattr(ml_prices.requests, "get", lambda *a, **k: pedidos.append(1) or _respuesta(429))
+    esperas = []
+    with pytest.raises(requests.HTTPError) as error:
+        ml_prices.get_json("/products/MLA1", sleep=esperas.append)
+    assert error.value.response.status_code == 429
+    assert len(pedidos) == 4 and esperas == [2.0, 4.0, 8.0]
+
+
+def test_404_no_se_reintenta(monkeypatch):
+    monkeypatch.setattr(ml_prices, "get_token", lambda: "t")
+    pedidos = []
+    monkeypatch.setattr(ml_prices.requests, "get", lambda *a, **k: pedidos.append(1) or _respuesta(404))
+    with pytest.raises(requests.HTTPError):
+        ml_prices.get_json("/products/MLA1", sleep=lambda s: pytest.fail("no debe esperar"))
+    assert len(pedidos) == 1
+
+
+def test_retry_after_invalido_cae_al_backoff():
+    assert ml_prices.retry_after_seconds("120") == ml_prices.RETRY_AFTER_MAX
+    for valor in (None, "", "nan", "-3", "0", "inf", "Wed, 21 Oct 2026 07:28:00 GMT"):
+        assert ml_prices.retry_after_seconds(valor) is None, valor

@@ -65,15 +65,40 @@ def get_token():
     return _token_cache["value"]
 
 
-def get_json(path, params=None):
-    response = requests.get(
-        API_BASE_URL + path,
-        params=params,
-        headers={"Authorization": f"Bearer {get_token()}"},
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()
+# 10/11: el 09/11 entre 13:29 y 13:43 veinte productos terminaron en error por «429 Too Many Requests»
+# en /products (paso alta:buscar, cadena-2026-11-09.log): get_json fallaba al primer 429 sin esperar.
+RETRY_429_WAITS = (2.0, 4.0, 8.0)
+RETRY_AFTER_MAX = 60.0
+
+
+def retry_after_seconds(value):
+    """Segundos de Retry-After si es un número finito positivo (con tope); si no (fecha HTTP, vacío), None."""
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(seconds) or seconds <= 0:
+        return None
+    return min(seconds, RETRY_AFTER_MAX)
+
+
+def get_json(path, params=None, sleep=time.sleep):
+    for attempt in range(len(RETRY_429_WAITS) + 1):
+        response = requests.get(
+            API_BASE_URL + path,
+            params=params,
+            headers={"Authorization": f"Bearer {get_token()}"},
+            timeout=30,
+        )
+        if response.status_code != 429 or attempt == len(RETRY_429_WAITS):
+            # Agotados los reintentos, el HTTPError del 429 sube igual que antes.
+            response.raise_for_status()
+            return response.json()
+        header = retry_after_seconds(response.headers.get("Retry-After"))
+        seconds = header if header is not None else RETRY_429_WAITS[attempt]
+        print(f"ML_429_ESPERA path={path} intento={attempt + 1}/{len(RETRY_429_WAITS)} segundos={seconds:g} "
+              f"motivo={'retry_after' if header is not None else 'backoff'}", flush=True)
+        sleep(seconds)
 
 
 def search_products(query):
