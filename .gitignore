@@ -5,9 +5,12 @@ dist/
 .env.*
 !.env.example
 *.log
+!worker/barrido/fixtures/observabilidad.log
 .DS_Store
 Thumbs.db
 worker/output/
+worker/warp-data/
+worker/chrome-barrido/
 data/ml-prices.json
 data/amazon-prices.json
 .pytest_cache/

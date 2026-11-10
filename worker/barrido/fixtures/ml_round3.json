@@ -1,0 +1,23 @@
+{
+  "rejected": [
+    {"title": "952XL Ink Cartridges Combo Pack for HP 952 XL", "brand": "HP", "candidate": "Cartucho De Tinta Cian Compatible 952xl 954xl Katun", "reason": "originalidad_distinta"},
+    {"title": "HP Original 952XL Ink Cartridges Combo Pack", "candidate": "Cartucho HP 952XL Cian Original", "reason": "presentacion_distinta"},
+    {"title": "Brother Genuine-Drum DR630", "candidate": "Unidad De Imagen Drum Alternativo Tecnovibe Dr630 Para Brother Hl2340", "reason": "originalidad_distinta"},
+    {"title": "Brother Genuine-Drum DR630", "candidate": "Unidad De Imagen Drum Tecnovibe Dr630 Para Brother Hl2340", "reason": "marca_ausente_o_distinta"},
+    {"title": "Jabra Evolve2 65 Flex Wireless Stereo Headset", "candidate": "Headset Jabra Evolve2 65 Duo", "reason": "variante_ausente_o_distinta"},
+    {"title": "Insta360 Link 2C Pro – 4K Webcam", "candidate": "Cámara deportiva Insta360 Insta360 GO 3 blanca", "reason": "modelo_ausente_o_distinto:2C"},
+    {"title": "Insta360 Link 2C Pro – 4K Webcam", "candidate": "Cámara deportiva Insta360 Link 2C Pro", "reason": "tipo_contradictorio:camara_deportiva"}
+  ],
+  "accepted": [
+    {"title": "Logitech G502 X Plus Wireless Gaming Mouse", "candidate": "Mouse Logitech G502 X Plus"},
+    {"title": "HP 58A CF258A Original Toner", "candidate": "Toner Hp Cf258a 58a Negro"},
+    {"title": "Corsair RM1000e 1000W Power Supply", "candidate": "Fuente Corsair Rm1000e 1000w 80+ Gold Atx 3.1 Negro"},
+    {"title": "Logitech G PRO X2 SUPERSTRIKE Wireless Gaming Mouse", "candidate": "Mouse Inalámbrico Gaming Logitech G Pro X2 Superstrike Blanco Con Negro"},
+    {"title": "Samsung SSD 870 EVO SATA III 2.5” 1TB, Read Speeds Up to 560MB/s", "candidate": "Disco Sólido Ssd Interno Samsung 870 Evo Mz-77e1t0 1tb Negro", "query": "Samsung 870 EVO"},
+    {"title": "Samsung SSD 870 EVO SATA III 2.5” 1TB, Read Speeds Up to 560MB/s", "candidate": "Disco sólido interno Samsung 870 EVO 1tb"}
+  ],
+  "queries": [
+    {"title": "Lenovo Idea Tab - College Tablet - 11″ 2.5K IPS Mali-G57", "raw": {"model": "Mali-G57"}, "query": "Lenovo Idea Tab"},
+    {"title": "NJ98 Wireless Custom Mechanical Keyboard", "query": "NJ98"}
+  ]
+}

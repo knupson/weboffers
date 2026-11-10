@@ -1,0 +1,1008 @@
+{
+  "version": 1,
+  "stores": {
+    "US": {
+      "nodes": [
+        {
+          "id": "12896081",
+          "name": "Beading & Jewelry Making",
+          "kind": "leaf"
+        },
+        {
+          "id": "378733011",
+          "name": "Crafting",
+          "kind": "leaf"
+        },
+        {
+          "id": "12899121",
+          "name": "Fabric",
+          "kind": "leaf"
+        },
+        {
+          "id": "12896841",
+          "name": "Fabric Decorating",
+          "kind": "leaf"
+        },
+        {
+          "id": "723452011",
+          "name": "Gift Wrapping Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "12897221",
+          "name": "Knitting & Crochet",
+          "kind": "leaf"
+        },
+        {
+          "id": "23539912011",
+          "name": "Model & Hobby Building",
+          "kind": "leaf"
+        },
+        {
+          "id": "2237329011",
+          "name": "Needlework",
+          "kind": "leaf"
+        },
+        {
+          "id": "2237594011",
+          "name": "Organization, Storage & Transport",
+          "kind": "leaf"
+        },
+        {
+          "id": "2747968011",
+          "name": "Painting, Drawing & Art Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "723469011",
+          "name": "Party Decorations & Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "12898451",
+          "name": "Printmaking",
+          "kind": "leaf"
+        },
+        {
+          "id": "12898821",
+          "name": "Scrapbooking & Stamping",
+          "kind": "leaf"
+        },
+        {
+          "id": "12899091",
+          "name": "Sewing",
+          "kind": "leaf"
+        },
+        {
+          "id": "15718271",
+          "name": "Car Care",
+          "kind": "leaf"
+        },
+        {
+          "id": "2230642011",
+          "name": "Car Electronics & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15857511",
+          "name": "Exterior Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15857501",
+          "name": "Interior Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15736321",
+          "name": "Lights, Bulbs & Indicators",
+          "kind": "leaf"
+        },
+        {
+          "id": "346333011",
+          "name": "Motorcycle & Powersports",
+          "kind": "leaf"
+        },
+        {
+          "id": "15718791",
+          "name": "Oils & Fluids",
+          "kind": "leaf"
+        },
+        {
+          "id": "13591416011",
+          "name": "Paint & Paint Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "15710351",
+          "name": "Performance Parts & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15719731",
+          "name": "Replacement Parts",
+          "kind": "leaf"
+        },
+        {
+          "id": "2258019011",
+          "name": "RV Parts & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15706571",
+          "name": "Tires & Wheels",
+          "kind": "leaf"
+        },
+        {
+          "id": "15706941",
+          "name": "Tools & Equipment",
+          "kind": "leaf"
+        },
+        {
+          "id": "2204830011",
+          "name": "Automotive Enthusiast Merchandise",
+          "kind": "leaf"
+        },
+        {
+          "id": "15682003011",
+          "name": "Heavy Duty & Commercial Vehicle Equipment",
+          "kind": "leaf"
+        },
+        {
+          "id": "16225005011",
+          "name": "Baby",
+          "kind": "root"
+        },
+        {
+          "id": "11058281",
+          "name": "Makeup",
+          "kind": "leaf"
+        },
+        {
+          "id": "11060451",
+          "name": "Skin Care",
+          "kind": "leaf"
+        },
+        {
+          "id": "11057241",
+          "name": "Hair Care",
+          "kind": "leaf"
+        },
+        {
+          "id": "11056591",
+          "name": "Fragrance",
+          "kind": "leaf"
+        },
+        {
+          "id": "17242866011",
+          "name": "Foot, Hand & Nail Care",
+          "kind": "leaf"
+        },
+        {
+          "id": "11062741",
+          "name": "Tools & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "3778591",
+          "name": "Shave & Hair Removal",
+          "kind": "leaf"
+        },
+        {
+          "id": "3777891",
+          "name": "Personal Care",
+          "kind": "leaf"
+        },
+        {
+          "id": "211908598011",
+          "name": "Gift Sets",
+          "kind": "leaf"
+        },
+        {
+          "id": "15144566011",
+          "name": "Salon & Spa Equipment",
+          "kind": "leaf"
+        },
+        {
+          "id": "1040666",
+          "name": "Clothing",
+          "kind": "leaf"
+        },
+        {
+          "id": "679182011",
+          "name": "Shoes",
+          "kind": "leaf"
+        },
+        {
+          "id": "6358551011",
+          "name": "Watches",
+          "kind": "leaf"
+        },
+        {
+          "id": "2474939011",
+          "name": "Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "3880611",
+          "name": "Jewelry",
+          "kind": "leaf"
+        },
+        {
+          "id": "172456",
+          "name": "Computer Accessories & Peripherals",
+          "kind": "leaf"
+        },
+        {
+          "id": "193870011",
+          "name": "Computer Components",
+          "kind": "leaf"
+        },
+        {
+          "id": "13896617011",
+          "name": "Computers & Tablets",
+          "kind": "leaf"
+        },
+        {
+          "id": "1292110011",
+          "name": "Data Storage",
+          "kind": "leaf"
+        },
+        {
+          "id": "3011391011",
+          "name": "Laptop Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "1292115011",
+          "name": "Monitors",
+          "kind": "leaf"
+        },
+        {
+          "id": "172504",
+          "name": "Networking Products",
+          "kind": "leaf"
+        },
+        {
+          "id": "11036071",
+          "name": "Servers",
+          "kind": "leaf"
+        },
+        {
+          "id": "2348628011",
+          "name": "Tablet Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15524379011",
+          "name": "Tablet Replacement Parts",
+          "kind": "leaf"
+        },
+        {
+          "id": "16285851",
+          "name": "Warranties & Services",
+          "kind": "leaf"
+        },
+        {
+          "id": "281407",
+          "name": "Accessories & Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "502394",
+          "name": "Camera & Photo",
+          "kind": "leaf"
+        },
+        {
+          "id": "3248684011",
+          "name": "Car & Vehicle Electronics",
+          "kind": "leaf"
+        },
+        {
+          "id": "2811119011",
+          "name": "Cell Phones & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "541966",
+          "name": "Computers & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "2242348011",
+          "name": "Electronic Protection Plans",
+          "kind": "leaf"
+        },
+        {
+          "id": "172526",
+          "name": "GPS, Finders & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "667846011",
+          "name": "Home Audio",
+          "kind": "leaf"
+        },
+        {
+          "id": "172574",
+          "name": "Office Electronics",
+          "kind": "leaf"
+        },
+        {
+          "id": "172623",
+          "name": "Portable Audio & Video",
+          "kind": "leaf"
+        },
+        {
+          "id": "524136",
+          "name": "Security & Surveillance",
+          "kind": "leaf"
+        },
+        {
+          "id": "16285901",
+          "name": "Service Plans",
+          "kind": "leaf"
+        },
+        {
+          "id": "1266092011",
+          "name": "Television & Video",
+          "kind": "leaf"
+        },
+        {
+          "id": "7926841011",
+          "name": "Video Game Consoles & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "300334",
+          "name": "Video Projectors",
+          "kind": "leaf"
+        },
+        {
+          "id": "10048700011",
+          "name": "Wearable Technology",
+          "kind": "leaf"
+        },
+        {
+          "id": "2642125011",
+          "name": "eBook Readers & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "24046923011",
+          "name": "Headphones, Earbuds & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "21608214011",
+          "name": "Household Batteries, Chargers & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "21608215011",
+          "name": "Power Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "1040664",
+          "name": "Clothing",
+          "kind": "leaf"
+        },
+        {
+          "id": "679217011",
+          "name": "Shoes",
+          "kind": "leaf"
+        },
+        {
+          "id": "3880961",
+          "name": "Jewelry",
+          "kind": "leaf"
+        },
+        {
+          "id": "6358547011",
+          "name": "Watches",
+          "kind": "leaf"
+        },
+        {
+          "id": "2474938011",
+          "name": "Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "205664993011",
+          "name": "Handbags & Shoulder Bags",
+          "kind": "leaf"
+        },
+        {
+          "id": "16225010011",
+          "name": "Health & Household",
+          "kind": "root"
+        },
+        {
+          "id": "3206325011",
+          "name": "Kids' Home Store",
+          "kind": "leaf"
+        },
+        {
+          "id": "284507",
+          "name": "Kitchen & Dining",
+          "kind": "leaf"
+        },
+        {
+          "id": "1063252",
+          "name": "Bedding",
+          "kind": "leaf"
+        },
+        {
+          "id": "1063236",
+          "name": "Bath",
+          "kind": "leaf"
+        },
+        {
+          "id": "1063306",
+          "name": "Furniture",
+          "kind": "leaf"
+        },
+        {
+          "id": "1063278",
+          "name": "Home Décor Products",
+          "kind": "leaf"
+        },
+        {
+          "id": "3736081",
+          "name": "Wall Art",
+          "kind": "leaf"
+        },
+        {
+          "id": "16510975011",
+          "name": "Lighting & Ceiling Fans",
+          "kind": "leaf"
+        },
+        {
+          "id": "13679381",
+          "name": "Seasonal Décor",
+          "kind": "leaf"
+        },
+        {
+          "id": "901590",
+          "name": "Event & Party Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "3206324011",
+          "name": "Heating, Cooling & Air Quality",
+          "kind": "leaf"
+        },
+        {
+          "id": "510240",
+          "name": "Irons & Steamers",
+          "kind": "leaf"
+        },
+        {
+          "id": "510106",
+          "name": "Vacuums & Floor Care",
+          "kind": "leaf"
+        },
+        {
+          "id": "3610841",
+          "name": "Storage & Organization",
+          "kind": "leaf"
+        },
+        {
+          "id": "10802561",
+          "name": "Cleaning Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "16225012011",
+          "name": "Industrial & Scientific",
+          "kind": "root"
+        },
+        {
+          "id": "360832011",
+          "name": "Backpacks",
+          "kind": "leaf"
+        },
+        {
+          "id": "2204831011",
+          "name": "Briefcases",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743181",
+          "name": "Gym Bags",
+          "kind": "leaf"
+        },
+        {
+          "id": "9971584011",
+          "name": "Laptop Bags",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743251",
+          "name": "Luggage",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743231",
+          "name": "Messenger Bags",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743971",
+          "name": "Travel Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743211",
+          "name": "Travel Duffels",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743241",
+          "name": "Travel Totes",
+          "kind": "leaf"
+        },
+        {
+          "id": "15744111",
+          "name": "Umbrellas",
+          "kind": "leaf"
+        },
+        {
+          "id": "2477385011",
+          "name": "Waist Packs",
+          "kind": "leaf"
+        },
+        {
+          "id": "1040658",
+          "name": "Clothing",
+          "kind": "leaf"
+        },
+        {
+          "id": "679255011",
+          "name": "Shoes",
+          "kind": "leaf"
+        },
+        {
+          "id": "3887881",
+          "name": "Jewelry",
+          "kind": "leaf"
+        },
+        {
+          "id": "6358539011",
+          "name": "Watches",
+          "kind": "leaf"
+        },
+        {
+          "id": "2474937011",
+          "name": "Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "14864589011",
+          "name": "Handbags & Shoulder Bags",
+          "kind": "leaf"
+        },
+        {
+          "id": "16225013011",
+          "name": "Pet Supplies",
+          "kind": "root"
+        },
+        {
+          "id": "706814011",
+          "name": "Outdoor Recreation",
+          "kind": "leaf"
+        },
+        {
+          "id": "3386071",
+          "name": "Fan Shop",
+          "kind": "leaf"
+        },
+        {
+          "id": "23466320011",
+          "name": "Clothing",
+          "kind": "leaf"
+        },
+        {
+          "id": "3407731",
+          "name": "Exercise & Fitness",
+          "kind": "leaf"
+        },
+        {
+          "id": "706813011",
+          "name": "Hunting & Fishing",
+          "kind": "leaf"
+        },
+        {
+          "id": "2358921011",
+          "name": "Memorabilia Display & Storage",
+          "kind": "leaf"
+        },
+        {
+          "id": "10971181011",
+          "name": "Sports",
+          "kind": "leaf"
+        },
+        {
+          "id": "3394801",
+          "name": "Sports & Outdoor Recreation Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "3422351",
+          "name": "Sports Medicine",
+          "kind": "leaf"
+        },
+        {
+          "id": "13397451",
+          "name": "Appliances",
+          "kind": "leaf"
+        },
+        {
+          "id": "551240",
+          "name": "Building Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "495266",
+          "name": "Electrical",
+          "kind": "leaf"
+        },
+        {
+          "id": "511228",
+          "name": "Hardware",
+          "kind": "leaf"
+        },
+        {
+          "id": "3754161",
+          "name": "Kitchen & Bath Fixtures",
+          "kind": "leaf"
+        },
+        {
+          "id": "322525011",
+          "name": "Light Bulbs",
+          "kind": "leaf"
+        },
+        {
+          "id": "495224",
+          "name": "Lighting & Ceiling Fans",
+          "kind": "leaf"
+        },
+        {
+          "id": "553244",
+          "name": "Measuring & Layout Tools",
+          "kind": "leaf"
+        },
+        {
+          "id": "228899",
+          "name": "Paint, Wall Treatments & Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "13749581",
+          "name": "Plumbing",
+          "kind": "leaf"
+        },
+        {
+          "id": "328182011",
+          "name": "Power & Hand Tools",
+          "kind": "leaf"
+        },
+        {
+          "id": "3180231",
+          "name": "Safety & Security",
+          "kind": "leaf"
+        },
+        {
+          "id": "13400631",
+          "name": "Storage & Home Organization",
+          "kind": "leaf"
+        },
+        {
+          "id": "8106310011",
+          "name": "Welding & Soldering",
+          "kind": "leaf"
+        },
+        {
+          "id": "166057011",
+          "name": "Arts & Crafts",
+          "kind": "leaf"
+        },
+        {
+          "id": "196601011",
+          "name": "Baby & Toddler Toys",
+          "kind": "leaf"
+        },
+        {
+          "id": "166092011",
+          "name": "Building Toys",
+          "kind": "leaf"
+        },
+        {
+          "id": "19431275011",
+          "name": "Collectible Toys",
+          "kind": "leaf"
+        },
+        {
+          "id": "166118011",
+          "name": "Dolls & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "166316011",
+          "name": "Dress Up & Pretend Play",
+          "kind": "leaf"
+        },
+        {
+          "id": "166220011",
+          "name": "Games & Accessories",
+          "kind": "leaf"
+        },
+        {
+          "id": "166164011",
+          "name": "Kids' Electronics",
+          "kind": "leaf"
+        },
+        {
+          "id": "166269011",
+          "name": "Learning & Education",
+          "kind": "leaf"
+        },
+        {
+          "id": "166027011",
+          "name": "Novelty & Gag Toys",
+          "kind": "leaf"
+        },
+        {
+          "id": "1266203011",
+          "name": "Party Supplies",
+          "kind": "leaf"
+        },
+        {
+          "id": "166333011",
+          "name": "Puppets & Puppet Theaters",
+          "kind": "leaf"
+        },
+        {
+          "id": "166359011",
+          "name": "Puzzles",
+          "kind": "leaf"
+        },
+        {
+          "id": "6925830011",
+          "name": "Remote & App Controlled Vehicles & Parts",
+          "kind": "leaf"
+        },
+        {
+          "id": "166420011",
+          "name": "Sports & Outdoor Play",
+          "kind": "leaf"
+        },
+        {
+          "id": "166461011",
+          "name": "Stuffed Animals & Plush Toys",
+          "kind": "leaf"
+        },
+        {
+          "id": "165993011",
+          "name": "Toy Figures & Playsets",
+          "kind": "leaf"
+        },
+        {
+          "id": "256994011",
+          "name": "Tricycles, Scooters & Wagons",
+          "kind": "leaf"
+        },
+        {
+          "id": "23539911011",
+          "name": "Vehicles",
+          "kind": "leaf"
+        },
+        {
+          "id": "16225016011",
+          "name": "Video Games",
+          "kind": "root"
+        },
+        {
+          "id": "1040660",
+          "name": "Clothing",
+          "kind": "leaf"
+        },
+        {
+          "id": "679337011",
+          "name": "Shoes",
+          "kind": "leaf"
+        },
+        {
+          "id": "7192394011",
+          "name": "Jewelry",
+          "kind": "leaf"
+        },
+        {
+          "id": "6358543011",
+          "name": "Watches",
+          "kind": "leaf"
+        },
+        {
+          "id": "15743631",
+          "name": "Handbags & Wallets",
+          "kind": "leaf"
+        },
+        {
+          "id": "2474936011",
+          "name": "Accessories",
+          "kind": "leaf"
+        }
+      ],
+      "exclude": []
+    }
+  },
+  "origen": {
+    "12896081": "2617941011",
+    "378733011": "2617941011",
+    "12899121": "2617941011",
+    "12896841": "2617941011",
+    "723452011": "2617941011",
+    "12897221": "2617941011",
+    "23539912011": "2617941011",
+    "2237329011": "2617941011",
+    "2237594011": "2617941011",
+    "2747968011": "2617941011",
+    "723469011": "2617941011",
+    "12898451": "2617941011",
+    "12898821": "2617941011",
+    "12899091": "2617941011",
+    "15718271": "2562090011",
+    "2230642011": "2562090011",
+    "15857511": "2562090011",
+    "15857501": "2562090011",
+    "15736321": "2562090011",
+    "346333011": "2562090011",
+    "15718791": "2562090011",
+    "13591416011": "2562090011",
+    "15710351": "2562090011",
+    "15719731": "2562090011",
+    "2258019011": "2562090011",
+    "15706571": "2562090011",
+    "15706941": "2562090011",
+    "2204830011": "2562090011",
+    "15682003011": "2562090011",
+    "16225005011": "16225005011",
+    "11058281": "3760911",
+    "11060451": "3760911",
+    "11057241": "3760911",
+    "11056591": "3760911",
+    "17242866011": "3760911",
+    "11062741": "3760911",
+    "3778591": "3760911",
+    "3777891": "3760911",
+    "211908598011": "3760911",
+    "15144566011": "3760911",
+    "1040666": "16225021011",
+    "679182011": "16225021011",
+    "6358551011": "16225021011",
+    "2474939011": "16225021011",
+    "3880611": "16225021011",
+    "172456": "16225007011",
+    "193870011": "16225007011",
+    "13896617011": "16225007011",
+    "1292110011": "16225007011",
+    "3011391011": "16225007011",
+    "1292115011": "16225007011",
+    "172504": "16225007011",
+    "11036071": "16225007011",
+    "2348628011": "16225007011",
+    "15524379011": "16225007011",
+    "16285851": "16225007011",
+    "281407": "172282",
+    "502394": "172282",
+    "3248684011": "172282",
+    "2811119011": "172282",
+    "541966": "172282",
+    "2242348011": "172282",
+    "172526": "172282",
+    "667846011": "172282",
+    "172574": "172282",
+    "172623": "172282",
+    "524136": "172282",
+    "16285901": "172282",
+    "1266092011": "172282",
+    "7926841011": "172282",
+    "300334": "172282",
+    "10048700011": "172282",
+    "2642125011": "172282",
+    "24046923011": "172282",
+    "21608214011": "172282",
+    "21608215011": "172282",
+    "1040664": "16225020011",
+    "679217011": "16225020011",
+    "3880961": "16225020011",
+    "6358547011": "16225020011",
+    "2474938011": "16225020011",
+    "205664993011": "16225020011",
+    "16225010011": "16225010011",
+    "3206325011": "1055398",
+    "284507": "1055398",
+    "1063252": "1055398",
+    "1063236": "1055398",
+    "1063306": "1055398",
+    "1063278": "1055398",
+    "3736081": "1055398",
+    "16510975011": "1055398",
+    "13679381": "1055398",
+    "901590": "1055398",
+    "3206324011": "1055398",
+    "510240": "1055398",
+    "510106": "1055398",
+    "3610841": "1055398",
+    "10802561": "1055398",
+    "16225012011": "16225012011",
+    "360832011": "16225017011",
+    "2204831011": "16225017011",
+    "15743181": "16225017011",
+    "9971584011": "16225017011",
+    "15743251": "16225017011",
+    "15743231": "16225017011",
+    "15743971": "16225017011",
+    "15743211": "16225017011",
+    "15743241": "16225017011",
+    "15744111": "16225017011",
+    "2477385011": "16225017011",
+    "1040658": "16225019011",
+    "679255011": "16225019011",
+    "3887881": "16225019011",
+    "6358539011": "16225019011",
+    "2474937011": "16225019011",
+    "14864589011": "16225019011",
+    "16225013011": "16225013011",
+    "706814011": "3375251",
+    "3386071": "3375251",
+    "23466320011": "3375251",
+    "3407731": "3375251",
+    "706813011": "3375251",
+    "2358921011": "3375251",
+    "10971181011": "3375251",
+    "3394801": "3375251",
+    "3422351": "3375251",
+    "13397451": "228013",
+    "551240": "228013",
+    "495266": "228013",
+    "511228": "228013",
+    "3754161": "228013",
+    "322525011": "228013",
+    "495224": "228013",
+    "553244": "228013",
+    "228899": "228013",
+    "13749581": "228013",
+    "328182011": "228013",
+    "3180231": "228013",
+    "13400631": "228013",
+    "8106310011": "228013",
+    "166057011": "165793011",
+    "196601011": "165793011",
+    "166092011": "165793011",
+    "19431275011": "165793011",
+    "166118011": "165793011",
+    "166316011": "165793011",
+    "166220011": "165793011",
+    "166164011": "165793011",
+    "166269011": "165793011",
+    "166027011": "165793011",
+    "1266203011": "165793011",
+    "166333011": "165793011",
+    "166359011": "165793011",
+    "6925830011": "165793011",
+    "166420011": "165793011",
+    "166461011": "165793011",
+    "165993011": "165793011",
+    "256994011": "165793011",
+    "23539911011": "165793011",
+    "16225016011": "16225016011",
+    "1040660": "16225018011",
+    "679337011": "16225018011",
+    "7192394011": "16225018011",
+    "6358543011": "16225018011",
+    "15743631": "16225018011",
+    "2474936011": "16225018011"
+  }
+}

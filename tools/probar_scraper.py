@@ -15,8 +15,10 @@ Reglas que aplica solo:
 - Marca cada precio DENTRO / FUERA del rango USD 100-400 y si el producto ya está en el sitio (YA) o no (NUEVO).
 """
 import json
+import math
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -25,6 +27,27 @@ BASE = "http://weboffers-amazon-scraper:8000"
 OUT = Path("/app/output")
 VISTOS = OUT / "scraper-vistos.json"
 MIN_USD, MAX_USD = 100, 400
+
+
+def log(*parts):
+    stamp = datetime.now(timezone(timedelta(hours=-3))).isoformat()
+    text = " ".join(str(part) for part in parts).replace("\r", "\\r").replace("\n", "\\n")
+    print(stamp, text, flush=True)
+
+
+def price_label(item):
+    price = item.get("price")
+    currency = price.get("currency") if isinstance(price, dict) else item.get("currency")
+    currency = currency or "MONEDA_DESCONOCIDA"
+    amount = monto(price)
+    usd = usd_amount(item)
+    return f"{currency} {amount} USD {usd} {rango(usd)}"
+
+
+def usd_amount(item):
+    price = item.get("price")
+    currency = price.get("currency") if isinstance(price, dict) else item.get("currency")
+    return item.get("price_usd") if item.get("price_usd") is not None else monto(price) if currency == "USD" else None
 
 
 def catalogo_asins():
@@ -45,7 +68,7 @@ def leer_vistos():
 
 
 def rango(precio):
-    if not isinstance(precio, (int, float)):
+    if isinstance(precio, bool) or not isinstance(precio, (int, float)) or not math.isfinite(precio):
         return "SIN_PRECIO"
     return "DENTRO" if MIN_USD <= precio <= MAX_USD else "FUERA_DE_RANGO"
 
@@ -56,7 +79,8 @@ def monto(price):
 
 def main(argv):
     if not argv:
-        print(__doc__)
+        for line in __doc__.splitlines():
+            log(line)
         return 2
     endpoint = argv[0].strip("/")
     params = dict(a.split("=", 1) for a in argv[1:] if "=" in a)
@@ -66,53 +90,56 @@ def main(argv):
     pedidos = [x for k in ("product", "products") for x in params.get(k, "").split(",") if x]
     desconocidos = [a for a in pedidos if a not in ya and a not in vistos]
     if desconocidos:
-        print(f"NO_CONSULTADO: ASIN que no están en el catálogo ni salieron de una consulta anterior: {desconocidos}. "
+        log(f"NO_CONSULTADO: ASIN que no están en el catálogo ni salieron de una consulta anterior: {desconocidos}. "
               "Sacalos de una búsqueda (search / categories/products) o del catálogo, nunca de memoria.")
         return 1
 
     t = time.time()
     try:
-        r = requests.get(f"{BASE}/{endpoint}", params=params, timeout=180)
+        base = "http://weboffers-barrido:8002" if endpoint == "barrido/probe" else BASE
+        r = requests.get(f"{base}/{endpoint}", params=params, timeout=600 if endpoint == "barrido/probe" else 180)
     except requests.RequestException as exc:
-        print(f"FALLA_CONEXION {type(exc).__name__}: {exc}")
+        log(f"FALLA_CONEXION {type(exc).__name__}: {exc}")
         return 1
-    print(f"HTTP {r.status_code} en {time.time() - t:.1f} s  {endpoint} {params}")
+    log(f"HTTP {r.status_code} en {time.time() - t:.1f} s  {endpoint} {params}")
     if r.status_code != 200:
-        print(r.text[:3000])
+        log(json.dumps(r.text, ensure_ascii=False))
         return 1
     d = r.json()
 
-    lista = d.get("results") or d.get("items") or d.get("deals")
+    lista = next((d[key] for key in ("results", "items", "deals") if isinstance(d.get(key), list)), None)
     if isinstance(lista, list):
         nuevos = set()
-        print(f"resultados={len(lista)} total_pages={d.get('total_pages')} count={d.get('count')}")
+        pagination = d.get("pagination") or d
+        log(f"resultados={len(lista)} total_pages={pagination.get('total_pages')} count={pagination.get('total_count', d.get('count'))}")
         # Filtros de la barra lateral de Amazon para esta búsqueda (p. ej. si existe «envía a Argentina»).
         for f in d.get("refinements") or []:
             opciones = [o.get("name") for o in f.get("options") or []]
-            print(f"FILTRO {f.get('id')} | {f.get('name')} | {opciones[:8]}")
+            log(f"FILTRO {f.get('id')} | {f.get('name')} | {opciones[:8]}")
         for x in lista:
             asin = x.get("asin")
             nuevos.add(asin)
             p = monto(x.get("price"))
             envio = x.get("delivery")
             envio = envio.get("text") if isinstance(envio, dict) else envio
-            print(f"{'YA' if asin in ya else 'NUEVO'} {asin} USD {p} {rango(p)} | envío: {envio} | {(x.get('title') or '')[:60]}")
+            log(f"{'YA' if asin in ya else 'NUEVO'} {asin} {price_label(x)} | envío: {envio} | {(x.get('title') or '')[:60]}")
         try:
+            VISTOS.parent.mkdir(parents=True, exist_ok=True)
             VISTOS.write_text(json.dumps(sorted((vistos | nuevos) - {None})), encoding="utf-8")
         except OSError as exc:
-            print(f"AVISO no pude guardar {VISTOS}: {exc}")
+            log(f"AVISO no pude guardar {VISTOS}: {exc}")
         return 0
 
     if "title" in d:
         p = monto(d.get("price"))
-        print(f"{'YA' if d.get('asin') in ya else 'NUEVO'} {d.get('asin')} USD {p} {rango(p)} | {d.get('title', '')[:80]}")
-        if rango(p) != "DENTRO":
-            print(f"AVISO: precio {p} fuera de USD {MIN_USD}-{MAX_USD}; no sirve como prueba para el sitio.")
-        print("envío:", json.dumps(d.get("delivery"), ensure_ascii=False))
-        print("vendedor:", json.dumps(d.get("buybox"), ensure_ascii=False)[:300])
+        log(f"{'YA' if d.get('asin') in ya else 'NUEVO'} {d.get('asin')} {price_label(d)} | {d.get('title', '')[:80]}")
+        if rango(usd_amount(d)) != "DENTRO":
+            log(f"AVISO: precio {p} sin confirmación dentro de USD {MIN_USD}-{MAX_USD}.")
+        log("envío:", json.dumps(d.get("delivery"), ensure_ascii=False))
+        log("vendedor:", json.dumps(d.get("buybox"), ensure_ascii=False))
         return 0
 
-    print(json.dumps(d, ensure_ascii=False)[:3000])
+    log(json.dumps(d, ensure_ascii=False))
     return 0
 
 

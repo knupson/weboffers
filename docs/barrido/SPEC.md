@@ -1,86 +1,183 @@
-# Barrido diario de productos (Amazon US, Amazon ES, Mercado Libre)
+# Barrido diario: contrato v1 (07/11/2026)
 
-Estado: borrador 07/11/2026, para revisión cruzada antes de implementar.
+## Alcance
 
-## Objetivo
+**Requisito de Alejandro (07/11, literal): «en todas las categorías de productos entre 100 y 400 dólares,
+que tengan envío a Argentina».** `categorias.json` debe listar TODAS las categorías raíz (departamentos) de
+Amazon US y ES, no sólo tecnología. Hasta el 07/11 21:45 tenía sólo 541966 y 667049031: fuera de requisito.
 
-Una vez por día, un proceso automático trae **todos** los productos nuevos de las categorías de tecnología
-con precio entre **USD 100 y 400**, con **todos los datos** que la tienda muestra (incluido el envío a
-Argentina y las variantes), y los deja en un archivo del día con un log que permita saber qué pasó en cada
-página. Reemplaza los pasos 3 y 7 del alta actual (`tools/discover_products.py`, `tools/crecer_desde_ml.py`),
-que el 06/11 tardaron 6 h 29 min (log del worker, 07:52→14:21), filtran el precio después de bajar todo y no dejan log de lo que bajaron.
+Adquisición diaria Amazon US y ES, seguida de lookup ML. «Todos» significa resultados accesibles de nodos
+configurados, no exhaustividad de catálogo. Nuevo es condición nueva; conocidos también se guardan.
+No publica ni modifica el catálogo actual. Tareas 1–9 y 11; integración (tarea 10) pendiente.
+Medido 07/11: ML highlights y products/search 200, sites/MLA/search categoría+precio 403;
+Amazon /s desde VM: `503 dogs page (after 4 sessions)`; /dp funciona. No eludimos ese bloqueo.
 
-## Por qué un scraper propio
+## Configuración
 
-El scraper actual es `omkarcloud/amazon-scraper` fijado en `8ffd4f976c705d009ec06d8e4e3e15fc77e35cee`
-(licencia MIT, se conserva el aviso). Ya sale por nuestra IP. Limitaciones medidas el 07/11:
+`categorias.json`: `{version:1, stores:{US:{nodes:[{id,name,kind:"root"|"leaf"}],exclude:[id]},ES:...}}`.
+Nodos Amazon explícitos: root se consulta tal cual, SIN expansión implícita. Para particionar se
+versionan hojas. ML no tiene nodos ni barrido de categorías o destacados.
+La lista inicial es configurable y no garantiza cobertura total. Los nodos iniciales US/ES deben
+validarse en la primera consulta real; los refinamientos se descubren en ejecución, nunca se inventan.
+Rango real fijo USD 100–400; `--min-usd`/`--max-usd` sólo se admiten con `--dry-run`.
+US USD; ES EUR con límites locales redondeados hacia afuera al centavo
+y validación final USD. El rango define los productos Amazon a comparar; no limita el precio ML.
+ML convierte ARS a USD con MEP. Cotizaciones positivas, finitas y de HOY ART con fuente/fecha.
+Sin tasa del día falla ML; ES queda `skipped` con `BARRIDO_ES_SIN_COTIZACION` y
+`fecha_recibida` literal. ES corre sólo los días con cotizaciones oficial y EUR del mismo día ART;
+no se reutilizan tasas del último día hábil durante fines de semana o feriados. US no necesita tasas externas.
+Pausa Amazon 5 s/página y ML 0,3 s/llamada; backoff 30,60 s con tope 120; N=3 bloqueos consecutivos
+por página. Los errores transitorios tienen contador independiente (`transient_retries=3`) y el mismo
+backoff con tope; `BARRIDO_REINTENTO` conserva el motivo literal y la clase del error.
+Transporte interno una sesión bloqueada/intento y cero reintentos
+de red; calentamiento, ubicación y click-through observables siguen permitidos. Variantes: 20 intentos
+diarios por tienda persistidos ANTES de consultar. Todo configurable, no es un ritmo seguro medido.
 
-1. `/best-sellers` no acepta precio (máx. 2 páginas = 100 productos).
-2. `/search` y `/categories/products` aceptan `min_price`/`max_price`, pero el filtro «nuevo» hace una
-   consulta previa extra para leer el id del filtro (`amazon/search.py:37-65`, `_refinement_ids`).
-3. `/scrape` con un link de búsqueda descarta precio y filtros (`amazon/products.py:194-208`).
-4. Sin log por página: no se sabe cuántas páginas, cuántos productos ni dónde falló.
-5. Bloqueo: en las pruebas del 07/11 a partir de las 14:5x (sondeos 14:54 y 15:09) toda búsqueda (`/s`) da `503 dogs page (after 4 sessions)`; las fichas
-   (`/dp`) siguen andando. Un scraper propio no evita el bloqueo (misma IP): tiene que medirlo y frenar.
+## JSONL: contrato exacto
 
-La parte de transporte (`amazon/fetch.py`: sesiones, cookies, captcha «continue shopping», ubicación) y de
-lectura (`amazon/parsers.py`) se conserva tal cual. Se cambia la capa de consultas y se agrega el barrido.
+`output/barrido/<store>-AAAA-MM-DD.jsonl`; una fila por (store,id). Campos de primer nivel:
 
-## Requisitos
+| Campo | Tipo y significado |
+|---|---|
+| schema_version | entero 1 |
+| store, id | US/ES, ASIN |
+| observed_at, date | timestamp ISO -03:00 y fecha ART |
+| title | string o null |
+| currency | USD/EUR |
+| price, price_usd | número positivo local/convertido o null |
+| exchange_rate | {value,source,observed_at}; USD identidad 1 |
+| condition | new o null; Amazon evidencia del filtro nuevo aplicado |
+| shipping_text | texto crudo o null |
+| shipping_class | gratis/pago/no_envia/desconocido/envia_costo_desconocido |
+| located_ar | booleano, sesión exacta confirmada AR |
+| has_variations, variations_text | booleano/string o null si ausentes |
+| variations | respuesta cruda o null |
+| known | booleano, identidad del catálogo suministrado |
+| eligible | booleano para adquisición posterior; NO autoriza publicación |
+| rejection_reasons | lista de strings |
+| provenance | lista de {category_id,category_name,page,url} |
+| raw | objeto completo parser/API; Amazon incluye card_html |
 
-R1. **Una consulta por página con todos los filtros**: categoría (nodo), `low-price`/`high-price`, condición
-    «nuevo» y, si Amazon lo ofrece, «envía a Argentina». Los ids de filtros específicos del marketplace se
-    leen una vez por corrida y se cachean en disco (con fecha) para no repetir la consulta previa.
-R2. **Todas las categorías de tecnología**: lista configurable de nodos raíz por tienda (archivo JSON
-    versionado), con exclusiones. Se recorren todas las páginas que Amazon devuelva (`total_pages`).
-R3. **Datos por producto** (todo lo que traiga la tarjeta de búsqueda, sin descartar campos): asin, título,
-    marca, precio, precio de lista, cupón, envío (texto y opciones), estrellas, reseñas, «comprados el último
-    mes», patrocinado, `has_variations`, `variations_text`, imagen, link, categoría y página de origen.
-R4. **Envío a Argentina**: la sesión consulta con ubicación Argentina (como `worker/amazon-ar/ar_server.py:117`
-    `apply_ar_location`). Por producto se guarda el texto de envío crudo y una clasificación
-    `gratis | pago | no_envia | desconocido` usando las mismas reglas que `ar_server.parse_delivery`.
-R5. **Variantes**: en la búsqueda se guarda lo que venga (`has_variations`, `variations_text`). El detalle de
-    variantes (`/products/variations`) se pide sólo para los productos que pasan los filtros, con tope diario
-    configurable y log.
-R6. **Tiendas**: Amazon US y Amazon ES (el transporte ya soporta `country=ES`). Mercado Libre por su API
-    oficial (credenciales existentes en `worker/.env`, módulo `worker/ml_prices.py`): más vendidos por
-    categoría de tecnología con precio convertido a USD con el MEP del día y el mismo rango 100-400.
-R7. **Salida**: `output/barrido/<tienda>-AAAA-MM-DD.jsonl` (una línea por producto) + `resumen.json` del día
-    (por categoría: páginas, productos, en rango, con envío, fallas, segundos). Escritura atómica.
-R8. **Log por página** (con hora ART en cada línea): `BARRIDO_PAGINA tienda= categoria= pagina= de= productos=
-    segundos= http=`; errores `BARRIDO_ERROR ... motivo=<texto literal>`; fin `BARRIDO_OK` / `BARRIDO_FALLA`
-    con totales. Nunca un error sin su texto.
-R9. **Ritmo y bloqueo**: pausa configurable entre páginas; ante `503 dogs page`/captcha: backoff exponencial
-    con tope y, si se repite N veces seguidas, corta la tienda (no la corrida) y deja `BARRIDO_BLOQUEADO`
-    con la hora. Se reanuda desde la última página guardada (checkpoint) en la próxima corrida del día.
-R10. **Reanudable e idempotente**: checkpoint por tienda/categoría/página; re-correr el mismo día no duplica.
-R11. **Contenedor propio** en `worker/barrido/` (Dockerfile, sin secretos en la imagen), servicio en
-    `worker/docker-compose.yml` de la red interna, sin puertos expuestos. Disparo diario encadenado desde la
-    cadena existente (`tools/cadena.py`), no por horario suelto.
-R12. **Tests**: parsers con fixtures HTML/JSON guardados (sin red), armado de URL con todos los filtros,
-    clasificación de envío, checkpoint/reanudación, backoff. `python -m pytest worker -q` verde.
-R13. **Herramienta de prueba**: `tools/probar_scraper.py` sigue siendo la única vía manual (hook
-    `.claude/hooks/scraper-solo-con-herramienta.mjs`) y se adapta al servicio nuevo.
+raw conserva marca, lista, cupón, opciones, reseñas, estrellas, comprados, patrocinado, imagen y links
+si existen. HTML evita pérdidas del parser. Precio ausente/fuera de rango, moneda errónea, condición
+no nueva o envío desconocido deja eligible=false y motivo; se conserva como evidencia.
+Ausencia de has_variations es null. Variantes sólo si eligible y hay indicio; cap persistente diario.
 
-## Lo que hay que medir (no se asume)
+## Ubicación y envío compartidos
 
-| Pregunta | Cómo se mide | Cuándo |
-|---|---|---|
-| ¿Existe filtro «envía a Argentina» en la barra lateral? | `refinements` de una búsqueda con ubicación AR | primera búsqueda desbloqueada |
-| ¿El envío de la tarjeta coincide con el de la ficha? | 5 productos, tarjeta vs `/products/details` | ídem |
-| Páginas por categoría con filtros | `total_pages`/`count` de la página 1 de cada categoría | primera corrida |
-| Ritmo que tolera Amazon | log R8 + R9 a distintas pausas | primeras corridas |
-| ML: ¿la API permite más vendidos/búsqueda por categoría con nuestro token? | una llamada por endpoint, log del HTTP | antes de implementar R6 |
+ships=False → no_envia; ships=None → desconocido; ships=True/free=True → gratis;
+ships=True/free=False → pago; ships=True/free=None → envia_costo_desconocido. No inventar costo.
+parse_delivery conserva compatibilidad histórica de amazon-ar; adaptador de tarjetas exige evidencia
+de costo para pago. Una tarjeta sin Argentina sólo sirve con sesión exacta confirmada AR; ubicación
+fallida deja desconocido. No tomar ubicación de otro idioma/sesión. Negativos explícitos predominan.
+ES incluye «no se puede enviar», «no se envía», «ENVÍO GRATIS», «entrega GRATIS», «envío de 6,99 €»,
+«6,99 € de envío» y «pedidos superiores a 99 €». Prime no equivale a envío AR.
 
-## Criterios de aceptación
+## Adquisición y dry-run
 
-A1. Una corrida completa de 1 categoría de Amazon US deja jsonl + resumen + log con todas las líneas R8.
-A2. Todos los productos del jsonl tienen precio entre 100 y 400 o `precio=null` marcado explícitamente.
-A3. Cada producto tiene clasificación de envío AR; se muestra un ejemplo de `gratis` o `pago` y uno de `no_envia`.
-A4. Cortar el proceso a mitad y relanzarlo continúa desde el checkpoint sin duplicar.
-A5. Un bloqueo simulado (fixture 503) produce `BARRIDO_BLOQUEADO` y no tumba las otras tiendas.
-A6. Integrado en la VM (contenedor arriba, disparado por la cadena) y verificado con una corrida real.
+Transporte/parser MIT versionados desde 8ffd4f976c705d009ec06d8e4e3e15fc77e35cee; UPSTREAM.md y
+hashes conservan origen/cambios. Directo, sin proxies. Una consulta lógica por página con nodo,
+low-price/high-price, condición nueva descubierta, page y fs=true. Filtro AR sólo si observado explícito.
+Preconsulta una vez por contexto. Cache JSON {context,refinements,observed_at} por fecha ART, tienda,
+nodo, idioma y destino AR. Falta condición nueva: falla. Falta filtro AR: log y clasificación por tarjeta.
+--refresh-refinements invalida cache. Si Amazon cambia filtros, invalidar con esa opción.
+DRY-RUN obtiene sólo página 1 filtrada por categoría (+preconsulta si falta cache), imprime count,
+total_pages y cantidad de categorías; no variantes ni checkpoint de producción. No estima duración
+ni exhaustividad. total_pages es máximo visible, no total independiente. Seguir next habilitado;
+Sin paginación ni next, la página de resultados es la última; cero resultados registra
+`BARRIDO_CATEGORIA_VACIA`. Repetición de secuencia ASIN/página incorrecta → parcial con error explícito.
+No fijar límite arbitrario de páginas. Tope de operador → parcial, nunca completo.
+## Paso ML: `ml-lookup` (R6)
 
-## Fuera de alcance (v1)
+Se ejecuta después de Amazon US y ES (ES sólo con tasas del mismo día). Lee exclusivamente
+`US-AAAA-MM-DD.jsonl` y `ES-AAAA-MM-DD.jsonl` del día ART actual, nunca archivos anteriores.
+Deduplica por (store, ASIN), exige fecha/tienda coincidentes, `price_usd` finito en 100–400
+(inclusive) y `shipping_class` en `gratis` o `desconocido`. Se incluye `desconocido` porque la tarjeta
+de búsqueda puede omitir el envío: buscar una contraparte no confirma elegibilidad. Sólo `gratis`
+sigue siendo elegible y la confirmación posterior de envío a Argentina sigue siendo obligatoria.
+Se omiten `pago`, `no_envia`, `envia_costo_desconocido` y precios ausentes/fuera de rango.
 
-Matching Amazon↔ML (sigue `tools/match_candidates.py`), publicación en el sitio, proxies pagos.
+Consulta la API oficial `/products/search?status=active&site_id=MLA&q=<consulta>`:
+primero marca + código de modelo extraído del título completo (incluye paréntesis como S36GD),
+y, si no hay candidatos con oferta local, título limpio. Consultas repetidas se deduplican.
+Máximo cinco productos de catálogo distintos consultados por fila Amazon, entre ambas consultas.
+Para cada uno recorre `/products/{id}/items`, elige la oferta más barata con `condition=new`,
+`currency_id=ARS`, precio positivo finito y sin CBT/internacional. Usa `get_json`, `cheapest_new`
+y `is_international` compartidos de `ml_prices`; no usa `find_ml_candidates` porque oculta errores
+ni `clean_title_for_ml` porque elimina el modelo entre paréntesis y vive fuera de la imagen worker.
+El precio USD es ARS multiplicado por la tasa inversa MEP validada y congelada para el día.
+404 «no winners» significa sin oferta; otros errores conservan el literal, nunca simulan vacío.
+
+Salida `output/barrido/ml-candidatos-AAAA-MM-DD.jsonl`, una fila por (store, ASIN):
+
+```json
+{"store":"US","asin":"B0EJEMPLO1","amazon_title":"Samsung S36GD","amazon_price_usd":200,"shipping_class":"desconocido","queries_used":["Samsung S36GD"],"candidates":[{"catalogId":"MLAEJEMPLO","name":"Samsung S36GD","price_ars":200000,"price_usd":200,"itemId":"MLA1001","condition":"new"}],"lookup_status":"ok","error":null}
+```
+
+Ejemplo sintético, no precio medido. `lookup_status`: `ok`, `sin_resultados` o `error`;
+`error` contiene el literal completo en fallas y null en los otros estados. Una falla descarta
+candidatos parciales de esa fila. Estado en `state/AAAA-MM-DD/ml-lookup/records`, usando el módulo
+`state`: registro atómico antes de reconstruir el JSONL atómico, sin append ni duplicados.
+Filas `ok`/`sin_resultados` no se reconsultan; `error` se reemplaza al reintentar ese ASIN.
+Un corte entre registro y materialización se recupera sin nueva consulta. El mismo ASIN de US y ES
+conserva dos filas. El archivo es entrada futura del matcher (tarea 10), sin conectar todavía.
+
+`--step ml-lookup [--date AAAA-MM-DD] [--limit N] [--dry-run]`. La fecha sólo puede ser hoy ART;
+se comprueba también durante las consultas. `--limit` limita productos pendientes por ejecución;
+con `--dry-run` toma sólo las primeras N filas filtradas (5 por defecto), imprime consultas y
+cantidades, sin crear lock, estado ni archivo oficial y sin usar checkpoints de producción.
+Pausa `ml_pause` antes de cada pedido. 403/429 corta inmediatamente todo el paso, registra la fila
+con error y permite reanudarla. Sin reintentos internos ante bloqueo.
+
+Cada línea lleva hora ART: `BARRIDO_ML_BUSQUEDA` (asin, consulta, candidatos de búsqueda,
+segundos), `BARRIDO_ML_ERROR` (asin, motivo literal, http), `BARRIDO_ML_BLOQUEADO` (mismos campos)
+y al terminar `BARRIDO_ML_OK` (total, con_candidatos, sin_resultados, errores), incluso si hubo
+fallas. Este evento resume contadores: el estado y el código de salida determinan el resultado.
+Bloqueo, errores pendientes o límite con filas pendientes producen salida no cero; el límite
+registra `BARRIDO_ML_LIMITE`. No se afirma cuota real desde fixtures.
+
+## Persistencia y observabilidad
+
+Estado diario `output/barrido/state/AAAA-MM-DD/<store>`. Página JSON atómica inmutable antes del
+checkpoint (siguiente página). Página es fuente de verdad: corte antes de checkpoint se recupera.
+JSONL atómico reconstruido, sin append; deduplica y acumula provenance. Configuración y tasas
+fijadas por día/tienda; se admiten subconjuntos de nodos compatibles y ampliar el alcance.
+Los conocidos se recalculan con `catalog.json` y `catalog-auto.json` en cada ejecución y no se congelan.
+Día nuevo comienza página 1. Lock exclusivo con PID y hora de inicio; se recupera con
+`BARRIDO_LOCK_HUERFANO` si el proceso murió o superó `max_run_hours` (8 por defecto).
+`resumen-AAAA-MM-DD.json` con estados por tienda y métricas por categoría: páginas, productos,
+en rango, `envio_gratis`, `envio_pago`, `envio_desconocido`, `no_envia`, fallas y segundos.
+Sólo envío gratis confirmado es elegible; pago y costo desconocido se rechazan con
+`envio_pago` y `envio_costo_desconocido` y no consumen variantes.
+Cada categoría fallida conserva error literal y estado `failed`; las otras continúan y la tienda queda `partial`.
+Ubicación AR se intenta una vez por sesión; una excepción registra `BARRIDO_UBICACION_FALLIDA`
+y deja el envío desconocido. Si más del 50% de páginas carece de ubicación confirmada, la tienda
+queda `partial`, razón `ubicacion_ar_no_confirmada`; umbral configurable con `unlocated_page_ratio`.
+Se persiste la ubicación por página para conservar ese diagnóstico al reanudar.
+Cada línea propia lleva timestamp ART ISO y campos JSON. BARRIDO_PAGINA: tienda,categoria,pagina,
+de (null si desconocido),productos,segundos,http (real o null). BARRIDO_HTTP observa intentos sin
+credenciales. BARRIDO_ERROR/BARRIDO_BLOQUEADO: motivo literal completo, tipo, HTTP disponible;
+saltos de línea escapados. Bloqueo tras N termina esa categoría; página fallida no avanza. Reanudar
+mismo día desde primera no confirmada. BARRIDO_OK sólo completo; parcial/fallido BARRIDO_FALLA y
+exit CLI no cero. No fabricar datos si /s sigue bloqueado.
+
+## Servicio y tarea 10 posterior
+
+Cuarto servicio weboffers-barrido, contexto worker, red interna compose, sin puertos publicados,
+output persistente, catálogo read-only y credenciales por entorno. tools/probar_scraper.py sigue único
+ingreso manual: control ASIN, moneda correcta, errores completos y paginación anidada; hook intacto.
+Endpoint barrido/probe ejecuta dry-run. Sin cron nuevo.
+Tarea 10 futura: barrido → adaptar JSONL a candidatos con ml → alta → Chrome → confirmar altas →
+Amazon → ML → deploy. --tras-alta no reingresa. Cambiar maybe_grow/run_once sólo entonces; matching
+requiere candidatos ml y publicación sigue exigiendo ambos precios de hoy y envío confirmado.
+No tocar tools/cadena.py, worker/catalog_auto.py ni worker/worker.py ahora. No retirar fuente vieja
+hasta comparar cobertura/cantidad publicada. Esta entrega no cambia cantidad publicada ni despliega.
+
+## Validación
+
+Tests worker/barrido/test_*.py y worker/test_probar_scraper.py; fixtures sintéticos rotulados (NO
+mediciones reales), sin red. Esquema, cache, URL, US/ES, tasas vencidas, ofertas ML, corte antes de
+checkpoint, lock, dedup, nuevo día, backoff, bloqueo aislado y variantes persistentes cubren A1–A5.
+`python -m pytest worker -q -p no:cacheprovider` verde. A6 pendiente en VM: build, categoría US
+completa, ES, reinicio y cinco comparaciones tarjeta/ficha. Si sigue bloqueo registrar literal y no
+afirmar aceptación real. Errores no autorizan publicación ni relleno con días anteriores.

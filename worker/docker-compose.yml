@@ -34,9 +34,100 @@ services:
     mem_limit: 512m
 
   weboffers-amazon-ar:
-    build: ./amazon-ar
+    build:
+      context: .
+      dockerfile: amazon-ar/Dockerfile
     restart: unless-stopped
     mem_limit: 256m
+
+  weboffers-barrido:
+    build:
+      context: .
+      dockerfile: barrido/Dockerfile
+      args:
+        BARRIDO_GIT_COMMIT: ${BARRIDO_GIT_COMMIT:-no_disponible}
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      ML_CLIENT_ID: ${ML_CLIENT_ID:-}
+      ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
+      BARRIDO_OUTPUT: /app/output/barrido
+      # Salida a Amazon por WARP: la IP de la VM recibe 503 en /s (medido 07/11).
+      BARRIDO_AMAZON_PROXY: socks5h://weboffers-warp:1080
+      BARRIDO_CHROME_CDP: http://192.168.240.10:9222
+    networks: [default, barrido-cdp]
+    depends_on:
+      weboffers-warp:
+        condition: service_started
+      weboffers-chrome:
+        condition: service_healthy
+      weboffers-chrome-cdp:
+        condition: service_started
+    volumes:
+      - ./output:/app/output
+      - ../data:/app/data:ro
+
+  weboffers-chrome:
+    image: lscr.io/linuxserver/chrome@sha256:b60948cf017ac5c2476a975a44f0ad02b54bf9783ea8b845ba260ba45d24299a
+    restart: unless-stopped
+    # 07/11: con 1g Amazon dejó a Chrome OOMKilled en plena búsqueda; el pico real queda por medir.
+    mem_limit: 2g
+    shm_size: 1gb
+    environment:
+      CHROME_CLI: --user-data-dir=/config/chrome-profile --remote-debugging-port=9222
+    volumes:
+      - ./chrome-barrido:/config
+      # Borra SingletonLock/Socket/Cookie al arrancar: tras recrear el contenedor Chrome no abría el CDP.
+      - ./chrome-init:/custom-cont-init.d:ro
+    # Aislado: NO está en la red default (worker, scraper, deployer no lo alcanzan). barrido-cdp es interna
+    # (sólo barrido ↔ Chrome); chrome-salida le da internet. El escritorio web (:3000/:3001) queda sin
+    # puertos al host y sólo alcanzable desde barrido-cdp. Perfil sin cuenta de Amazon logueada.
+    networks:
+      barrido-cdp:
+        ipv4_address: 192.168.240.10
+      chrome-salida: {}
+    # 10/11: tras un OOM, /json/version seguía respondiendo 200 y el barrido fallaba con «Falló el acceso CDP»
+    # durante 51 min (29 subcategorías perdidas). El chequeo abre y cierra una pestaña de verdad.
+    # Docker NO reinicia un contenedor «unhealthy»: la cadena lo chequea y lo reinicia antes del barrido.
+    healthcheck:
+      test: ["CMD-SHELL", "id=$$(curl -sf -X PUT 'http://127.0.0.1:9222/json/new?about:blank' | sed -n 's/.*\"id\": *\"\\([^\"]*\\)\".*/\\1/p' | head -1) && [ -n \"$$id\" ] && curl -sf \"http://127.0.0.1:9222/json/close/$$id\" >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Comparte la red de Chrome: escucha sólo en su IP de Docker y reenvía al
+  # CDP de loopback. No ocupa 127.0.0.1:9222 ni publica puertos al host.
+  weboffers-chrome-cdp:
+    build: ./chrome-cdp
+    restart: unless-stopped
+    network_mode: service:weboffers-chrome
+    environment:
+      CDP_BIND_IP: 192.168.240.10
+      CDP_ALLOWED: 192.168.240.0/24
+    depends_on:
+      weboffers-chrome:
+        condition: service_healthy
+
+  # Cloudflare WARP como proxy SOCKS5/HTTP en :1080, sólo dentro de la red del compose (sin puertos al host).
+  # Imagen comunitaria (github.com/cmj2002/warp-docker), fijada por digest; medido 07/11: 82,6 MiB.
+  weboffers-warp:
+    image: caomingjun/warp@sha256:2891b92420a193a49c74cbd4387bee91f5c35fbc487fca8e8f739baed52c1d2b
+    restart: unless-stopped
+    mem_limit: 512m
+    device_cgroup_rules:
+      - 'c 10:200 rwm'
+    environment:
+      - WARP_SLEEP=2
+    cap_add:
+      - MKNOD
+      - AUDIT_WRITE
+      - NET_ADMIN
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv4.conf.all.src_valid_mark=1
+    volumes:
+      - ./warp-data:/var/lib/cloudflare-warp
 
   weboffers-deployer:
     build: ./deployer
@@ -54,3 +145,13 @@ services:
 volumes:
   deployer-work:
   deployer-state:
+
+networks:
+  # Sólo barrido ↔ Chrome (CDP 9222). Interna: sin salida a internet. Subred libre en la VM (medido 07/11).
+  barrido-cdp:
+    internal: true
+    ipam:
+      config:
+        - subnet: 192.168.240.0/24
+  # Salida a internet sólo para Chrome; ningún otro servicio se une.
+  chrome-salida: {}

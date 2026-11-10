@@ -95,7 +95,7 @@ def test_bloqueo_compartido_impide_refresh_simultaneos(tmp_path):
 
 
 PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")] + [
-    f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas", "amazon", "ml", "deploy", "estado")]
+    f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml", "deploy", "estado")]
 
 
 def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, skip=False):
@@ -130,10 +130,11 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     assert code == 0
     assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
-    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 8
+    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 10
     assert runner.summary["fin"]
-    assert comandos[9][-1] == "/app/tools/crecer_ahora.py"
-    assert comandos[10][-1] == "/app/tools/dudosos_nvidia.py"
+    barrido = next(i for i, c in enumerate(comandos) if c[-4:] == ["--store", "US", "--output", cadena.BARRIDO_SALIDA])
+    assert cadena.CHROME_BARRIDO in comandos[barrido - 1]  # chequeo de Chrome justo antes del barrido
+    assert comandos[barrido + 3][-1] == "/app/tools/dudosos_nvidia.py"
     chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
     assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
     deploy = [c for c in comandos if "/app/deploy.mjs" in c]
@@ -143,8 +144,9 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
 def test_cada_paso_una_vez(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     pares = [(p["bloque"], p["paso"]) for p in runner.summary["pasos"]]
-    assert len(pares) == len(set(pares)) == 15
-    assert len(comandos) == 18  # Los dos deploy copian su desglose al log.
+    assert len(pares) == len(set(pares)) == 17
+    # Los dos deploy copian su desglose al log; el barrido suma 3 pasos y el chequeo de Chrome (10/11).
+    assert len(comandos) == 21
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -211,7 +213,7 @@ def test_alta_no_despliega_si_verificacion_fallo(tmp_path):
     runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
     assert code == 1
     alta = [p["paso"] for p in runner.summary["pasos"] if p["bloque"] == "alta"]
-    assert alta == [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas", "amazon", "ml")]
+    assert alta == [f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml")]
     assert not any("--ahora" in c for c in comandos)
     assert "ALTA_SIN_DEPLOY verificacion_fallida" in (tmp_path / "cadena-2026-11-06.log").read_text()
 
@@ -269,7 +271,7 @@ def test_estado_falla_sin_desglose(tmp_path):
     assert all(p["estado"] == "fail" and p["motivo"] == "sin desglose" for p in estados)
 
 
-@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:11]), (1, PASOS)])
+@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:13]), (1, PASOS)])
 def test_sin_altas_promovidas_corta_solo_sin_vencidos(tmp_path, vencidos, esperados):
     runner, _, code = corrida(tmp_path, promovidas=0, vencidos=vencidos)
     assert code == 0
@@ -288,8 +290,8 @@ def test_timeout_del_bloque_no_impide_el_alta(tmp_path):
     assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:5])
     assert runner.summary["pasos"][5]["motivo"] == "deploy sin DEPLOY_OK"
     assert runner.summary["pasos"][6]["motivo"] == "sin desglose"
-    assert any("/app/tools/crecer_ahora.py" in c for c in comandos)
-    assert len(runner.summary["pasos"]) == 13
+    assert any(cadena.BARRIDO in c for c in comandos)
+    assert len(runner.summary["pasos"]) == 15
 
 
 def test_deploy_fallido_no_reutiliza_el_desglose_anterior(tmp_path):
@@ -344,3 +346,51 @@ def test_rechaza_modo_retirado_antes_de_crear_log():
     with pytest.raises(SystemExit) as exc:
         cadena.main(["--tras-alta"])
     assert exc.value.code == 2
+
+
+def test_barrido_chequea_chrome_y_lo_reinicia_si_no_abre_pestanas(tmp_path):
+    # 10/11: tras un OOM /json/version respondía y el CDP no servía; la cadena reinicia el Chrome del barrido.
+    reloj, comandos = Reloj(), []
+    chequeos = iter([1, 1, 0])  # falla, falla tras reiniciar, después anda
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        if cadena.CHROME_BARRIDO in command and "sh" in command:
+            return Hijo(reloj, code=next(chequeos))
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_amazon", cadena.BARRIDO_AMAZON_TIMEOUT)
+    assert ["docker", "restart", cadena.CHROME_BARRIDO] in comandos
+    barrido = comandos[-1]
+    assert barrido[barrido.index(cadena.BARRIDO) + 1:][4:] == ["python", "-m", "barrido", "--store", "US",
+                                                                "--output", cadena.BARRIDO_SALIDA]
+    assert runner.summary["pasos"][-1]["estado"] == "ok"
+    log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    assert "CHROME_BARRIDO_REINICIO" in log and "CHROME_BARRIDO_OK tras el reinicio (6 s)" in log
+
+
+def test_barrido_no_arranca_si_chrome_no_vuelve(tmp_path):
+    reloj, comandos = Reloj(), []
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        return Hijo(reloj, code=1 if cadena.CHROME_BARRIDO in command and "sh" in command else 0)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_amazon", cadena.BARRIDO_AMAZON_TIMEOUT)
+    paso = runner.summary["pasos"][-1]
+    assert paso["estado"] == "fail" and "CHROME_BARRIDO_FALLA" in paso["motivo"]
+    assert not any("barrido" in c and "-m" in c for c in comandos)
+
+
+def test_pasos_ml_y_altas_del_barrido(tmp_path):
+    reloj, comandos = Reloj(), []
+    runner = cadena.Cadena(tmp_path, lambda command, **kw: comandos.append(command) or Hijo(reloj),
+                           reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
+    runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
+    assert comandos[0][-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
+    assert cadena.BARRIDO in comandos[0]
+    assert comandos[1][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[1]

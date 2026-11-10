@@ -35,6 +35,20 @@ LOG_DIR = Path("/home/claude/logs")
 REPO = Path(__file__).resolve().parents[1]
 WORKER = "franquicia400-weboffers-worker-1"
 DEPLOYER = "franquicia400-weboffers-deployer-1"
+# 10/11: el alta sale del barrido (Amazon → ML → matcheo), no de crecer_ahora. Plazos propios por paso.
+# Corrida A (19 raíces, pausa 3 s): 19 min 55 s. El ML de las 19 raíces no está medido: 2 h de tope.
+BARRIDO = "franquicia400-weboffers-barrido-1"
+CHROME_BARRIDO = "franquicia400-weboffers-chrome-1"
+BARRIDO_AMAZON_TIMEOUT = 2400
+BARRIDO_ML_TIMEOUT = 7200
+BARRIDO_ALTAS_TIMEOUT = 1800
+BARRIDO_SALIDA = "/app/output/barrido"
+# Chequeo real del Chrome del barrido (igual que el healthcheck del compose): abre y cierra una pestaña.
+# 10/11: tras un OOM /json/version respondía 200 y el CDP no servía; Docker no reinicia un «unhealthy».
+CHROME_CHEQUEO = ("id=$(curl -sf -m 10 -X PUT 'http://127.0.0.1:9222/json/new?about:blank' | "
+                  "sed -n 's/.*\"id\": *\"\\([^\"]*\\)\".*/\\1/p' | head -1) && [ -n \"$id\" ] && "
+                  "curl -sf -m 10 \"http://127.0.0.1:9222/json/close/$id\" >/dev/null")
+CHROME_ESPERAS = 10  # tras el reinicio: hasta 10 chequeos separados por 3 s
 
 
 class Cadena:
@@ -194,6 +208,29 @@ class Cadena:
                             cwd="/app/worker", stdin=True)
         self.process(["sh", "-c", " ".join(read) + " | " + " ".join(write)], deadline, "estado")
 
+    def chrome_barrido(self, deadline):
+        """Antes del barrido: Chrome tiene que abrir y cerrar una pestaña. Si no, se reinicia y se espera."""
+        chequeo = self.docker(CHROME_BARRIDO, "sh", "-c", CHROME_CHEQUEO)
+
+        def sano():
+            try:
+                self.process(chequeo, min(deadline, self.clock() + 30), "chrome_barrido", emit=False)
+                return True
+            except Exception:  # noqa: BLE001 — cualquier falla del chequeo cuenta como Chrome caído
+                return False
+
+        if sano():
+            self.log("CHROME_BARRIDO_OK pestaña abierta y cerrada")
+            return
+        self.log(f"CHROME_BARRIDO_REINICIO {CHROME_BARRIDO} no abrió una pestaña; reinicio el contenedor")
+        self.process(["docker", "restart", CHROME_BARRIDO], min(deadline, self.clock() + 60), "chrome_barrido")
+        for intento in range(1, CHROME_ESPERAS + 1):
+            self.sleep(3)
+            if sano():
+                self.log(f"CHROME_BARRIDO_OK tras el reinicio ({intento * 3} s)")
+                return
+        raise RuntimeError(f"CHROME_BARRIDO_FALLA sigue sin abrir pestañas {CHROME_ESPERAS * 3} s después del reinicio")
+
     def step(self, paso, timeout):
         self.step_start = self.clock()
         nombre = f"{self.bloque}:{paso}"
@@ -225,6 +262,19 @@ class Cadena:
             if paso == "offers":
                 self.process(self.docker(WORKER, "python", "-c", "import worker; worker.publicar_offers()",
                                          cwd="/app/worker"), deadline, paso)
+            elif paso == "barrido_amazon":
+                self.chrome_barrido(deadline)
+                seconds = max(1, int(deadline - self.clock()))
+                self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
+                                         "--store", "US", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
+            elif paso == "barrido_ml":
+                seconds = max(1, int(deadline - self.clock()))
+                self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
+                                         "--step", "ml-lookup", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
+            elif paso == "barrido_altas":
+                seconds = max(1, int(deadline - self.clock()))
+                self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
+                                         "/app/tools/barrido_a_altas.py", BARRIDO_SALIDA, cwd="/app/worker"), deadline, paso)
             elif paso == "chrome":
                 env_timeout = max(1, int(deadline - self.clock()))
                 extra = ["--pendientes"] if self.bloque == "alta" else []
@@ -270,7 +320,9 @@ class Cadena:
         self.promovidas = self.vencidos = None
         verificacion = (("offers", OFFERS_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
-        alta = (("buscar", BUSCAR_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
+        # 10/11: «buscar» (crecer_ahora) queda para uso manual; el alta diaria es el barrido en tres pasos.
+        alta = (("barrido_amazon", BARRIDO_AMAZON_TIMEOUT), ("barrido_ml", BARRIDO_ML_TIMEOUT),
+                ("barrido_altas", BARRIDO_ALTAS_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
                 ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
                 ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         verificacion_fallida = False

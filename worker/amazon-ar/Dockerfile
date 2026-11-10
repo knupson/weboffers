@@ -6,5 +6,6 @@ WORKDIR /app
 RUN git clone https://github.com/omkarcloud/amazon-scraper.git /app \
     && git checkout 8ffd4f976c705d009ec06d8e4e3e15fc77e35cee
 RUN pip install --no-cache-dir -r requirements.txt
-COPY ar_server.py .
+COPY amazon-ar/ar_server.py .
+COPY amazon_shipping.py .
 CMD ["python", "ar_server.py"]

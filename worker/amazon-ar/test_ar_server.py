@@ -11,6 +11,18 @@ import ar_server
 from ar_server import parse_delivery
 
 
+@pytest.mark.parametrize('text,expected', [
+    ('ENVÍO GRATIS en pedidos superiores a 99 €', (None, None)),
+    ('ENVÍO GRATIS el martes', (None, None)),
+    ('Entrega GRATIS el lunes', (None, None)),
+    ('Envío de 6,99 € el lunes', (None, None)),
+    ('Este artículo no se envía a Argentina', (True, False)),
+])
+def test_regresion_delivery_legacy_es(text, expected):
+    result = parse_delivery({'price': {'amount': 150}, 'delivery': {'text': text, 'location': 'Argentina'}}, located=True)
+    assert result == dict(ships=expected[0], free=expected[1], text=text, price=150, condition=None)
+
+
 # ---------- parse_delivery: ships True ----------
 
 

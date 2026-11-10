@@ -1,0 +1,8 @@
+[
+  {"title":"Targus USB-C Universal Quad 4K (QV4K) Docking Station", "raw":{"brand":{"name":"Targus"},"identifiers":{"part_number":"DOCK570USZ"}}, "query":"Targus DOCK570USZ", "wrong":"Mochila Targus TSB194", "right":"Docking Station Targus DOCK570USZ QV4K"},
+  {"title":"Razer Naga V3 Pro Wireless MMO Gaming Mouse", "query":"Razer Naga V3 Pro", "wrong":"Mouse Bungee Razer V3", "right":"Mouse Razer Naga V3 Pro inalámbrico"},
+  {"title":"Lenovo 40AF0135US Thinkpad Docking Station", "query":"Lenovo 40AF0135US", "wrong":"Ratón inalámbrico Lenovo", "right":"Dock Lenovo Thinkpad 40AF0135US"},
+  {"title":"SANDISK 1TB Extreme Portable SSD, Up to 2000MB/s", "query":"SANDISK 1TB Extreme Portable SSD", "wrong":"SSD Sandisk Extreme Portable 2TB", "right":"SSD Sandisk Extreme Portable 1TB"},
+  {"title":"Samsung Portable SSD 1TB, Up to 1,050MB/s", "query":"Samsung Portable SSD 1TB", "wrong":"SSD Samsung Portable 2TB", "right":"SSD Samsung Portable 1TB"},
+  {"title":"HP 58A (CF258A) Black Original Toner", "query":"HP CF258A", "wrong":"Toner HP CF259A 58A", "right":"Toner HP 58A CF258A negro original"}
+]
