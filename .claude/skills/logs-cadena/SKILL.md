@@ -1,6 +1,6 @@
 ---
 name: logs-cadena
-description: Mapa verificado de los logs de Franquicia 400 (cadena 03:30, tras-alta, worker, deployer, vigías, Chrome de envío, Meta) en la VM docker y pi3, con un script que resume el día en una llamada. Usar ANTES de afirmar la causa de cualquier error de la cadena, del catálogo o del deploy, y cuando Alejandro pregunte qué pasó en una corrida.
+description: Mapa verificado de los logs de Franquicia 400 (cadena 03:30 con bloques verificación y alta, estado de publicación, worker, deployer, vigías, Chrome de envío, Meta) en la VM docker y pi3, con un script que resume el día en una llamada. Usar ANTES de afirmar la causa de cualquier error de la cadena, del catálogo o del deploy, y cuando Alejandro pregunte qué pasó en una corrida.
 ---
 
 # Logs de la cadena (Franquicia 400)
@@ -21,7 +21,8 @@ Imprime los pasos de la cadena y de tras-alta, el lock, las últimas líneas del
 | Qué | Dónde | Cómo se lee | Hora |
 |---|---|---|---|
 | Cadena nocturna (`tools/cadena.py`, cron 03:30): pasos `chrome → altas → amazon → ml → deploy` | VM `/home/claude/logs/cadena-AAAA-MM-DD.log` + `.json` (inicio, fin, segundos y estado de cada paso) | `ssh docker 'grep -v PASO_SIGUE /home/claude/logs/cadena-<F>.log'` | ART |
-| Tras el alta (`franquicia-tras-alta.path` → `cadena.py --tras-alta`) | VM `/home/claude/logs/tras-alta-AAAA-MM-DD.log` + `.json` | igual que arriba | ART |
+| Estado de publicación (09/11: publicado / republicación / no revisar) | worker `/app/output/publicacion.json` | `docker exec franquicia400-weboffers-worker-1 python -c …` | ART |
+| (Retirado 09/11) tras-alta: la unidad `franquicia-tras-alta.path` está deshabilitada; el alta es el bloque `alta:*` de la cadena | — | — | — |
 | Lock (cadena en curso) | VM `/home/claude/logs/cadena.lock` | `ls -l` | — |
 | Worker (precios, altas `ALTAS_OK`, auditoría) | VM `/opt/docker/franquicia400/worker/output/logs/worker-AAAA-MM-DD.log`, `auditoria-pares.log` (= `/app/output/logs` en los contenedores worker y deployer) | `ssh docker 'tail -50 …'` | ART |
 | Barrido Amazon US/ES y lookup ML (también dry-run; implementación pendiente de validar/desplegar) | VM `/opt/docker/franquicia400/worker/output/logs/barrido-AAAA-MM-DD.log`; último latido en `…/output/barrido/latido.json` | Dentro del contenedor: `python -m barrido.logs --fecha AAAA-MM-DD --desde HH:MM`; operación detallada en `docs/barrido/OPERACION.md` | ART |
@@ -35,14 +36,18 @@ Imprime los pasos de la cadena y de tras-alta, el lock, las últimas líneas del
 | Vigía externo (pi3, cron cada 10 min, avisa por Telegram) | pi3 `/home/claude/vigia_externo.log` | `ssh pi3 'tail -20 /home/claude/vigia_externo.log'` | ART |
 | Estado público del build | `https://ofertas.knunet.com/estado.json` | `curl -s` | — |
 
-Los crons están en `ssh docker 'crontab -l'` y la unidad systemd en `ssh docker 'systemctl status franquicia-tras-alta.path'`.
+Los crons están en `ssh docker 'crontab -l'` (una sola línea: `cadena.py` 03:30). La unidad `franquicia-tras-alta.path` quedó deshabilitada el 09/11.
 
 ## Marcadores útiles para grep
 
-- Cadena: `PASO_INICIO`, `PASO_OK`, `PASO_SIGUE` (latido; filtrarlo), y cualquier otro `PASO_*` que no sea OK. También `FILTRO <motivo> fallas=N`.
+- Cadena: `PASO_INICIO`, `PASO_OK`, `PASO_SIGUE` (latido; filtrarlo), y cualquier otro `PASO_*` que no sea OK; desde 09/11 los pasos llevan bloque (`verificacion:deploy`, `alta:estado`). También `FILTRO <motivo> fallas=N`, `ALTA_SIN_DEPLOY`, `PUBLICACION_SIN_ESTADO`.
+- Estado de publicación: `PUBLICACION_CAMBIO <slug> <antes>-><después>`, `PUBLICACION_OK`, `PUBLICACION_ALERTA` (>10 salidas), `PUBLICACION_ALERTA_MASIVA` (>50 %, no avanza intentos), `PUBLICACION_ESTADO_INVALIDO`, `PUBLICACION_SIN_CAMBIOS`.
+- Dudosos (NVIDIA): `DUDOSO_DECISION par=… votos=…`, `DUDOSO_PARA_ALEJANDRO`, `DUDOSOS_OK`, `DUDOSOS_SIN_CLAVE`.
+- Worker: `LATIDO worker` cada hora (sólo Telegram corre por hora).
 - Worker: `ALTAS_OK promovidas=… rechazadas=… siguen_pendientes=…`.
 - Barrido: `BARRIDO_HTTP_INICIO/FIN` (mismo request ID), `BARRIDO_ESPERA`, `BARRIDO_DESCARTE`, `BARRIDO_ETAPA_INICIO/FIN`, `BARRIDO_LATIDO`, `BARRIDO_SIN_AVANCE` (pila principal), `BARRIDO_EXCEPCION`, `BARRIDO_CORTADO`. El lector consulta PID sólo en el contenedor de origen; un latido vencido no confirma identidad aunque el PID exista.
 - Deployer: `DEPLOY_FASE <fase> ok|…`, `DEPLOY_OK publicado con precios del …` (trae la ruta del desglose), `DEPLOY_MANUAL ok`, `Próximo despliegue previsto`.
+- Chrome de envío: `ENVIO_AR_CHROME_REINICIO` (no había CDP y se reinició `chrome-claude`). La hora en que Chrome se cae queda en `docker logs chrome-claude | grep "CDP caido"` (desde el 08/11).
 - Vigías y controles: `VIGIA_OK`, `VIGIA_EXTERNO_OK`, `FRANQUICIA_CONTROL_OK`, `ENVIO_AR_CHROME_OK`; cualquier variante sin `_OK` es la que hay que mirar.
 
 ## Reglas al citar

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 from unittest.mock import Mock
@@ -10,6 +10,76 @@ import creators_api
 import publish
 import rates
 import worker
+
+
+@pytest.mark.parametrize("cursor,next_cursor,order", [
+    ("MLA2", "MLA3", ["MLA3", "MLA1", "MLA2"]),
+    ("MLA3", "MLA1", ["MLA1", "MLA2", "MLA3"]),
+])
+def test_catalogo_ignora_corte_y_completa_con_cursor(tmp_path, monkeypatch, capsys, cursor, next_cursor, order):
+    auto = worker.catalog_auto
+    ml = auto.crecer_desde_ml
+    reloj = [0.0]
+    monkeypatch.setattr(auto.time, "monotonic", lambda: reloj[0])
+    monkeypatch.setattr(auto.time, "sleep", lambda seconds: None)
+    monkeypatch.setenv("CATALOG_AUTO_MAX_SECONDS", "10")
+    monkeypatch.setattr(auto.ml_prices, "is_configured", lambda: True)
+    repo = tmp_path / "catalog.json"
+    repo.write_text(json.dumps([{"asin": "EXISTENTE", "slug": "existente", "category": "Almacenamiento"}]))
+    auto.publicacion.guardar(tmp_path, {})
+    state_path = tmp_path / "catalog-auto-state.json"
+    state_path.write_text(json.dumps({"cursorMl": cursor, "extra": "conservar"}))
+    monkeypatch.setattr(auto.discovery, "discover_categories", lambda **kw: [])
+    monkeypatch.setattr(ml, "mas_vendidos_ml", lambda *a, **kw: dict.fromkeys(["MLA1", "MLA2", "MLA3"]))
+    visited = []
+    def items(pid):
+        visited.append(pid)
+        return [{"price": 200000, "condition": "new", "id": "MLA456"}]
+    monkeypatch.setattr(auto.ml_prices, "fetch_items", items)
+    monkeypatch.setattr(auto.ml_prices, "cheapest_new", lambda items: (200000, "MLA456"))
+    ficha = {"name": "Samsung 990 PRO 1TB", "domain_id": "MLA-SOLID_STATE_DRIVES", "attributes": [
+        {"id": "BRAND", "value_name": "Samsung"}, {"id": "MODEL", "value_name": "990 PRO"},
+        {"id": "ALPHANUMERIC_MODEL", "value_name": "MZ-V9P1T0B"}]}
+    monkeypatch.setattr(ml, "_get", lambda *a, **kw: Mock(ok=True, json=lambda: ficha))
+    monkeypatch.setattr(auto.ml_prices, "get_json", lambda *a, **kw: ficha)
+    monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
+    def get(*a, **kw):
+        reloj[0] = 11.0
+        return Mock(json=lambda: {"items": [{"asin": "B000000001", "title": "Samsung 990 PRO 1TB MZ-V9P1T0B", "price": 150}]})
+    monkeypatch.setattr(auto.requests, "get", get)
+    monkeypatch.setattr(auto.amazon_prices, "fetch_ar_shipping", lambda *a: {
+        "B000000001": {"identifiers": {"model_number": "MZ-V9P1T0B"}}})
+    monkeypatch.setattr(auto, "fetch_photo", lambda entry, output: entry.update(image="/products/test.webp") or True)
+    assert auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 9, tzinfo=timezone.utc), mep=1000, force=True)
+    state = json.loads(state_path.read_text())
+    assert state["status"] == "ok" and state["added"] == 1
+    assert state["cursorMl"] == cursor and state["extra"] == "conservar"
+    assert state["week"] == "2026-W45"
+    assert {"slot", "pages", "revision", "motivos"} <= state.keys()
+    assert len(json.loads((tmp_path / "altas-pendientes.json").read_text())) == 1
+    assert len(json.loads((tmp_path / "match-results.json").read_text())["accepted"]) == 1
+    start = ["MLA1", "MLA2", "MLA3"].index(cursor)
+    expected = ["MLA1", "MLA2", "MLA3"][start:] + ["MLA1", "MLA2", "MLA3"][:start]
+    assert visited == expected
+    assert "CATALOGO_CORTE_TIEMPO" not in capsys.readouterr().out
+    # La corrida siguiente retoma desde el cursor y cruza el final de la lista.
+    reloj[0] = 0
+    monkeypatch.delenv("CATALOG_AUTO_MAX_SECONDS")
+    auto.maybe_grow(repo, tmp_path, datetime(2026, 11, 10, tzinfo=timezone.utc), mep=1000, force=True)
+    assert visited == expected  # Definitivos vigentes durante siete días.
+    assert json.loads(state_path.read_text())["cursorMl"] == cursor
+
+
+def test_scraper_pausa_corta_tambien_despues_de_cien_paginas(monkeypatch):
+    auto = worker.catalog_auto
+    pauses = []
+    monkeypatch.setattr(auto.time, "sleep", pauses.append)
+    monkeypatch.setattr(auto.requests, "get", lambda *a, **k: Mock(json=lambda: {"results": []}))
+    scraper = auto.PacedScraper(1000)
+    scraper.pages = 100
+    scraper.get("http://scraper")
+    assert pauses == [auto.amazon_prices.PAUSE_SECONDS]
+    assert scraper.pages == 101 and scraper.failures == 1
 
 
 @pytest.fixture(autouse=True)
@@ -27,55 +97,33 @@ def local_temp_files(tmp_path, monkeypatch):
     monkeypatch.delenv("ML_CLIENT_SECRET", raising=False)
 
 
-def test_offline_output_matches_spec(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("CATALOG_PATH", "../data/catalog.json")
-    monkeypatch.setattr(rates, "get_rates", lambda: None)
-    http = Mock(side_effect=AssertionError("No debe consultar Amazon sin credenciales"))
-    monkeypatch.setattr(requests, "post", http)
-    payload = worker.run_once()
-    assert set(payload) == {"generatedAt", "mode", "rates", "items"}
-    assert payload["mode"] == "offline"
-    assert payload["rates"] is None
-    assert datetime.fromisoformat(payload["generatedAt"]).tzinfo is not None
-    catalog = json.loads((Path(__file__).parent / "../data/catalog.json").read_text(encoding="utf-8"))
-    assert len(payload["items"]) == len(catalog)
-    for item in payload["items"]:
-        assert set(item) == {"asin", "store", "title", "priceUsd", "priceFetchedAt",
-                             "imageUrl", "availability"}
-        assert item["store"] in ("US", "ES")
-        assert all(item[key] is None for key in (
-            "title", "priceUsd", "priceFetchedAt", "imageUrl", "availability"))
-    assert "Modo offline" in capsys.readouterr().out
-    assert json.loads((tmp_path / "offers.json").read_text(encoding="utf-8")) == payload
-    http.assert_not_called()
-
-
-def test_cycle_passes_merged_catalog_to_all_consumers(tmp_path, monkeypatch):
+def test_bucle_no_llama_precios_ni_alta(tmp_path, monkeypatch):
     repo = [{"asin": "A", "slug": "a", "store": "US"}]
     automatic = [{"asin": "A", "slug": "repetido", "store": "US"}, {"asin": "B", "slug": "b", "store": "US"}]
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps(repo))
     (tmp_path / "catalog-auto.json").write_text(json.dumps(automatic))
+    (tmp_path / "offers.json").write_text('{"previo": true}')
     monkeypatch.setenv("CATALOG_PATH", str(path))
     monkeypatch.setattr(rates, "get_rates", lambda: None)
-    amazon = Mock()
-    ml = Mock()
-    sheets = Mock()
+    consumidores = [(worker.amazon_prices, "maybe_refresh"), (worker.ml_prices, "maybe_refresh"),
+                    (worker.ml_fichas, "refresh_optional"), (worker.catalog_auto, "maybe_grow"),
+                    (worker.creators_api, "fetch_items"), (worker.publish, "publish")]
+    mocks = []
+    for module, name in consumidores:
+        mock = Mock(side_effect=AssertionError("Sólo Telegram en el bucle"))
+        monkeypatch.setattr(module, name, mock)
+        mocks.append(mock)
     merge = Mock(return_value=[])
-    monkeypatch.setattr(worker.amazon_prices, "maybe_refresh", amazon)
-    monkeypatch.setattr(worker.ml_prices, "maybe_refresh", ml)
-    monkeypatch.setattr(worker.ml_fichas, "refresh_optional", sheets)
+    post = Mock()
     monkeypatch.setattr(worker.ml_prices, "merge", merge)
-    monkeypatch.setattr(worker.telegram, "maybe_post", Mock())
-    monkeypatch.setattr(worker.catalog_auto, "maybe_grow", Mock())
-    payload = worker.run_once()
-    expected = repo + automatic[1:]
-    assert amazon.call_args.args[0] == expected
-    assert ml.call_args.args[0] == expected
-    assert sheets.call_args.args[0] == expected
-    assert sheets.call_args.args[1] == tmp_path / "ml-fichas.json"
-    assert merge.call_args.args[0] == expected
-    assert [p["asin"] for p in payload["items"]] == ["A", "B"]
+    monkeypatch.setattr(worker.telegram, "maybe_post", post)
+    worker.run_once()
+    for mock in mocks:
+        mock.assert_not_called()
+    assert merge.call_args.args[0] == repo + automatic[1:]
+    post.assert_called_once()
+    assert json.loads((tmp_path / "offers.json").read_text()) == {"previo": True}
 
 
 def test_atomic_write_replaces_content_without_temp_files(tmp_path):
@@ -84,25 +132,6 @@ def test_atomic_write_replaces_content_without_temp_files(tmp_path):
     publish.write_atomic(path, {"new": "actualizado"})
     assert json.loads(path.read_text(encoding="utf-8")) == {"new": "actualizado"}
     assert list(tmp_path.iterdir()) == [path]
-
-
-def test_cycle_groups_stores_with_partial_credentials(tmp_path, monkeypatch):
-    catalog = [{"asin": "EXAMPLE0001", "store": "US"},
-               {"asin": "EXAMPLE0002", "store": "ES"},
-               {"asin": "EXAMPLE0003", "store": "US"}]
-    path = tmp_path / "catalog.json"
-    path.write_text(json.dumps(catalog), encoding="utf-8")
-    monkeypatch.setenv("CATALOG_PATH", str(path))
-    monkeypatch.setattr(rates, "get_rates", lambda: None)
-    for name in ("CREATORS_CLIENT_ID", "CREATORS_CLIENT_SECRET", "CREATORS_PARTNER_TAG_US"):
-        monkeypatch.setenv(name, "test")
-    fetch = Mock(side_effect=lambda asins, store: [creators_api.empty_item(a, store) for a in asins])
-    monkeypatch.setattr(creators_api, "fetch_items", fetch)
-    payload = worker.run_once()
-    assert payload["mode"] == "api"
-    assert fetch.call_count == 2
-    assert fetch.call_args_list[0].args == (["EXAMPLE0001", "EXAMPLE0003"], "US")
-    assert fetch.call_args_list[1].args == (["EXAMPLE0002"], "ES")
 
 
 def test_atomic_write_failure_preserves_previous_content(tmp_path, monkeypatch):
@@ -157,6 +186,21 @@ def test_rates_mapping(monkeypatch):
         "bolsa", "tarjeta", "oficial"]
 
 
+def test_stale_rate_does_not_drop_fresh_mep(monkeypatch):
+    """09/11: DolarAPI dejó tarjeta y oficial con fecha 05/11 y el MEP vigente se perdía con ellos:
+    el alta nocturna falló toda la noche con «Faltan credenciales de ML o cotización MEP»."""
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(days=4)).isoformat()
+    bodies = [{"venta": 1587.9, "fechaActualizacion": now.isoformat()},
+              {"venta": 2041, "fechaActualizacion": old},
+              {"venta": 1570, "fechaActualizacion": old}]
+    monkeypatch.setattr(requests, "get", Mock(side_effect=[Mock(json=Mock(return_value=b)) for b in bodies]))
+    result = rates.get_rates()
+    assert result["mep"] == 1587.9
+    # Lo vencido no se rellena: no aparece.
+    assert "tarjeta" not in result and "oficial" not in result
+
+
 def test_eur_usd_mapping(monkeypatch):
     get = Mock(return_value=Mock(json=Mock(return_value={"venta": 1250, "fechaActualizacion": datetime.now(timezone.utc).isoformat()}), raise_for_status=Mock()))
     monkeypatch.setattr(requests, "get", get)
@@ -190,13 +234,37 @@ def test_api_fetch_assigns_fresh_timestamp_and_rejects_eur(monkeypatch):
     assert post.call_args_list[0].kwargs["data"]["grant_type"] == "client_credentials"
 
 
-def test_loop_honors_stop_flag(monkeypatch):
+def test_loop_honors_stop_flag(monkeypatch, capsys):
     monkeypatch.setattr(worker, "stop_requested", False)
     monkeypatch.setattr(worker.signal, "signal", Mock())
     run = Mock(side_effect=lambda: worker.request_stop(None, None))
     monkeypatch.setattr(worker, "run_once", run)
     worker.main()
     run.assert_called_once()
+    assert capsys.readouterr().out.count("LATIDO worker") == 1
+
+
+def test_publicar_offers_escribe_respaldo_del_dia(tmp_path, monkeypatch):
+    catalog = [{"asin": "A", "store": "US"}, {"asin": "B", "store": "ES"}]
+    monkeypatch.setattr(worker, "load_catalog", lambda *args: catalog)
+    current = {"mep": 1500, "oficial": 1200, "fetchedAt": "2026-11-09T06:30:00Z"}
+    monkeypatch.setattr(rates, "get_rates", lambda: current)
+    fetch = Mock(side_effect=lambda asins, store: [creators_api.empty_item(a, store) for a in asins])
+    monkeypatch.setattr(creators_api, "fetch_items", fetch)
+    worker.publicar_offers()
+    data = json.loads((tmp_path / "offers.json").read_text())
+    assert data["rates"] == current and data["mode"] == "offline"
+    assert [(p["asin"], p["store"]) for p in data["items"]] == [("A", "US"), ("B", "ES")]
+    assert datetime.fromisoformat(data["generatedAt"]).tzinfo is not None
+    assert fetch.call_count == 2
+
+
+def test_publicar_offers_propaga_falla(monkeypatch):
+    monkeypatch.setattr(worker, "load_catalog", lambda *a: [])
+    monkeypatch.setattr(rates, "get_rates", lambda: None)
+    monkeypatch.setattr(publish, "publish", Mock(side_effect=OSError("sin disco")))
+    with pytest.raises(OSError, match="sin disco"):
+        worker.publicar_offers()
 
 
 def test_catalog_entries_are_complete_and_unique():

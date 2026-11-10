@@ -1,7 +1,10 @@
 """Precios diarios de Amazon vía el scraper interno en la red de Docker."""
 
 from refresh_lock import locked_refresh
+import diario
 from article_log import amazon_line, chrome_line, value
+from requisitos import motivo_total, modo_actual, resumen_etapa
+import publicacion
 
 from datetime import date, datetime, timedelta, timezone
 from itertools import groupby
@@ -125,6 +128,11 @@ def fetch_ar_shipping(base_url, asins, store):
     return {item.get("asin"): item for item in products if isinstance(item, dict) and isinstance(item.get("asin"), str)}
 
 
+def _usd(texto):
+    m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", texto or "") if isinstance(texto, str) else None
+    return float(m.group(1).replace(",", "")) if m else None
+
+
 def load_ar_chrome(prices_path, today):
     """Relevamiento del día hecho con el Chrome anónimo de la VM (tools/envio_ar_chrome.sh).
 
@@ -137,8 +145,11 @@ def load_ar_chrome(prices_path, today):
     items = data.get("items") if isinstance(data, dict) else None
     if not isinstance(items, dict):
         return {}
+    # 10/11: una oferta tomada del panel de ofertas (motivo panel_ofertas) puede ser de otro vendedor que el precio
+    # del día: se pasa su precio para que offer_mismatch exija que sea la misma oferta (OFFER_TOLERANCE).
     return {asin: {"asin": asin, "ships": it["ships"], "free": it.get("free") if isinstance(it.get("free"), bool) else None,
-                   "text": it.get("text"), "price": None, "condition": None}
+                   "text": it.get("text"), "condition": None,
+                   "price": _usd(it.get("precio")) if it.get("motivo") == "panel_ofertas" else None}
             for asin, it in items.items() if isinstance(it, dict) and isinstance(it.get("ships"), bool)}
 
 
@@ -153,6 +164,8 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
     summary = {"relevados": 0, "gratis": 0, "sin_dato": 0}
     shipping_failures = []
     base_url = ar_url()
+    journal = diario.ruta(prices_path, today) if prices_path is not None else None
+    candidates = restore_shipping(candidates, items, journal, today, summary)
     chrome = load_ar_chrome(prices_path, today)
     if not base_url and not chrome:
         for p in candidates:
@@ -209,10 +222,44 @@ def refresh_ar_shipping(candidates, items, today, prices_path=None, no_offer=Non
                     "free": free if isinstance(free, bool) else None,
                     "checked": today,
                 }
+                if journal is not None:
+                    # F-07: el envío relevado queda en disco al momento; un reintento del día no lo repite.
+                    diario.anotar(journal, {"t": "envio", "at": now_art(), "slug": product["slug"],
+                                            "asin": product["asin"], "shipsToAr": items[product["slug"]]["shipsToAr"]})
     if prices_path is not None:
         write_run_log(prices_path, today, "envio", summary["relevados"] - summary["sin_dato"],
                       summary["relevados"], shipping_failures)
     return summary
+
+
+def now_art():
+    return datetime.now(ART).isoformat(timespec="seconds")
+
+
+def restore_shipping(candidates, items, journal, today, summary):
+    """Envíos que el diario de hoy ya tiene (corrida anterior cortada): se restauran y no se vuelven a pedir."""
+    if journal is None:
+        return candidates
+    hechos = {}
+    for record in diario.leer(journal):
+        ar = record.get("shipsToAr")
+        if (record.get("t") == "envio" and isinstance(ar, dict) and isinstance(ar.get("ships"), bool)
+                and ar.get("checked") == today):
+            hechos[record.get("slug")] = record
+    pendientes = []
+    for product in candidates:
+        record = hechos.get(product["slug"])
+        if record is None or record.get("asin") != product["asin"]:
+            pendientes.append(product)
+            continue
+        ar = record["shipsToAr"]
+        items.setdefault(product["slug"], {})["asin"] = product["asin"]
+        items[product["slug"]]["shipsToAr"] = ar
+        summary["relevados"] += 1
+        summary["gratis"] += int(ar["ships"] is True and ar.get("free") is True)
+        print(f"AMAZON_ENVIO slug={product['slug']} asin={product['asin']} store={product.get('store')} source=diario "
+              f"ships={value(ar.get('ships'))} free={value(ar.get('free'))} checked={today} motivo=ya_consultado_hoy", flush=True)
+    return pendientes
 
 
 def offer_mismatch(ar_item, price_item):
@@ -380,22 +427,30 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     base_url = scraper_url()
     ml_path = Path(os.environ.get("ML_PRICES_PATH", str(Path(prices_path).with_name("ml-prices.json"))))
     ml_prices = load_json(ml_path, None)
-    candidates = [
-        p for p in catalog
-        if p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY
-    ]
-    if isinstance(previous, dict) and previous.get("date") == today:
+    # 08/11: requisitos del catálogo (requisitos.py), los mismos que exige el deploy; lo que no cumple no se consulta.
+    estado = publicacion.cargar(Path(prices_path).parent)
+    modo = modo_actual()
+    salteos = {p["slug"]: m for p in catalog
+               if (m := motivo_total(p, estado, today, modo, tuple(STORE_CURRENCY)))}
+    candidates = [p for p in catalog if p["slug"] not in salteos]
+    if modo == "alta":
+        # El alta suma sólo al archivo de hoy; nunca reintenta ni borra la verificación.
+        return price_new_products(candidates, prices_path, local, base_url)
+    if isinstance(previous, dict) and previous.get("date") == today and previous.get("completo") is not False:
         refreshed = retry_missing(previous, candidates, prices_path, local, base_url, eur_usd, ml_prices)
+        if force:
+            refreshed = price_new_products(candidates, prices_path, local, base_url) or refreshed
         if not refreshed:
             # Pasada horaria sin consulta: una sola línea (06/11: 275 líneas «ya relevado» por hora tapaban lo importante).
             print(f"Amazon: sin consulta en esta pasada (ya relevado hoy; reintentos según RETRY_TIMES).", flush=True)
         return refreshed
     for p in catalog:
-        if not (p.get("verified") is True and p.get("asin") and p.get("ml") and p.get("store") in STORE_CURRENCY):
-            reason = "sin_verificar" if p.get("verified") is not True else "sin_asin" if not p.get("asin") else "sin_ml" if not p.get("ml") else "tienda_no_admitida"
-            print(amazon_line(p, "memoria", reason=f"omitido_{reason}"), flush=True)
+        if p["slug"] in salteos:
+            print(amazon_line(p, "memoria", reason=f"omitido_{salteos[p['slug']]}"), flush=True)
     all_candidates = candidates
     candidates, skipped = in_range(candidates, previous, today_date, eur_usd, ml_prices)
+    quedan = {p["slug"] for p in candidates}
+    salteos.update({p["slug"]: "memoria_fuera_de_rango_o_sin_ml" for p in all_candidates if p["slug"] not in quedan})
     without_ml = [p["slug"] for p in all_candidates if ml_prices is not None
                   and ml_prices.get("date") == (today_date - timedelta(days=1)).isoformat()
                   and p["slug"] in (ml_prices.get("absent") or [])
@@ -415,6 +470,7 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
     items, ok, missing = prices_with_chrome(base_url, candidates, today, prices_path)
     run = run_summary(ok, len(candidates))
     pace = adjust_pace(pace, run)
+    items, ok, missing = retry_transient(base_url, candidates, items, ok, missing, run, today, prices_path)
 
     # Envío a Argentina (03/11): los lunes se releva todo; el resto de los días SÓLO lo que no tiene envío
     # confirmado (catálogo o relevamiento de ≤14 días), porque sin ese dato el producto no se publica (REGLA 0)
@@ -431,15 +487,136 @@ def maybe_refresh(catalog, prices_path, now, eur_usd=None, *, force=False):
 
     ar_shipping = merge_ar_shipping(previous, items, today_date)
     ar_shipping.update(chrome_shipping(candidates, prices_path, today))
+    missing_reasons, run["faltan"] = missing_state(candidates, items, {}, last_reasons(candidates))
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "items": items,
+                                       "missingReasons": missing_reasons,
                                        "arShipping": ar_shipping, "run": run, "pace": pace,
                                        "outOfRange": out_of_range_memory(previous, items, eur_usd, without_ml),
                                        "noArOffer": no_offer})
     print(f"Amazon: resumen {json.dumps(run, ensure_ascii=False)}; ritmo de mañana {pace['pause_s']:.0f} s.", flush=True)
     print(f"Amazon: precios actualizados, ok={ok}, faltantes={missing}.", flush=True)
+    sin_gratis = chrome_sin_envio_gratis(prices_path, today)
+    salteos.update({p["slug"]: sin_gratis[p["asin"]] for p in candidates
+                    if p.get("store") == "US" and p.get("asin") in sin_gratis})
+    print(resumen_etapa("amazon", len(catalog), salteos, consultados=len(candidates) - sum(
+        1 for p in candidates if p["slug"] in salteos), con_precio=ok, sin_precio=missing - sum(
+        1 for p in candidates if p["slug"] in salteos)), flush=True)
     write_run_log(prices_path, today, "corrida", ok, len(candidates))
     if candidates and ok == 0:
         print(f"AMAZON_SCRAPER_FAIL ningún precio válido sobre {len(candidates)} candidatos (faltantes={missing}).", flush=True)
+    return True
+
+
+TRANSIENT_REASONS = ("sin_precio_ni_vendedor", "no_vino_en_respuesta")
+
+
+def is_transient(reason):
+    """Fallas que suelen ser de la consulta y no del producto (ráfaga de Amazon, lote caído, error de red)."""
+    reason = str(reason or "")
+    return reason in TRANSIENT_REASONS or reason.startswith(("lote_fallido", "error:"))
+
+
+def retry_transient(base_url, candidates, items, ok, missing, run, today, prices_path):
+    """F-21: una vez, dentro del mismo paso, se reintentan los productos que fallaron por causas transitorias.
+
+    Sin esto un producto que Amazon dejó vacío en una ráfaga quedaba sin precio de hoy (el build lo filtra y baja la
+    cantidad publicada) hasta la corrida de mañana, porque la cadena corre este paso una sola vez por bloque."""
+    pendientes = [p for p in candidates if p["slug"] not in items and any(
+        f.get("slug") == p["slug"] and is_transient(f.get("motivo")) for f in failures)]
+    if not pendientes or not base_url:
+        return items, ok, missing
+    print(f"Amazon: {len(pendientes)} productos con falla transitoria; espero {BACKOFF_SECONDS:.0f} s y los reintento "
+          f"una vez en este mismo paso.", flush=True)
+    time.sleep(BACKOFF_SECONDS)
+    primeras = list(failures)
+    got, recovered, _ = with_journal(prices_path, today, fetch_prices, base_url, pendientes, today)
+    slugs = {p["slug"] for p in pendientes}
+    ahora = {f.get("slug"): f for f in failures}
+    # Se conserva el orden y la posición de la primera pasada; el motivo es el del último intento y lo recuperado sale.
+    failures[:] = [{**f, "motivo": ahora[f["slug"]]["motivo"]} if f.get("slug") in ahora else f
+                   for f in primeras if f.get("slug") not in slugs or f.get("slug") in ahora]
+    items = {**items, **got}
+    run["reintentoInmediato"] = {"pendientes": len(pendientes), "recuperados": recovered}
+    run["ok"] = ok + recovered
+    print(f"Amazon: reintento inmediato, recuperados={recovered} de {len(pendientes)}.", flush=True)
+    return items, ok + recovered, missing - recovered
+
+
+def missing_state(candidates, items, skip, reasons):
+    """08/11: lo que sigue sin precio AHORA (no lo que faltó en la corrida), con el último motivo de cada uno.
+    El aviso de WhatsApp decía «Amazon dejó 39 sin precio» cuando el reintento ya había recuperado 36."""
+    faltan = {p["slug"]: reasons.get(p["slug"]) or "sin_precio" for p in candidates
+              if p["slug"] not in skip and not is_valid_amount((items.get(p["slug"]) or {}).get("amount"))}
+    motivos = {}
+    for motivo in faltan.values():
+        motivos[motivo] = motivos.get(motivo, 0) + 1
+    return faltan, {"total": len(faltan), "motivos": motivos}
+
+
+def last_reasons(products):
+    slugs = {p["slug"] for p in products}
+    return {f["slug"]: f["motivo"] for f in failures if f.get("slug") in slugs and f.get("motivo")}
+
+
+def price_new_products(candidates, prices_path, local, base_url):
+    """08/11: un alta confirmada después de la corrida entraba al catálogo sin precio de Amazon
+    (los reintentos sólo miran lo que falló). Con force se consultan los que no se pidieron hoy."""
+    previous = load_json(prices_path, None)
+    alta = modo_actual() == "alta"
+    memoria = previous if isinstance(previous, dict) else {}
+    parcial = False
+    if alta and (not isinstance(previous, dict) or previous.get("date") != local.date().isoformat()):
+        # F-15: la verificación no dejó el archivo de hoy. Lo que se escriba sólo tiene los productos del alta:
+        # se marca «completo: false» para que el deploy no lo tome como corrida entera, y se conserva la memoria
+        # (envío confirmado de 14 días, fuera de rango, sin oferta, ritmo) del archivo anterior.
+        previous = {"date": local.date().isoformat(), "items": {}}
+        parcial = True
+    if not base_url or not isinstance(previous, dict):
+        return False
+    today = previous["date"]
+    items = dict(previous.get("items") or {})
+    run_log = load_json(Path(prices_path).with_name(f"amazon-run-{today}.json"), {})
+    seen = set(items) | set(previous.get("outOfRange") or {}) | {
+        f.get("slug") for p in (run_log.get("passes") or []) for f in (p.get("fallas") or [])}
+    if alta:
+        estado = publicacion.cargar(Path(prices_path).parent)
+        vencidos = {p["slug"] for p in candidates
+                    if (item := estado.get(p["slug"])) and item["situacion"] == "no_revisar"
+                    and item["hasta"] <= today}
+        seen.difference_update(vencidos - set(items))
+    nuevos = [p for p in candidates if p["slug"] not in seen]
+    if not nuevos:
+        return False
+    print(f"Amazon: {len(nuevos)} productos nuevos desde la corrida de hoy; se consultan.", flush=True)
+    configure_budget(prices_path, today)
+    got, ok, _ = prices_with_chrome(base_url, nuevos, today, prices_path)
+    items.update(got)
+    for p in nuevos:
+        reason = None if p["slug"] in got else next((f["motivo"] for f in failures if f.get("slug") == p["slug"]), "sin_precio_nuevo")
+        print(amazon_line(p, "nuevo", got.get(p["slug"]), reason), flush=True)
+    ar_shipping = merge_ar_shipping(memoria if parcial else previous, items, local.date())
+    ar_shipping.update(chrome_shipping(candidates, prices_path, today))
+    run = dict(previous.get("run") or {})
+    missing_reasons = dict(previous.get("missingReasons") or {})
+    for p in nuevos:
+        missing_reasons.pop(p["slug"], None)
+    missing_reasons.update(missing_state(nuevos, items, {}, last_reasons(nuevos))[0])
+    motivos = {}
+    for reason in missing_reasons.values():
+        motivos[reason] = motivos.get(reason, 0) + 1
+    run["faltan"] = {"total": len(missing_reasons), "motivos": motivos}
+    queried = {p["slug"] for p in nuevos}
+    out_of_range = {s: item for s, item in (previous.get("outOfRange") or {}).items() if s not in queried}
+    heredado = {k: memoria[k] for k in ("noArOffer", "pace") if k in memoria} if parcial else {}
+    if parcial:
+        out_of_range = {**(memoria.get("outOfRange") or {}), **out_of_range}
+    publish.write_atomic(prices_path, {**heredado, **previous, "generatedAt": local.isoformat(), "items": items,
+                                       "arShipping": ar_shipping, "run": run,
+                                       "missingReasons": missing_reasons, "outOfRange": out_of_range,
+                                       **({"completo": False} if parcial else {})})
+    print(f"Amazon: productos nuevos, recuperados={ok} de {len(nuevos)}, total={len(items)}.", flush=True)
+    fallas = [{"slug": p["slug"], "asin": p["asin"], "motivo": "sin_precio_nuevo"} for p in nuevos if p["slug"] not in got]
+    write_run_log(prices_path, today, "nuevos", ok, len(nuevos), fallas)
     return True
 
 
@@ -481,8 +658,12 @@ def retry_missing(previous, candidates, prices_path, local, base_url, eur_usd=No
     ar_shipping.update(chrome_shipping(candidates, prices_path, today))
     run = dict(previous.get("run") or {})
     run["envio"] = {key: (run.get("envio") or {}).get(key, 0) + value for key, value in envio.items()}
-    run["reintento"] = {"recuperados": ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
+    retry_reasons = last_reasons(pending) if pending else {}
+    prev_recovered = ((previous.get("run") or {}).get("reintento") or {}).get("recuperados") or 0
+    run["reintento"] = {"recuperados": prev_recovered + ok, "pendientes": len(pending), "motivos": run_summary(ok, len(pending))["motivos"]}
+    missing_reasons, run["faltan"] = missing_state(candidates, items, skip, {**(previous.get("missingReasons") or {}), **retry_reasons})
     publish.write_atomic(prices_path, {**previous, "items": items, "arShipping": ar_shipping, "run": run, "retried": True, "retryCount": count + 1, "retryAt": local.isoformat(),
+                                       "missingReasons": missing_reasons,
                                        "outOfRange": out_of_range_memory(previous, items, eur_usd)})
     print(f"Amazon: reintento de faltantes, recuperados={ok} de {len(pending)}, total={len(items)}.", flush=True)
     write_run_log(prices_path, today, "reintento", ok, len(pending))
@@ -617,25 +798,97 @@ def chrome_shipping(products, prices_path, today):
     return out
 
 
+def chrome_sin_envio_gratis(prices_path, today):
+    """ASIN que el Chrome de HOY vio sin envío gratis a Argentina: {asin: motivo} (08/11).
+
+    Alejandro: «se tienen que filtrar en el mismo momento que se ve envío internacional». El paso chrome
+    corre primero en la cadena; con su dato, Amazon y ML no gastan consultas en productos que no se publican.
+    Sólo evidencia de hoy (ships/free booleanos); sin dato no se saltea nada.
+    """
+    if prices_path is None:
+        return {}
+    data = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), None)
+    items = data.get("items") if isinstance(data, dict) else None
+    out = {}
+    for asin, it in (items or {}).items():
+        if not isinstance(it, dict):
+            continue
+        if it.get("ships") is False:
+            out[asin] = "sin_oferta_ar_chrome"
+        elif it.get("ships") is True and it.get("free") is False:
+            out[asin] = "envio_pago_chrome"
+    return out
+
+
+_journal_path = None
+
+
+def with_journal(prices_path, today, function, *args):
+    """Corre `function` con el diario de precios de hoy activo (fetch_prices lo usa para anotar cada precio)."""
+    global _journal_path
+    anterior = _journal_path
+    _journal_path = diario.ruta(prices_path, today) if prices_path is not None else None
+    if _journal_path is not None:
+        diario.purgar(prices_path, today)
+    try:
+        return function(*args)
+    finally:
+        _journal_path = anterior
+
+
+def note_price(slug, item):
+    if _journal_path is not None:
+        diario.anotar(_journal_path, {"t": "precio", "at": now_art(), "slug": slug, "item": item})
+
+
 def prices_with_chrome(base_url, products, today, prices_path=None):
+    """Precios del día, con diario: lo consultado hoy queda en disco al obtenerlo y un reintento lo retoma (F-07)."""
+    return with_journal(prices_path, today, _prices_with_chrome, base_url, products, today, prices_path)
+
+
+def _prices_with_chrome(base_url, products, today, prices_path=None):
     """Precios del día: primero Chrome (tienda US), el resto con el scraper. Devuelve (items, ok, faltantes)."""
+    resumidos = {}
+    if _journal_path is not None:
+        for record in diario.leer(_journal_path):
+            item = record.get("item")
+            if (record.get("t") == "precio" and isinstance(item, dict) and is_valid_amount(item.get("amount"))
+                    and item.get("checked") == today):
+                resumidos[record.get("slug")] = item
+    retomados = {}
+    pendientes = []
+    for p in products:
+        item = resumidos.get(p["slug"])
+        if item is not None and item.get("asin") == p["asin"]:
+            retomados[p["slug"]] = item
+            print(amazon_line(p, "diario", item, "ya_consultado_hoy"), flush=True)
+        else:
+            pendientes.append(p)
+    if retomados:
+        print(f"Amazon: {len(retomados)} precios de hoy retomados del diario; se consultan {len(pendientes)}.", flush=True)
+        items, ok, missing = _prices_with_chrome(base_url, pendientes, today, prices_path)
+        return {**retomados, **items}, ok + len(retomados), missing
     chrome = load_chrome_prices(prices_path, today)
     raw_chrome = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), {}) if prices_path else {}
     items, ok, missing, resto = {}, 0, 0, []
     chrome_fallas = []
+    sin_gratis = chrome_sin_envio_gratis(prices_path, today)
     for p in products:
         evidence = (raw_chrome.get("items") or {}).get(p["asin"]) if p.get("store") == "US" else None
         if evidence is not None:
             print(chrome_line([p["slug"]], p["asin"], evidence), flush=True)
         amount, ships = chrome.get(p["asin"], (None, None)) if p.get("store") == "US" else (None, None)
-        if ships is False:
-            # Chrome vio la página sin oferta para Argentina: no se publica (REGLA 0) y no se gasta el scraper.
+        motivo = sin_gratis.get(p["asin"]) if p.get("store") == "US" else None
+        if motivo:
+            # Chrome vio la página sin oferta o con envío pago a Argentina: no se publica (REGLA 0) y no se
+            # gasta el scraper (08/11: antes sólo se salteaba «sin oferta»; los de envío pago se consultaban igual).
             missing += 1
-            chrome_fallas.append({"slug": p["slug"], "asin": p["asin"], "store": "US", "motivo": "sin_oferta_ar_chrome"})
-            print(amazon_line(p, "chrome", reason="sin_oferta_ar_chrome"), flush=True)
+            chrome_fallas.append({"slug": p["slug"], "asin": p["asin"], "store": "US", "motivo": motivo})
+            print(amazon_line(p, "chrome", reason=motivo), flush=True)
             continue
         if amount is not None and plausible((amount, "USD"), p):
             items[p["slug"]] = {"asin": p["asin"], "amount": amount, "currency": "USD", "checked": today, "source": "chrome"}
+            note_price(p["slug"], items[p["slug"]])
             ok += 1
             print(amazon_line(p, "chrome", items[p["slug"]]), flush=True)
             continue
@@ -699,6 +952,7 @@ def fetch_prices(base_url, products, today):
                     items[slug] = {"asin": product["asin"], "amount": amount, "currency": currency, "checked": today}
                     if isinstance(raw, dict) and isinstance(raw.get("title"), str):
                         items[slug]["title"] = raw["title"][:300]  # para el control diario de variantes (05/11)
+                    note_price(slug, items[slug])
                     ok += 1
                     print(amazon_line(product, "scraper", items[slug]), flush=True)
                 else:

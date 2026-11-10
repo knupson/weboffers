@@ -1,7 +1,10 @@
 """Precios de Mercado Libre y veredicto diario frente a Amazon."""
 
 from refresh_lock import locked_refresh
+import diario
 from article_log import ml_line
+from requisitos import motivo_total, modo_actual, resumen_etapa
+import publicacion
 
 from datetime import date, datetime, timedelta, timezone
 import json
@@ -25,6 +28,7 @@ START_HOUR = 6
 # Amazon no se vuelve a releer: se reutiliza el amazon-prices.json del día tal cual.
 EXTRA_REFRESH_DATES = {"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-27", "2026-11-30"}
 EXTRA_REFRESH_HOUR = 13
+RETRY_WAIT_SECONDS = 60.0  # espera antes del único reintento de las consultas fallidas dentro del mismo paso
 MIN_SAVING = 0.10
 AMAZON_EXTRA = 0.04
 # Pausa entre llamadas para no castigar la API de Mercado Libre.
@@ -61,15 +65,40 @@ def get_token(*, request=None):
     return _token_cache["value"]
 
 
-def get_json(path, params=None):
-    response = requests.get(
-        API_BASE_URL + path,
-        params=params,
-        headers={"Authorization": f"Bearer {get_token()}"},
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()
+# 10/11: el 09/11 entre 13:29 y 13:43 veinte productos terminaron en error por «429 Too Many Requests»
+# en /products (paso alta:buscar, cadena-2026-11-09.log): get_json fallaba al primer 429 sin esperar.
+RETRY_429_WAITS = (2.0, 4.0, 8.0)
+RETRY_AFTER_MAX = 60.0
+
+
+def retry_after_seconds(value):
+    """Segundos de Retry-After si es un número finito positivo (con tope); si no (fecha HTTP, vacío), None."""
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(seconds) or seconds <= 0:
+        return None
+    return min(seconds, RETRY_AFTER_MAX)
+
+
+def get_json(path, params=None, sleep=time.sleep):
+    for attempt in range(len(RETRY_429_WAITS) + 1):
+        response = requests.get(
+            API_BASE_URL + path,
+            params=params,
+            headers={"Authorization": f"Bearer {get_token()}"},
+            timeout=30,
+        )
+        if response.status_code != 429 or attempt == len(RETRY_429_WAITS):
+            # Agotados los reintentos, el HTTPError del 429 sube igual que antes.
+            response.raise_for_status()
+            return response.json()
+        header = retry_after_seconds(response.headers.get("Retry-After"))
+        seconds = header if header is not None else RETRY_429_WAITS[attempt]
+        print(f"ML_429_ESPERA path={path} intento={attempt + 1}/{len(RETRY_429_WAITS)} segundos={seconds:g} "
+              f"motivo={'retry_after' if header is not None else 'backoff'}", flush=True)
+        sleep(seconds)
 
 
 def search_products(query):
@@ -292,6 +321,27 @@ def functional_conflicts(product, amazon_items):
     return [c for c in variant_conflicts(amazon_title, ml_name) if c != "color"]
 
 
+def motivo_salteo_ml(product, sin_gratis, amazon_items, estado, today, modo, eur_usd=None):
+    """Por qué ML no consulta este producto (08/11), o None: lo vio fallar una etapa anterior.
+
+    Orden: requisitos del catálogo, envío visto por Chrome hoy, precio de Amazon de hoy en rango.
+    """
+    from amazon_prices import RANGE_MIN, RANGE_MAX
+    motivo = motivo_total(product, estado, today, modo)
+    if motivo:
+        return motivo
+    if product.get("store") == "US" and product.get("asin") in sin_gratis:
+        return sin_gratis[product["asin"]]
+    scraped = amazon_items.get(product["slug"])
+    if not isinstance(scraped, dict) or scraped.get("asin", product.get("asin")) != product.get("asin"):
+        return "sin_precio_amazon_hoy"
+    usd, _, _ = _resolve_amazon_usd(product, amazon_items, eur_usd)
+    # Sin cotización del euro no se puede medir el rango de España: no se saltea por eso.
+    if usd is not None and not RANGE_MIN <= usd <= RANGE_MAX:
+        return "amazon_fuera_de_rango"
+    return None
+
+
 @locked_refresh
 def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=None, *, force=False):
     """Recalcula al encadenar (force) o desde las 06:00 ART y, en los días de
@@ -302,18 +352,42 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         return False
     extra_slot = _slot_id(today, EXTRA_REFRESH_HOUR) if today in EXTRA_REFRESH_DATES else None
     previous = load_json(prices_path, None)
-    done_slot = _done_slot(previous) if isinstance(previous, dict) and previous.get("date") == today else None
+    # Un archivo de hoy marcado «completo: false» lo dejó el alta sin que la verificación corriera (F-15): para la
+    # verificación no cuenta como pasada hecha (consulta todo). El alta sí lo retoma: sólo maneja sus productos.
+    modo = modo_actual()
+    done_slot = (_done_slot(previous) if isinstance(previous, dict) and previous.get("date") == today
+                 and (previous.get("completo") is not False or modo == "alta") else None)
+    # 08/11 (Alejandro: «cada elemento que no cumpla se tiene que filtrar en el mismo momento que vemos que no
+    # cumple»): ML sólo consulta lo que pasó las etapas anteriores. Se saltea lo que no cumple el catálogo
+    # (requisitos.py), lo que el Chrome de hoy vio sin envío gratis y lo que no tiene precio de Amazon de hoy
+    # en rango. Lo salteado queda en «skipped» con su motivo; si más tarde en el día pasa (p. ej. un reintento
+    # de Amazon lo recupera), cuenta como nuevo en la pasada siguiente y se consulta.
+    from amazon_prices import chrome_sin_envio_gratis
+    sin_gratis = chrome_sin_envio_gratis(amazon_prices_path, today)
+    amazon_items = load_amazon_prices(amazon_prices_path, local.date())
+
+    estado = publicacion.cargar(Path(prices_path).parent)
+    if modo == "alta":
+        # Todo el resto del flujo opera sólo sobre este bloque; los diagnósticos previos quedan intactos.
+        catalog = [p for p in catalog if publicacion.motivo_estado(p, estado, today, modo) is None]
+    fusionar = modo == "alta" and isinstance(previous, dict) and previous.get("date") == today
+    salteos = {p["slug"]: m for p in catalog
+               if p.get("slug") and (m := motivo_salteo_ml(p, sin_gratis, amazon_items, estado, today, modo, eur_usd))}
     nuevos = set()
     if extra_slot is not None and local.hour >= EXTRA_REFRESH_HOUR and done_slot != extra_slot:
         slot = extra_slot
     elif done_slot is not None:
         # 07/11: un alta confirmada de día entra al catálogo después del slot; con force se consulta igual.
+        # 08/11: lo que se salteó antes y ahora cumple (p. ej. un reintento de Amazon le trajo precio) se
+        # consulta en cualquier pasada, con o sin force.
         vistos = (set(previous.get("items") or {}) | set(previous.get("absent") or [])
                   | set(previous.get("failed") or []) | set(previous.get("variantConflict") or []))
-        nuevos = {p["slug"] for p in catalog if p.get("verified") and (p.get("ml") or {}).get("catalogId")
-                  and p["slug"] not in vistos} if force else set()
+        antes_salteados = set(previous.get("skipped") or {})
+        nuevos = {p["slug"] for p in catalog if p.get("slug") and p["slug"] not in vistos and p["slug"] not in salteos
+                  and (force or p["slug"] in antes_salteados)}
         if nuevos:
-            print(f"Mercado Libre: {len(nuevos)} productos nuevos desde el slot {done_slot}; se consultan.", flush=True)
+            print(f"Mercado Libre: {len(nuevos)} productos nuevos o que ahora cumplen desde el slot {done_slot}; se consultan: "
+                  f"{', '.join(sorted(nuevos))}.", flush=True)
         elif not previous.get("failed") or previous.get("attempts", 1) >= 3 or previous.get("attemptHour") == local.hour:
             # Pasada horaria sin consulta: una sola línea (06/11: 275 líneas por hora tapaban lo importante).
             print(f"Mercado Libre: sin consulta en esta pasada (slot {done_slot} ya ejecutado).", flush=True)
@@ -326,45 +400,35 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         for p in catalog:
             print(ml_line(p, "omitido", reason="credenciales_ml_ausentes"), flush=True)
         return False
-    amazon_items = load_amazon_prices(amazon_prices_path, local.date())
     retry = done_slot == slot
-    items = dict(previous.get("items") or {}) if retry else {}
-    absent = list(previous.get("absent") or []) if retry else []
-    failed = []
-    variant_conflict = []
+    items = dict(previous.get("items") or {}) if retry or fusionar else {}
+    absent = list(previous.get("absent") or []) if retry or fusionar else []
+    propios = {p["slug"] for p in catalog}
+    failed = [s for s in (previous.get("failed") or []) if s not in propios] if fusionar else []
+    variant_conflict = [s for s in (previous.get("variantConflict") or []) if s not in propios] if fusionar else []
+    if fusionar:
+        salteos = {**{s: m for s, m in (previous.get("skipped") or {}).items() if s not in propios}, **salteos}
     attempts = previous.get("attempts", 1) + 1 if retry else 1
-    for product in catalog:
-        ml = product.get("ml") or {}
-        catalog_id = ml.get("catalogId")
-        if not product.get("verified") or not catalog_id:
-            print(ml_line(product, "omitido", reason="sin_verificar" if not product.get("verified") else "sin_catalog_id"), flush=True)
-            continue
-        slug = product["slug"]
-        if retry and slug not in previous.get("failed", []) and slug not in nuevos:
-            status = "ok" if slug in items else "absent" if slug in absent else "omitido"
-            print(ml_line(product, status, items.get(slug), "sin_reconsulta_en_este_reintento"), flush=True)
-            continue
-        conflicto = functional_conflicts(product, amazon_items)
-        if conflicto:
-            # Par mal emparejado (p. ej. G915 X Clicky vs Tactile, 05/11): no se publica y queda registrado.
-            variant_conflict.append(slug)
-            print(ml_line(product, "variantConflict", reason=", ".join(conflicto)), flush=True)
-            print(f"VARIANTE_DISTINTA {slug}: {', '.join(conflicto)} (Amazon vs ML); no se publica.", flush=True)
-            continue
+    consultados = 0
+    # F-23: cada consulta queda en el diario al obtenerla; si el paso se corta, la corrida siguiente del mismo slot
+    # retoma lo ya consultado en vez de repetir todo.
+    journal = diario.ruta(prices_path, today)
+    diario.purgar(prices_path, today)
+    # También al reintentar o ampliar un slot ya hecho: si esa pasada se cortó antes de guardar el archivo, lo que ya
+    # consultó está en el diario (mismo día y mismo slot). Las fallas nunca se anotan, así que no se congelan.
+    resumidos = {r.get("slug"): r for r in diario.leer(journal)
+                 if r.get("t") == "consulta" and r.get("slot") == slot and r.get("date") == today}
+    fallaron = []
+
+    def consultar(product, catalog_id):
+        """Una consulta a ML: devuelve ('ok', entry), ('absent', None) o ('failed', excepción)."""
         try:
             best = cheapest_new(fetch_items(catalog_id))
             if best is None:
-                absent.append(slug)
-                print(ml_line(product, "absent", reason="sin_oferta_local_nueva"), flush=True)
-                pause()
-                continue
+                return "absent", None
             price, item_id = best
         except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-            failed.append(slug)
-            print(ml_line(product, "failed", reason=f"consulta_{type(exc).__name__}"), flush=True)
-            print(f"Mercado Libre: no se pudo consultar {slug} ({type(exc).__name__}); se omite.", flush=True)
-            pause()
-            continue
+            return "failed", exc
         price = int(round(price))
         amazon_ars, source, _ = estimate_amazon_ars(product, amazon_items, mep, eur_usd)
         if amazon_ars is None:
@@ -377,12 +441,86 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
                  "verdict": verdict, "verdictReason": reason}
         if source:
             entry["amazonSource"] = source
-        items[slug] = entry
-        print(ml_line(product, "ok", entry), flush=True)
+        return "ok", entry
+
+    def anotar(slug, estado, entry=None):
+        diario.anotar(journal, {"t": "consulta", "date": today, "slot": slot,
+                                "at": datetime.now(ART).isoformat(timespec="seconds"),
+                                "slug": slug, "estado": estado, "entry": entry})
+
+    for product in catalog:
+        slug = product["slug"]
+        catalog_id = (product.get("ml") or {}).get("catalogId")
+        if retry and slug not in previous.get("failed", []) and slug not in nuevos:
+            status = "ok" if slug in items else "absent" if slug in absent else "omitido"
+            print(ml_line(product, status, items.get(slug), salteos.get(slug) or "sin_reconsulta_en_este_reintento"), flush=True)
+            continue
+        if slug in salteos:
+            print(ml_line(product, "omitido", reason=salteos[slug]), flush=True)
+            continue
+        consultados += 1
+        conflicto = functional_conflicts(product, amazon_items)
+        if conflicto:
+            # Par mal emparejado (p. ej. G915 X Clicky vs Tactile, 05/11): no se publica y queda registrado.
+            variant_conflict.append(slug)
+            print(ml_line(product, "variantConflict", reason=", ".join(conflicto)), flush=True)
+            print(f"VARIANTE_DISTINTA {slug}: {', '.join(conflicto)} (Amazon vs ML); no se publica.", flush=True)
+            continue
+        registro = resumidos.get(slug)
+        if registro is not None and registro.get("estado") in ("ok", "absent") and (
+                registro.get("estado") == "absent" or (registro.get("entry") or {}).get("catalogId") == catalog_id):
+            if registro["estado"] == "ok":
+                items[slug] = registro["entry"]
+            else:
+                absent.append(slug)
+            print(ml_line(product, registro["estado"], registro.get("entry"), "ya_consultado_hoy"), flush=True)
+            continue
+        estado, resultado = consultar(product, catalog_id)
+        if estado == "absent":
+            absent.append(slug)
+            anotar(slug, "absent")
+            print(ml_line(product, "absent", reason="sin_oferta_local_nueva"), flush=True)
+        elif estado == "failed":
+            failed.append(slug)
+            fallaron.append(product)
+            print(ml_line(product, "failed", reason=f"consulta_{type(resultado).__name__}"), flush=True)
+            print(f"Mercado Libre: no se pudo consultar {slug} ({type(resultado).__name__}); se omite.", flush=True)
+        else:
+            items[slug] = resultado
+            anotar(slug, "ok", resultado)
+            print(ml_line(product, "ok", resultado), flush=True)
         pause()
+    if fallaron and not retry:
+        # F-21: una vez, en este mismo paso, se reintentan las consultas que fallaron; la cadena corre ML una sola vez
+        # por bloque y lo que quedaba en «failed» seguía sin precio de hoy (y fuera del sitio) hasta mañana.
+        print(f"Mercado Libre: {len(fallaron)} consultas fallidas; espero {RETRY_WAIT_SECONDS:.0f} s y las reintento "
+              f"una vez en este paso.", flush=True)
+        time.sleep(RETRY_WAIT_SECONDS)
+        for product in fallaron:
+            slug = product["slug"]
+            estado, resultado = consultar(product, (product.get("ml") or {}).get("catalogId"))
+            if estado == "failed":
+                print(ml_line(product, "failed", reason=f"reintento_{type(resultado).__name__}"), flush=True)
+            else:
+                failed.remove(slug)
+                if estado == "ok":
+                    items[slug] = resultado
+                    anotar(slug, "ok", resultado)
+                else:
+                    absent.append(slug)
+                    anotar(slug, "absent")
+                print(ml_line(product, estado, resultado if estado == "ok" else None, "recuperado_en_reintento"), flush=True)
+            pause()
+    # F-15: el alta sin archivo de hoy de la verificación escribe sólo sus productos; se marca para que el deploy
+    # no lo tome como corrida entera (y la verificación del día no lo dé por hecho).
+    parcial = (modo == "alta" and not fusionar) or (fusionar and previous.get("completo") is False)
     publish.write_atomic(prices_path, {"generatedAt": now.isoformat(), "date": today, "slot": slot, "items": items,
-                                       "absent": absent, "failed": failed, "variantConflict": variant_conflict, "attempts": attempts, "attemptHour": local.hour})
+                                       "absent": absent, "failed": failed, "variantConflict": variant_conflict,
+                                       "skipped": salteos, "attempts": attempts, "attemptHour": local.hour,
+                                       **({"completo": False} if parcial else {})})
     print(f"Mercado Libre: precios actualizados, productos={len(items)}.", flush=True)
+    print(resumen_etapa("ml", len(catalog), salteos, consultados=consultados, con_precio=len(items),
+                        sin_oferta_local=len(absent), fallas=len(failed), variante_distinta=len(variant_conflict)), flush=True)
     return True
 
 

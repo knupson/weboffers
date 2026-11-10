@@ -10,9 +10,9 @@ import ml_prices
 
 CATALOG = [
     {"slug": "monitor", "name": "Monitor", "store": "US", "verified": True, "verdict": "ml",
-     "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True}},
+     "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True}, "image": "/p.webp", "asin": "B0MON"},
     {"slug": "ssd", "name": "SSD", "store": "US", "verified": True, "verdict": "amazon",
-     "ml": {"price": 600000, "catalogId": "MLA222"}, "shipsToAr": {"freeShipping": True}},
+     "ml": {"price": 600000, "catalogId": "MLA222"}, "shipsToAr": {"freeShipping": True}, "image": "/p.webp", "asin": "B0SSD"},
     {"slug": "sin-id", "name": "Sin id", "store": "US", "verified": True, "verdict": "ml",
      "ml": {"price": 100000}},
     {"slug": "no-verificado", "name": "X", "store": "US", "verified": False, "verdict": "ml",
@@ -24,7 +24,19 @@ AFTER_SEVEN = datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc)  # 09:00 ART
 
 
 @pytest.fixture(autouse=True)
+def amazon_hoy(tmp_path):
+    (tmp_path / "publicacion.json").write_text("{}", encoding="utf-8")
+    """08/11: ML sólo consulta lo que tiene precio de Amazon de hoy en rango. Por defecto, todos lo tienen."""
+    (tmp_path / "amazon-prices.json").write_text(json.dumps({"date": "2026-10-30", "items": {
+        slug: {"amount": 200.0, "currency": "USD", "checked": "2026-10-30"}
+        for slug in ("monitor", "ssd", "sin-id", "no-verificado", "sin-oferta", *(f"p{i}" for i in range(10)))}}),
+        encoding="utf-8")
+
+
+@pytest.fixture(autouse=True)
 def env(monkeypatch):
+    # Los casos previos consultan productos sin estado, como el proceso de alta.
+    monkeypatch.setenv("PUBLICACION_MODO", "alta")
     monkeypatch.setenv("ML_CLIENT_ID", "id")
     monkeypatch.setenv("ML_CLIENT_SECRET", "secret")
     monkeypatch.setattr(ml_prices, "PAUSE_SECONDS", 0)
@@ -114,19 +126,19 @@ def test_omits_product_when_items_call_fails(tmp_path, monkeypatch):
 def test_failure_does_not_create_completed_slot(tmp_path, monkeypatch, error):
     monkeypatch.setattr(ml_prices, "fetch_items", Mock(side_effect=error))
     path = tmp_path / "ml-prices.json"
-    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
     assert json.loads(path.read_text())["failed"] == ["monitor", "ssd"]
-    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
 
 
 def test_confirmed_absence_completes_slot(tmp_path, monkeypatch):
     monkeypatch.setattr(ml_prices, "fetch_items", lambda _: [])
     path = tmp_path / "ml-prices.json"
-    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
     data = json.loads(path.read_text())
     assert data["absent"] == ["monitor", "ssd"]
     assert data["items"] == {}
-    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
 
 
 def _http_error(status, body):
@@ -172,16 +184,16 @@ def test_merge_converts_eur_for_telegram(tmp_path):
 
 def test_verdict_from_scraped_amazon_price_ignores_list_price_and_handles_es(tmp_path, monkeypatch):
     catalog = [
-        {"slug": "scraped", "name": "Scraped", "store": "US", "verified": True, "verdict": "ml",
+        {"slug": "scraped", "name": "Scraped", "store": "US", "verified": True, "asin": "B0S1", "image": "/p.webp", "verdict": "ml",
          "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True},
          "listPrice": {"amount": 400, "currency": "USD"}},
-        {"slug": "solo-listprice", "name": "Solo ListPrice", "store": "US", "verified": True, "verdict": "ml",
+        {"slug": "solo-listprice", "name": "Solo ListPrice", "store": "US", "verified": True, "asin": "B0S2", "image": "/p.webp", "verdict": "ml",
          "ml": {"price": 500000, "catalogId": "MLA222"}, "shipsToAr": {"freeShipping": True},
          "listPrice": {"amount": 400, "sale": 250, "currency": "USD"}},
-        {"slug": "espana", "name": "España", "store": "ES", "verified": True, "verdict": "amazon",
+        {"slug": "espana", "name": "España", "store": "ES", "verified": True, "asin": "B0S3", "image": "/p.webp", "verdict": "amazon",
          "ml": {"price": 500000, "catalogId": "MLA444"}, "shipsToAr": {"freeShipping": True},
          "listPrice": {"amount": 200, "currency": "EUR"}},
-        {"slug": "sin-fuente", "name": "Sin fuente", "store": "US", "verified": True,
+        {"slug": "sin-fuente", "name": "Sin fuente", "store": "US", "verified": True, "asin": "B0S4", "image": "/p.webp",
          "ml": {"price": 500000, "catalogId": "MLA555"}, "shipsToAr": {"freeShipping": True}},
     ]
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
@@ -203,17 +215,14 @@ def test_verdict_from_scraped_amazon_price_ignores_list_price_and_handles_es(tmp
     assert items["scraped"]["verdict"] == "amazon"
     assert items["scraped"]["verdictReason"] == "precio"
     assert items["scraped"]["amazonSource"] == "amazon"
-    # Sin precio scrapeado del día, nunca usa listPrice
-    assert items["solo-listprice"]["verdict"] == "ml"
-    assert items["solo-listprice"]["verdictReason"] == "existing"
-    assert "amazonSource" not in items["solo-listprice"]
-    # Tienda ES sin tasa EUR->USD: conserva el veredicto del catálogo
+    # 08/11: sin precio de Amazon del día no se publica, así que ML ni lo consulta (nunca usa listPrice).
+    skipped = json.loads(prices.read_text(encoding="utf-8"))["skipped"]
+    assert "solo-listprice" not in items and skipped["solo-listprice"] == "sin_precio_amazon_hoy"
+    assert "sin-fuente" not in items and skipped["sin-fuente"] == "sin_precio_amazon_hoy"
+    # Tienda ES sin tasa EUR->USD: no se puede medir el rango, no se saltea; conserva el veredicto del catálogo
     assert items["espana"]["verdict"] == "amazon"
     assert items["espana"]["verdictReason"] == "existing"
     assert "amazonSource" not in items["espana"]
-    # Sin scrapeado ni veredicto en catálogo: cae a "ml"
-    assert items["sin-fuente"]["verdict"] == "ml"
-    assert items["sin-fuente"]["verdictReason"] == "existing"
 
     # Con tasa EUR/USD, los productos de España calculan su veredicto desde el precio scrapeado del día.
     prices_es = tmp_path / "ml-prices-es.json"
@@ -297,7 +306,7 @@ def test_load_amazon_prices_accepts_only_today_checked(tmp_path, monkeypatch):
 
     # En maybe_refresh un precio del día anterior no alimenta el veredicto.
     catalog = [
-        {"slug": "ayer", "name": "Ayer", "store": "US", "verified": True, "verdict": "ml",
+        {"slug": "ayer", "name": "Ayer", "store": "US", "verified": True, "verdict": "ml", "asin": "B0AY", "image": "/p.webp",
          "ml": {"price": 500000, "catalogId": "MLA111"}, "shipsToAr": {"freeShipping": True}},
     ]
     monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
@@ -306,10 +315,9 @@ def test_load_amazon_prices_accepts_only_today_checked(tmp_path, monkeypatch):
     }))
     prices = tmp_path / "ml-prices.json"
     ml_prices.maybe_refresh(catalog, prices, amazon_prices, MEP, AFTER_SEVEN)
-    items = json.loads(prices.read_text(encoding="utf-8"))["items"]
-    assert items["ayer"]["verdict"] == "ml"
-    assert items["ayer"]["verdictReason"] == "existing"
-    assert "amazonSource" not in items["ayer"]
+    data = json.loads(prices.read_text(encoding="utf-8"))
+    # 08/11: un precio de Amazon de ayer no alimenta nada: ML saltea el producto (no se publica sin precio de hoy).
+    assert "ayer" not in data["items"] and data["skipped"]["ayer"] == "sin_precio_amazon_hoy"
 
 
 def test_cheapest_new_skips_international_listings():
@@ -353,7 +361,8 @@ def test_extra_slot_runs_once_on_extra_date_after_13_art(tmp_path, monkeypatch):
     get = mock_ml_get(monkeypatch)
     prices = tmp_path / "ml-prices.json"
     amazon = tmp_path / "amazon-prices.json"
-    amazon.write_text(json.dumps({"date": "2026-11-02", "items": {}}), encoding="utf-8")
+    amazon.write_text(json.dumps({"date": "2026-11-02", "items": {
+        s: {"amount": 200.0, "currency": "USD", "checked": "2026-11-02"} for s in ("monitor", "ssd")}}), encoding="utf-8")
     amazon_before = amazon.read_text(encoding="utf-8")
     # Mañana: corre y firma slot T06
     assert ml_prices.maybe_refresh(CATALOG, prices, amazon, MEP, EXTRA_MORNING) is True
@@ -400,7 +409,7 @@ def test_missing_slot_key_counts_as_morning_slot_of_its_date(tmp_path, monkeypat
 
 def test_isolated_failure_still_completes_slot(tmp_path, monkeypatch):
     """Un catalogId roto entre muchos no deja al sitio sin precios de ML: se guarda lo obtenido."""
-    catalog = [{"slug": f"p{i}", "verified": True, "ml": {"catalogId": f"MLA{i}"}} for i in range(10)]
+    catalog = [{"slug": f"p{i}", "verified": True, "asin": f"B0P{i}", "image": "/p.webp", "store": "US", "ml": {"catalogId": f"MLA{i}"}} for i in range(10)]
 
     def fetch(catalog_id):
         if catalog_id == "MLA3":
@@ -410,7 +419,7 @@ def test_isolated_failure_still_completes_slot(tmp_path, monkeypatch):
     monkeypatch.setattr(ml_prices, "fetch_items", fetch)
     monkeypatch.setattr(ml_prices, "pause", lambda: None)
     path = tmp_path / "ml-prices.json"
-    assert ml_prices.maybe_refresh(catalog, path, tmp_path / "amazon.json", MEP, AFTER_SEVEN)
+    assert ml_prices.maybe_refresh(catalog, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
     data = json.loads(path.read_text())
     assert data["failed"] == ["p3"] and "p3" not in data["absent"] and len(data["items"]) == 9
 
@@ -444,13 +453,161 @@ def test_force_consulta_productos_nuevos_despues_del_slot(tmp_path, monkeypatch)
     monkeypatch.setattr(ml_prices, "fetch_items", fetch)
     monkeypatch.setattr(ml_prices, "pause", lambda: None)
     path = tmp_path / "ml-prices.json"
-    amazon = tmp_path / "amazon.json"
-    viejo = [{"slug": "p1", "verified": True, "ml": {"catalogId": "MLA1"}}]
+    amazon = tmp_path / "amazon-prices.json"
+    viejo = [{"slug": "p1", "verified": True, "asin": "B0P1", "image": "/p.webp", "store": "US", "ml": {"catalogId": "MLA1"}}]
     assert ml_prices.maybe_refresh(viejo, path, amazon, MEP, AFTER_SEVEN)
     consultados.clear()
-    nuevo = viejo + [{"slug": "p2", "verified": True, "ml": {"catalogId": "MLA2"}}]
+    nuevo = viejo + [{"slug": "p2", "verified": True, "asin": "B0P2", "image": "/p.webp", "store": "US", "ml": {"catalogId": "MLA2"}}]
     assert not ml_prices.maybe_refresh(nuevo, path, amazon, MEP, AFTER_SEVEN)  # sin force: horario normal
     assert ml_prices.maybe_refresh(nuevo, path, amazon, MEP, AFTER_SEVEN, force=True)
     assert consultados == ["MLA2"]
     data = json.loads(path.read_text())
     assert set(data["items"]) == {"p1", "p2"}
+
+
+def test_skips_products_chrome_saw_without_free_shipping_today(tmp_path, monkeypatch):
+    # 08/11 Alejandro: lo que no cumple se filtra en el paso que lo ve; ML no consulta envío pago ni sin oferta AR.
+    catalog = [{**CATALOG[0], "asin": "B0PAGO"}, {**CATALOG[1], "asin": "B0GRATIS"},
+               {"slug": "sin-oferta", "name": "Z", "store": "US", "verified": True, "verdict": "ml", "asin": "B0NOAR",
+                "image": "/p.webp", "ml": {"price": 1, "catalogId": "MLA444"}}]
+    (tmp_path / "ar-chrome-2026-10-30.json").write_text(json.dumps({"items": {
+        "B0PAGO": {"ships": True, "free": False}, "B0GRATIS": {"ships": True, "free": True},
+        "B0NOAR": {"ships": False, "free": None}}}), encoding="utf-8")
+    get = Mock(side_effect=route_get({"MLA222/items": items_response([{"price": 700000}])}))
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    prices = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
+    assert get.call_count == 1
+    assert set(json.loads(prices.read_text(encoding="utf-8"))["items"]) == {"ssd"}
+
+
+def test_chrome_skipped_products_are_not_new_on_forced_rerun(tmp_path, monkeypatch):
+    # Un salteado por envío no entra en items/absent/failed: no debe contar como «nuevo» ni sumar attempts.
+    catalog = [{**CATALOG[0], "asin": "B0PAGO"}, {**CATALOG[1], "asin": "B0GRATIS"}]
+    (tmp_path / "ar-chrome-2026-10-30.json").write_text(json.dumps({"items": {
+        "B0PAGO": {"ships": True, "free": False}, "B0GRATIS": {"ships": True, "free": True}}}), encoding="utf-8")
+    get = Mock(side_effect=route_get({"MLA222/items": items_response([{"price": 700000}])}))
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    prices = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN, force=True) is True
+    antes = prices.read_text(encoding="utf-8")
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN, force=True) is False
+    assert prices.read_text(encoding="utf-8") == antes
+    assert get.call_count == 1
+
+
+def test_ml_saltea_sin_precio_amazon_y_lo_consulta_cuando_aparece(tmp_path, monkeypatch, capsys):
+    # 08/11: sin precio de Amazon de hoy no se publica; ML no lo consulta. Si un reintento de Amazon lo
+    # recupera, la pasada siguiente (aun sin force) lo consulta. Queda el resumen de la etapa en el log.
+    catalog = [CATALOG[0], CATALOG[1]]
+    (tmp_path / "amazon-prices.json").write_text(json.dumps({"date": "2026-10-30", "items": {
+        "ssd": {"amount": 200.0, "currency": "USD", "checked": "2026-10-30"}}}), encoding="utf-8")
+    get = Mock(side_effect=route_get({"MLA111/items": items_response([{"price": 450000}]),
+                                      "MLA222/items": items_response([{"price": 700000}])}))
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    prices = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN) is True
+    data = json.loads(prices.read_text(encoding="utf-8"))
+    assert set(data["items"]) == {"ssd"} and data["skipped"] == {"monitor": "sin_precio_amazon_hoy"}
+    out = capsys.readouterr().out
+    assert "ML_PRODUCTO slug=monitor price=ausente checked=ausente estado=omitido motivo=sin_precio_amazon_hoy" in out
+    assert "ETAPA_RESUMEN ml entran=2 salteados=1 motivos_salteo=sin_precio_amazon_hoy:1 consultados=1 con_precio=1" in out
+    (tmp_path / "amazon-prices.json").write_text(json.dumps({"date": "2026-10-30", "items": {
+        s: {"amount": 200.0, "currency": "USD", "checked": "2026-10-30"} for s in ("ssd", "monitor")}}), encoding="utf-8")
+    later = datetime(2026, 10, 30, 15, 0, tzinfo=timezone.utc)
+    assert ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, later) is True
+    assert set(json.loads(prices.read_text(encoding="utf-8"))["items"]) == {"ssd", "monitor"}
+    assert get.call_count == 2
+
+
+def test_ml_saltea_fuera_de_rango_y_sin_imagen(tmp_path, monkeypatch):
+    catalog = [CATALOG[0], {**CATALOG[1], "image": ""}]
+    (tmp_path / "amazon-prices.json").write_text(json.dumps({"date": "2026-10-30", "items": {
+        s: {"amount": 450.0, "currency": "USD", "checked": "2026-10-30"} for s in ("ssd", "monitor")}}), encoding="utf-8")
+    get = Mock()
+    monkeypatch.setattr(ml_prices.requests, "post", Mock(return_value=token_response()))
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    prices = tmp_path / "ml-prices.json"
+    ml_prices.maybe_refresh(catalog, prices, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
+    assert get.call_count == 0
+    assert json.loads(prices.read_text(encoding="utf-8"))["skipped"] == {"monitor": "amazon_fuera_de_rango", "ssd": "sin_imagen"}
+
+
+
+def test_ml_saltea_no_publicado_en_verificacion(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PUBLICACION_MODO", "verificacion")
+    get = Mock()
+    monkeypatch.setattr(ml_prices.requests, "get", get)
+    out = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG[:1], out, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
+    assert json.loads(out.read_text())["skipped"] == {"monitor": "no_publicado"}
+    get.assert_not_called()
+    assert "ETAPA_RESUMEN ml entran=1 salteados=1 motivos_salteo=no_publicado:1" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("modo,esperados", [("verificacion", {"monitor"}), ("alta", {"ssd"})])
+def test_ml_consulta_solo_el_proceso_actual(tmp_path, monkeypatch, modo, esperados):
+    import publicacion
+    monkeypatch.setenv("PUBLICACION_MODO", modo)
+    publicacion.guardar(tmp_path, {"monitor": publicacion._entrada(
+        "republicacion", "2026-10-30", "", "B0MON")})
+    fetch = Mock(return_value=[{"price": 700000, "id": "MLA123"}])
+    monkeypatch.setattr(ml_prices, "fetch_items", fetch)
+    path = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG[:2], path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
+    data = json.loads(path.read_text())
+    assert set(data["items"]) == esperados
+    assert set(data["skipped"]) == ({"monitor", "ssd"} - esperados if modo == "verificacion" else set())
+
+
+def _respuesta(status, body=None, headers=None):
+    r = requests.Response()
+    r.status_code = status
+    r._content = json.dumps(body or {}).encode()
+    r.headers.update(headers or {})
+    r.url = "https://api.mercadolibre.com/products/MLA1"
+    return r
+
+
+def test_429_reintenta_y_respeta_retry_after(monkeypatch, capsys):
+    # 10/11: el 09/11 veinte productos terminaron en error al primer 429 de /products.
+    respuestas = iter([_respuesta(429, headers={"Retry-After": "5"}),
+                       _respuesta(429, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}),
+                       _respuesta(200, {"id": "MLA1"})])
+    monkeypatch.setattr(ml_prices, "get_token", lambda: "t")
+    monkeypatch.setattr(ml_prices.requests, "get", lambda *a, **k: next(respuestas))
+    esperas = []
+    assert ml_prices.get_json("/products/MLA1", sleep=esperas.append) == {"id": "MLA1"}
+    assert esperas == [5.0, 4.0]  # Retry-After numérico; la fecha HTTP cae al backoff del 2.º intento
+    salida = capsys.readouterr().out
+    assert "ML_429_ESPERA path=/products/MLA1 intento=1/3 segundos=5 motivo=retry_after" in salida
+    assert "intento=2/3 segundos=4 motivo=backoff" in salida
+
+
+def test_429_agotado_propaga_el_http_error(monkeypatch):
+    monkeypatch.setattr(ml_prices, "get_token", lambda: "t")
+    pedidos = []
+    monkeypatch.setattr(ml_prices.requests, "get", lambda *a, **k: pedidos.append(1) or _respuesta(429))
+    esperas = []
+    with pytest.raises(requests.HTTPError) as error:
+        ml_prices.get_json("/products/MLA1", sleep=esperas.append)
+    assert error.value.response.status_code == 429
+    assert len(pedidos) == 4 and esperas == [2.0, 4.0, 8.0]
+
+
+def test_404_no_se_reintenta(monkeypatch):
+    monkeypatch.setattr(ml_prices, "get_token", lambda: "t")
+    pedidos = []
+    monkeypatch.setattr(ml_prices.requests, "get", lambda *a, **k: pedidos.append(1) or _respuesta(404))
+    with pytest.raises(requests.HTTPError):
+        ml_prices.get_json("/products/MLA1", sleep=lambda s: pytest.fail("no debe esperar"))
+    assert len(pedidos) == 1
+
+
+def test_retry_after_invalido_cae_al_backoff():
+    assert ml_prices.retry_after_seconds("120") == ml_prices.RETRY_AFTER_MAX
+    for valor in (None, "", "nan", "-3", "0", "inf", "Wed, 21 Oct 2026 07:28:00 GMT"):
+        assert ml_prices.retry_after_seconds(valor) is None, valor

@@ -38,6 +38,8 @@ def test_amazon_omite_cada_producto_con_valor_y_motivo(capsys):
 
 
 def test_pasada_sin_consulta_deja_una_sola_linea(tmp_path, monkeypatch, capsys):
+    import publicacion
+    publicacion.guardar(tmp_path, {"kindle": publicacion._entrada("publicado", "2026-11-06", "", "B0CFPJYX7P")})
     now = datetime(2026, 11, 6, 15, tzinfo=timezone.utc)
     product = {'slug': 'kindle', 'asin': 'B0CFPJYX7P', 'store': 'US', 'verified': True, 'ml': {'catalogId': 'MLA123'}}
     amz = tmp_path / 'amazon-prices.json'
@@ -95,7 +97,14 @@ def test_amazon_chrome_scraper_exitos_y_fallas(tmp_path, monkeypatch, capsys):
 
 @pytest.mark.parametrize('status', ['ok', 'absent', 'failed', 'variantConflict'])
 def test_ml_resultados_por_producto(tmp_path, monkeypatch, capsys, status):
-    p = {'slug': 'monitor', 'verified': True, 'ml': {'catalogId': 'MLA123', 'price': 650000}}
+    import publicacion
+    publicacion.guardar(tmp_path, {"monitor": publicacion._entrada(
+        "publicado", "2026-11-06", "", "B0MON")})
+    p = {'slug': 'monitor', 'verified': True, 'asin': 'B0MON', 'image': '/p.webp', 'store': 'US',
+         'ml': {'catalogId': 'MLA123', 'price': 650000}}
+    # 08/11: ML sólo consulta lo que tiene precio de Amazon de hoy.
+    (tmp_path / 'amazon.json').write_text(json.dumps({'date': '2026-11-06', 'items': {
+        'monitor': {'amount': 200.0, 'currency': 'USD', 'checked': '2026-11-06'}}}))
     monkeypatch.setattr(ml, 'is_configured', lambda: True)
     monkeypatch.setattr(ml, 'pause', lambda: None)
     monkeypatch.setattr(ml, 'functional_conflicts', lambda *a: ['color distinto'] if status == 'variantConflict' else [])

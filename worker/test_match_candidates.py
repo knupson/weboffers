@@ -735,3 +735,56 @@ def test_sufijo_de_codigo_no_se_confunde_con_ordinal():
     assert match.model_tokens('Comfort 552A') == {'552a'}
     ml = cached_product('Marca Comfort 552B', 'Marca', 'Comfort')
     assert not cached_match('Marca Comfort 552A', ml, 'Marca', 'Audio')['accepted']
+
+
+# 08/11: el barrido aceptó dos pares que eran otro producto (verificado en Chrome).
+@pytest.mark.parametrize("amazon,ml,conflicto", [
+    ("OneSkin OS-01 BODY Peptide Moisturizer, Skin Longevity Lotion, 8.45 Fl Oz",
+     "Oneskin Face Os-01 Suplemento Topico De Peptidos Y Humectante", "zona"),
+    ("Womier SK75 TMR/HE Keyboard Gaming 75% Hall Effect, Mechanical Gaming Keyboard",
+     "Teclado Mecánico Aluminio Inalámbrico Womier Sk75 Rgb (75%) Blanco", "switch_tipo"),
+])
+def test_variant_conflicts_rechaza_otro_producto(amazon, ml, conflicto):
+    from variants import variant_conflicts
+    assert conflicto in variant_conflicts(amazon, ml)
+
+
+@pytest.mark.parametrize("amazon,ml", [
+    # ML llama «mecánico» a los HE: si el título dice HE o magnético, manda eso.
+    ("GravaStar Mercury V60 Pro 60% HE Magnetic Keyboard (Cyber Fr",
+     "Teclado Mecánico Gamer Gravastar Mercury V60 Pro He Ingles C"),
+    ("GravaStar Mercury V60 HE Gaming Keyboard, Onyx Crystal",
+     "Teclado Magnético Gravastar Mercury V60 60% 8khz Usb-c Cryst"),
+    ("OneSkin OS-01 FACE Topical Supplement", "Oneskin Face Os-01 Suplemento Topico"),
+    ("Logitech G915 X Lightspeed TKL Wireless Mechanical Keyboard", "Teclado Mecánico Logitech G915 X Tkl"),
+    ("Apple iPhone 16 with Face ID 128GB", "Apple iPhone 16 128 GB"),
+])
+def test_variant_conflicts_no_rompe_pares_buenos(amazon, ml):
+    from variants import variant_conflicts
+    assert not {"zona", "switch_tipo"} & set(variant_conflicts(amazon, ml))
+
+
+def _par(titulo, nombre, marca):
+    amazon = {"amazonTitle": titulo, "asin": "B0X", "store": "US", "amazonPriceUsd": 150.0,
+              "amazonCategory": "Herramientas"}
+    cand = {"name": nombre, "itemId": "MLA1", "minPrice": 150.0 * 1500 * 1.5}
+    return match.evaluate(amazon, cand, {"name": nombre, "attributes": [{"id": "BRAND", "value_name": marca}]}, 1500)
+
+
+def test_10_11_herramienta_de_otro_tipo_y_bateria_no_es_modelo():
+    # 08/11: amoladora recta M12 Fuel aceptada contra un taladro percutor M12 Fuel 2504-20.
+    estado, motivo, _ = _par("Milwaukee Electric - M12 Fuel 1/4 INCH Right Angle DIE Grinder",
+                             "Taladro Percutor Milwaukee M12 Fuel 2504-20", "Milwaukee")
+    assert (estado, motivo) == ("rejected", "tipo de producto distinto")
+    assert "m12" not in match.model_tokens("Milwaukee M12 Fuel Grinder")
+    assert match.product_types("Llave de impacto M18") == match.product_types("Impact Wrench M18") == {"impact"}
+
+
+def test_10_11_generacion_distinta_y_configuracion_no_es_modelo():
+    estado, motivo, _ = _par("Patriot Viper Steel DDR4 RAM 16GB (1X16GB) 3200MHz",
+                             "Ram Patriot Viper Elite 5 DDR5 16gb (1x16gb) 6000mhz", "Patriot")
+    assert estado == "rejected"
+    assert "1x16gb" not in match.model_tokens("Patriot 16GB (1X16GB) DDR4")
+    assert match.generations("Samsung 990 PRO PCIe 4.0") == match.generations("SSD Pcie Gen4") == {"pcie": {"4"}}
+    assert match.generations("Router Wi-Fi 6E") != match.generations("Router WiFi 7")
+    assert match.generations("Hub for USB 2.0 devices") == {}

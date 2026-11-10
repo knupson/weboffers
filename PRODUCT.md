@@ -61,3 +61,7 @@ Los que aplica el código (relevados el 07/11/2026). Si un dato pasa su límite,
 | Envío a Argentina confirmado | Hasta 14 días calendario ART | `ARSHIPPING_MAX_DAYS` en `src/lib/data.ts` y `worker/amazon_prices.py` |
 | Dólar MEP | El del build; si dolarapi.com no responde, respaldo de hasta 3 días. Sin eso, el build falla | `loadProducts`, `src/lib/data.ts` |
 | Ficha técnica de Mercado Libre | Hasta 7 días | `validMlSheet`, `src/lib/ml-fichas.ts` |
+| Producto que sale del sitio | Se reconsulta 3 días (republicación); después «no revisar» 7 días | `transicion`, `worker/publicacion.py` (09/11) |
+| Candidato que no cumple | «No revisar» 7 días; al vencer vuelve al alta con Chrome del día | `worker/publicacion.py`, `tools/confirmar_altas.py` (09/11) |
+
+Una sola corrida por día (cron 03:30, `tools/cadena.py`): verificación de publicados y republicación, y después alta de nuevos con revisión de dudosos por NVIDIA. Diseño: `docs/superpowers/specs/2026-11-09-procesos-publicacion-design.md`.

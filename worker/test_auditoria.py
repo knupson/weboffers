@@ -59,9 +59,16 @@ def test_ml_partial_hourly_retries_keep_successes(tmp_path, monkeypatch):
     monkeypatch.setattr(ml, "pause", lambda: None)
     fetch = Mock(side_effect=lambda cid: [{"price": 500}] if cid == "OK" else (_ for _ in ()).throw(requests.ConnectionError()))
     monkeypatch.setattr(ml, "fetch_items", fetch)
-    catalog = [{"slug": s, "verified": True, "ml": {"catalogId": s}} for s in ("OK", "FAIL")]
+    catalog = [{"slug": s, "verified": True, "asin": "B0" + s, "image": "/p.webp", "store": "US",
+                "ml": {"catalogId": s}} for s in ("OK", "FAIL")]
+    import publicacion
+    publicacion.guardar(tmp_path, {p["slug"]: publicacion._entrada(
+        "publicado", "2026-11-05", "", p["asin"]) for p in catalog})
     path = tmp_path / "ml-prices.json"
     now = datetime(2026, 11, 5, 6, tzinfo=ml.ART)
+    # 08/11: ML sólo consulta lo que tiene precio de Amazon de hoy.
+    (tmp_path / "amazon.json").write_text(json.dumps({"date": "2026-11-05", "items": {
+        s: {"amount": 200.0, "currency": "USD", "checked": "2026-11-05"} for s in ("OK", "FAIL")}}))
     assert ml.maybe_refresh(catalog, path, tmp_path / "amazon.json", 1000, now)
     assert not ml.maybe_refresh(catalog, path, tmp_path / "amazon.json", 1000, now)
     for hour in (7, 8):
@@ -70,7 +77,8 @@ def test_ml_partial_hourly_retries_keep_successes(tmp_path, monkeypatch):
     data = json.loads(path.read_text())
     assert data["items"]["OK"]["catalogId"] == "OK"
     assert data["failed"] == ["FAIL"] and data["attempts"] == 3
-    assert [c.args[0] for c in fetch.call_args_list] == ["OK", "FAIL", "FAIL", "FAIL"]
+    # F-21: la primera pasada reintenta una vez las fallidas en el mismo paso (FAIL, FAIL), y luego dos reintentos horarios.
+    assert [c.args[0] for c in fetch.call_args_list] == ["OK", "FAIL", "FAIL", "FAIL", "FAIL"]
 
 
 def test_amazon_three_delayed_retries_only_pending(tmp_path, monkeypatch):

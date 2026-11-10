@@ -2,6 +2,7 @@
 from datetime import date
 import json
 from pathlib import Path
+import publicacion
 
 from refresh_lock import locked_refresh
 
@@ -12,10 +13,10 @@ def read_json(path, default):
 
 
 def rejected_asins(output, today):
-    """El rechazo vence al cumplir 14 días; no excluye otros ASIN del mismo modelo."""
+    """El rechazo vence al cumplir 7 días; no excluye otros ASIN del mismo modelo."""
     rejected = read_json(Path(output) / "altas-rechazadas.json", {})
     return {asin for asin, item in rejected.items()
-            if (date.fromisoformat(today) - date.fromisoformat(item["fecha"])).days < 14}
+            if (date.fromisoformat(today) - date.fromisoformat(item["fecha"])).days < publicacion.NO_REVISAR_DIAS}
 
 
 def duplicate(entry, catalog):

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { deployOnce, nextRunAt } from './deploy.mjs';
+import { deployOnce, main } from './deploy.mjs';
 
 let dir: string;
 let opts: any;
@@ -79,12 +79,10 @@ it('corta exactamente a las 20 ART y no consume cupo por fallas', async () => {
   expect((await state()).redeploys).toBe(0);
   expect(await deployOnce(now('23:00'), opts)).toBe('skip');
   expect(commands.filter(c => c.startsWith('npx'))).toHaveLength(1);
-  expect(nextRunAt(now('22:59'), await state())).toBe(now('23:00').getTime());
-  expect(nextRunAt(now('23:00'), await state())).toBe(Date.parse('2026-11-06T10:00:00Z'));
-  // 05/11: sin tope diario de redespliegues; sólo 30 min de separación desde el último despliegue.
-  expect(nextRunAt(now('16:00'), { date: '2026-11-05', redeploys: 2 })).toBe(now('16:10').getTime());
-  expect(nextRunAt(now('16:00'), { date: '2026-11-05', redeploys: 5, deployedAt: now('15:50').toISOString() }))
-    .toBe(now('16:20').getTime());
+  // La segunda publicación explícita de la cadena atraviesa las restricciones de recuperaciones.
+  expect(await main({ ...opts, manual: true, nowFn: () => now('23:00') })).toBe('ok');
+  expect(commands.filter(c => c.startsWith('npx'))).toHaveLength(2);
+  expect((await state()).redeploys).toBe(1);
 });
 
 it('redespliega más de dos veces por día, con 30 min entre despliegues', async () => {

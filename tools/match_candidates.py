@@ -130,6 +130,20 @@ def ram_quantities(value):
     return {float((left or right)[:-2]) for left, right in matches}
 
 
+def generations(value):
+    """Generación declarada por familia. 10/11: DDR4 contra DDR5 no se comparaba en ningún lado
+    (model_tokens descarta «ddr4» a propósito). Sólo cuenta lo que el texto dice explícitamente."""
+    text = normalize(own_description(value))
+    found = {}
+    for family, pattern in (("ddr", r"\bl?p?ddr(\d)x?\b"),
+                            ("pcie", r"\bpcie\s*(?:gen\s*)?(\d)(?:\.0)?\b"),
+                            ("usb", r"\busb\s*(\d)(?:\.\d)?\b"),
+                            ("wifi", r"\bwi\s?fi\s*(\d+e?)\b")):
+        for match in re.finditer(pattern, text):
+            found.setdefault(family, set()).add(match[1])
+    return found
+
+
 def own_description(value):
     """La compatibilidad nombra otros productos, no el modelo ni el paquete vendido."""
     return re.split(r"\b(?:for|para|compatible (?:with|con))\b", ascii_text(value), maxsplit=1)[0]
@@ -186,6 +200,14 @@ def product_types(value, category=""):
         "cable": r"\b(?:cables?)\b",
         "stand": r"\b(?:stands?|soportes?)\b",
         "controller": r"\b(?:controllers?|control(?:es)?|joysticks?|gamepads?)\b",
+        # 10/11: Milwaukee M12 Fuel amoladora recta aceptada contra un taladro percutor M12 Fuel.
+        # Las frases compuestas van primero: «impact wrench», «llave de impacto», «die grinder».
+        "impact": r"\b(?:impact (?:drivers?|wrench(?:es)?)|atornilladora?s? de impacto|llaves? de impacto"
+                  r"|pistolas? de impacto)\b",
+        "grinder": r"\b(?:(?:die |angle )?grinders?|amoladoras?|esmeriladoras?|rectificadoras?)\b",
+        "drill": r"\b(?:(?:hammer )?drills?|taladros?(?: percutor(?:es)?)?|rotomartillos?)\b",
+        "saw": r"\b(?:saws?|sierras?|serruchos?)\b",
+        "sander": r"\b(?:sanders?|lijadoras?)\b",
     }
     found = set()
     for kind, pattern in groups.items():
@@ -224,6 +246,10 @@ def model_tokens(value):
         if quantities(raw) or re.fullmatch(r"(?:pcie|usb|ddr|wifi|wi-fi|bluetooth|bt|gen)\d+[a-z]*", token):
             continue
         if re.fullmatch(r"\d+(?:hz|khz|mhz|ghz|k|p|mbps|gbps)", token):
+            continue
+        # 10/11: «M12»/«M18» (batería Milwaukee) y «1x16gb» (configuración de memoria) se tomaban como
+        # modelo compartido: Milwaukee amoladora vs taladro y Patriot DDR4 vs DDR5 salían aceptados.
+        if re.fullmatch(r"(?:m12|m18|\d+v(?:max)?|\d+x\d+(?:gb|tb|mb)?)", token):
             continue
         # Duración, protección y canales de audio son especificaciones, no códigos.
         if re.fullmatch(r"(?:\d+(?:hour|hours|hr|hrs|ch)|ip\d{2})", token):
@@ -483,6 +509,10 @@ def evaluate(amazon, candidate, product, mep):
     if bool(combo.search(ascii_text(title).lower())) != bool(combo.search(ascii_text(name).lower())):
         return "rejected", "combo en un solo lado", evidence
     # Compartir el modelo base no vuelve intercambiables las versiones de red celular.
+    a_gen, b_gen = generations(title), generations(" ".join([name, model, attrs.get("LINE", "")]))
+    for family in a_gen.keys() & b_gen.keys():
+        if a_gen[family].isdisjoint(b_gen[family]):
+            return "rejected", f"generación distinta ({family})", evidence
     a_network = set(re.findall(r"\b[345]g\b", normalize(own_description(title))))
     b_network = set(re.findall(r"\b[345]g\b", normalize(own_description(name))))
     if a_network and b_network and a_network != b_network:
@@ -611,43 +641,74 @@ def unique_slug(brand, evidence, name, used):
     return slug
 
 
-def match_products(products, mep, catalog=(), products_cache=None):
+def match_products(products, mep, catalog=(), products_cache=None, on_result=None, journal=None, used_slugs=None):
     if not positive_number(mep):
         raise ValueError("MEP inválido; indicá --mep con un valor positivo.")
     if not isinstance(products, list):
         raise ValueError("La entrada debe ser una lista JSON.")
     result = {"generatedAt": datetime.now(timezone.utc).isoformat(), "mep": mep,
               "accepted": [], "doubtful": [], "rejected": []}
-    used = {entry["slug"] for entry in catalog if isinstance(entry, dict) and isinstance(entry.get("slug"), str)}
+    used = used_slugs if used_slugs is not None else {entry["slug"] for entry in catalog if isinstance(entry, dict) and isinstance(entry.get("slug"), str)}
     if products_cache is not None and (not isinstance(products_cache, dict)
             or any(not isinstance(value, dict) for value in products_cache.values())):
         raise ValueError("El caché debe ser un diccionario de productos ML.")
-    cache = dict(products_cache or {})
+    from buscar_log import line, check_stop
+    cache = journal.data["ficha_ml"] if journal else {}
+    cache.update(products_cache or {})
+    errors = {}  # Reusar el fallo sólo en este lote; nunca en el diario/caché durable.
+
+    def emit(status, row, definitive=True):
+        line("MATCH", asin=row.get("asin"), catalogId=row.get("catalogId"), estado=status,
+             motivo=row.get("reason") or "validado", mlPrecio=row.get("mlPrice"), amazonUsd=row.get("amazonPriceUsd"))
+        if not definitive:
+            line("MATCH", asin=row.get("asin"), estado="error", motivo=",".join(transient))
+            if journal:
+                journal.append("match_error", row.get("asin"), "error", ",".join(transient), row=row)
+            return
+        if on_result and on_result(status, row) is False:
+            return
+        if journal:
+            journal.append("match", row.get("asin") or str(row.get("index")), status,
+                           row.get("reason", ""), row=row)
+
     for index, amazon in enumerate(products, 1):
+        check_stop()
         if not isinstance(amazon, dict):
             result["rejected"].append({"reason": "producto inválido", "index": index})
-            if index % 50 == 0:
-                print(f"Procesados {index}/{len(products)} productos", flush=True)
+            emit("rejected", result["rejected"][-1])
             continue
         chosen = None
+        transient = [amazon["_discoveryError"]] if amazon.get("_discoveryError") else []
         failures = []
         candidates = amazon.get("ml")
         for candidate in candidates if isinstance(candidates, list) else []:
+            check_stop()
             if not isinstance(candidate, dict):
+                line("MATCH_CANDIDATO", asin=amazon.get("asin"), estado="salteado", motivo="candidato_invalido")
                 continue
             catalog_id = candidate.get("catalogId")
             if not isinstance(catalog_id, str) or not re.fullmatch(r"[A-Za-z0-9]+", catalog_id):
                 failures.append({"catalogId": catalog_id, "reason": "catalogId inválido"})
+                line("MATCH_CANDIDATO", asin=amazon.get("asin"), estado="salteado", motivo="catalogId_invalido")
                 continue
-            if catalog_id not in cache:
+            if catalog_id not in cache and catalog_id not in errors:
                 try:
                     payload = ml_prices.get_json(f"/products/{catalog_id}")
-                    cache[catalog_id] = payload if isinstance(payload, dict) else {}
-                except (requests.RequestException, ValueError, KeyError, TypeError):
-                    cache[catalog_id] = {}
+                    if not isinstance(payload, dict):
+                        raise ValueError("Ficha ML vacía o inválida")
+                    cache[catalog_id] = payload
+                except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                    errors[catalog_id] = str(exc) or type(exc).__name__
+                    line("MATCH_FICHA", catalogId=catalog_id, estado="error", motivo=str(exc))
+                    if journal:
+                        journal.append("ficha_ml", catalog_id, "sin_ficha", str(exc), product={})
                 finally:
                     ml_prices.pause()
-            product = cache[catalog_id]
+                if journal and catalog_id in cache:
+                    journal.append("ficha_ml", catalog_id, "ok", product=cache[catalog_id])
+            if catalog_id in errors:
+                transient.append(errors[catalog_id])
+            product = cache.get(catalog_id, {})
             status, reason, evidence = evaluate(amazon, candidate, product, mep)
             score = bool(evidence["brand"]) + 2 * bool(evidence["model"]) + bool(evidence["capacity"])
             if status == "rejected":
@@ -681,6 +742,7 @@ def match_products(products, mep, catalog=(), products_cache=None):
             if reason:
                 row["reason"] = reason
             result[status].append(row)
+            emit(status, row, definitive=not transient or (status == "accepted" and candidate["catalogId"] not in errors))
         else:
             best = max(failures, key=lambda failure: failure.get("score", -1), default={})
             result["rejected"].append({**{key: best.get(key, "") for key in
@@ -689,6 +751,7 @@ def match_products(products, mep, catalog=(), products_cache=None):
                                        "asin": amazon.get("asin"), "amazonTitle": amazon.get("amazonTitle"),
                                        "reason": best.get("reason", "sin candidatos"),
                                        "candidates": failures})
+            emit("rejected", result["rejected"][-1], definitive=not transient)
         if index % 50 == 0:
             print(f"Procesados {index}/{len(products)} productos", flush=True)
     result["summary"] = {key: len(result[key]) for key in ("accepted", "doubtful", "rejected")}

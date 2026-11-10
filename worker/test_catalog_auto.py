@@ -24,101 +24,80 @@ def candidate(**changes):
     return {**row, **changes}
 
 
+@pytest.mark.parametrize("fecha,week", [("2026-11-09", "2026-W45"), ("2027-01-04", "2026-W53")])
+@pytest.mark.parametrize("hora", [3, 8])
+def test_lunes_0330_conserva_semana_del_domingo(setup_job, fecha, week, hora):
+    from tools.recordatorio_franquicia import control_catalogo
+    repo, output, _ = setup_job
+    now = datetime.fromisoformat(fecha + "T03:30:00-03:00").replace(hour=hora)
+    assert auto.maybe_grow(repo, output, now, mep=1200)
+    state = json.loads((output / "catalog-auto-state.json").read_text())
+    assert state["slot"] == fecha
+    assert state["week"] == week
+    assert control_catalogo(now.replace(hour=7, minute=30), lambda url: json.dumps({"catalogo": state})) == ""
+
+
 @pytest.fixture
 def setup_job(tmp_path, monkeypatch):
     repo = tmp_path / "catalog.json"
     repo.write_text(json.dumps([{"asin": "EXISTENTE", "slug": "existente", "category": "Almacenamiento"}]))
     output = tmp_path / "output"
+    import publicacion
+    publicacion.guardar(output, {})
     monkeypatch.setattr(auto.ml_prices, "is_configured", lambda: True)
     def discover(*args, **kwargs):
         kwargs["get"].__self__.valid = 1
-        return []
+        row = {"asin": "B000000001", "amazonTitle": "Samsung T9 SSD", "ml": []}
+        kwargs["on_product"](row)
+        return [row]
     discovery = Mock(side_effect=discover)
     monkeypatch.setattr(auto.discovery, "discover_products", discovery)
-    monkeypatch.setattr(auto.matching, "match_products", lambda *args: {"accepted": [candidate()], "doubtful": [], "rejected": []})
+    def match(*args, **kwargs):
+        row = candidate()
+        kwargs["on_result"]("accepted", row)
+        kwargs["journal"].append("match", row["asin"], "accepted", row=row)
+        return {"accepted": [row], "doubtful": [], "rejected": []}
+    monkeypatch.setattr(auto.matching, "match_products", match)
+    monkeypatch.setattr(auto.crecer_desde_ml, "agregar_identificadores", lambda *a, **k: 0)
     monkeypatch.setattr(auto, "fetch_photo", lambda entry, output: entry.update(image=f"/products/{entry['slug']}.webp") or True)
     monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", lambda *a, **k: [])  # sin API real de ML en los tests
     return repo, output, discovery
 
 
-@pytest.mark.parametrize("instant", ["2026-11-07T20:00:00+00:00", "2026-11-08T16:59:00+00:00", "2026-11-09T00:00:00+00:00"])
-def test_gate_art_before_sunday_afternoon(setup_job, instant):
+@pytest.mark.parametrize("hora", [0, 3, 12, 19, 20, 23])
+def test_sin_ventana_horaria(setup_job, hora):
     repo, output, discover = setup_job
-    # Lunes UTC todavía es domingo ART: sí está dentro de la ventana.
-    expected = instant == "2026-11-09T00:00:00+00:00"
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat(instant), mep=1000) is expected
-    assert discover.call_count == int(expected)
-
-
-def test_once_per_night_keeps_previous_and_logs(setup_job):
-    """05/11: corre todas las noches (20:00-03:00 ART), una vez por noche."""
-    repo, output, discover = setup_job
-    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")  # 20:30 ART
+    now = datetime.fromisoformat(f"2026-11-09T{hora:02d}:00:00-03:00")
     assert auto.maybe_grow(repo, output, now, mep=1000)
+    assert discover.call_count == 1
     assert not auto.maybe_grow(repo, output, now, mep=1000)
-    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)  # 02:59, misma noche
     assert discover.call_count == 1
     assert not (output / "catalog-auto.json").exists()
     entries = json.loads((output / "altas-pendientes.json").read_text())
-    assert len(entries) == 1
-    assert entries[0]["pendienteDesde"] == "2026-11-08"
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T23:30:00+00:00"), mep=1000)  # noche siguiente
-    assert json.loads((output / "altas-pendientes.json").read_text()) == entries
-    log = json.loads((output / "amazon-run-2026-11-08.json").read_text())
-    assert log["passes"][0]["kind"] == "catalogo"
-    assert log["passes"][0]["ok"] == 1
+    assert len(entries) == 1 and entries[0]["pendienteDesde"] == "2026-11-09"
+    log = json.loads((output / "amazon-run-2026-11-09.json").read_text())
+    assert log["passes"][0]["kind"] == "catalogo" and log["passes"][0]["ok"] == 1
 
 
-def test_force_runs_outside_the_window(setup_job):
+@pytest.mark.parametrize("status,pages", [("failed", 0), ("failed", 1), ("running", 0), ("ok", 1)])
+def test_sin_reintento_por_hora(setup_job, status, pages):
     repo, output, discover = setup_job
-    tarde = datetime.fromisoformat("2026-11-05T19:00:00+00:00")  # 16:00 ART
-    assert not auto.maybe_grow(repo, output, tarde, mep=1000)
-    assert auto.maybe_grow(repo, output, tarde, mep=1000, force=True)
-    assert discover.call_count == 1
-
-
-def test_failed_before_scraping_retries_same_night(setup_job, monkeypatch, capsys):
-    repo, output, discover = setup_job
-    discover.side_effect = requests.ConnectionError("sin conexión")
-    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
-    assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert "DEPLOY_FAIL" in capsys.readouterr().out
-    assert json.loads((output / "catalog-auto-state.json").read_text())["status"] == "failed"
-
-
-def test_retry_missing_mep_before_three(setup_job):
-    repo, output, discover = setup_job
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=None)
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T05:59:00+00:00"), mep=1000)
-    assert discover.call_count == 1
-    assert json.loads((output / "catalog-auto-state.json").read_text())["week"] == "2026-W45"
-    assert not auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T06:00:00+00:00"), mep=1000)
-
-
-def test_no_retry_after_scraping_started(setup_job):
-    repo, output, discover = setup_job
-    def fail(*args, **kwargs):
-        kwargs["get"].__self__.pages = 1
-        raise requests.ConnectionError()
-    discover.side_effect = fail
-    now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
-    assert auto.maybe_grow(repo, output, now, mep=1000)
-    assert not auto.maybe_grow(repo, output, now, mep=1000)
-    assert discover.call_count == 1
-
-
-@pytest.mark.parametrize("hours,retry", [(6, False), (7, True)])
-def test_expired_running_retries(setup_job, hours, retry):
-    from datetime import timedelta
-    repo, output, discover = setup_job
-    now = datetime.fromisoformat("2026-11-09T05:00:00+00:00")  # 02:00 ART, noche del 08/11
-    output.mkdir(parents=True)
+    output.mkdir(parents=True, exist_ok=True)
     (output / "catalog-auto-state.json").write_text(json.dumps({
-        "slot": "2026-11-08", "week": "2026-W45", "status": "running", "at": (now - timedelta(hours=hours)).isoformat(),
-    }))
-    assert auto.maybe_grow(repo, output, now, mep=1000) is retry
-    assert discover.call_count == int(retry)
+        "slot": "2026-11-09", "status": status, "pages": pages, "at": "2026-11-09T00:00:00-03:00"}))
+    attempted = auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T20:00:00-03:00"), mep=1000)
+    assert attempted == (status != "ok")
+    assert discover.call_count == int(status != "ok")
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-10T03:30:00-03:00"), mep=1000)
+    assert discover.call_count == 1 + int(status != "ok")
+
+
+def test_force_permite_corrida_explicita(setup_job):
+    repo, output, discover = setup_job
+    now = datetime.fromisoformat("2026-11-09T03:30:00-03:00")
+    assert auto.maybe_grow(repo, output, now, mep=1000)
+    assert auto.maybe_grow(repo, output, now, mep=1000, force=True)
+    assert discover.call_count == 2
 
 
 def test_budget_comes_from_env_without_fixed_cap(setup_job, monkeypatch):
@@ -197,7 +176,7 @@ def test_photo_missing_or_unofficial(tmp_path, monkeypatch, pictures):
 def test_pacing_backoff_and_hard_cap(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
-    get = Mock(side_effect=[Mock(json=lambda: {}), Mock(json=lambda: {"items": [1]})])
+    get = Mock(side_effect=[Mock(json=lambda: {}), Mock(json=lambda: {"items": [{"asin": "A"}]})])
     monkeypatch.setattr(auto.requests, "get", get)
     scraper = auto.PacedScraper(2)
     scraper.get("http://scraper")
@@ -211,14 +190,15 @@ def test_pacing_backoff_and_hard_cap(monkeypatch):
 def test_pause_breaks_consecutive_pages(monkeypatch):
     sleep = Mock()
     monkeypatch.setattr(auto.time, "sleep", sleep)
-    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [1]})))
+    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(json=lambda: {"items": [{"asin": "A"}]})))
     scraper = auto.PacedScraper(150)  # el tope sale del parámetro (05/11: sin tope fijo en el código)
     for _ in range(150):
         scraper.get("http://scraper")
     with pytest.raises(auto.discovery.PageBudgetExhausted):
         scraper.get("http://scraper")
     assert scraper.pages == 150
-    sleep.assert_any_call(300)
+    assert sleep.call_count == 149
+    assert all(call.args == (auto.amazon_prices.PAUSE_SECONDS,) for call in sleep.call_args_list)
 
 
 def test_manual_apply_accepts_match_document(setup_job):
@@ -269,13 +249,10 @@ def test_falla_suelta_no_marca_la_corrida_como_fallida(setup_job, monkeypatch, c
     assert "CATALOGO_OK" in capsys.readouterr().out
 
 
-def test_al_terminar_avisa_al_host(setup_job):
-    # 07/11: el alta nocturna terminó 05:11 y la cadena ya había buscado altas a las 03:46; las altas esperaban
-    # un día. Al terminar se escribe alta-terminada.json (escritura directa: la unidad systemd .path ve el cierre).
+def test_al_terminar_no_dispara_otra_cadena(setup_job):
     repo, output, discover = setup_job
-    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
-    aviso = json.loads((output / "alta-terminada.json").read_text())
-    assert aviso["slot"] == "2026-11-08" and aviso["status"] == "ok" and aviso["added"] == 1 and aviso["fin"]
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-09T03:30:00-03:00"), mep=1000)
+    assert not (output / "alta-terminada.json").exists()
 
 
 @pytest.mark.parametrize("amazon_ids,ml_ids,strong", [
@@ -337,7 +314,11 @@ def test_review_persists_dedupes_and_expires(setup_job):
 
 def test_catalogo_ok_reports_review(setup_job, monkeypatch, capsys):
     repo, output, _ = setup_job
-    monkeypatch.setattr(auto.matching, "match_products", lambda *a: {"accepted": [candidate(amazonIds={})]})
+    def match(*a, **kwargs):
+        row = candidate(amazonIds={})
+        kwargs["on_result"]("accepted", row)
+        return {"accepted": [row]}
+    monkeypatch.setattr(auto.matching, "match_products", match)
     auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
     assert "CATALOGO_OK catálogo: pendientes=0, revision=1," in capsys.readouterr().out
     # El estado lleva la cantidad: estado.json la publica y el control de las 07:30 pide «revisá las altas».
@@ -349,3 +330,31 @@ def test_strong_ids_do_not_bypass_validator(setup_job):
     auto.add_accepted([], {"accepted": [], "rejected": [candidate()], "doubtful": [candidate()]}, output, "2026-11-07")
     assert json.loads((output / "altas-pendientes.json").read_text()) == []
     assert json.loads((output / "altas-revision.json").read_text()) == []
+
+
+
+def test_descubrimiento_respeta_no_revisar(setup_job, monkeypatch):
+    import publicacion
+    repo, output, discover = setup_job
+    publicacion.guardar(output, {
+        s: publicacion._entrada("no_revisar", fecha, "sin_envio", s.upper())
+        for s, fecha in (("vigente", "2026-11-02"), ("vencido", "2026-11-01"))})
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")  # modo manual: ML→Amazon
+    desde_ml = Mock(return_value=[])
+    monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
+    assert auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    for asins in (discover.call_args.kwargs["existing_asins"], desde_ml.call_args.args[0]):
+        assert "VIGENTE" in asins
+        assert "VENCIDO" not in asins
+        assert "EXISTENTE" in asins
+
+
+def test_busqueda_diaria_no_recorre_ml_por_defecto(setup_job, monkeypatch):
+    """07/11 (Alejandro): la fuente es Amazon; ML→Amazon sólo a mano."""
+    repo, output, discover = setup_job
+    monkeypatch.delenv("CATALOG_AUTO_DESDE_ML", raising=False)
+    desde_ml = Mock(return_value=[])
+    monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
+    auto.maybe_grow(repo, output, datetime.fromisoformat("2026-11-08T23:30:00+00:00"), mep=1000)
+    assert discover.called
+    assert not desde_ml.called

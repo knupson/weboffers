@@ -4,7 +4,7 @@
 Corre dentro del worker, después del relevamiento del host. No consulta la red.
 Los intentos sin dato cuentan una sola vez por fecha ART, incluso con reintentos.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import os
 from pathlib import Path
 import re
@@ -15,8 +15,13 @@ from alta_state import duplicate, read_json, update_state
 from article_log import alta_line
 from catalog import load_catalog
 from publish import write_atomic
+import publicacion
+from requisitos import motivo_total
 
 ART = timezone(timedelta(hours=-3))
+# Noches seguidas en que Chrome no llegó a un pendiente: pasado este tope se rechaza igual, con su propio motivo,
+# para que un ASIN que nunca se releva no quede pendiente para siempre.
+MAX_NOCHES_SIN_CORRIDA = 7
 
 
 def chrome_today(data, today):
@@ -45,11 +50,46 @@ def confirm(catalog_path, output, today=None):
 
 
 def _confirm(catalog_path, output, today):
+    estado = publicacion.cargar(output)
     pending = read_json(output / "altas-pendientes.json", [])
     remaining, promoted = [], []
     rejected_count = 0
+    catalog = load_catalog(catalog_path, output / "catalog-auto.json")
+    vencidos = 0
+    data = read_json(output / f"ar-chrome-{today}.json", {})
+    chrome_corrio = True
+    try:
+        data = chrome_today(data, today)
+    except (ValueError, TypeError):
+        data = {"items": {}}
+        chrome_corrio = False
+    manana = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
+    for entry in catalog:
+        item = estado.get(entry["slug"])
+        if not item or item["situacion"] != "no_revisar" or item["hasta"] > today:
+            continue
+        motivo = motivo_total(entry, estado, today, "alta")
+        evidencia = data["items"].get(entry["asin"]) or {}
+        if not motivo and entry["asin"] not in data["items"]:
+            # F-19: Chrome no corrió o no llegó a este ASIN (caída de infraestructura, no un dato del producto).
+            # No se estira la exclusión 7 días por algo que nadie miró: queda excluido hoy (sin evidencia no se
+            # consulta ni se publica) y se vuelve a mirar manana.
+            estado[entry["slug"]] = {**item, "hasta": manana, "motivo": "chrome_no_corrio"}
+            print(alta_line(entry, "pospuesta", "chrome_no_corrio" if not chrome_corrio else "chrome_sin_el_asin",
+                            evidencia), flush=True)
+            continue
+        if not motivo and not (evidencia.get("ships") is True and evidencia.get("free") is True):
+            motivo = "sin_envio_gratis_chrome_hoy"
+        if motivo:
+            estado[entry["slug"]] = publicacion._entrada("no_revisar", today, motivo, entry["asin"])
+            print(alta_line(entry, "rechazada", motivo, evidencia), flush=True)
+        else:
+            vencidos += 1
+            print(alta_line(entry, "confirmada", "envio_gratis_chrome_hoy", evidencia), flush=True)
+    publicacion.guardar(output, estado)
     if pending:
-        data = chrome_today(read_json(output / f"ar-chrome-{today}.json", {}), today)
+        # Se reutiliza el resultado ya validado arriba; sin relevamiento de hoy, todos los pendientes pasan por el mismo
+        # contador persistido (nochesSinCorrida) que un ASIN al que Chrome no llegó, en vez de abortar sin contarlos.
         automatic = read_json(output / "catalog-auto.json", [])
         catalog = load_catalog(catalog_path, output / "catalog-auto.json")
         rejected = read_json(output / "altas-rechazadas.json", {})
@@ -62,6 +102,15 @@ def _confirm(catalog_path, output, today):
                 # Recuperación idempotente si se interrumpió entre guardar catálogo y limpiar pendientes.
                 print(alta_line(entry, "descartado", "duplicado", item), flush=True)
                 continue
+            if (entry["asin"] not in data["items"] and not motivo_total(entry, estado, today, "alta", stores=("US",))
+                    and entry.get("nochesSinCorrida", 0) < MAX_NOCHES_SIN_CORRIDA):
+                # F-19: Chrome no llegó a este ASIN (se cortó o falló el paso); no cuenta como «noche sin dato».
+                if entry.get("ultimoIntentoEnvio") != today:
+                    entry["nochesSinCorrida"] = entry.get("nochesSinCorrida", 0) + 1
+                    entry["ultimoIntentoEnvio"] = today
+                remaining.append(entry)
+                print(alta_line(entry, "sin_cambio", "chrome_no_corrio", item), flush=True)
+                continue
             if ships is False:
                 reason = "no_envia_ar"
             elif ships is True and free is False:
@@ -70,7 +119,7 @@ def _confirm(catalog_path, output, today):
                 reason = "precio_fuera_de_rango"
             elif ships is True and free is True and price is not None:
                 built = {k: v for k, v in entry.items()
-                         if k not in ("pendienteDesde", "nochesSinDato", "ultimoIntentoEnvio")}
+                         if k not in ("pendienteDesde", "nochesSinDato", "nochesSinCorrida", "ultimoIntentoEnvio")}
                 built["shipsToAr"] = {"freeShipping": True, "checked": today}
                 promoted.append(built)
                 print(alta_line(entry, "promovida", item=item), flush=True)
@@ -97,7 +146,7 @@ def _confirm(catalog_path, output, today):
         write_atomic(output / "altas-pendientes.json", remaining)
     stamp = datetime.now(ART).strftime("%Y-%m-%d %H:%M:%S")
     print(f"{stamp} ALTAS_OK promovidas={len(promoted)} rechazadas={rejected_count} "
-          f"siguen_pendientes={len(remaining)}", flush=True)
+          f"siguen_pendientes={len(remaining)} vencidos={vencidos}", flush=True)
     return {"promovidas": len(promoted), "rechazadas": rejected_count, "siguen_pendientes": len(remaining)}
 
 

@@ -1,5 +1,5 @@
 // Despliegue diario de Franquicia 400 a Cloudflare con los precios de Mercado Libre y Amazon.
-// Espera precios del día de 07:00 a 11:00 ART; luego chequea recuperaciones cada 10 min hasta las 20:00 ART.
+// Se ejecuta una vez por llamada de la cadena; --ahora habilita el segundo despliegue.
 // Logs sin secretos: DEPLOY_OK / DEPLOY_SKIP / DEPLOY_WAIT / DEPLOY_FAIL / DEPLOY_OFF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -12,29 +12,19 @@ const AMAZON_OUTPUT_FILE = '/app/output/amazon-prices.json';
 const WORK_DIR = '/work';
 const STATE_FILE = '/state/last-deploy.json';
 const ART_OFFSET_MS = -3 * 3600e3;   // Argentina no tiene horario de verano
-const DEPLOY_AT_UTC = '10:00:00Z';    // 07:00 ART
-const DEADLINE_UTC = '14:00:00Z';     // 11:00 ART
-// Días de oferta especial: segundo despliegue a las 13:00 ART (16:00Z) apenas ml-prices.json
-// firma el slot "<fecha>T13" (reintenta hasta 15:00 ART = 18:00Z). Amazon no se relee.
-const EXTRA_DEPLOY_DATES = new Set(['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-27', '2026-11-30']);
-const EXTRA_DEPLOY_AT_UTC = '16:00:00Z';  // 13:00 ART
-const EXTRA_DEADLINE_UTC = '18:00:00Z';   // 15:00 ART
-const EXTRA_SLOT_HOUR = 13;               // slot "<fecha>T13" que escribe el worker
-const RETRY_INTERVAL_MS = 10 * 60e3;  // 10 minutos
-// Redespliegue por precios recuperados: sin tope diario (05/11, el tope de 2 dejó correcciones sin publicar),
-// pero con al menos 30 min entre despliegues y sólo si cambiaron los precios.
 const MIN_REDEPLOY_GAP_MS = 30 * 60e3;
 const ONE_DAY_MS = 86400e3;
-const MAX_SLEEP_MS = 60e3;
+const LOCK_WAIT_MS = 20 * 60e3;   // cuánto espera un despliegue a que termine el que ya está corriendo
+const LOCK_POLL_MS = 2e3;
+const LOCK_EMPTY_STALE_MS = 2 * 60e3; // un candado sin pid legible se da por muerto sólo si su carpeta tiene más de esto
 
-let stopRequested = false;
 
 // `docker logs` se pierde al recrear el contenedor; /state es un volumen con nombre y sobrevive (05/11).
 const LOG_DIR = process.env.DEPLOYER_LOG_DIR ?? '/state/logs';
 
 function log(line) {
   const now = new Date();
-  const text = String(line).split(/\r?\n/).map((part) => `${now.toISOString()} ${part}\n`).join('');
+  const text = String(line).split(/\r?\n/).map((part) => `${new Date(now.getTime() + ART_OFFSET_MS).toISOString().slice(0, 19).replace('T', ' ')} ${part}\n`).join('');
   process.stdout.write(text);
   try {
     mkdirSync(LOG_DIR, { recursive: true });
@@ -57,54 +47,13 @@ function artDate(date) {
   return new Date(date.getTime() + ART_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-function startAt(now) {
-  return Date.parse(`${artDate(now)}T${DEPLOY_AT_UTC}`);
-}
-
-function isExtraDate(dateStr) {
-  return EXTRA_DEPLOY_DATES.has(dateStr);
-}
-
-function extraStartAt(now) {
-  return Date.parse(`${artDate(now)}T${EXTRA_DEPLOY_AT_UTC}`);
-}
-
-function extraDeadlineAt(now) {
-  return Date.parse(`${artDate(now)}T${EXTRA_DEADLINE_UTC}`);
-}
-
-function extraSlotId(dateStr) {
-  return `${dateStr}T${String(EXTRA_SLOT_HOUR).padStart(2, '0')}`;
-}
-
 function redeployCount(state) {
   // Compatibilidad con despliegues previos al contador persistido.
   return state?.redeploys ?? (state?.slot === 'extra' ? 1 : 0);
 }
 
-function nextRunAt(now, lastState) {
-  const today = artDate(now);
-  if (lastState?.date === today && now.getTime() < recoveryDeadlineAt(now)) {
-    const gapEnd = Date.parse(lastState.deployedAt ?? '') + MIN_REDEPLOY_GAP_MS;
-    const next = Math.max(now.getTime() + RETRY_INTERVAL_MS, Number.isFinite(gapEnd) ? gapEnd : 0);
-    return Math.min(next, recoveryDeadlineAt(now));
-  }
-  let target = startAt(now);
-  if (target <= now.getTime()) {
-    if (lastState !== undefined && lastState?.date !== today && now.getTime() < deadlineAt(now)) {
-      return now.getTime();
-    }
-    target += ONE_DAY_MS;
-  }
-  return target;
-}
-
 function recoveryDeadlineAt(now) {
   return Date.parse(`${artDate(now)}T23:00:00Z`); // 20:00 ART
-}
-
-function deadlineAt(now) {
-  return Date.parse(`${artDate(now)}T${DEADLINE_UTC}`);
 }
 
 function redact(text) {
@@ -174,6 +123,10 @@ async function hasBothTodayPrices(now = new Date(), opts = {}) {
         : `ml-prices.json es de ${ml.data?.date} (hoy ${today})`,
     };
   }
+  // F-15: el alta que corre sin el archivo de hoy de la verificación escribe sólo sus productos y lo marca así.
+  if (ml.data?.completo === false) {
+    return { ready: false, reason: 'ml-prices.json es parcial (completo: false); la verificación no dejó los precios de hoy' };
+  }
   const amz = await readJsonWithDate(amazonOutputFile);
   if (!amz.ok || amz.data?.date !== today) {
     return {
@@ -183,27 +136,13 @@ async function hasBothTodayPrices(now = new Date(), opts = {}) {
         : `amazon-prices.json es de ${amz.data?.date} (hoy ${today})`,
     };
   }
+  if (amz.data?.completo === false) {
+    return { ready: false, reason: 'amazon-prices.json es parcial (completo: false); la verificación no dejó los precios de hoy' };
+  }
   if (!amz.data.items || Array.isArray(amz.data.items) || typeof amz.data.items !== 'object' || Object.keys(amz.data.items).length === 0) {
     return { ready: false, reason: 'amazon-prices.json tiene items vacío o inválido' };
   }
   return { ready: true, mlRaw: ml.raw, amazonRaw: amz.raw };
-}
-
-async function hasExtraSlotToday(now = new Date(), opts = {}) {
-  const outputFile = opts.outputFile ?? OUTPUT_FILE;
-  const today = artDate(now);
-  const slot = extraSlotId(today);
-  const ml = await readJsonWithDate(outputFile);
-  if (!ml.ok) {
-    return { ready: false, reason: 'ml-prices.json ausente o inválido' };
-  }
-  if (ml.data?.date !== today) {
-    return { ready: false, reason: `ml-prices.json es de ${ml.data?.date} (hoy ${today})` };
-  }
-  if (ml.data?.slot !== slot) {
-    return { ready: false, reason: `ml-prices.json no tiene slot ${slot} todavía` };
-  }
-  return { ready: true, mlRaw: ml.raw };
 }
 
 async function syncRepo(workDir = WORK_DIR, runImpl = run) {
@@ -280,13 +219,132 @@ async function saveBreakdown(workDir, target, publicados, logger = log) {
   return report;
 }
 
-async function saveResult(status, reason, now, opts = {}) {
+async function saveResult(status, reason, now, opts = {}, alerta = null) {
   const resultFile = opts.resultFile ?? path.join(path.dirname(opts.stateFile ?? STATE_FILE), 'last-result.json');
   await fs.mkdir(path.dirname(resultFile), { recursive: true });
-  await fs.writeFile(resultFile, JSON.stringify({ status, reason: redact(reason), at: now.toISOString() }) + '\n');
+  // F-28: una alarma del despliegue (p. ej. caída brusca de publicados) queda también acá, para quien lea el resultado.
+  await fs.writeFile(resultFile, JSON.stringify({ status, reason: redact(reason), at: now.toISOString(), ...(alerta ? { alerta } : {}) }) + '\n');
+}
+
+function pidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === 'EPERM';
+  }
+}
+
+async function readOwner(lockDir) {
+  try {
+    const owner = JSON.parse(await fs.readFile(path.join(lockDir, 'owner.json'), 'utf8'));
+    return Number.isInteger(owner?.pid) ? owner : null;
+  } catch {
+    return null;
+  }
+}
+
+/** ¿Está muerto el dueño? Pid inexistente (ESRCH) = muerto; sin pid legible = muerto sólo si la carpeta es vieja. */
+async function ownerDead(lockDir, owner, alive, now = Date.now()) {
+  if (owner) return !alive(owner.pid);
+  try {
+    return now - (await fs.stat(lockDir)).mtimeMs > LOCK_EMPTY_STALE_MS;
+  } catch {
+    return false; // desapareció: el próximo mkdir lo resuelve
+  }
+}
+
+/** Toma el candado viejo de forma atómica: un mutex (mkdir) deja pasar a un solo tomador, que revalida y renombra. */
+async function takeOver(lockDir, alive) {
+  const mutex = `${lockDir}.takeover`;
+  try {
+    await fs.mkdir(mutex);
+  } catch (error) {
+    if (error?.code !== 'EEXIST') return;
+    try {
+      // El mutex protege una sección de milisegundos: uno de más de 2 minutos quedó de un tomador muerto.
+      if (Date.now() - (await fs.stat(mutex)).mtimeMs > LOCK_EMPTY_STALE_MS) {
+        await fs.rename(mutex, `${mutex}.huerfano-${process.pid}-${Date.now()}`);
+      }
+    } catch {
+      // Otro tomador ya lo resolvió.
+    }
+    return;
+  }
+  try {
+    const owner = await readOwner(lockDir);
+    if (!(await ownerDead(lockDir, owner, alive))) return; // revalidación bajo el mutex: no se desaloja a un dueño vivo
+    const stale = `${lockDir}.stale-${process.pid}-${Date.now()}`;
+    await fs.rename(lockDir, stale);
+    log(`DEPLOY_LOCK_ABANDONADO pid=${owner?.pid ?? 'sin pid'}; se toma el candado.`);
+    await fs.rm(stale, { recursive: true, force: true }).catch(() => {});
+  } catch {
+    // El candado cambió de dueño mientras tanto: se reintenta desde cero.
+  } finally {
+    await fs.rm(mutex, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * F-18: `docker exec` no mata el node del contenedor cuando la cadena corta el cliente por tope de tiempo: ese deploy
+ * seguiría con npm/wrangler mientras arranca otro sobre el mismo /work. El candado hace que el segundo espere al primero.
+ * El candado es una carpeta (mkdir es atómico) con el pid del dueño adentro. Nunca se desaloja a un dueño vivo por
+ * antigüedad; sólo se toma el de un pid muerto, y la toma es atómica.
+ */
+async function acquireLock(lockDir, opts = {}) {
+  const waitMs = opts.lockWaitMs ?? LOCK_WAIT_MS;
+  const pollMs = opts.lockPollMs ?? LOCK_POLL_MS;
+  const alive = opts.pidAlive ?? pidAlive;
+  try {
+    await fs.mkdir(path.dirname(lockDir), { recursive: true });
+  } catch (error) {
+    log(`DEPLOY_LOCK_OFF no se pudo preparar ${lockDir}: ${error.code ?? error.message}; se despliega sin candado.`);
+    return { ok: true, release: async () => {} };
+  }
+  const started = Date.now();
+  let announced = false;
+  for (;;) {
+    try {
+      await fs.mkdir(lockDir);
+      await fs.writeFile(path.join(lockDir, 'owner.json'), JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
+      return { ok: true, release: async () => { await fs.rm(lockDir, { recursive: true, force: true }).catch(() => {}); } };
+    } catch (error) {
+      if (error?.code !== 'EEXIST') {
+        log(`DEPLOY_LOCK_OFF ${error.code ?? error.message}; se despliega sin candado.`);
+        return { ok: true, release: async () => {} };
+      }
+    }
+    const owner = await readOwner(lockDir);
+    if (await ownerDead(lockDir, owner, alive)) {
+      await takeOver(lockDir, alive);
+      continue;
+    }
+    if (Date.now() - started >= waitMs) {
+      return { ok: false, reason: `hay otro despliegue en curso (pid ${owner?.pid ?? '?'} desde ${owner?.at ?? '?'}); no terminó en ${Math.round(waitMs / 1000)} s` };
+    }
+    if (!announced) {
+      log(`DEPLOY_ESPERA hay otro despliegue en curso (pid ${owner?.pid ?? '?'} desde ${owner?.at ?? '?'}); espero a que termine.`);
+      announced = true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
 }
 
 async function deployOnce(now = new Date(), opts = {}) {
+  const lock = await acquireLock(opts.lockFile ?? path.join(path.dirname(opts.stateFile ?? STATE_FILE), 'deploy.lock'), opts);
+  if (!lock.ok) {
+    log(`DEPLOY_FAIL ${lock.reason}`);
+    await saveResult('fail', lock.reason, now, opts);
+    return 'fail';
+  }
+  try {
+    return await deployOnceLocked(now, opts);
+  } finally {
+    await lock.release();
+  }
+}
+
+async function deployOnceLocked(now = new Date(), opts = {}) {
   const outputFile = opts.outputFile ?? OUTPUT_FILE;
   const amazonOutputFile = opts.amazonOutputFile ?? AMAZON_OUTPUT_FILE;
   const workDir = opts.workDir ?? WORK_DIR;
@@ -301,6 +359,7 @@ async function deployOnce(now = new Date(), opts = {}) {
   const stamp = new Date(now.getTime() + ART_OFFSET_MS).toISOString();
   const breakdownPath = path.join(logDir, `desglose-${stamp.slice(0, 10)}-${stamp.slice(11, 16).replace(':', '')}.log`);
   let breakdownReady = false;
+  let alerta = null;
   let phase = null;
   let phaseStarted = started;
   const endPhase = () => {
@@ -327,21 +386,12 @@ async function deployOnce(now = new Date(), opts = {}) {
 
   const check = await hasBothTodayPrices(now, opts);
   if (!check.ready) {
-    const expired = now.getTime() >= deadlineAt(now);
-    log(`${expired ? 'DEPLOY_FAIL' : 'DEPLOY_SKIP'} ${check.reason}; no se despliega. ${elapsed()}s`);
-    if (expired) await saveResult('fail', check.reason, now, opts);
-    return expired ? 'fail' : 'skip';
+    log(`DEPLOY_FAIL ${check.reason}; no se despliega. ${elapsed()}s`);
+    await saveResult('fail', check.reason, now, opts);
+    return 'fail';
   }
   raw = check.mlRaw;
   amazonRaw = check.amazonRaw;
-  if (opts.requireExtraSlot) {
-    const extra = await hasExtraSlotToday(now, opts);
-    if (!extra.ready) {
-      log(`DEPLOY_SKIP ${extra.reason}; no se despliega.`);
-      return 'skip';
-    }
-  }
-
   const hashInput = [raw ?? '', amazonRaw ?? ''].join('\n');
   const hash = createHash('sha256').update(hashInput).digest('hex');
   const last = await readState(stateFile);
@@ -399,7 +449,8 @@ async function deployOnce(now = new Date(), opts = {}) {
     if (!Number.isInteger(publicados) || publicados <= 0) throw new Error('Catálogo vacío o cantidad de comparables inválida');
     // Con menos productos se publican igual los frescos (regla del user: nunca dejar precios viejos); sólo se avisa.
     if (typeof last?.publicados === 'number' && publicados < last.publicados * 0.5) {
-      log(`DEPLOY_ALERT caída brusca: ${publicados} comparables contra ${last.publicados} del último despliegue (se publica igual).`);
+      alerta = `caída brusca: ${publicados} comparables contra ${last.publicados} del último despliegue`;
+      log(`DEPLOY_ALERT ${alerta} (se publica igual).`);
     }
     buildState.version = version;
     buildState.slot = JSON.parse(raw).slot ?? null;
@@ -409,7 +460,7 @@ async function deployOnce(now = new Date(), opts = {}) {
     beginPhase('estado');
     await fs.mkdir(path.dirname(stateFile), { recursive: true });
     await fs.writeFile(stateFile, JSON.stringify({ hash, date: today, slot, priceSlot: buildState.slot, version, redeploys: recovery ? redeployCount(last) + 1 : 0, publicados, deployedAt: now.toISOString() }));
-    await saveResult('ok', `Publicado con precios del ${today}`, now, opts);
+    await saveResult('ok', `Publicado con precios del ${today}`, now, opts, alerta);
     endPhase();
     log(`DEPLOY_OK publicado con precios del ${today}${recovery ? ' (redespliegue por precios recuperados)' : ''}. ${elapsed()}s desglose=${breakdownPath}`);
     return 'ok';
@@ -430,203 +481,39 @@ async function deployOnce(now = new Date(), opts = {}) {
   }
 }
 
+// Compatibilidad con los llamadores anteriores: un intento, sin esperas por horario.
 async function deployWithRetry(opts = {}) {
-  const nowFn = opts.nowFn ?? (() => new Date());
-  const sleepFn = opts.sleepFn ?? sleepMs;
-  const deployFn = opts.deployFn ?? deployOnce;
-  const retryIntervalMs = opts.retryIntervalMs ?? RETRY_INTERVAL_MS;
-  const startedAt = nowFn().getTime();
-
-  while (!stopRequested) {
-    const now = nowFn();
-    const deadline = deadlineAt(now);
-    const check = await hasBothTodayPrices(now, opts);
-    if (check.ready) {
-      const res = await deployFn(now, { ...opts, requireBothToday: true });
-      if (res !== 'fail' || now.getTime() >= deadline) {
-        return res;
-      }
-      const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
-      log(`DEPLOY_WAIT el despliegue devolvió fail; próximo reintento en ${Math.round(waitMs / 60e3)} min.`);
-      await sleepFn(waitMs);
-      continue;
-    }
-    if (now.getTime() >= deadline) {
-      log(`DEPLOY_FAIL son las 11:00 ART o más: ${check.reason}; no se despliega. ${((now.getTime() - startedAt) / 1000).toFixed(1)}s`);
-      await saveResult('fail', check.reason, now, opts);
-      return 'fail';
-    }
-    const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
-    log(`DEPLOY_WAIT esperando precios del día (${check.reason}); próximo chequeo en ${Math.round(waitMs / 60e3)} min.`);
-    await sleepFn(waitMs);
-  }
-  return 'stopped';
-}
-
-async function deployExtraWithRetry(opts = {}) {
-  const nowFn = opts.nowFn ?? (() => new Date());
-  const sleepFn = opts.sleepFn ?? sleepMs;
-  const deployFn = opts.deployFn ?? deployOnce;
-  const retryIntervalMs = opts.retryIntervalMs ?? RETRY_INTERVAL_MS;
-
-  while (!stopRequested) {
-    const now = nowFn();
-    const today = artDate(now);
-    if (!isExtraDate(today)) {
-      log(`DEPLOY_INFO ${today} no es día de oferta especial; no hay segundo despliegue.`);
-      return 'skip';
-    }
-    const deadline = extraDeadlineAt(now);
-    const check = await hasExtraSlotToday(now, opts);
-    if (check.ready) {
-      const res = await deployFn(now, { ...opts, requireBothToday: false, requireExtraSlot: true, slot: 'extra' });
-      if (res !== 'fail' || now.getTime() >= deadline) {
-        return res;
-      }
-      const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
-      log(`DEPLOY_WAIT el segundo despliegue devolvió fail; próximo reintento en ${Math.round(waitMs / 60e3)} min.`);
-      await sleepFn(waitMs);
-      continue;
-    }
-    if (now.getTime() >= deadline) {
-      log(`DEPLOY_INFO son las 15:00 ART o más sin slot ${extraSlotId(today)} (${check.reason}); no se despliega la segunda vez.`);
-      return 'skip';
-    }
-    const waitMs = Math.min(retryIntervalMs, Math.max(0, deadline - now.getTime()));
-    log(`DEPLOY_WAIT esperando slot ${extraSlotId(today)} en ml-prices.json (${check.reason}); próximo chequeo en ${Math.round(waitMs / 60e3)} min.`);
-    await sleepFn(waitMs);
-  }
-  return 'stopped';
-}
-
-async function sleepMs(ms) {
-  const target = Date.now() + ms;
-  await sleepUntil(target);
-}
-
-async function sleepUntil(timestamp) {
-  while (!stopRequested && Date.now() < timestamp) {
-    await new Promise((resolve) => setTimeout(resolve, Math.min(MAX_SLEEP_MS, Math.max(0, timestamp - Date.now()))));
-  }
-}
-
-async function runStartupIfPending(opts = {}) {
-  const nowFn = opts.nowFn ?? (() => new Date());
-  const stateFile = opts.stateFile ?? STATE_FILE;
-  const retryFn = opts.retryFn ?? deployWithRetry;
-  const now = nowFn();
-  if (now.getTime() < startAt(now)) {
-    return 'before-window';
-  }
-  const last = await readState(stateFile);
-  const today = artDate(now);
-  if (last?.date === today) {
-    log(`DEPLOY_SKIP ya existe despliegue del día (${today}) al iniciar.`);
-    return 'already-deployed';
-  }
-  log(`DEPLOY_INFO ventana pendiente del ${today} al iniciar; ejecutando despliegue.`);
-  return await retryFn(opts);
-}
-
-async function runChainIfReady(now = new Date(), opts = {}) {
-  const today = artDate(now);
-  const markerFile = path.join(opts.outputDir ?? path.dirname(opts.outputFile ?? OUTPUT_FILE), `cadena-${today}.json`);
-  const marker = await readJsonWithDate(markerFile);
-  if (!marker.ok || marker.data?.fecha !== today) return 'no-marker';
-  const state = await readState(opts.stateFile ?? STATE_FILE);
-  if (state?.date === today) return 'already-deployed';
+  const now = (opts.nowFn ?? (() => new Date()))();
   const check = await hasBothTodayPrices(now, opts);
-  if (!check.ready) return 'waiting-prices';
-  log(`DEPLOY_INFO cadena del ${today} terminada; desplegando ahora.`);
+  if (!check.ready) {
+    log(`DEPLOY_FAIL ${check.reason}; no se despliega.`);
+    await saveResult('fail', check.reason, now, opts);
+    return 'fail';
+  }
   return await (opts.deployFn ?? deployOnce)(now, opts);
 }
 
-async function main() {
-  const stop = () => { stopRequested = true; };
-  process.on('SIGTERM', stop);
-  process.on('SIGINT', stop);
-  log('Deployer iniciado.');
-  const startupStarted = performance.now();
-  try {
-    await runStartupIfPending();
-  } catch (error) {
-    log(`DEPLOY_FAIL ${redact(String(error.message))} ${((performance.now() - startupStarted) / 1000).toFixed(1)}s`);
-  }
-  let chainAttempted = null;
-  let announcedNext = null;
-  let scheduleState = null;
-  while (!stopRequested) {
-    const wake = new Date();
-    const today = artDate(wake);
-    const attemptStarted = performance.now();
-    try {
-      if (chainAttempted !== today) {
-        const result = await runChainIfReady(wake);
-        if (!['no-marker', 'waiting-prices'].includes(result)) chainAttempted = today;
-      }
-      const state = await readState();
-      const stateKey = JSON.stringify(state);
-      if (announcedNext === null || scheduleState !== stateKey) {
-        announcedNext = nextRunAt(wake, state);
-        scheduleState = stateKey;
-        log(`Próximo despliegue previsto: ${new Date(announcedNext).toISOString()}.`);
-      }
-      const next = announcedNext;
-      if (next > wake.getTime()) {
-        // Revisa el marcador aunque el próximo horario fijo esté a varias horas.
-        await sleepMs(Math.min(MAX_SLEEP_MS, next - wake.getTime()));
-        continue;
-      }
-      announcedNext = null;
-      if (state?.date === today) {
-        await deployOnce(wake, { slot: state.slot ?? 'morning' });
-      } else {
-        await deployWithRetry();
-      }
-    } catch (error) {
-      log(`DEPLOY_FAIL ${redact(String(error.message)).replace(/[\r\n]+/g, ' | ')} ${((performance.now() - attemptStarted) / 1000).toFixed(1)}s`);
-      await sleepMs(MAX_SLEEP_MS);
-    }
-  }
-  log('Deployer detenido.');
+async function main(opts = {}) {
+  const now = (opts.nowFn ?? (() => new Date()))();
+  return await (opts.deployFn ?? deployOnce)(now, { ...opts, manual: opts.manual ?? false });
 }
 
 if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
-  if (process.argv.includes('--ahora')) {
-    const manualStarted = performance.now();
-    // 05/11: despliegue manual por el MISMO camino que el automático (altas de catalog-auto, fotos y validaciones).
-    // tools/deploy.sh compilaba en la PC sin las altas automáticas y publicaba un catálogo incompleto.
-    deployOnce(new Date(), { slot: 'manual', manual: true })
-      .then((r) => { log(`DEPLOY_MANUAL ${r}`); process.exit(r === 'ok' ? 0 : 1); })
-      .catch((e) => { log(`DEPLOY_FAIL manual: ${redact(String(e.message))} ${((performance.now() - manualStarted) / 1000).toFixed(1)}s`); process.exit(1); });
-  } else {
-    main();
-  }
+  main({ manual: process.argv.includes('--ahora') })
+    .then((result) => { process.exitCode = result === 'ok' || result === 'skip' ? 0 : 1; })
+    .catch((error) => { log(`DEPLOY_FAIL ${redact(String(error.message))}`); process.exitCode = 1; });
 }
 
 export {
+  main,
   saveBreakdown,
   run,
   commandTimeout,
   purgeLogs,
   overlayCatalog,
   artDate,
-  startAt,
-  isExtraDate,
-  extraStartAt,
-  extraDeadlineAt,
-  extraSlotId,
-  nextRunAt,
-  deadlineAt,
   hasBothTodayPrices,
-  hasExtraSlotToday,
   deployOnce,
   deployWithRetry,
-  deployExtraWithRetry,
-  runStartupIfPending,
-  runChainIfReady,
-  RETRY_INTERVAL_MS,
-  DEADLINE_UTC,
-  EXTRA_DEPLOY_AT_UTC,
-  EXTRA_DEADLINE_UTC,
+  acquireLock,
 };

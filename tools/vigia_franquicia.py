@@ -28,7 +28,7 @@ DEPLOYER = "franquicia400-weboffers-deployer-1"
 CONTENEDORES = [WORKER, DEPLOYER, "franquicia400-weboffers-amazon-ar-1", "franquicia400-weboffers-amazon-scraper-1"]
 LOGS_WORKER = "/opt/docker/franquicia400/worker/output/logs"
 # Líneas del log del worker que son fallas reales (no ruido esperado).
-MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA|TELEGRAM_INCIERTO")
+MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|DEPLOY_ALERT caída|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA|TELEGRAM_INCIERTO|PUBLICACION_ALERTA|PUBLICACION_SIN_ESTADO|PUBLICACION_ESTADO_INVALIDO|DUDOSO_PARA_ALEJANDRO")
 ML_FALLAS_TOLERADAS = 3  # "no se pudo consultar" sueltas por día antes de avisar
 SIN_LATIDO_MIN = 75      # el worker imprime al menos una vez por hora
 
@@ -93,7 +93,6 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     problemas = {}
     if (ahora.hour, ahora.minute) >= (5, 30):
         problemas.update(chequear_cadena(hoy, cadena_dir))
-    problemas.update(chequear_tras_alta(hoy, cadena_dir, ahora))
     if not internet():
         problemas["internet"] = "la VM docker no tiene salida a internet, revisá la ruta por defecto"
         return problemas  # sin internet el resto da falsos positivos
@@ -120,10 +119,10 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
         problemas["ml-fallas"] = f"Mercado Libre: {len(ml_fallas)} consultas fallidas hoy (ver log del worker)"
     if WORKER in vivos:
         # Desde el 05/11 el log lleva la fecha adelante («AAAA-MM-DD HH:MM:SS texto»); se aceptan los dos formatos.
-        horas = (re.match(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) ", l) for l in reversed(lineas))
+        horas = (re.match(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) LATIDO worker$", l) for l in reversed(lineas))
         ultima = next((m.group(1) for m in horas if m), None)
         if ultima is None and ahora.hour >= 2:
-            problemas["latido"] = "el worker no escribió nada en el log de hoy"
+            problemas["latido"] = "el worker no escribió LATIDO worker en el log de hoy"
         elif ultima is not None:
             h = datetime.datetime.combine(ahora.date(), datetime.time.fromisoformat(ultima), rf.ART)
             if (ahora - h).total_seconds() > SIN_LATIDO_MIN * 60:
@@ -134,8 +133,8 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     except Exception:  # noqa: BLE001
         code, out = 1, ""
     for linea in (out.splitlines() if code == 0 else []):
-        if "DEPLOY_FAIL" in linea:
-            problemas["deploy:" + linea[25:90]] = f"el despliegue falló: {linea[25:180]}"
+        if "DEPLOY_FAIL" in linea or "DEPLOY_ALERT caída" in linea:
+            problemas["deploy:" + linea[25:90]] = f"el despliegue registró: {linea[25:180]}"
 
     if (ahora.hour, ahora.minute) >= (4, 30):
         # Relevamiento del envío AR con Chrome (cadena 03:30): sin él no se confirman envíos (REGLA 0).
@@ -162,8 +161,28 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     return problemas
 
 
+def cadena_en_curso(logs_dir):
+    """El archivo puede existir siempre; importa si flock está tomado."""
+    try:
+        import fcntl
+    except ImportError:
+        return False  # El host de la cadena usa Linux.
+    try:
+        with open(os.path.join(logs_dir, "cadena.lock"), "rb") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+            fcntl.flock(lock, fcntl.LOCK_UN)
+    except FileNotFoundError:
+        pass
+    return False
+
+
 def chequear_cadena(hoy, logs_dir):
     """Lee el resumen local del host; detecta también una cadena interrumpida."""
+    if cadena_en_curso(logs_dir):
+        return {}
     try:
         with open(os.path.join(logs_dir, f"cadena-{hoy}.json"), encoding="utf-8") as fh:
             resumen = json.load(fh)
@@ -174,44 +193,17 @@ def chequear_cadena(hoy, logs_dir):
     except (OSError, ValueError, TypeError) as exc:
         return {"cadena": f"falta el resumen válido de la cadena de madrugada ({exc})"}
     problemas = {}
+    if not resumen.get("fin"):
+        activos = ", ".join(p["paso"] for p in resumen["pasos"] if p.get("estado") == "en_curso")
+        return {"cadena-interrumpida": f"la cadena se interrumpió desde {resumen.get('inicio')}; paso en_curso={activos or 'sin paso registrado'}"}
     pasos = {p["paso"]: p for p in resumen["pasos"]}
-    for nombre in ("chrome", "amazon", "ml", "deploy"):
+    obligatorios = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")]
+    obligatorios += [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
+    for nombre in dict.fromkeys(obligatorios + list(pasos)):
         paso = pasos.get(nombre, {})
         if paso.get("estado") != "ok":
             motivo = paso.get("motivo") or paso.get("estado") or "paso sin ejecutar"
             problemas[f"cadena:{nombre}"] = f"la cadena de madrugada falló en {nombre} ({motivo})"
-    return problemas
-
-
-TRAS_ALTA_TOPE_S = 12000  # = GLOBAL_TIMEOUT de tools/cadena.py: pasado esto sin «fin», la corrida se cortó.
-
-
-def chequear_tras_alta(hoy, logs_dir, ahora):
-    """Confirmación de altas tras el alta nocturna (cadena.py --tras-alta, 07/11). Sin archivo = no hubo alta."""
-    ruta = os.path.join(logs_dir, f"tras-alta-{hoy}.json")
-    if not os.path.exists(ruta):
-        return {}
-    try:
-        with open(ruta, encoding="utf-8") as fh:
-            resumen = json.load(fh)
-        if not isinstance(resumen, dict) or not isinstance(resumen.get("pasos"), list):
-            raise ValueError("resumen inválido")
-        if any(not isinstance(p, dict) or not isinstance(p.get("paso"), str) for p in resumen["pasos"]):
-            raise ValueError("pasos inválidos")
-    except (OSError, ValueError, TypeError) as exc:
-        return {"tras-alta": f"el resumen de la confirmación de altas está roto ({exc})"}
-    problemas = {}
-    for paso in resumen["pasos"]:
-        if paso.get("estado") == "fail":
-            problemas[f"tras-alta:{paso['paso']}"] = (
-                f"la confirmación de altas tras el alta nocturna falló en {paso['paso']} ({paso.get('motivo') or 'sin motivo'})")
-    if not resumen.get("fin"):
-        try:
-            inicio = datetime.datetime.fromisoformat(resumen.get("inicio", ""))
-        except (TypeError, ValueError):
-            inicio = None
-        if inicio is None or (ahora - inicio).total_seconds() > TRAS_ALTA_TOPE_S:
-            problemas["tras-alta:interrumpida"] = "la confirmación de altas tras el alta nocturna se cortó a mitad (sin «fin»)"
     return problemas
 
 

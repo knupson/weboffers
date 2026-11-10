@@ -1,6 +1,9 @@
 """Alta en dos fases y relevamiento compartido, sin Chrome ni consultas reales."""
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 
 import pytest
 
@@ -8,6 +11,28 @@ from tools import altas_chrome, confirmar_altas as confirmation
 from test_catalog_auto import candidate, setup_job
 import catalog_auto as auto
 from catalog import read_catalog
+
+
+@pytest.mark.parametrize("args,modo,esperado", [
+    ([], None, "verificacion"), (["--pendientes"], None, "alta"),
+    (["--pendientes"], "verificacion", "verificacion"), ([], "alta", "alta"),
+])
+def test_shell_pendientes_selecciona_alta_sin_pisar_modo_explicito(args, modo, esperado):
+    shell = shutil.which("sh")
+    if not shell:
+        pytest.skip("Requiere sh para ejecutar el script real")
+    env = dict(os.environ)
+    env.pop("PUBLICACION_MODO", None)
+    if modo is not None:
+        env["PUBLICACION_MODO"] = modo
+    source = (Path(__file__).parents[1] / "tools/envio_ar_chrome.sh").read_text(encoding="utf-8")
+    # Sin productos: docker falso registra el modo recibido y evita consultas reales.
+    source = 'docker() { printf "%s\\n" "$@" >&2; };\n' + source
+    result = subprocess.run([shell, "-c", source, "envio_ar_chrome.sh", "--con-horarios", *args],
+                            env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert f"PUBLICACION_MODO={esperado}" in result.stderr.splitlines()
+    assert "ENVIO_AR_CHROME_OK sin productos para relevar" in result.stdout
 
 
 TODAY = "2026-11-06"
@@ -19,7 +44,7 @@ def save(path, value):
 
 def pending(asin="NUEVO", **changes):
     return dict(asin=asin, slug=asin.lower(), store="US", verified=True,
-                ml={"catalogId": "MLA" + asin}, pendienteDesde="2026-11-05", **changes)
+                ml={"catalogId": "MLA" + asin}, pendienteDesde="2026-11-05", image="/products/x.webp", **changes)
 
 
 def snapshot(items, day=TODAY):
@@ -28,9 +53,11 @@ def snapshot(items, day=TODAY):
 
 @pytest.fixture
 def state(tmp_path):
+    import publicacion
+    publicacion.guardar(tmp_path, {})
     repo = tmp_path / "catalog.json"
     save(repo, [{"asin": "REPO", "slug": "repo", "store": "US", "verified": True,
-                 "ml": {"catalogId": "MLAREPO"}}])
+                 "ml": {"catalogId": "MLAREPO"}, "image": "/products/repo.webp"}])
     save(tmp_path / "catalog-auto.json", [pending("EXISTENTE")])
     save(tmp_path / "altas-pendientes.json", [pending()])
     return repo, tmp_path
@@ -95,16 +122,18 @@ def test_sin_dato_primera_y_tercera_noche_sin_duplicar_intentos(state, item):
 
 def test_no_promueve_evidencia_vieja_ni_sin_archivo(state):
     repo, output = state
-    before = (output / "altas-pendientes.json").read_bytes()
-    with pytest.raises(ValueError, match="No hay relevamiento de Chrome"):
-        confirmation.confirm(repo, output, TODAY)
+    # Sin archivo, o con evidencia de otro día, nada se promueve ni se rechaza: el pendiente sigue y cuenta la noche
+    # «sin corrida» (nochesSinCorrida), no «sin dato» (nochesSinDato).
+    assert confirmation.confirm(repo, output, TODAY) == {"promovidas": 0, "rechazadas": 0, "siguen_pendientes": 1}
     save(output / f"ar-chrome-{TODAY}.json", snapshot({"NUEVO": {"ships": True, "free": True, "precio": "$150"}}, "2026-11-05"))
-    with pytest.raises(ValueError, match="no es de hoy"):
-        confirmation.confirm(repo, output, TODAY)
-    assert (output / "altas-pendientes.json").read_bytes() == before
+    assert confirmation.confirm(repo, output, TODAY)["promovidas"] == 0
+    fila = read_catalog(output / "altas-pendientes.json")[0]
+    assert fila["nochesSinCorrida"] == 1 and "nochesSinDato" not in fila  # el mismo día no se duplica
+    assert json.loads((output / "altas-rechazadas.json").read_text()) == {}
 
 
-def test_lista_chrome_incluye_pendientes_y_modo_solo_pendientes(state):
+def test_lista_chrome_incluye_pendientes_y_modo_solo_pendientes(state, monkeypatch):
+    monkeypatch.setenv("PUBLICACION_MODO", "alta")
     repo, output = state
     assert altas_chrome.asin_list(repo, output).split() == ["REPO:repo", "EXISTENTE:existente", "NUEVO:nuevo"]
     assert altas_chrome.asin_list(repo, output, pending_only=True) == "NUEVO:nuevo"
@@ -126,15 +155,16 @@ def test_fusion_chrome_conserva_resto_y_actualiza_pendientes(state):
     assert (output / f"ar-chrome-{TODAY}.json").read_bytes() == before
 
 
-@pytest.mark.parametrize("days,skip", [(0, True), (13, True), (14, False)])
+@pytest.mark.parametrize("days,skip", [(0, True), (6, True), (7, False)])
 def test_descubrimientos_excluyen_rechazos_y_pendientes(setup_job, monkeypatch, days, skip):
     from datetime import datetime, timedelta
     from unittest.mock import Mock
     repo, output, discover = setup_job
-    output.mkdir()
+    output.mkdir(exist_ok=True)
     now = datetime.fromisoformat("2026-11-08T23:30:00+00:00")
     save(output / "altas-rechazadas.json", {"RECHAZADO": {"fecha": (now.date() - timedelta(days=days)).isoformat()}})
     save(output / "altas-pendientes.json", [pending()])
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")  # modo manual: ML→Amazon
     desde_ml = Mock(return_value=[])
     monkeypatch.setattr(auto.crecer_desde_ml, "candidatos", desde_ml)
     auto.maybe_grow(repo, output, now, mep=1000)
@@ -147,7 +177,7 @@ def test_descubrimientos_excluyen_rechazos_y_pendientes(setup_job, monkeypatch, 
 @pytest.mark.parametrize("collision", ["asin", "slug", "catalogId"])
 def test_fase_a_deduplica_con_pendientes(setup_job, collision, capsys):
     repo, output, _ = setup_job
-    output.mkdir()
+    output.mkdir(exist_ok=True)
     row = candidate()
     entry = pending()
     if collision == "catalogId":
@@ -170,3 +200,22 @@ def test_comando_diurno_encadena_y_shell_preserva_argumentos():
     assert 'listar "$@"' in shell and '*sys.argv[2:]' in shell
     assert "altas_chrome.py guardar --fecha" in shell
     assert shell.count("python3 /tmp/envio_ar_chrome.py") == 1
+
+
+def test_altas_ok_cuenta_vencidos_con_los_mismos_requisitos_de_chrome(state, capsys):
+    repo, output = state
+    save(output / "altas-pendientes.json", [])
+    productos = [pending(nombre) for nombre in ["VENCIDO", "HOY", "VIGENTE", "SINIMAGEN", "ESPANA"]]
+    productos[3].pop("image")
+    productos[4]["store"] = "ES"
+    save(output / "catalog-auto.json", productos)
+    import publicacion
+    publicacion.guardar(output, {
+        p["slug"]: {"asin": p["asin"], "situacion": "no_revisar", "desde": "2026-10-30",
+                    "hasta": "2026-11-07" if p["asin"] == "VIGENTE" else TODAY if p["asin"] == "HOY" else "2026-11-05",
+                    "ultimoIntento": None, "intentos": 0, "motivo": "sin_envio"}
+        for p in productos
+    })
+    save(output / f"ar-chrome-{TODAY}.json", snapshot({p["asin"]: {"ships": True, "free": True} for p in productos}))
+    confirmation.confirm(repo, output, TODAY)
+    assert "vencidos=3" in capsys.readouterr().out

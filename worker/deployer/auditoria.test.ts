@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { commandTimeout, deployOnce as actualDeployOnce, nextRunAt, purgeLogs, run } from './deploy.mjs';
+import { commandTimeout, deployOnce as actualDeployOnce, main, purgeLogs, run } from './deploy.mjs';
 
 async function deployOnce(now: Date, opts: any) {
   const runImpl = opts.runImpl;
@@ -27,9 +27,11 @@ beforeEach(async () => {
 });
 afterEach(async () => { vi.unstubAllEnvs(); await fs.rm(dir, { recursive: true, force: true }); });
 
-it('programa la siguiente ventana despues del vencimiento', () => {
-  expect(nextRunAt(new Date('2026-11-05T14:00:00Z'), null)).toBe(Date.parse('2026-11-06T10:00:00Z'));
-  expect(nextRunAt(new Date('2026-11-04T23:00:00Z'), { date: '2026-11-04' })).toBe(Date.parse('2026-11-05T10:00:00Z'));
+it('devuelve la falla de la invocación sin programar otra ventana', async () => {
+  const calls: string[] = [];
+  expect(await main({ nowFn: () => new Date('2026-11-05T14:00:00Z'),
+    deployFn: async (now: Date) => { calls.push(now.toISOString()); return 'fail'; } })).toBe('fail');
+  expect(calls).toEqual(['2026-11-05T14:00:00.000Z']);
 });
 
 it('aplica timeout por comando e identifica el comando colgado', async () => {

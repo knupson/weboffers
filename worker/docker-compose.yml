@@ -16,6 +16,7 @@ services:
       TELEGRAM_STATE_PATH: /app/output/telegram-state.json
       ML_CLIENT_ID: ${ML_CLIENT_ID:-}
       ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
       ML_PRICES_PATH: /app/output/ml-prices.json
       AMAZON_SCRAPER_URL: ${AMAZON_SCRAPER_URL:-http://weboffers-amazon-scraper:8000}
       AMAZON_AR_URL: ${AMAZON_AR_URL:-http://weboffers-amazon-ar:8001}
