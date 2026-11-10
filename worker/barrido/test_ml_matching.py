@@ -122,3 +122,10 @@ def test_titulo_que_empieza_con_medida_no_tiene_marca():
     for t in ('Timbuk2 Closer Laptop Briefcase', 'T3 CurlWrap', '8BitDo Pro 2', 'Insta360 X4',
               'PD4060CSV 60 Amp Converter', 'XB-450i Bead Breaker', '4-in-1 Kit'):
         assert not starts_without_brand(t), t
+
+
+def test_tamanio_m2_y_resolucion_no_son_modelo():
+    # 10/11: SIX NVMe «m.2 2280» buscaba «SIX 2280» y dejaba de encontrar el SIX X7400.
+    assert model_tokens('SIX NVME M.2 SSD PCIe 4.0-1TB m.2 2280 ssd') == []
+    assert model_tokens('Monitor 2160 1440 1080 22110 2242') == []
+    assert model_tokens('LEGO Minecraft Ghast Station 21597') == ['21597']

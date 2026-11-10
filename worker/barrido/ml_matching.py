@@ -57,6 +57,10 @@ def code(text):
     return ''.join(words(text))
 
 
+# 10/11: tamaños M.2 y resoluciones no son modelo (SIX NVMe «2280» buscaba «SIX 2280» y perdía el SIX X7400).
+NUMERIC_NOT_MODEL = {'2230', '2242', '2260', '2280', '22110', '1080', '1440', '2160'}
+
+
 def model_tokens(text):
     """Códigos letra+número (WH-1000XM5) y, desde 10/11, códigos sólo numéricos de 4 a 6 cifras que no
     son años (LEGO 76471, 11382): sin modelo caían en linea_no_confirmada contra el título en castellano.
@@ -64,7 +68,8 @@ def model_tokens(text):
     tokens = TOKEN.findall(MEASURE.sub(' ', str(text or '')))
     return [t for t in tokens
             if ((re.search('[A-Za-z]', t) and re.search(r'\d', t))
-                or (re.fullmatch(r'\d{4,6}', t) and not re.fullmatch(r'(?:19|20)\d\d', t)))
+                or (re.fullmatch(r'\d{4,6}', t) and not re.fullmatch(r'(?:19|20)\d\d', t)
+                    and t not in NUMERIC_NOT_MODEL))
             and t.lower() not in GENERIC_MODELS]
 
 
