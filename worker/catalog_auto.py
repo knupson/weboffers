@@ -137,6 +137,41 @@ def add_accepted(catalog, matches, output, today, journal=None):
                         lambda: _add_accepted(catalog, matches, output, today, journal=journal))
 
 
+def add_doubtful(catalog, row, output, today, journal=None):
+    """10/11: un par dudoso del matcheo va a la cola de revisión (proceso 3 de Alejandro, 09/11: «Verificación
+    "manual" de productos dudosos»). Antes quedaba sólo en match-results.json y dudosos_nvidia.py, que lee
+    altas-revision.json, nunca lo veía (08/11: 77 dudosos sin revisar)."""
+    output = Path(output)
+    return update_state(catalog, output / "altas.json",
+                        lambda: _add_doubtful(catalog, row, output, today, journal=journal))
+
+
+def _add_doubtful(catalog, row, output, today, journal=None):
+    review_path = output / "altas-revision.json"
+    cutoff = (datetime.fromisoformat(today) - timedelta(days=14)).date().isoformat()
+    review = {(r["asin"], r["catalogId"]): r
+              for r in read_json(review_path, []) if r.get("revisionDesde", "") >= cutoff}
+    pending_path = output / "altas-pendientes.json"
+    pending = read_catalog(pending_path) if pending_path.exists() else []
+    usd = row.get("amazonPriceUsd")
+    reason = pending_rejection(row, catalog + read_json(output / "catalog-auto.json", []) + pending,
+                               rejected_asins(output, today))
+    if reason:
+        status = ("descartado", reason)
+        print(alta_line(row, "descartado", reason, {"precio": usd}), flush=True)
+    else:
+        key = (row["asin"], row["catalogId"])
+        review[key] = {**row, "amazonIds": row.get("amazonIds") or {}, "mlIds": row.get("mlIds") or {},
+                       "motivoRevision": "dudoso_matcheo", "dudas": row.get("reason") or "",
+                       "revisionDesde": review.get(key, {}).get("revisionDesde", today)}
+        publish.write_atomic(review_path, list(review.values()))
+        status = ("revision", "dudoso_matcheo")
+        print(alta_line(row, "revision", "dudoso_matcheo", {"precio": usd}), flush=True)
+    if journal:
+        journal.append("alta", row.get("asin"), status[0], status[1], row=row)
+    return status
+
+
 def pending_rejection(row, catalog, rejected):
     """Controles comunes al descubrimiento y a la aprobación manual."""
     usd = row.get("amazonPriceUsd")
@@ -282,6 +317,14 @@ def maybe_grow(catalog_path, output, now=None, mep=None, force=False):
                 if journal.resolved("alta").get(row["asin"], {}).get("result") == "revision":
                     review_keys.add((row.get("asin"), row.get("catalogId")))
                     revision_count = len(review_keys)
+            elif status == "doubtful":
+                try:
+                    if add_doubtful(catalog, row, output, today, journal=journal)[0] == "revision":
+                        review_keys.add((row.get("asin"), row.get("catalogId")))
+                        revision_count = len(review_keys)
+                except Exception as exc:  # un dudoso que no se pudo encolar no corta la búsqueda
+                    failures.append({"slug": row.get("slug"), "motivo": type(exc).__name__})
+                    print(alta_line(row, "descartado", type(exc).__name__, {"text": str(exc)}), flush=True)
             matches[status].append(row)
             if sum(map(len, matches.values())) % 50 == 0:
                 publish.write_atomic(output / "match-results.json", matches)

@@ -84,14 +84,19 @@ def test_i4_servicio_caido_encola_revision_sin_fatal(tmp_path, pipeline, capsys)
     assert "IDENT asin=" in capsys.readouterr().out
 
 
-def test_i5_dudosos_no_entran_revision(tmp_path, pipeline):
+def test_i5_dudosos_entran_revision(tmp_path, pipeline):
+    # 10/11: proceso 3 de Alejandro (09/11) — los dudosos del matcheo se revisan; antes quedaban sólo en
+    # match-results.json y dudosos_nvidia.py (que lee altas-revision.json) nunca los veía.
     from test_match_candidates import product
     data, run = pipeline
     data["ficha"] = product(MODEL=None, ALPHANUMERIC_MODEL=None, name="Samsung SSD 1TB")
     assert run()["status"] == "ok"
-    review = tmp_path / "altas-revision.json"
-    assert not review.exists() or not json.loads(review.read_text())
-    assert json.loads((tmp_path / "match-results.json").read_text())["doubtful"]
+    dudosos = json.loads((tmp_path / "match-results.json").read_text())["doubtful"]
+    assert dudosos
+    cola = json.loads((tmp_path / "altas-revision.json").read_text())
+    encolados = [r for r in cola if r.get("motivoRevision") == "dudoso_matcheo"]
+    assert {(r["asin"], r["catalogId"]) for r in encolados} == {(r["asin"], r["catalogId"]) for r in dudosos}
+    assert all(r["dudas"] and r["revisionDesde"] for r in encolados)
 
 
 def test_m6_slugs_revision_distintos_incluso_al_reanudar(tmp_path, pipeline):
