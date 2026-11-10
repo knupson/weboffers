@@ -46,6 +46,38 @@ class Bitacora:
         print(linea, flush=True)
 
 
+def crear_observador(log, contador, prefijo):
+    """El transporte del vendor delega en el observador el pedido real y la espera: se registran los dos."""
+    def observador(**campos):
+        evento = campos.pop("event")
+        if evento == "request":
+            llamar, metodo, url = campos.pop("call"), campos.pop("method"), campos.pop("url")
+            bloqueo = campos.pop("block_reason", None)
+            datos = {k: campos.pop(k, None) for k in ("country", "session_id", "located", "attempt")}
+            contador["http"] += 1
+            log(f"{prefijo}_HTTP_INICIO", metodo=metodo, url=url.split("?")[0], **datos)
+            t0 = time.monotonic()
+            try:
+                resp = llamar(metodo, url, **campos)
+            except BaseException as exc:
+                log(f"{prefijo}_HTTP_FIN", metodo=metodo, url=url.split("?")[0], ms=round((time.monotonic() - t0) * 1000),
+                    error=f"{type(exc).__name__}: {exc}", **datos)
+                raise
+            try:
+                motivo = bloqueo(resp) if bloqueo else None
+            except Exception as exc:
+                motivo = f"no_evaluado: {exc}"
+            log(f"{prefijo}_HTTP_FIN", metodo=metodo, url=url.split("?")[0], status=resp.status_code,
+                bytes=len(resp.content or b""), ms=round((time.monotonic() - t0) * 1000), bloqueo=motivo, **datos)
+            return resp
+        if evento == "wait":
+            log(f"{prefijo}_ESPERA", motivo=campos.get("reason"), segundos=campos.get("seconds"))
+            time.sleep(campos.get("seconds") or 0)
+            return None
+        log(f"{prefijo}_TRANSPORTE", tipo_evento=evento, **campos)
+    return observador
+
+
 def texto_tarjeta(row):
     html = (row.get("raw") or {}).get("card_html") or ""
     return " ".join(re.sub(r"<[^>]+>", " ", html).split())
@@ -153,38 +185,7 @@ def main(argv=None):
 
     from .bootstrap import configure_transport
     contador = {"http": 0}
-
-    def observador(**campos):
-        # El transporte del vendor delega en el observador el pedido real y la espera.
-        evento = campos.pop("event")
-        if evento == "request":
-            llamar, metodo, url = campos.pop("call"), campos.pop("method"), campos.pop("url")
-            bloqueo = campos.pop("block_reason", None)
-            datos = {k: campos.pop(k, None) for k in ("country", "session_id", "located", "attempt")}
-            contador["http"] += 1
-            log("OCULTO_HTTP_INICIO", metodo=metodo, url=url.split("?")[0], **datos)
-            t0 = time.monotonic()
-            try:
-                resp = llamar(metodo, url, **campos)
-            except BaseException as exc:
-                log("OCULTO_HTTP_FIN", metodo=metodo, url=url.split("?")[0], ms=round((time.monotonic() - t0) * 1000),
-                    error=f"{type(exc).__name__}: {exc}", **datos)
-                raise
-            motivo = None
-            try:
-                motivo = bloqueo(resp) if bloqueo else None
-            except Exception as exc:
-                motivo = f"no_evaluado: {exc}"
-            log("OCULTO_HTTP_FIN", metodo=metodo, url=url.split("?")[0], status=resp.status_code,
-                bytes=len(resp.content or b""), ms=round((time.monotonic() - t0) * 1000), bloqueo=motivo, **datos)
-            return resp
-        if evento == "wait":
-            log("OCULTO_ESPERA", motivo=campos.get("reason"), segundos=campos.get("seconds"))
-            time.sleep(campos.get("seconds") or 0)
-            return None
-        log("OCULTO_TRANSPORTE", tipo_evento=evento, **campos)
-
-    configure_transport(observer=observador)
+    configure_transport(observer=crear_observador(log, contador, "OCULTO"))
     from amazon import products
     from . import shipping
 
