@@ -88,6 +88,9 @@ def main(argv):
         return 0
     added, failures = catalog_auto.add_accepted(catalog, matches, output, fecha)
     log(f"COLA pendientes_agregados={len(added)} fallas={len(failures)}")
+    # 10/11: los dudosos van a la cola de revisión (proceso 3), igual que en el alta vieja (catalog_auto.on_result).
+    revision = sum(catalog_auto.add_doubtful(catalog, row, output, fecha)[0] == "revision" for row in matches["doubtful"])
+    log(f"REVISION dudosos={len(matches['doubtful'])} encolados={revision}")
     log(f"FIN pendientes listos para la cadena diaria (added={len(added)})")
     return 0
 

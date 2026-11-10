@@ -212,23 +212,20 @@ def test_i8_par_sin_matching_no_se_salta_al_dia_siguiente(tmp_path):
 
 
 def test_i7_cadena_da_deadline_y_continua_despues_de_buscar(tmp_path):
+    # 10/11: el alta diaria es el barrido (buscar/crecer_ahora queda manual; su BUSCAR_DEADLINE lo cubre
+    # test_cadena.test_buscar_tiene_plazo_propio_sin_corte_interno). La cadena sigue hasta altas y no cruza el día.
     clock = Reloj()
     commands = []
     def spawn(command, **kw):
         commands.append(command)
-        seconds = 1
-        if any("crecer_ahora.py" in arg for arg in command):
-            seconds = (clock.now().replace(hour=20, minute=0, second=0) - clock.now()).total_seconds() - cadena.BUSCAR_RESERVA
         out = "DEPLOY_SKIP\n" if "/app/deploy.mjs" in command else "ALTAS_OK promovidas=0 vencidos=0\n"
-        return Hijo(clock, seconds=seconds, out=out)
+        return Hijo(clock, seconds=1, out=out)
     runner = cadena.Cadena(tmp_path, spawn, clock.clock, clock.now, clock.sleep)
     assert runner.run() == 0
     records = runner.summary["pasos"]
-    buscar = next(r for r in records if r["paso"] == "alta:buscar")
-    assert datetime.fromisoformat(buscar["fin"]).hour < 20
+    assert [r["estado"] for r in records if r["paso"].startswith("alta:barrido_")] == ["ok", "ok", "ok"]
     assert any(r["paso"] == "alta:altas" and r["estado"] == "ok" for r in records)
-    command = next(c for c in commands if any("crecer_ahora.py" in arg for arg in c))
-    assert any(arg.startswith("BUSCAR_DEADLINE=") for arg in command)
+    assert not any("crecer_ahora.py" in arg for c in commands for arg in c)
     assert clock.now().date().isoformat() == runner.fecha
 
 

@@ -36,3 +36,12 @@ def test_sin_variables_quedan_los_valores_de_siempre(monkeypatch, tmp_path):
     got = _args(monkeypatch, {}, ["--output", str(tmp_path)])
     assert got["args"].max_pages is None
     assert got["config"].pause == 5
+
+
+def test_tope_de_paginas_no_es_falla():
+    from .__main__ import tienda_ok
+    assert tienda_ok({"status": "partial", "categories": {"1": {"paginas": 10}}})
+    assert not tienda_ok({"status": "partial", "categories": {"1": {"status": "failed", "error": "CDP"}}})
+    assert not tienda_ok({"status": "partial", "reason": "ubicacion_ar_no_confirmada", "categories": {}})
+    assert not tienda_ok({"status": "partial", "error": "x", "categories": {}})
+    assert not tienda_ok({"status": "failed"}) and tienda_ok({"status": "skipped"})

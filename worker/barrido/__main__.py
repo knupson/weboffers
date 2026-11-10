@@ -46,6 +46,16 @@ def main(argv=None):
         return code
 
 
+def tienda_ok(item):
+    """10/11: llegar al tope de páginas (o tener alguna variante sin leer) deja la tienda en «partial» y no es una
+    falla: la corrida diaria con --max-pages siempre salía con código 1. Falla si alguna categoría falló, si hubo
+    un error de tienda o si la ubicación en Argentina no quedó confirmada."""
+    if item.get("status") in ("complete", "skipped"):
+        return True
+    return (item.get("status") == "partial" and not item.get("error") and not item.get("reason")
+            and not any(c.get("status") == "failed" for c in (item.get("categories") or {}).values()))
+
+
 def execute(args, config):
     try:
         if not args.dry_run and (config.min_usd, config.max_usd) != (Config().min_usd, Config().max_usd):
@@ -77,7 +87,7 @@ def execute(args, config):
                     known.update(filter(None, (product.get("asin"), (product.get("ml") or {}).get("catalogId"))))
         result = run_all(categories, config, args.output, stores=args.store, dry_run=args.dry_run,
                          date=args.date, refresh=args.refresh_refinements, max_pages=args.max_pages, known=known)
-        return 0 if all(item["status"] in ("complete", "skipped") for item in result.values()) else 1
+        return 0 if all(tienda_ok(item) for item in result.values()) else 1
     except Exception as exc:
         emit_event('BARRIDO_EXCEPCION', traceback=traceback.format_exc())
         emit_event("BARRIDO_FALLA", tipo=type(exc).__name__, motivo=str(exc))
