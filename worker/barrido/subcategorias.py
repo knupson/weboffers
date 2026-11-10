@@ -64,10 +64,28 @@ def main(argv=None):
         try:
             arbol = search.category_tree(raiz["id"], args.store)
             buenas, sin_id = hojas_de(arbol)
+            # 10/11: los departamentos «-intl-ship» devuelven una sola hija que es el departamento común
+            # (p. ej. Computers → 541966 Computers & Accessories): se baja a las hijas de esa, hasta 2 niveles.
+            nivel = 1
+            while len(buenas) == 1 and nivel < 3:
+                unica = buenas[0]
+                log("SUBCAT_BAJA_NIVEL", raiz=raiz["id"], hacia=unica["id"], nombre=unica["name"], nivel=nivel + 1)
+                log("SUBCAT_ESPERA", motivo="pausa_entre_niveles", segundos=PAUSA_SEGUNDOS)
+                time.sleep(PAUSA_SEGUNDOS)
+                sub, sin_id_sub = hojas_de(search.category_tree(unica["id"], args.store))
+                sin_id += sin_id_sub
+                if not sub:
+                    break
+                buenas, nivel = sub, nivel + 1
             nuevas = [h for h in buenas if h["id"] not in vistos and h["id"] != raiz["id"]]
             for h in nuevas:
                 vistos.add(h["id"])
                 hojas.append({"id": h["id"], "name": h["name"], "kind": "leaf", "parent": raiz["id"]})
+            if not buenas and raiz["id"] not in vistos:
+                # Sin bloque «Department»: la categoría queda como raíz para no perder su cobertura.
+                vistos.add(raiz["id"])
+                hojas.append({"id": raiz["id"], "name": raiz["name"], "kind": "root", "parent": raiz["id"]})
+                log("SUBCAT_SIN_HIJAS", id=raiz["id"], nombre=raiz["name"], motivo="sin_bloque_department", queda="raiz")
             log("SUBCAT_RAIZ_FIN", id=raiz["id"], nombre=raiz["name"], estado="ok", hijas=len(buenas),
                 nuevas=len(nuevas), sin_id=[h["name"] for h in sin_id], productos=arbol.get("products_count"),
                 seleccionada=arbol.get("name"), ms=round((time.monotonic() - t0) * 1000),
