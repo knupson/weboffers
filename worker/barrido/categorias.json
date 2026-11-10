@@ -3,21 +3,55 @@
   "stores": {
     "US": {
       "nodes": [
-        {
-          "id": "541966",
-          "name": "Computadoras y accesorios",
-          "kind": "root"
-        }
+        {"id": "2617941011", "name": "Arts & Crafts", "kind": "root"},
+        {"id": "2562090011", "name": "Automotive", "kind": "root"},
+        {"id": "16225005011", "name": "Baby", "kind": "root"},
+        {"id": "3760911", "name": "Beauty & Personal Care", "kind": "root"},
+        {"id": "16225021011", "name": "Boys' Fashion", "kind": "root"},
+        {"id": "16225007011", "name": "Computers", "kind": "root"},
+        {"id": "172282", "name": "Electronics", "kind": "root"},
+        {"id": "16225020011", "name": "Girls' Fashion", "kind": "root"},
+        {"id": "16225010011", "name": "Health & Household", "kind": "root"},
+        {"id": "1055398", "name": "Home & Kitchen", "kind": "root"},
+        {"id": "16225012011", "name": "Industrial & Scientific", "kind": "root"},
+        {"id": "16225017011", "name": "Luggage", "kind": "root"},
+        {"id": "16225019011", "name": "Men's Fashion", "kind": "root"},
+        {"id": "16225013011", "name": "Pet Supplies", "kind": "root"},
+        {"id": "3375251", "name": "Sports & Outdoors", "kind": "root"},
+        {"id": "228013", "name": "Tools & Home Improvement", "kind": "root"},
+        {"id": "165793011", "name": "Toys & Games", "kind": "root"},
+        {"id": "16225016011", "name": "Video Games", "kind": "root"},
+        {"id": "16225018011", "name": "Women's Fashion", "kind": "root"}
       ],
       "exclude": []
     },
     "ES": {
       "nodes": [
-        {
-          "id": "667049031",
-          "name": "Informática",
-          "kind": "root"
-        }
+        {"id": "1951051031", "name": "Automotive", "kind": "root"},
+        {"id": "1703495031", "name": "Baby", "kind": "root"},
+        {"id": "6198054031", "name": "Beauty", "kind": "root"},
+        {"id": "667049031", "name": "Computers", "kind": "root"},
+        {"id": "2454133031", "name": "DIY & Tools", "kind": "root"},
+        {"id": "599370031", "name": "Electronics & Photo", "kind": "root"},
+        {"id": "5517558031", "name": "Women's Clothing, Shoes and Jewellery", "kind": "root"},
+        {"id": "5517557031", "name": "Men's Clothing, Shoes and Jewellery", "kind": "root"},
+        {"id": "5518992031", "name": "Girl's Clothing, Shoes and Jewellery", "kind": "root"},
+        {"id": "5518993031", "name": "Boy's Clothing, Shoes and Jewellery", "kind": "root"},
+        {"id": "5518994031", "name": "Baby Clothing, Shoes & Jewellery", "kind": "root"},
+        {"id": "1571259031", "name": "Garden & Outdoor", "kind": "root"},
+        {"id": "94253708031", "name": "Handmade", "kind": "root"},
+        {"id": "3677430031", "name": "Health", "kind": "root"},
+        {"id": "599391031", "name": "Home & Kitchen", "kind": "root"},
+        {"id": "5866088031", "name": "Industrial & Scientific", "kind": "root"},
+        {"id": "4772050031", "name": "Large appliances", "kind": "root"},
+        {"id": "3564289031", "name": "Lighting", "kind": "root"},
+        {"id": "12710835031", "name": "Luggage and travel gear", "kind": "root"},
+        {"id": "26190582031", "name": "Luxury Stores", "kind": "root"},
+        {"id": "3628728031", "name": "Office Products", "kind": "root"},
+        {"id": "599382031", "name": "PC & Video Games", "kind": "root"},
+        {"id": "12472654031", "name": "Pet Supplies", "kind": "root"},
+        {"id": "2454136031", "name": "Sports and Outdoor", "kind": "root"},
+        {"id": "599385031", "name": "Toys & Games", "kind": "root"}
       ],
       "exclude": []
     }

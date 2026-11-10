@@ -1,6 +1,7 @@
 """CLI sin scheduler; el encadenado se implementa en la tarea 10."""
 import argparse
 import json
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -23,9 +24,14 @@ def main(argv=None):
     parser.add_argument("--catalog-auto", help="Catálogo automático; por defecto junto al directorio del barrido")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--refresh-refinements", action="store_true")
-    parser.add_argument("--max-pages", type=int)
+    # 10/11 (Alejandro): el tope de páginas y la configuración se cambian con una variable de entorno,
+    # p. ej. BARRIDO_MAX_PAGINAS=10 o BARRIDO_PAUSE=3; la opción de línea de comandos manda sobre la variable.
+    tope = os.environ.get("BARRIDO_MAX_PAGINAS")
+    parser.add_argument("--max-pages", type=int, default=int(tope) if tope else None)
     for key, default in vars(Config()).items():
-        parser.add_argument("--" + key.replace("_", "-"), type=int if key in ("consecutive_blocks", "variation_limit", "transient_retries", "ml_consecutive_429") else float, default=default)
+        kind = int if key in ("consecutive_blocks", "variation_limit", "transient_retries", "ml_consecutive_429") else float
+        env = os.environ.get("BARRIDO_" + key.upper())
+        parser.add_argument("--" + key.replace("_", "-"), type=kind, default=kind(env) if env else default)
     args = parser.parse_args(argv)
     try:
         config = Config(**{key: getattr(args, key) for key in vars(Config())})
