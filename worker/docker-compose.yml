@@ -86,8 +86,11 @@ services:
       barrido-cdp:
         ipv4_address: 192.168.240.10
       chrome-salida: {}
+    # 10/11: tras un OOM, /json/version seguía respondiendo 200 y el barrido fallaba con «Falló el acceso CDP»
+    # durante 51 min (29 subcategorías perdidas). El chequeo abre y cierra una pestaña de verdad.
+    # Docker NO reinicia un contenedor «unhealthy»: la cadena lo chequea y lo reinicia antes del barrido.
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9222/json/version"]
+      test: ["CMD-SHELL", "id=$$(curl -sf -X PUT 'http://127.0.0.1:9222/json/new?about:blank' | sed -n 's/.*\"id\": *\"\\([^\"]*\\)\".*/\\1/p' | head -1) && [ -n \"$$id\" ] && curl -sf \"http://127.0.0.1:9222/json/close/$$id\" >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -111,7 +114,7 @@ services:
   weboffers-warp:
     image: caomingjun/warp@sha256:2891b92420a193a49c74cbd4387bee91f5c35fbc487fca8e8f739baed52c1d2b
     restart: unless-stopped
-    mem_limit: 256m
+    mem_limit: 512m
     device_cgroup_rules:
       - 'c 10:200 rwm'
     environment:
