@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from .ml_matching import amazon_identity, build_queries, candidate_score
+from .ml_matching import amazon_identity, build_queries, candidate_score, model_tokens, starts_without_brand
 
 
 def examples(fixture_dir):
@@ -94,3 +94,31 @@ def test_marca_declarada_por_ml_con_submarca():
     assert candidate_score(identity, producto)[0] is not None
     otra = {'name': 'Mouse Gaming Pro X2 Superstrike', 'attributes': [{'id': 'BRAND', 'value_name': 'Redragon'}]}
     assert candidate_score(identity, otra)[0] is None
+
+
+def test_marca_confirmada_por_ml_y_modelo_numerico():
+    # 10/11: Amazon no trae marca; «Games» no es la marca de Games Workshop.
+    identity = amazon_identity({'title': 'LEGO Harry Potter Knockturn Alley Wizarding Shops 76471'})
+    assert identity['models'] == ['76471']
+    assert candidate_score(identity, {'name': 'Set Lego Harry Potter 76471 Callejón Knockturn'})[0] is not None
+    assert candidate_score(identity, {'name': 'Set Lego Harry Potter 76470'})[0] is None
+    gw = amazon_identity({'title': 'Games Workshop Warhammer 40K Combat Patrol 71089'})
+    producto = {'name': 'Patrulla De Combate 71089 Warhammer',
+                'attributes': [{'id': 'BRAND', 'value_name': 'Games Workshop'}]}
+    assert candidate_score(gw, producto)[0] is not None
+    otra_marca = {'name': 'Patrulla De Combate 71089', 'attributes': [{'id': 'BRAND', 'value_name': 'Hasbro'}]}
+    assert candidate_score(gw, otra_marca)[0] is None
+
+
+def test_pies_son_medida_y_anios_no_son_modelo():
+    # 10/11: «9.4ft» se tomó como modelo «4ft» y validó unas tiras Govee de 16.4ft.
+    assert amazon_identity({'title': 'Govee Outdoor Net Lights 2.8 x 9.4ft RGBIC'})['models'] == []
+    assert model_tokens('Edition 2026') == []
+
+
+def test_titulo_que_empieza_con_medida_no_tiene_marca():
+    for t in ('14K Gold Cross Pendant', '1500W 48V Power Supply', '30 Inch Wig', '13X6 Lace Wig', '925 Silver'):
+        assert starts_without_brand(t), t
+    for t in ('Timbuk2 Closer Laptop Briefcase', 'T3 CurlWrap', '8BitDo Pro 2', 'Insta360 X4',
+              'PD4060CSV 60 Amp Converter', 'XB-450i Bead Breaker', '4-in-1 Kit'):
+        assert not starts_without_brand(t), t

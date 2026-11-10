@@ -9,7 +9,7 @@ TOKEN = re.compile(r'[A-Za-z0-9]+(?:[-/][A-Za-z0-9]+)*')
 # Consumir la medida ENTERA antes de tokenizar: 1,050MB/s no puede volverse 050MB/s.
 MEASURE = re.compile(
     r'(?<!\w)\d+(?:[.,]\d+)*(?:\s*-\s*|\s*)(?:[kmgt]i?b(?:\s*/\s*s)?|[kmgt]?bps|'
-    r'[kmg]?hz|mah|wh|[kmg]?w|[kmg]?v|[kcm]?m|inch(?:es)?|pulgadas?|'
+    r'[kmg]?hz|mah|wh|[kmg]?w|[kmg]?v|[kcm]?m|inch(?:es)?|pulgadas?|ft|feet|'
     r'fps|dpi|[48]k|k|p|%|["″])(?=$|[^\w])', re.I)
 MODEL_KEYS = ('part_number', 'manufacturer_part_number', 'manufacturer_item',
               'manufacturer_item_number', 'item_model_number', 'model_number', 'model')
@@ -58,8 +58,13 @@ def code(text):
 
 
 def model_tokens(text):
-    return [t for t in TOKEN.findall(MEASURE.sub(' ', str(text or '')))
-            if re.search('[A-Za-z]', t) and re.search(r'\d', t)
+    """Códigos letra+número (WH-1000XM5) y, desde 10/11, códigos sólo numéricos de 4 a 6 cifras que no
+    son años (LEGO 76471, 11382): sin modelo caían en linea_no_confirmada contra el título en castellano.
+    Los de 3 cifras (Levi's 501) quedan afuera a propósito: se confunden con medidas y cantidades."""
+    tokens = TOKEN.findall(MEASURE.sub(' ', str(text or '')))
+    return [t for t in tokens
+            if ((re.search('[A-Za-z]', t) and re.search(r'\d', t))
+                or (re.fullmatch(r'\d{4,6}', t) and not re.fullmatch(r'(?:19|20)\d\d', t)))
             and t.lower() not in GENERIC_MODELS]
 
 
@@ -73,6 +78,17 @@ def field_model(value):
     if re.fullmatch(r'\d+(?:-\d+)*', value.strip()):
         return value.strip()
     return ''
+
+
+# 10/11: el título empieza con una cantidad o medida suelta («14K Gold…», «1500W Power…», «30 Inch…»,
+# «13x6 Lace…»): Amazon no trae marca y la primera palabra no lo es; buscarlo en ML sólo gasta pedidos.
+# Marcas con dígitos (Timbuk2, T3, 8BitDo, Insta360) y códigos de pieza (PD4060CSV) no entran.
+GENERIC_START = re.compile(r'(?:\d+(?:[.,]\d+)?(?:k|ct|w|v|a|l|ft|mah|inch|in|%|"|”)?|\d+x\d+)', re.I)
+
+
+def starts_without_brand(title):
+    first = (title or '').split()[:1]
+    return bool(first) and bool(GENERIC_START.fullmatch(first[0].rstrip('.,:;')))
 
 
 def _sources(row):
@@ -254,6 +270,14 @@ def candidate_score(identity, product):
     name = ' '.join(filter(None, [product.get('name') or '', extra]))
     target, source = set(words(name)), set(words(identity['title']))
     brand = set(words(identity['brand']))
+    # 10/11: Amazon no trae la marca en la búsqueda y amazon_identity cae a la primera palabra
+    # («Games» de Games Workshop, «New» de New Balance). Si ML declara una marca con la que empieza
+    # el título de Amazon, esa es la marca; los demás controles quedan iguales.
+    title_words = words(identity['title'])
+    for a in product.get('attributes') or []:
+        declared = words(a.get('value_name')) if isinstance(a, dict) and a.get('id') == 'BRAND' else []
+        if declared and title_words[:len(declared)] == declared and len(declared) > len(brand):
+            brand = set(declared)
     if bool(source & AFTERMARKET) != bool(target & AFTERMARKET):
         return None, 'originalidad_distinta'
     if bool(source & PACK) != bool(target & PACK):

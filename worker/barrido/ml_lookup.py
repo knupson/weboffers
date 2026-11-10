@@ -14,7 +14,7 @@ from .config import Config
 from .currency import MEP_MAX_DIAS, load_daily_rates, validate_rate
 from .events import now_art, emit_event, http_call, wait, observed, set_context, set_action, action, response_excerpt
 from .models import positive
-from .ml_matching import amazon_identity, build_queries, candidate_score
+from .ml_matching import amazon_identity, build_queries, candidate_score, starts_without_brand
 from .state import State, LookupState, acquire_run_lock, write_summary
 
 
@@ -264,10 +264,13 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                     else:
                         emit_event('BARRIDO_ML_ATAJO_FALLBACK', asin=amazon['id'], catalogo=known_id,
                                    motivo='sin_oferta_local_nueva')
-                queries = [] if row['candidates'] else build_queries(amazon.get("title"), row=amazon)
+                sin_marca = not row['candidates'] and starts_without_brand(amazon.get('title'))
+                if sin_marca:
+                    emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='sin_marca', valor=amazon.get('title'))
+                queries = [] if row['candidates'] or sin_marca else build_queries(amazon.get("title"), row=amazon)
                 emit_event('BARRIDO_ML_IDENTIDAD', marca=identity_amazon['brand'],
                            modelos=identity_amazon['models'], linea=identity_amazon['line'], consultas=queries)
-                if not queries and not row['candidates']:
+                if not queries and not row['candidates'] and not sin_marca:
                     emit_event('BARRIDO_DESCARTE', asin=row['asin'], motivo='sin_consulta', valor=amazon.get('title'))
                 fallback_reason = None
                 for query_index, query in enumerate(queries[:2]):
