@@ -9,5 +9,6 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 COPY barrido/requirements.txt /tmp/barrido-requirements.txt
 RUN pip install --no-cache-dir -r /tmp/barrido-requirements.txt
 COPY barrido /app/barrido
-COPY amazon_shipping.py ml_prices.py refresh_lock.py article_log.py publish.py variants.py /app/
+# 10/11: ml_prices importa diario, requisitos, publicacion y amazon_prices; sin ellos barrido_ml falla con ModuleNotFoundError.
+COPY amazon_shipping.py ml_prices.py refresh_lock.py article_log.py publish.py variants.py diario.py requisitos.py publicacion.py amazon_prices.py /app/
 CMD ["python", "-m", "barrido.server"]

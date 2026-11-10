@@ -47,7 +47,8 @@ services:
       args:
         BARRIDO_GIT_COMMIT: ${BARRIDO_GIT_COMMIT:-no_disponible}
     restart: unless-stopped
-    mem_limit: 512m
+    # 10/11: sin tope de páginas llegó a la página 183 y el cgroup de 512 MB lo mató (OOM 14:55:44). Pico con tope 10: por medir.
+    mem_limit: 1g
     environment:
       ML_CLIENT_ID: ${ML_CLIENT_ID:-}
       ML_CLIENT_SECRET: ${ML_CLIENT_SECRET:-}
@@ -55,6 +56,9 @@ services:
       # Salida a Amazon por WARP: la IP de la VM recibe 503 en /s (medido 07/11).
       BARRIDO_AMAZON_PROXY: socks5h://weboffers-warp:1080
       BARRIDO_CHROME_CDP: http://192.168.240.10:9222
+      # Los mismos valores que la corrida A del 10/11 (19 raíces, 19 min 55 s).
+      BARRIDO_MAX_PAGINAS: "10"
+      BARRIDO_PAUSE: "3"
     networks: [default, barrido-cdp]
     depends_on:
       weboffers-warp:
