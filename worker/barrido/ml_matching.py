@@ -59,6 +59,11 @@ def code(text):
 
 # 10/11: tamaños M.2 y resoluciones no son modelo (SIX NVMe «2280» buscaba «SIX 2280» y perdía el SIX X7400).
 NUMERIC_NOT_MODEL = {'2230', '2242', '2260', '2280', '22110', '1080', '1440', '2160'}
+# 10/11: especificaciones con letra que se tomaban como modelo y tapaban el real (medición de los 239):
+# «AMD 16-Thread» en vez de 5700X, «Razer 180Hr»/«49g» en vez de V4, «Samsung 2x2» en vez de T9.
+# Peso sólo con 2+ cifras («4G» es red y a veces la única pieza: Wonlex 4G) y sólo «2x2», no NxN:
+# «10x42» identifica binoculares Vortex (la primera versión del parche perdió Crossfire y Triumph).
+SPEC_NOT_MODEL = re.compile(r'\d+-?(?:cores?|threads?|hrs?|hours?)|\d{2,}(?:g|kg|lbs?|oz)|2x2', re.I)
 
 
 def model_tokens(text):
@@ -70,7 +75,7 @@ def model_tokens(text):
             if ((re.search('[A-Za-z]', t) and re.search(r'\d', t))
                 or (re.fullmatch(r'\d{4,6}', t) and not re.fullmatch(r'(?:19|20)\d\d', t)
                     and t not in NUMERIC_NOT_MODEL))
-            and t.lower() not in GENERIC_MODELS]
+            and t.lower() not in GENERIC_MODELS and not SPEC_NOT_MODEL.fullmatch(t)]
 
 
 def field_model(value):
@@ -126,7 +131,7 @@ def _product_title(title, *, product_title=''):
     """Excluir componentes salvo cuando el artículo sea la pieza misma."""
     tokens = set(words(product_title or title))
     if tokens & {'gpu', 'graphics', 'grafica', 'video', 'processor', 'procesador', 'cpu'} and not tokens & {
-            'tablet', 'laptop', 'notebook', 'desktop', 'computer', 'pc'}:
+            'tablet', 'laptop', 'notebook', 'computer', 'pc'}:
         return title
     return COMPONENT.sub(' ', title)
 
@@ -156,6 +161,8 @@ def amazon_identity(row, brand=''):
     tokens = model_tokens(model_title)
     product_models = [t for t in tokens if code(t) != code(brand)]
     # NJ98 también puede ser la primera palabra; no perderlo si no hay otra pieza.
+    # 10/11: probado y retirado «la primera palabra nunca es modelo» (Timbuk2): no recuperó ninguna mochila
+    # Timbuk2 y perdió Timbuk2 Q, N1O1 y T3 SinglePass, además de romper el caso real NJ98.
     model = explicit or max(product_models or tokens, key=len, default='')
     cleaned = _clean_title(model_title)
     line = []

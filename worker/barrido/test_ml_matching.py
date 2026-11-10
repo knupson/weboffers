@@ -129,3 +129,13 @@ def test_tamanio_m2_y_resolucion_no_son_modelo():
     assert model_tokens('SIX NVME M.2 SSD PCIe 4.0-1TB m.2 2280 ssd') == []
     assert model_tokens('Monitor 2160 1440 1080 22110 2242') == []
     assert model_tokens('LEGO Minecraft Ghast Station 21597') == ['21597']
+
+
+def test_especificaciones_y_marca_no_son_modelo():
+    # 10/11, medición de los 239: el modelo real quedaba tapado por especificaciones o por la marca.
+    assert amazon_identity({'title': 'AMD Ryzen 7 5700X 8-Core, 16-Thread Unlocked Desktop Processor'})['models'] == ['5700X']
+    assert amazon_identity({'title': 'Razer Viper V4 Pro Wireless Esports Gaming Mouse, 49g,180Hr Battery'})['models'] == ['V4']
+    assert amazon_identity({'title': 'Samsung T9 Portable SSD 1TB, USB 3.2 Gen 2x2 External SSD'})['models'] == ['T9']
+    # 10x42 identifica binoculares y 4G puede ser la única pieza: no se excluyen.
+    assert amazon_identity({'title': 'Vortex Crossfire HD 10x42 Binoculars'})['models'] == ['10x42']
+    assert amazon_identity({'title': 'Wonlex 4G Smartwatch for Kids'})['models'] == ['4G']
