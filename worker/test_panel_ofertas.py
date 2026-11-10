@@ -8,8 +8,9 @@ import types
 import amazon_prices
 
 
-def _modulo():
-    sys.modules.setdefault("websockets", types.ModuleType("websockets"))  # sólo existe en el contenedor de Chrome
+def _modulo(monkeypatch):
+    # websockets sólo existe en el contenedor de Chrome; el stub se deshace al terminar cada test (no afecta a otros).
+    monkeypatch.setitem(sys.modules, "websockets", sys.modules.get("websockets") or types.ModuleType("websockets"))
     spec = importlib.util.spec_from_file_location(
         "envio_ar_chrome_panel", pathlib.Path(__file__).resolve().parent.parent / "tools" / "envio_ar_chrome.py")
     mod = importlib.util.module_from_spec(spec)
@@ -25,9 +26,9 @@ def oferta(precio, envio, condicion="New", vendedor="v", no_envia=False):
     return {"precio": precio, "envio": envio, "condicion": condicion, "vendedor": vendedor, "noEnvia": no_envia}
 
 
-def test_elige_la_mas_barata_que_cumple_no_la_primera():
+def test_elige_la_mas_barata_que_cumple_no_la_primera(monkeypatch):
     # Caso real B004HS7T7S (10/11): las más baratas sin «FREE», sin texto o que no envían; gana la gratis más barata.
-    mod = _modulo()
+    mod = _modulo(monkeypatch)
     d = {"deliver": AR, "lang": "en-us", "lista": True, "ofertas": [
         oferta("$119.55", "Delivery Monday, November 23"),
         oferta("$210.57", None, vendedor="Amazon Germany", no_envia=True),
@@ -40,8 +41,8 @@ def test_elige_la_mas_barata_que_cumple_no_la_primera():
                  "precio": "$225.00", "vendedor": "Fabulous Yarn"}
 
 
-def test_sin_elegible_o_panel_dudoso_conserva_el_recuadro():
-    mod = _modulo()
+def test_sin_elegible_o_panel_dudoso_conserva_el_recuadro(monkeypatch):
+    mod = _modulo(monkeypatch)
     sin = {"deliver": AR, "lang": "en-us", "lista": True, "ofertas": [oferta("$120.00", "$31.20 delivery")]}
     assert mod.interpretar_panel(sin, PREVIO) == {**PREVIO, "panel": "sin_oferta_elegible:1"}
     for d, motivo in (({"lista": False}, "no_leido"), ({"lista": True, "captcha": True}, "no_leido"),
@@ -50,8 +51,8 @@ def test_sin_elegible_o_panel_dudoso_conserva_el_recuadro():
         assert mod.interpretar_panel(d, PREVIO) == {**PREVIO, "panel": motivo}
 
 
-def test_solo_abre_el_panel_con_see_all_buying_options():
-    mod = _modulo()
+def test_solo_abre_el_panel_con_see_all_buying_options(monkeypatch):
+    mod = _modulo(monkeypatch)
     assert mod.abre_panel(PREVIO)
     assert not mod.abre_panel({**PREVIO, "text": "This item cannot be shipped to your selected delivery location."})
     assert not mod.abre_panel({"ships": True, "motivo": None, "text": "FREE delivery"})

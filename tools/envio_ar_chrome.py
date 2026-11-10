@@ -62,15 +62,22 @@ INTENTOS_INTERSTICIAL = 2
 
 
 # 10/11: con «See All Buying Options» el recuadro de compra no tiene oferta destacada, pero el panel de ofertas
-# (/dp/ASIN?aod=1) suele tener otro vendedor con envío gratis a Argentina: de 29 ASIN así (envio_ar_chrome.log,
-# 07-09/11) el panel dio 8 elegibles. Se lee el panel y se elige la oferta MÁS BARATA que cumpla (no la primera).
-# Selectores de worker/barrido/vendor/amazon/parsers.py (offers_page/_offer).
-LEER_PANEL = r"""(() => {const tx=(e)=>e?(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim():'';
-const bloques=[...document.querySelectorAll('#aod-pinned-offer, #aod-offer')];
+# suele tener otro vendedor con envío gratis a Argentina: de 29 ASIN así (envio_ar_chrome.log, 07-09/11) el panel
+# dio 8 elegibles. Se elige la oferta MÁS BARATA que cumpla (no la primera).
+# En el contexto anónimo el panel lateral no abre ni con ?aod=1 ni con el clic (probado 10/11 en B0BHJF2VRN:
+# #aod-offer-list nunca aparece): se pide desde la misma página el HTML que llena ese panel
+# (/gp/product/ajax/aodAjaxMain, igual que worker/barrido/vendor/amazon/products.offers), con la ubicación y las
+# cookies del contexto, y se lee con los selectores de parsers.offers_page/_offer.
+LEER_PANEL = r"""(async () => {const tx=(e)=>e?(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim():'';
+const asin=(location.pathname.match(/\/dp\/([A-Z0-9]{10})/)||[])[1];
+const q=new URLSearchParams({asin, pc:'dp', experienceId:'aodAjaxMain', filters:JSON.stringify({all:true,new:true})});
+const r=await fetch('/gp/product/ajax/aodAjaxMain?'+q, {credentials:'include'});
+const html=await r.text(); const doc=new DOMParser().parseFromString(html,'text/html');
+const bloques=[...doc.querySelectorAll('#aod-pinned-offer, #aod-offer')];
 return JSON.stringify({deliver:tx(document.getElementById('glow-ingress-block')),
- lang:(document.documentElement.lang||'').toLowerCase(),
- captcha:/captcha|Enter the characters you see/i.test(document.body.innerText),
- lista:!!document.getElementById('aod-offer-list'),
+ lang:(document.documentElement.lang||'').toLowerCase(), http:r.status,
+ captcha:/captcha|Enter the characters you see/i.test(html),
+ lista:!!(doc.getElementById('aod-offer-list')||doc.getElementById('aod-pinned-offer')),
  ofertas:bloques.map(b=>{const p=b.querySelector('#aod-offer-price')||b;
   const precio=tx(p.querySelector('.a-price:not([data-a-strike]) .a-offscreen'))||tx(p.querySelector('.aok-offscreen'));
   return {precio:precio||null,
@@ -78,7 +85,6 @@ return JSON.stringify({deliver:tx(document.getElementById('glow-ingress-block'))
    vendedor:tx(b.querySelector('#aod-offer-soldBy a'))||null,
    envio:tx(b.querySelector('[data-csa-c-delivery-price]'))||null,
    noEnvia:/cannot be shipped|does not ship/i.test(tx(b))};})})})()"""
-ESPERAS_PANEL = 4  # el panel carga por AJAX: hasta 4 lecturas separadas por ESPERA_CARGA
 
 
 def monto(texto):
@@ -198,18 +204,13 @@ async def leer_producto(c, s, asin):
 
 
 async def leer_panel(c, s, asin):
-    await c.call("Page.navigate", {"url": f"https://www.amazon.com/dp/{asin}?aod=1&language=en_US"}, s)
-    d = {}
-    for _ in range(ESPERAS_PANEL):
-        await asyncio.sleep(ESPERA_CARGA)
-        r = await c.call("Runtime.evaluate", {"expression": LEER_PANEL, "returnByValue": True}, s, timeout=TIMEOUT_PRODUCTO)
-        if r.get("exceptionDetails"):
-            det = r["exceptionDetails"]
-            raise RuntimeError(f"js panel: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
-        d = json.loads((r.get("result") or {}).get("value") or "{}")
-        if d.get("lista") and d.get("ofertas"):
-            break
-    return d
+    """Se llama con la pestaña todavía en la ficha del producto (la dejó leer_producto): 1 pedido más."""
+    r = await c.call("Runtime.evaluate", {"expression": LEER_PANEL, "returnByValue": True, "awaitPromise": True},
+                     s, timeout=TIMEOUT_PRODUCTO)
+    if r.get("exceptionDetails"):
+        det = r["exceptionDetails"]
+        raise RuntimeError(f"js panel: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
+    return json.loads((r.get("result") or {}).get("value") or "{}")
 
 
 def abre_panel(item):
@@ -267,7 +268,7 @@ async def recorrer(c, ctx, tid, s, asins, slugs, items, parcial):
                                                                (TIMEOUT_PRODUCTO + 2 * ESPERA_CARGA) * (INTENTOS_INTERSTICIAL + 1) + 5))
             if abre_panel(items[asin]):
                 items[asin] = interpretar_panel(await asyncio.wait_for(
-                    leer_panel(c, s, asin), (TIMEOUT_PRODUCTO + ESPERA_CARGA) * ESPERAS_PANEL + 5), items[asin])
+                    leer_panel(c, s, asin), TIMEOUT_PRODUCTO + 5), items[asin])
         except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
             items[asin] = {"ships": None, "free": None, "text": None, "motivo": f"error:{type(e).__name__}"}
             try:
