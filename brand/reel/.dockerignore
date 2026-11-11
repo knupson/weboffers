@@ -1,0 +1,6 @@
+node_modules
+out
+.agents
+.claude
+__pycache__
+public/d*.wav

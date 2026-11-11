@@ -148,3 +148,13 @@ def test_vigencia_envio(checked, expected):
                                     {"amazonChecked": "2026-10-29"}, {"amazonSource": None}, {"shipsToArToday": False}])
 def test_exige_precios_de_hoy_y_envio(change):
     assert not telegram.is_comparable({**CATALOG[1], **change})
+
+
+def test_turno_sin_comparables_queda_en_el_log(tmp_path, monkeypatch, capsys):
+    # 11/11: el 10/11 el turno de las 12 no salió y el log no decía por qué.
+    post = Mock()
+    monkeypatch.setattr(telegram.requests, "post", post)
+    noon = datetime(2026, 10, 30, 15, 1, tzinfo=timezone.utc)  # 12:01 en Argentina
+    assert telegram.maybe_post([], tmp_path / "s.json", noon) is None
+    assert "TELEGRAM_SIN_COMPARABLES slot=2026-10-30T12 catalogo=0" in capsys.readouterr().out
+    post.assert_not_called()

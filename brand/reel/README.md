@@ -1,6 +1,12 @@
 # Plantilla Duelo
 
-Desde la raíz del repo, generá el video y el texto del post con:
+**Desde el 11/11 el Reel se genera en la VM `docker`** (regla: nada corre en la PC). Copiá `brand/reel` a
+`/home/claude/reel/codigo` y corré `sh /home/claude/reel/codigo/hacer_reel_vm.sh`: arma la imagen (`Dockerfile`:
+Node 22, ffmpeg, Piper Linux, Chrome de Remotion), toma precios y fotos del último deploy (`/work` del deployer) y deja
+`duelo-AAAA-MM-DD-final.mp4` y `.txt` en `/home/claude/reel/out`. La voz se monta desde `/home/claude/reel/voz`
+y el historial persiste en `/home/claude/reel/historial.json`. Log: `/home/claude/logs/reel-AAAA-MM-DD.log`.
+
+En Windows (forma anterior), desde la raíz del repo, generá el video y el texto del post con:
 
 ```powershell
 python brand/reel/hacer_reel.py

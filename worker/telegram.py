@@ -149,6 +149,8 @@ def maybe_post(catalog, state_path, now=None):
         return None
     product = pick(catalog, state.get("posted", []), now)
     if product is None:
+        # 11/11: el 10/11 el turno de las 12 salió a las 15:01 sin una línea en el log que dijera por qué.
+        print(f"TELEGRAM_SIN_COMPARABLES slot={slot} catalogo={len(catalog)}", flush=True)
         return None
     state["attempt"] = {"estado": "intentando", "slug": product["slug"], "slot": slot}
     save_state(state_path, state)

@@ -5,6 +5,7 @@ import copy
 from datetime import datetime, timedelta, timezone
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,8 +15,11 @@ import wave
 
 BASE = Path(__file__).resolve().parent
 REPO = BASE.parent.parent
-PIPER = Path(r'E:\Repositorios\Personal\_datos\blackseam\voces\descargas\piper\piper\piper.exe')
-MODELO = Path(r'E:\Repositorios\Personal\_datos\blackseam\voces\descargas\modelos\es_AR-daniela-high.onnx')
+# 11/11: el Reel se genera en la VM docker (brand/reel/Dockerfile); en Windows quedan las rutas de siempre.
+PIPER = Path(os.environ.get('REEL_PIPER',
+             r'E:\Repositorios\Personal\_datos\blackseam\voces\descargas\piper\piper\piper.exe'))
+MODELO = Path(os.environ.get('REEL_MODELO',
+              r'E:\Repositorios\Personal\_datos\blackseam\voces\descargas\modelos\es_AR-daniela-high.onnx'))
 ART = timezone(timedelta(hours=-3))
 
 
