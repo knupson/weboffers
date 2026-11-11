@@ -28,6 +28,34 @@ def normalized(ids, fields, barcode=False):
     return result
 
 
+LEGO_SET = re.compile(r"(?<!\d)\d{4,6}(?!\d)")
+
+
+def lego_set_numbers(raw):
+    """Números de set (4-6 dígitos) de un campo de modelo; la barra no separa («7/53/54» = 75354)."""
+    # Un año (1900-2099) no es un número de set aunque esté en un campo de modelo («Star Wars 2025»).
+    return {match for value in values(raw) for match in LEGO_SET.findall(str(value).replace("/", ""))
+            if not (len(match) == 4 and 1900 <= int(match) <= 2099)}
+
+
+def lego_set_match(row):
+    """11/11: en LEGO, Amazon trae el set en model_name y un código interno de 7 dígitos en model_number
+    (43019 vs 6590610), así que nunca coincidía con el MODEL de ML. Sólo con marca LEGO de los dos lados,
+    sólo campos estructurados (nunca el título) y un único número de set en Amazon."""
+    if (str(row.get("brand") or "").strip().lower() != "lego"
+            or str(row.get("mlBrand") or "").strip().lower() != "lego"):
+        return False
+    amazon_ids, ml_ids = row.get("amazonIds") or {}, row.get("mlIds") or {}
+    # Evidencia contraria: si los dos lados traen código de barras y no coincide ninguno, no es el mismo artículo.
+    amazon_barcodes = normalized(amazon_ids, ("gtin", "upc", "ean"), True)
+    ml_barcodes = normalized(ml_ids, ("GTIN", "UPC", "EAN"), True)
+    if amazon_barcodes and ml_barcodes and not amazon_barcodes & ml_barcodes:
+        return False
+    amazon = lego_set_numbers(amazon_ids.get("model_name"))
+    ml = lego_set_numbers(ml_ids.get("MODEL"))
+    return len(amazon) == 1 and amazon == ml
+
+
 def strong_identifier_match(row):
     """No infiere códigos del título ni recorta sufijos regionales."""
     amazon = row.get("amazonIds") or {}
@@ -37,4 +65,5 @@ def strong_identifier_match(row):
         & normalized(ml, ("GTIN", "UPC", "EAN"), True)
         or normalized(amazon, ("model_number", "mpn", "part_number"))
         & normalized(ml, ("MPN", "PART_NUMBER", "ALPHANUMERIC_MODEL", "MODEL"))
+        or lego_set_match(row)
     )
