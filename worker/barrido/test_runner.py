@@ -70,6 +70,35 @@ def test_aceptacion_paginas_reanudacion_dry_run(tmp_path):
     assert source.calls[-1] == ("A", 1) and not (dry / "state").exists()
 
 
+def test_jsonl_tiene_cada_pagina_aunque_maten_el_proceso_a_mitad_de_categoria(tmp_path):
+    # 11/11 (revisor): ml_lookup lee el JSONL directo y un SIGKILL saltea todo finally.
+    class Matado(BaseException):
+        pass
+
+    class Source(FakeSource):
+        def fetch_search_page(self, category, page, stamp):
+            if page == 2:
+                jsonl = (tmp_path / f"US-{now_art().date().isoformat()}.jsonl").read_text(encoding="utf-8")
+                assert [json.loads(l)["id"] for l in jsonl.splitlines()] == ["FIXTURE1"]
+                raise Matado()  # simula el SIGKILL: no es Exception, no lo atrapa ningún except
+            return super().fetch_search_page(category, page, stamp)
+    with pytest.raises(Matado):
+        run_store("US", {"nodes": [{"id": "A", "name": "Prueba"}]}, Config(), tmp_path, now_art().date().isoformat(),
+                  source_factory=lambda *a: Source(), rate_loader=rate, sleep=lambda _: None)
+
+
+def test_falla_al_desconectar_no_corta_la_tienda(tmp_path, capsys):
+    class Source(FakeSource):
+        def end_category(self):
+            raise RuntimeError("playwright.stop fixture")
+    source = Source(pages=1)
+    definition = {"nodes": [{"id": "A", "name": "Prueba"}, {"id": "B", "name": "Otra"}]}
+    result = run_store("US", definition, Config(), tmp_path, now_art().date().isoformat(),
+                       source_factory=lambda *a: source, rate_loader=rate, sleep=lambda _: None)
+    assert source.calls == [("A", 1), ("B", 1)] and result["status"] == "complete"
+    assert "BARRIDO_DESCONEXION_FALLIDA" in capsys.readouterr().out
+
+
 def test_detecta_pagina_repetida(tmp_path):
     source = FakeSource(repeated=True)
     result = run_store("US", {"nodes": [{"id": "A", "name": "Prueba"}]}, Config(), tmp_path,

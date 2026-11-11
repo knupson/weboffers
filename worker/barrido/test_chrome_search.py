@@ -239,16 +239,37 @@ def test_transporte_exitoso_no_hereda_destino_de_chrome(monkeypatch, tmp_path, f
 def test_ubicacion_fallida_detiene_tienda_y_cierra_fuente(monkeypatch, tmp_path, site):
     from .runner import run_store
     source, _ = make_source(monkeypatch, tmp_path, site)
-    source.chrome = Mock()
-    source.chrome.search.side_effect = ChromeLocationError('Destino no confirmado')
+    chrome = source.chrome = Mock()
+    chrome.search.side_effect = ChromeLocationError('Destino no confirmado')
     categories = {'nodes': [{'id': '541966', 'name': 'Primera'}, {'id': 'OTRA', 'name': 'Segunda'}]}
     date = now_art().date().isoformat()
     result = run_store('US', categories, Config(pause=0), tmp_path, date,
         source_factory=lambda *a: source, rate_loader=lambda *a: {'value': 1, 'source': 'fixture', 'observed_at': now_art().isoformat()},
         sleep=lambda _: None)
     assert result['status'] == 'failed'
-    assert source.chrome.search.call_count == 1
-    source.chrome.close.assert_called_once()
+    assert chrome.search.call_count == 1
+    # 11/11: la conexión se cierra al terminar la categoría; el cierre final de la tienda ya no la ve.
+    chrome.close.assert_called_once()
+    assert source.chrome is None
+
+
+def test_fin_de_categoria_desconecta_playwright(monkeypatch, tmp_path, site):
+    # 11/11: el driver sumó 52.824 kB en 19 páginas sin liberar; cada categoría usa una conexión nueva.
+    source, _ = make_source(monkeypatch, tmp_path, site)
+    chrome = source.chrome = Mock()
+    source.end_category()
+    chrome.close.assert_called_once()
+    assert source.chrome is None
+
+
+def test_fin_de_categoria_suelta_la_conexion_aunque_cerrar_falle(monkeypatch, tmp_path, site):
+    source, _ = make_source(monkeypatch, tmp_path, site)
+    source.chrome = Mock()
+    source.chrome.close.side_effect = RuntimeError('playwright.stop fixture')
+    with pytest.raises(RuntimeError):
+        source.end_category()
+    assert source.chrome is None
+    source.close()  # el cierre final de la tienda ya no reintenta la conexión rota
 
 
 def test_filtros_registrados_tambien_desde_cache(monkeypatch, tmp_path, fixture_dir, site, capsys):

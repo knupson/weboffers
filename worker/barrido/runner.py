@@ -206,7 +206,9 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                                    http=data.get("http"), total_pages=data.get("total_pages"), count=data.get("count"))
                     with action('persistiendo pagina y checkpoint'):
                         state.commit_page(category_id, page, payload)
-                        state.materialize_jsonl()
+                        # Por página: ml_lookup lee el JSONL directo y un SIGKILL saltea todo finally.
+                        # Con escritura por streaming el pico es 31.964 kB con 132 páginas (antes 464.004 kB).
+                        state.materialize_jsonl(return_rows=False)
                     emit_event('BARRIDO_PERSISTIDO', categoria=category_id, pagina=page)
                     set_action('calculando metricas de categoria')
                     result["categories"][category_id] = category_metrics(state, category_id)
@@ -231,6 +233,16 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
                 metrics = category_metrics(state, category_id) if state else {}
                 result["categories"][category_id] = {**metrics, "status": "failed", "error": str(exc),
                     "fallas": metrics.get("fallas", 0) + getattr(exc, "attempts", 1)}
+            finally:
+                # 11/11: el driver de Playwright sumó 52.824 kB en 19 páginas sin liberar entre categorías.
+                # Se desconecta al cerrar cada categoría; la siguiente búsqueda por Chrome reconecta.
+                # Una falla al desconectar no corta la tienda: la próxima búsqueda crea otra conexión.
+                if callable(getattr(source, 'end_category', None)):
+                    try:
+                        source.end_category()
+                    except Exception as exc:  # noqa: BLE001
+                        emit_event("BARRIDO_DESCONEXION_FALLIDA", tienda=store, categoria=category_id,
+                                   tipo=type(exc).__name__, motivo=str(exc)[:300])
     except StaleRate as exc:
         result.update(status="skipped" if store == "ES" else "failed", error=str(exc))
         if store == "ES":
@@ -246,7 +258,7 @@ def run_store(store, definition, config, output, date, *, dry_run=False, refresh
         if 'source' in locals() and callable(getattr(source, 'close', None)):
             source.close()
         if state:
-            result["products"] = len(state.materialize_jsonl(known=known))
+            result["products"] = state.materialize_jsonl(known=known, return_rows=False)
     if result["status"] == "failed" and result["products"]:
         result["status"] = "partial"
     if state and any(page.get("variation_failures", 0) for page in state.pages()) and result["status"] == "complete":

@@ -49,6 +49,12 @@ CHROME_CHEQUEO = ("id=$(curl -sf -m 10 -X PUT 'http://127.0.0.1:9222/json/new?ab
                   "sed -n 's/.*\"id\": *\"\\([^\"]*\\)\".*/\\1/p' | head -1) && [ -n \"$id\" ] && "
                   "curl -sf -m 10 \"http://127.0.0.1:9222/json/close/$id\" >/dev/null")
 CHROME_ESPERAS = 10  # tras el reinicio: hasta 10 chequeos separados por 3 s
+# 11/11: tras el OOM de Chrome de las 04:20:57, abrir/cerrar pestaña daba OK pero connect_over_cdp vencía
+# a los 30 s (6 de 6 a las 07:30). El chequeo usa ahora la misma conexión que el barrido y evalúa 1+1.
+CHROME_CHEQUEO_CDP = ("import os; from barrido.chrome_search import ChromeSearch; "
+                      "c = ChromeSearch(os.environ['BARRIDO_CHROME_CDP']); c._connect(); "
+                      "ok = c.page.evaluate('1+1') == 2; c.close(); raise SystemExit(0 if ok else 1)")
+CHROME_CHEQUEO_SEGUNDOS = 45  # connect_over_cdp tiene 30 s de timeout propio
 
 
 class Cadena:
@@ -211,10 +217,12 @@ class Cadena:
     def chrome_barrido(self, deadline):
         """Antes del barrido: Chrome tiene que abrir y cerrar una pestaña. Si no, se reinicia y se espera."""
         chequeo = self.docker(CHROME_BARRIDO, "sh", "-c", CHROME_CHEQUEO)
+        chequeo_cdp = self.docker(BARRIDO, "python", "-c", CHROME_CHEQUEO_CDP, cwd="/app")
 
         def sano():
             try:
                 self.process(chequeo, min(deadline, self.clock() + 30), "chrome_barrido", emit=False)
+                self.process(chequeo_cdp, min(deadline, self.clock() + CHROME_CHEQUEO_SEGUNDOS), "chrome_barrido", emit=False)
                 return True
             except Exception:  # noqa: BLE001 — cualquier falla del chequeo cuenta como Chrome caído
                 return False

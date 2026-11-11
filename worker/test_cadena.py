@@ -133,7 +133,8 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 10
     assert runner.summary["fin"]
     barrido = next(i for i, c in enumerate(comandos) if c[-4:] == ["--store", "US", "--output", cadena.BARRIDO_SALIDA])
-    assert cadena.CHROME_BARRIDO in comandos[barrido - 1]  # chequeo de Chrome justo antes del barrido
+    assert cadena.CHROME_BARRIDO in comandos[barrido - 2]  # chequeo de pestaña de Chrome
+    assert cadena.CHROME_CHEQUEO_CDP in comandos[barrido - 1]  # y conexión real de Playwright, justo antes del barrido
     assert comandos[barrido + 3][-1] == "/app/tools/dudosos_nvidia.py"
     chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
     assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
@@ -145,8 +146,9 @@ def test_cada_paso_una_vez(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     pares = [(p["bloque"], p["paso"]) for p in runner.summary["pasos"]]
     assert len(pares) == len(set(pares)) == 17
-    # Los dos deploy copian su desglose al log; el barrido suma 3 pasos y el chequeo de Chrome (10/11).
-    assert len(comandos) == 21
+    # Los dos deploy copian su desglose al log; el barrido suma 3 pasos y el chequeo de Chrome (10/11),
+    # que desde el 11/11 son dos comandos: pestaña y conexión real de Playwright.
+    assert len(comandos) == 22
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -368,6 +370,25 @@ def test_barrido_chequea_chrome_y_lo_reinicia_si_no_abre_pestanas(tmp_path):
     assert runner.summary["pasos"][-1]["estado"] == "ok"
     log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
     assert "CHROME_BARRIDO_REINICIO" in log and "CHROME_BARRIDO_OK tras el reinicio (6 s)" in log
+
+
+def test_barrido_reinicia_chrome_si_abre_pestanas_pero_playwright_no_conecta(tmp_path):
+    # 11/11: tras el OOM de 04:20:57 /json/new respondía pero connect_over_cdp vencía (6 de 6, 07:30).
+    reloj, comandos = Reloj(), []
+    cdp = iter([1, 0])  # Playwright no conecta; tras el reinicio sí
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        if cadena.CHROME_CHEQUEO_CDP in command:
+            return Hijo(reloj, code=next(cdp))
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_amazon", cadena.BARRIDO_AMAZON_TIMEOUT)
+    assert ["docker", "restart", cadena.CHROME_BARRIDO] in comandos
+    assert runner.summary["pasos"][-1]["estado"] == "ok"
+    log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    assert "CHROME_BARRIDO_REINICIO" in log and "CHROME_BARRIDO_OK tras el reinicio (3 s)" in log
 
 
 def test_barrido_no_arranca_si_chrome_no_vuelve(tmp_path):

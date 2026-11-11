@@ -198,7 +198,7 @@ def chequear_cadena(hoy, logs_dir):
         return {"cadena-interrumpida": f"la cadena se interrumpió desde {resumen.get('inicio')}; paso en_curso={activos or 'sin paso registrado'}"}
     pasos = {p["paso"]: p for p in resumen["pasos"]}
     obligatorios = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")]
-    obligatorios += [f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
+    obligatorios += [f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas")]
     for nombre in dict.fromkeys(obligatorios + list(pasos)):
         paso = pasos.get(nombre, {})
         if paso.get("estado") != "ok":

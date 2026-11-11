@@ -6,7 +6,7 @@ from tools import vigia_franquicia as v
 ART = v.rf.ART
 HOY = datetime.datetime(2026, 11, 5, 10, 0, tzinfo=ART)
 PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")] + [
-    f"alta:{p}" for p in ("buscar", "dudosos", "chrome", "altas")]
+    f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas")]
 TODOS = "\n".join(v.CONTENEDORES)
 
 

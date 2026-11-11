@@ -33,6 +33,21 @@ def test_reanudacion_sin_duplicados(tmp_path):
     assert len((tmp_path / "US-2026-11-07.jsonl").read_text().splitlines()) == 1
 
 
+def test_materializar_sin_filas_en_memoria_escribe_lo_mismo(tmp_path):
+    # 11/11: el runner materializa con return_rows=False (una página en memoria a la vez).
+    state = State(tmp_path, "2026-11-07", "US")
+    state.commit_page("A", 1, {"page": 1, "complete": False, "products": [
+        {"id": "X", "provenance": [{"category_id": "A"}]}, {"id": "Y", "provenance": [{"category_id": "A"}]}]})
+    state.commit_page("B", 1, payload("B") | {"products": [{"id": "X", "provenance": [{"category_id": "B"}]}]})
+    rows = state.materialize_jsonl(known={"Y"})
+    archivo = (tmp_path / "US-2026-11-07.jsonl").read_text(encoding="utf-8")
+    assert state.materialize_jsonl(known={"Y"}, return_rows=False) == 2
+    assert (tmp_path / "US-2026-11-07.jsonl").read_text(encoding="utf-8") == archivo
+    assert [json.loads(l) for l in archivo.splitlines()] == rows
+    assert rows[0]["provenance"] == [{"category_id": "A"}, {"category_id": "B"}]
+    assert [r["known"] for r in rows] == [False, True]
+
+
 def test_fecha_nueva_no_reutiliza(tmp_path):
     State(tmp_path, "2026-11-07", "US").commit_page("A", 1, payload())
     assert State(tmp_path, "2026-11-08", "US").load_checkpoint("A") == 1

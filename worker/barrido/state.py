@@ -136,29 +136,42 @@ class State:
             write_atomic(path, payload)
         write_atomic(self.root / "checkpoint.json", {"category": category, "next_page": None if payload["complete"] else page + 1})
 
-    def materialize_jsonl(self, known=None):
-        products = {}
-        for page in self.pages():
-            for row in page["products"]:
-                key = row["id"]
-                if key not in products:
-                    products[key] = row
-                else:
-                    for source in row["provenance"]:
-                        if source not in products[key]["provenance"]:
-                            products[key]["provenance"].append(source)
+    def materialize_jsonl(self, known=None, *, return_rows=True):
+        # 11/11: armar todo en memoria llegó a 464.004 kB con 132 páginas (OOM del barrido a las 03:56:56).
+        # Dos pasadas con una sola página en memoria: 1) procedencias fusionadas por id; 2) escritura por línea.
+        paths = sorted(self.root.glob("pages/*/*.json"))
+        provenance = {}
+        for path in paths:
+            for row in json.loads(path.read_text(encoding="utf-8"))["products"]:
+                merged = provenance.setdefault(row["id"], [])
+                for source in row["provenance"]:
+                    if source not in merged:
+                        merged.append(source)
         variation_path = self.root / 'variations.json'
         variations = json.loads(variation_path.read_text(encoding='utf-8')) if variation_path.exists() else {}
-        for row in products.values():
-            saved = variations.get(row['id'], {}).get('value')
-            if saved is not None:
-                row['variations'] = saved
-        if known is not None:
-            for row in products.values():
-                row["known"] = row["id"] in known
-        write_atomic(self.output / f"{self.store}-{self.date}.jsonl",
-                     "".join(json.dumps(p, ensure_ascii=False, allow_nan=False) + "\n" for p in products.values()), text=True)
-        return list(products.values())
+        target = self.output / f"{self.store}-{self.date}.jsonl"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(target.suffix + ".tmp")
+        rows, written = [], set()
+        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+            for path in paths:
+                for row in json.loads(path.read_text(encoding="utf-8"))["products"]:
+                    if row["id"] in written:
+                        continue
+                    written.add(row["id"])
+                    row["provenance"] = provenance[row["id"]]
+                    saved = variations.get(row['id'], {}).get('value')
+                    if saved is not None:
+                        row['variations'] = saved
+                    if known is not None:
+                        row["known"] = row["id"] in known
+                    stream.write(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n")
+                    if return_rows:
+                        rows.append(row)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+        return rows if return_rows else len(written)
 
     def reserve_variation(self, identity, limit):
         path = self.root / "variations.json"

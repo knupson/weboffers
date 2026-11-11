@@ -180,6 +180,13 @@ class AmazonSource:
         if self.chrome is not None:
             self.chrome.close()
 
+    def end_category(self):
+        """Desconecta Playwright entre categorías para que el driver libere lo acumulado (medido 11/11).
+        La próxima búsqueda por Chrome crea una conexión nueva, aunque el cierre falle."""
+        chrome, self.chrome = self.chrome, None
+        if chrome is not None:
+            chrome.close()
+
     def fetch_search_page(self, category, page, stamp):
         node = category["id"]
         set_context(tienda=self.store, categoria=node, pagina=page, asin=None)
