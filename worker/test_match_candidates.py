@@ -823,31 +823,38 @@ def test_10_11_generacion_distinta_y_configuracion_no_es_modelo():
     assert match.generations("Hub for USB 2.0 devices") == {}
 
 
-@pytest.mark.parametrize("title,category,expected", [
-    # Títulos reales de altas-revision.json (11/11) con categoría raíz del barrido.
-    ("Bulova Surveyor Automatic Light Blue Dial Stainless Steel Bracelet Watch 39mm - 96B469", "Men's Fashion", "Relojes"),
-    ("Bulova Men's Classic Wilton Brown Leather Strap Watch 46.5mm - 97B169", "Men's Fashion", "Relojes"),
-    ("Wonlex 4G Smartwatch for Kids with SIM Card, 1.78 Inch Touch Screen", "Girls' Fashion", "Relojes"),
-    ("Ray-Ban RB3025 Classic Polarized Aviator Sunglasses", "Men's Fashion", None),
-    ("Silicone Band for Apple Watch 45mm", "Men's Fashion", None),           # accesorio
-    ("Watch Winder for Automatic Watches", "Men's Fashion", None),
-    # Revisor 11/11: accesorios y no-relojes con «watch» en el título.
-    ("Replacement Watch Strap 22mm Quick Release", "Men's Fashion", None),
-    ("Apple Watch Band 45mm Leather Link Bracelet Hirsch", "Men's Fashion", None),
-    ("Garmin Fenix 7 Watch Charging Cable USB", "Men's Fashion", None),
-    ("Fossil Gen 6 Smartwatch Magnetic Charger Dock", "Men's Fashion", None),
-    ("Apple Watch Screen Protector 2 Pack 45mm", "Men's Fashion", None),
-    ("Casio Watch Battery CR2032 Replacement", "Men's Fashion", None),
-    ("Watch Repair Tool Kit 147pcs", "Men's Fashion", None),
-    ("Watch Display Box 12 Slot Organizer", "Men's Fashion", None),
-    ("Mens Watch Roll Travel Case 3 slots", "Men's Fashion", None),
-    ("Carhartt Men's Acrylic Watch Hat A18", "Men's Fashion", None),
-    ("Stop Watch Digital Timer", "Men's Fashion", None),
-    ("Sport Stop Watch 100 Lap", "Men's Fashion", None),
-    ("Digital Alarm Clock with Watch", "Men's Fashion", None),
-    ("Casio G-Shock GW-B5600 Watch", "Luggage", None),                        # raíz no de moda: no se adivina
-    ("Casio G-Shock GW-B5600 Watch", "Watches", "Relojes"),                   # la categoría de Amazon manda
+@pytest.mark.parametrize("category,domain,expected", [
+    # Dominios reales de las fichas de ML de altas-revision.json (11/11), con la raíz que pasa el barrido.
+    ("Men's Fashion", "MLA-WRISTWATCHES", "Relojes"),                      # Bulova, Casio, Invicta
+    ("Computers", "MLA-DESKTOP_COMPUTER_POWER_SUPPLIES", "Componentes"),   # CORSAIR RM1000x
+    ("Computers", "MLA-HARD_DRIVES_AND_SSDS", "Almacenamiento"),           # Samsung 9100 PRO
+    ("Computers", "MLA-COMPUTER_MONITORS", "Monitores"),                   # ARZOPA Z1FC
+    ("Computers", "MLA-TONER_DRUMS", None),                                # Brother DR830: queda en revisión
+    ("Luggage", "MLA-CAMERA_BACKPACKS", None),                             # WANDRD: mochila, no cámara
+    ("Men's Fashion", "MLA-SUNGLASSES", None),                             # el sitio no tiene anteojos
+    ("Industrial & Scientific", "MLA-GAS_DETECTORS", None),                # Airthings
+    ("Computers", "MLA-NOTEBOOKS", None),                                  # una notebook con «1TB SSD» no es un disco
+    ("Computers", None, None),                                             # sin ficha: no se adivina
+    ("Toys & Games", "MLA-BUILDING_BLOCKS", "Juguetes"),                   # la categoría de Amazon manda
 ])
-def test_categoria_por_titulo_solo_en_raices_de_moda(title, category, expected):
+def test_categoria_por_dominio_de_ml_si_amazon_no_la_ubica(category, domain, expected):
     from tools import match_candidates as m
-    assert m.amazon_category({"amazonTitle": title, "amazonCategory": category}) == expected
+    product = {"domain_id": domain} if domain else {}
+    assert m.amazon_category({"amazonTitle": "x", "amazonCategory": category}, product) == expected
+
+
+@pytest.mark.parametrize("title,domain,expected", [
+    # Revisor 11/11: accesorios de Amazon con ficha ML del producto principal → sin categoría (revisión).
+    ("Casio G-Shock GW-B5600 Watch Strap Silicone 16mm", "MLA-WRISTWATCHES", None),
+    ("Samsung 9100 PRO SSD Heatsink Enclosure", "MLA-HARD_DRIVES_AND_SSDS", None),
+    ("CORSAIR RM1000x Power Supply Cable Kit", "MLA-DESKTOP_COMPUTER_POWER_SUPPLIES", None),
+    # Títulos reales de los 7 que pasan (11/11): siguen con categoría.
+    ("Bulova Men's Classic Wilton Brown Leather Strap Watch 46.5mm - 97B169", "MLA-WRISTWATCHES", "Relojes"),
+    ("Bulova Goddess of Time Green Malachite Gold-Tone Mesh Bracelet Watch", "MLA-WRISTWATCHES", "Relojes"),
+    ("BERTUCCI A-2T Original Classic - White Dial/Forest Nylon", "MLA-WRISTWATCHES", "Relojes"),
+    ("CORSAIR RM1000x ATX 3.1 PCIe 5.1 1000W Power Supply – Black", "MLA-DESKTOP_COMPUTER_POWER_SUPPLIES", "Componentes"),
+    ("ARZOPA 16.1'' 144Hz Portable Gaming Monitor 106% sRGB - Z1FC", "MLA-COMPUTER_MONITORS", "Monitores"),
+])
+def test_dominio_de_ml_no_categoriza_accesorios_de_amazon(title, domain, expected):
+    from tools import match_candidates as m
+    assert m.amazon_category({"amazonTitle": title, "amazonCategory": "Computers"}, {"domain_id": domain}) == expected

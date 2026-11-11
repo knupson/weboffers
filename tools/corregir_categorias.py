@@ -11,7 +11,7 @@ sys.path.insert(0, "/app/worker")
 sys.path.insert(0, "/app")
 import requests  # noqa: E402
 import ml_prices  # noqa: E402
-from tools.crecer_desde_ml import categoria_ml  # noqa: E402
+from tools.categorias_ml import categoria_ml  # noqa: E402
 
 p = "/app/output/catalog-auto.json"
 datos = json.load(open(p, encoding="utf-8"))
