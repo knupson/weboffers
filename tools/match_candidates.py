@@ -23,7 +23,7 @@ import publish  # noqa: E402
 import rates  # noqa: E402
 from variants import variant_conflicts
 from tools.apply_candidates import candidate_summary  # noqa: E402
-from tools.identifier_gate import ML_FIELDS  # noqa: E402
+from tools.identifier_gate import ML_FIELDS, lego_set_match, lego_set_numbers  # noqa: E402
 
 DEFAULT_OUTPUT = "/app/output/match-results.json"
 VARIANTS = set("hero lightspeed signature music paperwhite colorsoft scribe floodlight ".split()) | set("core neo go mini pro plus max ultra lite se fe x s air kit bundle combo pack refurbished renewed reacondicionado usado".split())
@@ -520,6 +520,13 @@ def evaluate(amazon, candidate, product, mep):
     if a_network != b_network:
         doubts.append("red celular sin confirmar")
     comun = identificador_comun(amazon, attrs)
+    # 11/11: el set de LEGO es sólo numérico (model_tokens lo descarta) y ML lo pone en MODEL, que
+    # identificador_comun no compara: 4 sets quedaban en «modelo ausente». Misma regla que el filtro 0f015a7.
+    lego_row = {"brand": amazon.get("brand"), "mlBrand": attrs.get("BRAND"), "amazonIds": amazon.get("amazonIds"),
+                "amazonTitle": title, "mlName": name,
+                "mlIds": {key: attrs.get(key) for key in ("MODEL", "GTIN", "UPC", "EAN")}}
+    if lego_set_match(lego_row):
+        comun = sorted(set(comun) | lego_set_numbers(attrs.get("MODEL")))
     if comun:
         # Un identificador aporta identidad, pero no tapa variantes ni códigos contradictorios.
         evidence["identificador"] = comun

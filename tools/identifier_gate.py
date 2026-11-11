@@ -53,7 +53,16 @@ def lego_set_match(row):
         return False
     amazon = lego_set_numbers(amazon_ids.get("model_name"))
     ml = lego_set_numbers(ml_ids.get("MODEL"))
-    return len(amazon) == 1 and amazon == ml
+    if len(amazon) != 1 or amazon != ml:
+        return False
+    # Revisor 11/11: si el título de Amazon o el nombre de ML nombran OTRO set, el atributo puede estar mal
+    # cargado. La cantidad de piezas («2164 Piezas», «1476 pcs») no es un número de set.
+    textos = " ".join(str(row.get(key) or "") for key in ("amazonTitle", "mlName", "name"))
+    textos = PIECES.sub(" ", textos)
+    return lego_set_numbers(textos) <= amazon
+
+
+PIECES = re.compile(r"\b\d{3,5}\s*(?:piezas|pieces|piece|pcs|pzs|pz|pc)\b", re.I)
 
 
 def strong_identifier_match(row):

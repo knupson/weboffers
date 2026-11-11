@@ -559,6 +559,39 @@ def test_identificador_comun_acepta_aunque_el_titulo_no_diga_el_modelo():
     assert m.evaluate(sin, cand, prod, 1588)[0] != "accepted"
 
 
+def lego_par(model_name="tbd Star Wars TM 75354 75354", ml_model="7/53/54", ml_brand="Lego",
+             title="LEGO Star Wars: The Clone Wars Coruscant Guard Gunship - Buildable Star Wars Toy",
+             ml_name="Lego Star Wars Nave Guardia Coruscant Gunship 75354"):
+    """Fila real de altas-revision.json (11/11): Coruscant Guard Gunship 75354, en «modelo ausente»."""
+    amazon_row = {"asin": "B0BXQ5SX82", "store": "US", "brand": "LEGO", "amazonCategory": "Juguetes",
+                  "amazonTitle": title, "amazonPriceUsd": 189.99,
+                  "amazonIds": {"model_number": "6431245", "upc": "673419379038", "model_name": model_name}}
+    cand = {"catalogId": "MLA38269515", "name": ml_name, "minPrice": 776832, "itemId": "MLA1"}
+    prod = {"name": cand["name"], "attributes": [{"id": "BRAND", "value_name": ml_brand},
+                                                 {"id": "MODEL", "value_name": ml_model}]}
+    return amazon_row, cand, prod
+
+
+def test_lego_set_numerico_cuenta_como_identificador_comun():
+    from tools import match_candidates as m
+    estado, motivo, ev = m.evaluate(*lego_par(), 1587.9)
+    assert (estado, motivo) == ("accepted", "") and ev["identificador"] == ["75354"]
+
+
+@pytest.mark.parametrize("cambios", [
+    {"model_name": "tbd Star Wars TM 75355"},   # otro set en Amazon
+    {"ml_brand": "Mega Bloks"},                  # ML no es LEGO
+    {"model_name": "Star Wars"},                 # Amazon sin número de set estructurado
+    {"ml_name": "Lego Star Wars Nave Guardia Coruscant 75355"},  # revisor 11/11: el nombre de ML dice otro set
+    {"ml_name": "Lego Technic Ferrari 42143 Auto"},
+    {"title": "LEGO Star Wars Coruscant Guard Gunship 75355"},   # el título de Amazon dice otro set
+])
+def test_lego_sin_set_igual_sigue_con_modelo_ausente_o_peor(cambios):
+    from tools import match_candidates as m
+    estado, motivo, ev = m.evaluate(*lego_par(**cambios), 1587.9)
+    assert estado != "accepted" and "75354" not in (ev.get("identificador") or [])
+
+
 @pytest.mark.parametrize("suffix", ["for Gen 3, Gen4 4X V4, and Mini Kit Satellite", "para kit V4"])
 def test_modelo_compatible_no_es_el_producto_vendido(suffix):
     ml = cached_product("Kit Starlink De Internet Vía Satélite Estándar V4", "Starlink", "Antena Gen3")

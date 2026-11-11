@@ -6,7 +6,8 @@ from tools.identifier_gate import strong_identifier_match
 def lego(model_name, ml_model, brand="LEGO", ml_brand="Lego", model_number="6590610"):
     return {"brand": brand, "mlBrand": ml_brand,
             "amazonIds": {"model_number": model_number, "upc": "673419425360", "model_name": model_name},
-            "mlIds": {"MODEL": ml_model}, "amazonTitle": "LEGO 2024 set con 1500 piezas 43019"}
+            # El título trae año y piezas (no son sets) y repite el model_name de Amazon.
+            "mlIds": {"MODEL": ml_model}, "amazonTitle": f"LEGO 2024 set con 1500 piezas {model_name}"}
 
 
 # Los 5 primeros: filas reales de altas-revision.json (11/11) frenadas por sin_identificador_fuerte.
@@ -36,6 +37,15 @@ def test_lego_set_en_model_name_coincide_con_model_de_ml(model_name, ml_model):
     lego("", ""),
 ])
 def test_lego_no_aprueba_sin_set_unico_en_los_dos_lados(row):
+    assert not strong_identifier_match(row)
+
+
+def test_lego_otro_set_en_titulo_o_nombre_no_aprueba_pero_las_piezas_no_cuentan():
+    row = lego("Hogwarts Castle: East Wing 76473", "76473 Harry Potter")
+    row["amazonTitle"] = "LEGO Harry Potter Hogwarts Castle East Wing 76473, 2164 Pieces"
+    row["mlName"] = "Set De Construcción Lego Harry Potter 76473 2164 Piezas En Caja"
+    assert strong_identifier_match(row)
+    row["mlName"] = "Lego Harry Potter 76474 Castillo"
     assert not strong_identifier_match(row)
 
 
