@@ -821,3 +821,33 @@ def test_10_11_generacion_distinta_y_configuracion_no_es_modelo():
     assert match.generations("Samsung 990 PRO PCIe 4.0") == match.generations("SSD Pcie Gen4") == {"pcie": {"4"}}
     assert match.generations("Router Wi-Fi 6E") != match.generations("Router WiFi 7")
     assert match.generations("Hub for USB 2.0 devices") == {}
+
+
+@pytest.mark.parametrize("title,category,expected", [
+    # Títulos reales de altas-revision.json (11/11) con categoría raíz del barrido.
+    ("Bulova Surveyor Automatic Light Blue Dial Stainless Steel Bracelet Watch 39mm - 96B469", "Men's Fashion", "Relojes"),
+    ("Bulova Men's Classic Wilton Brown Leather Strap Watch 46.5mm - 97B169", "Men's Fashion", "Relojes"),
+    ("Wonlex 4G Smartwatch for Kids with SIM Card, 1.78 Inch Touch Screen", "Girls' Fashion", "Relojes"),
+    ("Ray-Ban RB3025 Classic Polarized Aviator Sunglasses", "Men's Fashion", None),
+    ("Silicone Band for Apple Watch 45mm", "Men's Fashion", None),           # accesorio
+    ("Watch Winder for Automatic Watches", "Men's Fashion", None),
+    # Revisor 11/11: accesorios y no-relojes con «watch» en el título.
+    ("Replacement Watch Strap 22mm Quick Release", "Men's Fashion", None),
+    ("Apple Watch Band 45mm Leather Link Bracelet Hirsch", "Men's Fashion", None),
+    ("Garmin Fenix 7 Watch Charging Cable USB", "Men's Fashion", None),
+    ("Fossil Gen 6 Smartwatch Magnetic Charger Dock", "Men's Fashion", None),
+    ("Apple Watch Screen Protector 2 Pack 45mm", "Men's Fashion", None),
+    ("Casio Watch Battery CR2032 Replacement", "Men's Fashion", None),
+    ("Watch Repair Tool Kit 147pcs", "Men's Fashion", None),
+    ("Watch Display Box 12 Slot Organizer", "Men's Fashion", None),
+    ("Mens Watch Roll Travel Case 3 slots", "Men's Fashion", None),
+    ("Carhartt Men's Acrylic Watch Hat A18", "Men's Fashion", None),
+    ("Stop Watch Digital Timer", "Men's Fashion", None),
+    ("Sport Stop Watch 100 Lap", "Men's Fashion", None),
+    ("Digital Alarm Clock with Watch", "Men's Fashion", None),
+    ("Casio G-Shock GW-B5600 Watch", "Luggage", None),                        # raíz no de moda: no se adivina
+    ("Casio G-Shock GW-B5600 Watch", "Watches", "Relojes"),                   # la categoría de Amazon manda
+])
+def test_categoria_por_titulo_solo_en_raices_de_moda(title, category, expected):
+    from tools import match_candidates as m
+    assert m.amazon_category({"amazonTitle": title, "amazonCategory": category}) == expected

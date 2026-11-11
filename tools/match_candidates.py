@@ -110,6 +110,35 @@ def category_for(value):
     return None
 
 
+# 11/11: el barrido pasa la categoría raíz de Amazon; «Men's Fashion» no dice si es un reloj o una remera.
+# En esas raíces (o sin categoría) se mira el título, sólo para categorías que el sitio ya tiene.
+MACRO_CATEGORIES = {"men's fashion", "women's fashion", "girls' fashion", "boys' fashion", "fashion",
+                    "clothing, shoes & jewelry", "clothing, shoes and jewelry"}
+WATCH_RE = re.compile(r"\b(?:watch|watches|wristwatch|smartwatch|smartwatches|chronograph|timepiece|reloj|relojes)\b",
+                      re.I)
+# Accesorio/repuesto o no-reloj: cualquier palabra de esta lista lo saca de «Relojes» (revisor 11/11: «Watch Charging
+# Cable», «Watch Strap 22mm», «Watch Hat», «Stop Watch»). Excepción: la palabra va justo antes de «watch», como en
+# «Leather Strap Watch» (Bulova 97B169) o «Bracelet Watch», donde describe al reloj.
+WATCH_PART_WORDS = (r"bands?|straps?|bracelets?|chargers?|charging|cables?|docks?|cases?|covers?|bumpers?|"
+                    r"protectors?|batter(?:y|ies)|repair|tools?|kits?|box(?:es)?|rolls?|organizers?|winders?|"
+                    r"stands?|holders?|hats?|caps?|beanies?|clocks?|timers?|"
+                    r"mallas?|correas?|cargador(?:es)?|cables?|fundas?|estuches?|protector(?:es)?|pilas?|baterias?|"
+                    r"cajas?|gorros?|despertador(?:es)?|cronometros?")
+WATCH_PART_RE = re.compile(rf"\b(?:{WATCH_PART_WORDS})\b(?!\s+watch\b)|\bstop\s*watch", re.I)
+
+
+def amazon_category(amazon):
+    """Categoría del sitio para una fila de Amazon: la de Amazon y, si es una raíz de moda o falta, el título."""
+    raw = amazon.get("amazonCategory") or ""
+    found = category_for(raw)
+    if found or (raw.strip() and raw.strip().lower() not in MACRO_CATEGORIES):
+        return found
+    title = amazon.get("amazonTitle") or ""
+    if WATCH_RE.search(title) and not WATCH_PART_RE.search(title):
+        return "Relojes"
+    return None
+
+
 def memory_text(value):
     """En «4+64GB» el primer número es RAM y el segundo almacenamiento."""
     return re.sub(r"\b(\d+)\s*\+\s*(\d+)\s*(gb|tb)\b", r"\1\3 RAM \2\3", ascii_text(value))
@@ -559,7 +588,7 @@ def evaluate(amazon, candidate, product, mep):
     if a_ram and b_ram and a_ram != b_ram:
         return "rejected", "memoria RAM distinta", evidence
     if (a_ram != b_ram
-            and category_for(amazon.get("amazonCategory")) in {"Celulares", "Tablets y lectores"}):
+            and amazon_category(amazon) in {"Celulares", "Tablets y lectores"}):
         doubts.append("memoria RAM sin confirmar")
     for unit in a_caps.keys() & b_caps.keys():
         # Si los dos lados informan varios valores (RAM + almacenamiento), tienen que coincidir todos:
@@ -616,7 +645,7 @@ def evaluate(amazon, candidate, product, mep):
             return "rejected", "precio fuera de rango", evidence
     else:
         doubts.append("precio ausente o inválido")
-    if not category_for(amazon.get("amazonCategory")):
+    if not amazon_category(amazon):
         doubts.append("categoría")
     if not attrs or not product.get("name"):
         doubts.append("atributos o nombre ausentes")
@@ -627,7 +656,7 @@ def evaluate(amazon, candidate, product, mep):
     leves = {"color sin confirmar"}
     # La capacidad sin confirmar en un solo lado sólo importa donde la capacidad ES la variante (05/11: Plaud Note Pro
     # 64 GB, MWE Gold 850 W, EVIVA 12" quedaban dudosos siendo el mismo producto).
-    if category_for(amazon.get("amazonCategory")) not in {"Almacenamiento", "Celulares", "Tablets y lectores",
+    if amazon_category(amazon) not in {"Almacenamiento", "Celulares", "Tablets y lectores",
                                                           "Monitores", "Componentes", "Mini PCs"}:
         leves = leves | {"capacidad o tamaño sin confirmar"}
     if doubts and evidence["brand"] and (evidence["model"] or comun) and set(doubts) <= leves:
@@ -738,7 +767,7 @@ def match_products(products, mep, catalog=(), products_cache=None, on_result=Non
             row = {k: amazon.get(k, "") for k in ("asin", "store", "amazonTitle")}
             row.update(catalogId=candidate["catalogId"], itemId=candidate.get("itemId") or "",
                        mlPrice=candidate.get("minPrice") if positive_number(candidate.get("minPrice")) else None, name=name, brand=brand,
-                       category=category_for(amazon.get("amazonCategory")) or "", summary=candidate_summary(name, brand, attributes(product)),
+                       category=amazon_category(amazon) or "", summary=candidate_summary(name, brand, attributes(product)),
                        evidence=evidence, mlName=product.get("name") or candidate.get("name") or "",
                        mlBrand=attributes(product).get("BRAND", ""), mlModel=attributes(product).get("MODEL", ""),
                        amazonPriceUsd=amazon.get("amazonPriceUsd"))
@@ -754,7 +783,7 @@ def match_products(products, mep, catalog=(), products_cache=None, on_result=Non
             best = max(failures, key=lambda failure: failure.get("score", -1), default={})
             result["rejected"].append({**{key: best.get(key, "") for key in
                                         ("catalogId", "mlName", "mlBrand", "mlModel", "mlPrice", "evidence")},
-                                       "category": category_for(amazon.get("amazonCategory")) or "",
+                                       "category": amazon_category(amazon) or "",
                                        "asin": amazon.get("asin"), "amazonTitle": amazon.get("amazonTitle"),
                                        "reason": best.get("reason", "sin candidatos"),
                                        "candidates": failures})
