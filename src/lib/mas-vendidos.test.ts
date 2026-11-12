@@ -19,3 +19,19 @@ describe("masVendidos", () => {
     expect(masVendidos([p("a", "2026-11-13"), p("b", "2026-11-12"), p("c", "2026-11-12")], "2026-11-12")).toEqual([]);
   });
 });
+
+describe("applyMasVendidos", () => {
+  it("pone la fecha de hoy en los slugs destacados y deja el resto", async () => {
+    const { applyMasVendidos } = await import("./data");
+    const cat = [p("toshiba", "2026-11-02"), p("jbl"), p("otro", "2026-11-02")];
+    const out = applyMasVendidos(cat, { fecha: "2026-11-12", slugs: ["toshiba", "jbl"] });
+    expect(out.map((x) => [x.slug, x.hot])).toEqual([["toshiba", "2026-11-12"], ["jbl", "2026-11-12"], ["otro", "2026-11-02"]]);
+  });
+  it("un archivo ausente o inválido no cambia nada", async () => {
+    const { applyMasVendidos } = await import("./data");
+    const cat = [p("a", "2026-11-02")];
+    expect(applyMasVendidos(cat, null)).toBe(cat);
+    expect(applyMasVendidos(cat, { fecha: "ayer", slugs: ["a"] })).toBe(cat);
+    expect(applyMasVendidos(cat, { fecha: "2026-11-12", slugs: "a" } as never)).toBe(cat);
+  });
+});

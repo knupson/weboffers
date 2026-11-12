@@ -162,6 +162,13 @@ async function overlayCatalog(workDir, outputDir) {
     if (error.code !== 'ENOENT') log(`FICHAS_SIN_COPIA ${error.code ?? error.message}`);
     await fs.rm(sheetDest, { force: true }).catch(() => {});
   });
+  // 12/11: destacados de ML del día (tools/actualizar_mas_vendidos.py). Opcional: sin copia la sección
+  // «Lo más vendido» no sale; nunca queda una copia anterior.
+  const hotDest = path.join(workDir, 'data', 'mas-vendidos.json');
+  await fs.copyFile(path.join(outputDir, 'mas-vendidos.json'), hotDest).catch(async (error) => {
+    if (error.code !== 'ENOENT') log(`MAS_VENDIDOS_SIN_COPIA ${error.code ?? error.message}`);
+    await fs.rm(hotDest, { force: true }).catch(() => {});
+  });
   const catalogPath = path.join(workDir, 'data', 'catalog.json');
   const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));
   const origins = Object.fromEntries(repo.map((p) => [p.slug, 'repo']));

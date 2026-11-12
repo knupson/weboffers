@@ -382,8 +382,24 @@ export function loadMlPrices(): MlPrices | null {
   return readJson<MlPrices>("data/ml-prices.json");
 }
 
+/** Destacados de ML del día: lo escribe tools/actualizar_mas_vendidos.py y el deployer lo copia a data/ (12/11). */
+export interface MasVendidosFile {
+  fecha: string;
+  slugs: string[];
+}
+
+/** Pone como `hot` la fecha del archivo de destacados en los slugs que lista; el resto queda como estaba. */
+export function applyMasVendidos(catalog: CatalogEntry[], file: MasVendidosFile | null): CatalogEntry[] {
+  if (!file || typeof file.fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(file.fecha) || !Array.isArray(file.slugs)) {
+    return catalog;
+  }
+  const slugs = new Set(file.slugs);
+  return catalog.map((p) => (slugs.has(p.slug) ? { ...p, hot: file.fecha } : p));
+}
+
 export function loadCatalog(now = Date.now()): CatalogEntry[] {
-  const catalog = readJson<CatalogEntry[]>("data/catalog.json") ?? [];
+  const catalog = applyMasVendidos(readJson<CatalogEntry[]>("data/catalog.json") ?? [],
+    readJson<MasVendidosFile>("data/mas-vendidos.json"));
   return mergeMlPrices(catalog, loadMlPrices(), now);
 }
 
