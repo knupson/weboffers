@@ -28,7 +28,8 @@ DEPLOYER = "franquicia400-weboffers-deployer-1"
 CONTENEDORES = [WORKER, DEPLOYER, "franquicia400-weboffers-amazon-ar-1", "franquicia400-weboffers-amazon-scraper-1"]
 LOGS_WORKER = "/opt/docker/franquicia400/worker/output/logs"
 # Líneas del log del worker que son fallas reales (no ruido esperado).
-MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|DEPLOY_ALERT caída|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA|TELEGRAM_INCIERTO|PUBLICACION_ALERTA|PUBLICACION_SIN_ESTADO|PUBLICACION_ESTADO_INVALIDO|DUDOSO_PARA_ALEJANDRO")
+MARCAS_FALLA = re.compile(r"Falló|DEPLOY_FAIL|DEPLOY_ALERT caída|AMAZON_SCRAPER_FAIL|Traceback|corrida incompleta|MENOS_DE_100|VARIANTE_DISTINTA|TELEGRAM_INCIERTO|PUBLICACION_ALERTA|PUBLICACION_SIN_ESTADO|PUBLICACION_ESTADO_INVALIDO")
+DUDOSO_PAR = re.compile(r"DUDOSO_PARA_ALEJANDRO par=(\S+)")
 ML_FALLAS_TOLERADAS = 3  # "no se pudo consultar" sueltas por día antes de avisar
 SIN_LATIDO_MIN = 75      # el worker imprime al menos una vez por hora
 
@@ -117,6 +118,13 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
         if MARCAS_FALLA.search(linea):
             texto = linea.split(" ", 1)[-1][:160]
             problemas["log:" + texto[:80]] = f"el worker registró: {texto}"
+    # 12/11: cada DUDOSO_PARA_ALEJANDRO salía como una falla aparte (17 pares en 4 WhatsApp de a 6). Es trabajo
+    # pendiente, no una falla: un solo resumen con la cantidad de pares, cuando la cadena ya no corre y el
+    # conteo dejó de crecer. Si después aparecen más, la clave cambia y sale un resumen nuevo con el total.
+    dudosos = {m.group(1) for m in map(DUDOSO_PAR.search, lineas) if m}
+    if dudosos and not cadena_en_curso(cadena_dir):
+        problemas[f"dudosos:{len(dudosos)}"] = (f"{len(dudosos)} pares dudosos esperan tu revisión: los dos modelos "
+                                                f"no coincidieron (DUDOSO_PARA_ALEJANDRO en worker-{hoy}.log)")
     ml_fallas = [l for l in lineas if "Mercado Libre: no se pudo consultar" in l]
     if len(ml_fallas) > ML_FALLAS_TOLERADAS:
         problemas["ml-fallas"] = f"Mercado Libre: {len(ml_fallas)} consultas fallidas hoy (ver log del worker)"

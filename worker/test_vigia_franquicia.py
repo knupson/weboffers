@@ -213,3 +213,25 @@ def test_motivo_de_cadena_largo_se_recorta_en_el_aviso(tmp_path):
     texto = v.chequear_cadena("2026-11-05", tmp_path)["cadena:alta:barrido_ml_extra"]
     assert "RemoteDisconnected" in texto
     assert len(texto) <= v.MOTIVO_MAX + len("la cadena de madrugada falló en alta:barrido_ml_extra ()")
+
+
+def test_dudosos_para_alejandro_van_en_un_solo_resumen(tmp_path):
+    # 12/11: 17 DUDOSO_PARA_ALEJANDRO salieron como 17 «fallas» en 4 WhatsApp (tandas de 6).
+    pares = [f"B0{i:08d}:MLA{i}" for i in range(17)]
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker",
+        *[f"2026-11-05 06:{i:02d}:00 DUDOSO_PARA_ALEJANDRO par={p} votos=a:aprobar,b:rechazar evidencia=/x/{i}.json"
+          for i, p in enumerate(pares)],
+        f"2026-11-05 07:00:00 DUDOSO_PARA_ALEJANDRO par={pares[0]} votos=a:aprobar,b:rechazar evidencia=/x/0.json")
+    p = correr(tmp_path)
+    assert not any(k.startswith("log:") for k in p)
+    assert list(p) == ["dudosos:17"]
+    assert "17 pares" in p["dudosos:17"]
+
+
+def test_dudosos_esperan_a_que_termine_la_cadena(tmp_path, monkeypatch):
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker",
+        "2026-11-05 06:00:00 DUDOSO_PARA_ALEJANDRO par=B1:MLA1 votos=a:aprobar,b:rechazar evidencia=/x/1.json")
+    monkeypatch.setattr(v, "cadena_en_curso", lambda d: True)
+    assert "dudosos:1" not in correr(tmp_path)
+    monkeypatch.setattr(v, "cadena_en_curso", lambda d: False)
+    assert "dudosos:1" in correr(tmp_path)
