@@ -156,7 +156,11 @@ def test_new_categories_apply_and_art(category):
     row = match.match_products([amazon(amazonCategory=category)], 1575)["accepted"][0]
     apply_candidates.validate_and_build_entries([], [{**row, "summary": "Descripción pendiente."}])
     config = (ROOT / "src" / "config.ts").read_text(encoding="utf-8")
-    assert f'{category}: "/art/cat-hogar.webp", // TODO: ilustración propia' in config
+    # 12/11: varias pasaron de la provisoria (cat-hogar) a una propia; lo que importa es que tenga una y que exista.
+    import re
+    found = re.search(r'^\s*"?%s"?: "(/art/cat-[a-z]+\.webp)"' % re.escape(category), config, re.M)
+    assert found, category
+    assert (ROOT / "public" / found.group(1).lstrip("/")).exists()
 
 
 def test_unknown_category_is_doubtful(api):

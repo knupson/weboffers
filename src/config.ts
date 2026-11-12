@@ -62,20 +62,20 @@ export const CATEGORY_ART: Record<string, string> = {
   Componentes: "/art/cat-componentes.webp",
   Cámaras: "/art/cat-camaras.webp",
   Relojes: "/art/cat-relojes.webp",
-  Herramientas: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Deportes: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Juguetes: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Herramientas: "/art/cat-herramientas.webp",
+  Deportes: "/art/cat-deportes.webp",
+  Juguetes: "/art/cat-juguetes.webp",
   Instrumentos: "/art/cat-hogar.webp", // TODO: ilustración propia
   Oficina: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Celulares: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Celulares: "/art/cat-celulares.webp",
   Bebés: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Mascotas: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Mascotas: "/art/cat-mascotas.webp",
   Belleza: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Auto: "/art/cat-hogar.webp", // TODO: ilustración propia
+  Auto: "/art/cat-auto.webp",
   Jardín: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Salud: "/art/cat-hogar.webp", // TODO: ilustración propia
-  Anteojos: "/art/cat-hogar.webp", // TODO: ilustración propia (12/11, categoría nueva)
-  Mochilas: "/art/cat-hogar.webp", // TODO: ilustración propia (12/11, categoría nueva)
+  Salud: "/art/cat-salud.webp",
+  Anteojos: "/art/cat-anteojos.webp",
+  Mochilas: "/art/cat-mochilas.webp",
 };
 
 // Productos cuya categoría no los representa bien llevan su propia ilustración genérica.
