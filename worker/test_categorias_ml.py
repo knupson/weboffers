@@ -33,3 +33,17 @@ def test_categoria_ml_por_subcadena_sin_cambios():
     assert categoria_ml("MLA-CELLPHONES") == "Celulares"
     assert categoria_ml("MLA-CAMERAS") == "Cámaras"
     assert categoria_ml(None) == ""
+
+
+@pytest.mark.parametrize("domain,expected", [
+    # 12/11: leídos en fichas reales de ML de altas-revision.json y del catálogo.
+    ("MLA-HARD_DRIVES_AND_SSDS_ENCLOSURES", "Almacenamiento"),  # Synology DS223 (MLA2071000151), UGREEN DXP2800 (MLA52659246)
+    ("MLA-COMBINED_TOOL_KITS", "Herramientas"),                 # Flexcut SK107 (MLA62738921)
+    ("MLA-TOY_BUILDING_SETS", "Juguetes"),                      # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
+    # Sin categoría existente en el sitio: siguen en revisión.
+    ("MLA-SUNGLASSES", ""), ("MLA-BACKPACKS", ""), ("MLA-SNEAKERS", ""), ("MLA-LAPTOP_BRIEFCASES", ""),
+    ("MLA-DIGITAL_WEATHER_STATIONS", ""), ("MLA-BINOCULARS", ""), ("MLA-KNITTING_NEEDLES", ""),
+    ("MLA-SURVEILLANCE_CAMERAS", "Cámaras"),  # Ubiquiti G5 (MLA47225060); los Ring de Hogar son del catálogo manual
+])
+def test_dominios_exactos_del_12_11(domain, expected):
+    assert categoria_ml_exacta(domain) == expected

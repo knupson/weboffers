@@ -858,3 +858,20 @@ def test_categoria_por_dominio_de_ml_si_amazon_no_la_ubica(category, domain, exp
 def test_dominio_de_ml_no_categoriza_accesorios_de_amazon(title, domain, expected):
     from tools import match_candidates as m
     assert m.amazon_category({"amazonTitle": title, "amazonCategory": "Computers"}, {"domain_id": domain}) == expected
+
+
+@pytest.mark.parametrize("category,title,domain,expected", [
+    # 12/11: la raíz de Amazon del barrido mandaba sobre la ficha de ML; LEGO 10327 se publicó en «Herramientas».
+    ("Tools & Home Improvement", "LEGO Icons Dune Atreides Royal Ornithopter 10327", "MLA-TOY_BUILDING_SETS", "Juguetes"),
+    ("Computers", "UGREEN NAS DXP2800 2-Bay for Advanced Home Users, Remote Workers & Creators",
+     "MLA-HARD_DRIVES_AND_SSDS_ENCLOSURES", "Almacenamiento"),
+    ("Arts & Crafts", "FLEXCUT Wood Carving Tools | 11 Piece Craft Carver Set | Includes 10 1095 High Carbon Steel Blades",
+     "MLA-COMBINED_TOOL_KITS", "Herramientas"),
+    # Un accesorio no toma el dominio del producto principal: vale la raíz de Amazon (o revisión).
+    ("Computers", "2-Bay Hard Drive Enclosure USB-C", "MLA-HARD_DRIVES_AND_SSDS_ENCLOSURES", None),
+    # Dominio sin categoría exacta: sigue mandando la raíz de Amazon.
+    ("Tools & Home Improvement", "Fieldpiece SC260 Clamp Meter", "MLA-CLAMP_METERS", "Herramientas"),
+])
+def test_dominio_exacto_de_ml_manda_sobre_la_raiz_de_amazon(category, title, domain, expected):
+    from tools import match_candidates as m
+    assert m.amazon_category({"amazonTitle": title, "amazonCategory": category}, {"domain_id": domain}) == expected

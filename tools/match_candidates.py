@@ -115,16 +115,17 @@ def category_for(value):
 # ubica un reloj, una fuente o un monitor desde ahí. Si la de Amazon no da categoría, manda el dominio de la ficha de
 # ML (domain_id): clasifica la entidad, no las especificaciones del título (una notebook con «1TB SSD» no es un disco).
 def amazon_category(amazon, product=None):
-    """Categoría del sitio: la de Amazon y, si no ubica ninguna, la del dominio de la ficha de ML."""
-    found = category_for(amazon.get("amazonCategory") or "")
-    if found:
-        return found
+    """Categoría del sitio: la del dominio exacto de la ficha de ML y, si no hay, la de Amazon."""
     domain = product.get("domain_id") if isinstance(product, dict) else None
     # Revisor 11/11: el dominio es el de la ficha de ML; si el título de Amazon es un accesorio de ese producto
-    # («Watch Strap 16mm», «Power Supply Cable Kit», «SSD Enclosure») no se le da categoría y queda en revisión.
-    if DOMAIN_ACCESSORY_RE.search(amazon.get("amazonTitle") or ""):
-        return None
-    return categoria_ml_exacta(domain) or None
+    # («Watch Strap 16mm», «Power Supply Cable Kit», «SSD Enclosure») el dominio no le da categoría.
+    # 12/11: el dominio exacto manda sobre la raíz de Amazon. El barrido pasa la categoría donde apareció la tarjeta
+    # («Tools & Home Improvement») y así LEGO 10327 y una cámara Ubiquiti se publicaron en «Herramientas».
+    if not DOMAIN_ACCESSORY_RE.search(amazon.get("amazonTitle") or ""):
+        exacta = categoria_ml_exacta(domain)
+        if exacta:
+            return exacta
+    return category_for(amazon.get("amazonCategory") or "") or None
 
 
 # «Leather Strap Watch» (Bulova 97B169) describe al reloj: la palabra justo antes de «watch» no cuenta.
