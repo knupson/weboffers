@@ -93,6 +93,8 @@ def test_dudosos_kill_a_mitad_conserva_lo_decidido_y_el_reintento_no_lo_repite(c
 
     monkeypatch.setattr(dudosos.ml_prices, "get_json", ficha)
     monkeypatch.setattr(dudosos.revisar_altas, "review", Mock(return_value=1))  # sin aplicar: siguen en la cola
+    # 12/11: los pares van en paralelo; con uno a la vez el orden es determinista y se ve exacto qué conserva el corte.
+    monkeypatch.setattr(dudosos, "PARES_EN_PARALELO", 1)
     # Orden esperado: primero la fila más nueva (revisionDesde descendente): A4, A3, A2 (kill), A1.
     with pytest.raises(Kill):
         dudosos.run(output / "catalog.json", output, post=post_falso(*[voto("aprobar"), voto("rechazar")] * 4))
