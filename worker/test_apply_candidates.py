@@ -187,3 +187,11 @@ def test_validation_accepts_us_and_es_and_rejects_uk_store(tmp_path):
     )
     assert [entry["store"] for entry in added] == ["US", "ES"]
 
+
+
+def test_categoria_nueva_anteojos_se_acepta_sin_estar_en_el_catalogo(tmp_path):
+    # 12/11: la primera alta de una categoría nueva no puede salir de las categorías del catálogo existente.
+    cat_path = write_temp_catalog(tmp_path)
+    added = apply_candidates.apply_candidates(
+        cat_path, [make_candidate(slug="gucci-gg0036sn", asin="B000000021", category="Anteojos")], today="2026-11-12")
+    assert [c["category"] for c in added] == ["Anteojos"]
