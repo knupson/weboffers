@@ -897,3 +897,18 @@ def test_case_en_otro_dominio_no_cambia():
     # «with Case» frena sólo en anteojos: un reloj con estuche sigue siendo Relojes.
     assert m.amazon_category({"amazonTitle": "Casio Edifice Watch with Case", "amazonCategory": "Men's Fashion"},
                              {"domain_id": "MLA-WRISTWATCHES"}) == "Relojes"
+
+
+@pytest.mark.parametrize("title,domain,expected", [
+    # 12/11: categoría Mochilas. Títulos reales de altas-revision.json.
+    ("Bellroy Via Work Bag, Laptop Messenger - Black", "MLA-LAPTOP_BRIEFCASES", "Mochilas"),
+    ("Osprey Tropos Laptop Backpack, Black OS", "MLA-BACKPACKS", "Mochilas"),
+    ("Timbuk2 Q Laptop Backpack 2.0, 17 Inch Work Commuter Backpack", "MLA-BACKPACKS", "Mochilas"),
+    # Accesorios con la ficha ML de la mochila: sin categoría por dominio.
+    ("Osprey Ultralight Raincover Medium", "MLA-BACKPACKS", None),
+    ("Replacement Shoulder Strap for Laptop Bag", "MLA-LAPTOP_BRIEFCASES", None),
+    ("Backpack Organizer Insert with Dividers", "MLA-BACKPACKS", None),
+])
+def test_mochilas_excluye_accesorios(title, domain, expected):
+    from tools import match_candidates as m
+    assert m.amazon_category({"amazonTitle": title, "amazonCategory": "Luggage"}, {"domain_id": domain}) == expected

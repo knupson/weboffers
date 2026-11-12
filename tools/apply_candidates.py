@@ -98,7 +98,7 @@ def validate_and_build_entries(catalog, candidates, today=None):
     valid_categories.update({
         "Herramientas", "Deportes", "Juguetes", "Instrumentos", "Oficina", "Celulares",
         "Bebés", "Mascotas", "Belleza", "Auto", "Jardín", "Salud",
-        "Anteojos",  # 12/11: categoría nueva (Alejandro); la primera alta no puede salir del catálogo existente
+        "Anteojos", "Mochilas",  # 12/11: categorías nuevas (Alejandro); la primera alta no sale del catálogo existente
     })
 
     seen_slugs = set()

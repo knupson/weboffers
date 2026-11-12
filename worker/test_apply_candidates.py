@@ -195,3 +195,10 @@ def test_categoria_nueva_anteojos_se_acepta_sin_estar_en_el_catalogo(tmp_path):
     added = apply_candidates.apply_candidates(
         cat_path, [make_candidate(slug="gucci-gg0036sn", asin="B000000021", category="Anteojos")], today="2026-11-12")
     assert [c["category"] for c in added] == ["Anteojos"]
+
+
+def test_categoria_nueva_mochilas_se_acepta_sin_estar_en_el_catalogo(tmp_path):
+    cat_path = write_temp_catalog(tmp_path)
+    added = apply_candidates.apply_candidates(
+        cat_path, [make_candidate(slug="bellroy-via-work", asin="B000000031", category="Mochilas")], today="2026-11-12")
+    assert [c["category"] for c in added] == ["Mochilas"]

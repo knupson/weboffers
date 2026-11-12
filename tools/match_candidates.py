@@ -131,10 +131,16 @@ def amazon_category(amazon, product=None):
     return category_for(amazon.get("amazonCategory") or "") or None
 
 
+MOCHILA_ACCESORIOS = re.compile(r"\b(?:rain ?covers?|raincovers?|fundas? (?:de|para) lluvia|cubre ?mochilas?|shoulder straps?|replacement straps?|correas?|organi[sz]ers?|organizador(?:es)?|inserts?|dividers?|separador(?:es)?|keychains?|llaveros?|patch(?:es)?|parches?)\b", re.I)
+
+
 # 12/11: accesorios propios de un dominio, sin tocar el resto («Watch with Case» sigue siendo un reloj).
 ACCESORIOS_POR_DOMINIO = {
     "MLA-SUNGLASSES": re.compile(r"\b(?:cases?|estuches?|cords?|cordon(?:es)?|cordón|retainers?|chains?|cadenas?|"
                                  r"replacement lens(?:es)?|lentes de repuesto|clip[- ]?ons?|cleaning|limpieza)\b", re.I),
+    # 12/11: Mochilas (mochilas y maletines para notebook).
+    "MLA-BACKPACKS": MOCHILA_ACCESORIOS,
+    "MLA-LAPTOP_BRIEFCASES": MOCHILA_ACCESORIOS,
 }
 
 

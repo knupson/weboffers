@@ -53,6 +53,9 @@ DOMINIOS_EXACTOS = {
     # 12/11 (Alejandro): categoría nueva. Estuches, cordones y lentes de repuesto tienen otros dominios en ML y
     # además match_candidates los excluye por el título de Amazon (ACCESORIOS_POR_DOMINIO).
     "MLA-SUNGLASSES": "Anteojos",                                   # Burberry BE3133 (MLA46288980), Gucci GG0036SN (MLA50793480)
+    # 12/11 (Alejandro): categoría nueva Mochilas. Fundas de lluvia, correas u organizadores: match_candidates.
+    "MLA-BACKPACKS": "Mochilas",                                    # Osprey Tropos (MLA38592292), Timbuk2 Q 2.0 (MLA38263799)
+    "MLA-LAPTOP_BRIEFCASES": "Mochilas",                            # Bellroy Via Work 14L (MLA62969897)
 }
 
 

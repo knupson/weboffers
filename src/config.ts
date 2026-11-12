@@ -75,6 +75,7 @@ export const CATEGORY_ART: Record<string, string> = {
   Jardín: "/art/cat-hogar.webp", // TODO: ilustración propia
   Salud: "/art/cat-hogar.webp", // TODO: ilustración propia
   Anteojos: "/art/cat-hogar.webp", // TODO: ilustración propia (12/11, categoría nueva)
+  Mochilas: "/art/cat-hogar.webp", // TODO: ilustración propia (12/11, categoría nueva)
 };
 
 // Productos cuya categoría no los representa bien llevan su propia ilustración genérica.

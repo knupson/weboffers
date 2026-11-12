@@ -41,7 +41,7 @@ def test_categoria_ml_por_subcadena_sin_cambios():
     ("MLA-COMBINED_TOOL_KITS", "Herramientas"),                 # Flexcut SK107 (MLA62738921)
     ("MLA-TOY_BUILDING_SETS", "Juguetes"),                      # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
     # Sin categoría existente en el sitio: siguen en revisión.
-    ("MLA-BACKPACKS", ""), ("MLA-SNEAKERS", ""), ("MLA-LAPTOP_BRIEFCASES", ""),
+    ("MLA-SNEAKERS", ""), ("MLA-BACKPACKS", "Mochilas"), ("MLA-LAPTOP_BRIEFCASES", "Mochilas"),
     ("MLA-BINOCULARS", ""), ("MLA-KNITTING_NEEDLES", ""),
     # 12/11 (Alejandro): Hogar y la categoría nueva Anteojos.
     ("MLA-DIGITAL_WEATHER_STATIONS", "Hogar"), ("MLA-GAS_DETECTORS", "Hogar"), ("MLA-SUNGLASSES", "Anteojos"),
