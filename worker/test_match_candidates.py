@@ -831,8 +831,8 @@ def test_10_11_generacion_distinta_y_configuracion_no_es_modelo():
     ("Computers", "MLA-COMPUTER_MONITORS", "Monitores"),                   # ARZOPA Z1FC
     ("Computers", "MLA-TONER_DRUMS", None),                                # Brother DR830: queda en revisión
     ("Luggage", "MLA-CAMERA_BACKPACKS", None),                             # WANDRD: mochila, no cámara
-    ("Men's Fashion", "MLA-SUNGLASSES", None),                             # el sitio no tiene anteojos
-    ("Industrial & Scientific", "MLA-GAS_DETECTORS", None),                # Airthings
+    ("Men's Fashion", "MLA-SUNGLASSES", "Anteojos"),                       # categoría nueva (12/11)
+    ("Industrial & Scientific", "MLA-GAS_DETECTORS", "Hogar"),             # Airthings (12/11)
     ("Computers", "MLA-NOTEBOOKS", None),                                  # una notebook con «1TB SSD» no es un disco
     ("Computers", None, None),                                             # sin ficha: no se adivina
     ("Toys & Games", "MLA-BUILDING_BLOCKS", "Juguetes"),                   # la categoría de Amazon manda
@@ -875,3 +875,25 @@ def test_dominio_de_ml_no_categoriza_accesorios_de_amazon(title, domain, expecte
 def test_dominio_exacto_de_ml_manda_sobre_la_raiz_de_amazon(category, title, domain, expected):
     from tools import match_candidates as m
     assert m.amazon_category({"amazonTitle": title, "amazonCategory": category}, {"domain_id": domain}) == expected
+
+
+@pytest.mark.parametrize("title,expected", [
+    # 12/11: categoría Anteojos. Títulos reales de altas-revision.json.
+    ("BURBERRY Sunglasses BE 3133 133713 Daphne Rose Gold Gradient Pink", "Anteojos"),
+    ("Gucci Square Sunglasses for womens GG0036SN 002 Black/Green/Red 54mm 0036", "Anteojos"),
+    # Accesorios con la ficha ML del anteojo: sin categoría por dominio (queda en revisión).
+    ("Hard Shell Sunglasses Case for Ray-Ban RB3025", None),
+    ("Replacement Lenses for Oakley Sutro OO9406", None),
+    ("Sunglasses Retainer Cord Strap", None),
+])
+def test_anteojos_excluye_accesorios(title, expected):
+    from tools import match_candidates as m
+    assert m.amazon_category({"amazonTitle": title, "amazonCategory": "Men's Fashion"},
+                             {"domain_id": "MLA-SUNGLASSES"}) == expected
+
+
+def test_case_en_otro_dominio_no_cambia():
+    from tools import match_candidates as m
+    # «with Case» frena sólo en anteojos: un reloj con estuche sigue siendo Relojes.
+    assert m.amazon_category({"amazonTitle": "Casio Edifice Watch with Case", "amazonCategory": "Men's Fashion"},
+                             {"domain_id": "MLA-WRISTWATCHES"}) == "Relojes"

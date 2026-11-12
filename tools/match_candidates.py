@@ -68,6 +68,7 @@ CATEGORY_RULES = (
     ("Auto", "automotive|car electronics|auto"),
     ("Jardín", "garden|gardening|patio|jardin|lawn"),
     ("Salud", "health|salud|medical"),
+    ("Anteojos", "sunglasses|eyewear|anteojos"),
     ("Hogar", "household|home decor|bedding|furniture|smart home|home automation|vacuum|lighting|hogar|home and kitchen"),
 )
 
@@ -121,11 +122,20 @@ def amazon_category(amazon, product=None):
     # («Watch Strap 16mm», «Power Supply Cable Kit», «SSD Enclosure») el dominio no le da categoría.
     # 12/11: el dominio exacto manda sobre la raíz de Amazon. El barrido pasa la categoría donde apareció la tarjeta
     # («Tools & Home Improvement») y así LEGO 10327 y una cámara Ubiquiti se publicaron en «Herramientas».
-    if not DOMAIN_ACCESSORY_RE.search(amazon.get("amazonTitle") or ""):
+    title = amazon.get("amazonTitle") or ""
+    extra = ACCESORIOS_POR_DOMINIO.get((domain or "").upper())
+    if not DOMAIN_ACCESSORY_RE.search(title) and not (extra and extra.search(title)):
         exacta = categoria_ml_exacta(domain)
         if exacta:
             return exacta
     return category_for(amazon.get("amazonCategory") or "") or None
+
+
+# 12/11: accesorios propios de un dominio, sin tocar el resto («Watch with Case» sigue siendo un reloj).
+ACCESORIOS_POR_DOMINIO = {
+    "MLA-SUNGLASSES": re.compile(r"\b(?:cases?|estuches?|cords?|cordon(?:es)?|cordón|retainers?|chains?|cadenas?|"
+                                 r"replacement lens(?:es)?|lentes de repuesto|clip[- ]?ons?|cleaning|limpieza)\b", re.I),
+}
 
 
 # «Leather Strap Watch» (Bulova 97B169) describe al reloj: la palabra justo antes de «watch» no cuenta.

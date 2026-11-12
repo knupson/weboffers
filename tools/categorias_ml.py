@@ -47,6 +47,12 @@ DOMINIOS_EXACTOS = {
     # Ubiquiti G5 Turret Ultra (MLA47225060), publicada en «Herramientas» por la raíz «Tools & Home Improvement».
     # Los Ring de «Hogar» son del catálogo manual (data/catalog.json) y no pasan por el validador.
     "MLA-SURVEILLANCE_CAMERAS": "Cámaras",
+    # 12/11 (Alejandro): Hogar ya existe en el sitio (Ring, Roborock).
+    "MLA-DIGITAL_WEATHER_STATIONS": "Hogar",                        # Ambient Weather WS-2000 (MLA37550577)
+    "MLA-GAS_DETECTORS": "Hogar",                                   # Airthings View Plus 2960 (MLA64662968)
+    # 12/11 (Alejandro): categoría nueva. Estuches, cordones y lentes de repuesto tienen otros dominios en ML y
+    # además match_candidates los excluye por el título de Amazon (ACCESORIOS_POR_DOMINIO).
+    "MLA-SUNGLASSES": "Anteojos",                                   # Burberry BE3133 (MLA46288980), Gucci GG0036SN (MLA50793480)
 }
 
 
