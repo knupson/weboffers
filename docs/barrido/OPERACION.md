@@ -151,7 +151,14 @@ reintenta errores y reconstruye sin duplicados. Un 403/429 corta el paso con
 `BARRIDO_ML_BLOQUEADO`, cuerpo literal y HTTP. Resolver el bloqueo antes de reanudar; nunca
 interpretarlo como cero resultados. `--ml-pause` controla la pausa entre pedidos.
 Los logs llevan hora ART y terminan con contadores de productos con candidatos, sin resultados
-y errores; un paso bloqueado o con errores devuelve código no cero.
+y errores; un paso bloqueado devuelve código no cero.
+
+Errores de red (12/11): un corte de conexión, timeout o 5xx se reintenta en el mismo pedido hasta
+`transient_retries` de la config (3) con 5, 10 y 20 s (`BARRIDO_ML_REINTENTO_RED`). Si se agotan, ese producto
+queda en error y la etapa sigue; con 5 productos seguidos en ese estado ML se da por caído, la etapa
+corta (`BARRIDO_ML_CORTE_RED`, estado `failed`) y devuelve código no cero. Un `partial` sin bloqueo,
+sin corte, sin `--limit` y sin variantes fallidas sale con código 0 si los errores no pasan `min(20, max(2, 0,5 % de los
+procesados))` y lo registra con `BARRIDO_ML_ERRORES_TOLERADOS`; si los pasa, código no cero.
 
 Pruebas: ejecutar la suite en el contenedor de la VM. La entrega de observabilidad no ejecutó
 tests ni programas del producto en la PC.

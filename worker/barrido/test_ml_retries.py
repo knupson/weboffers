@@ -231,3 +231,122 @@ def test_pausa_y_429_oauth_tambien_se_contabilizan(tmp_path, monkeypatch):
 def test_configuracion_ml_invalida(options):
     with pytest.raises(ValueError):
         Config(**options)
+
+
+# 12/11: un RemoteDisconnected aislado (1 de 5938 pedidos) dejó la etapa en «partial» y la cadena en rojo.
+def test_error_de_red_reintenta_y_se_recupera_al_segundo_intento(capsys):
+    clock, calls = Clock(), []
+    def get(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise requests.ConnectionError("('Connection aborted.', RemoteDisconnected('Remote end closed connection'))")
+        return {'results': []}
+    client = MLClient(Config(ml_pause=0), get=get, sleep=clock.sleep, clock=clock)
+    assert client.search('HP CF258A') == []
+    assert clock.delays == [5] and client.requests_ml == 2
+    evento = next(l for l in capsys.readouterr().out.splitlines() if 'BARRIDO_ML_REINTENTO_RED ' in l)
+    assert '"intento": 1' in evento and 'RemoteDisconnected' in evento
+
+
+@pytest.mark.parametrize('falla', [lambda: requests.Timeout('read timed out'), lambda: http_error(503)])
+def test_timeout_y_5xx_tambien_reintentan(falla):
+    clock, calls = Clock(), []
+    def get(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise falla()
+        return {'results': []}
+    client = MLClient(Config(ml_pause=0), get=get, sleep=clock.sleep, clock=clock)
+    assert client.search('x') == [] and clock.delays == [5]
+
+
+def test_error_de_red_agotado_tras_tres_reintentos():
+    clock = Clock()
+    def get(*a, **kw):
+        raise requests.ConnectionError('caido')
+    client = MLClient(Config(ml_pause=0), get=get, sleep=clock.sleep, clock=clock)
+    with pytest.raises(requests.ConnectionError):
+        client.search('x')
+    assert clock.delays == [5, 10, 20] and client.requests_ml == 4
+
+
+def test_4xx_no_se_reintenta_como_red():
+    clock = Clock()
+    def get(*a, **kw):
+        raise http_error(404)
+    client = MLClient(Config(ml_pause=0), get=get, sleep=clock.sleep, clock=clock)
+    with pytest.raises(Exception):
+        client.search('x')
+    assert clock.delays == [] and client.requests_ml == 1
+
+
+def _productos(tmp_path, n):
+    write_input(tmp_path, [amazon()] + [amazon(f"B0FIXTURE{i}") for i in range(2, n + 1)])
+
+
+def _get_con_red_caida(caidos):
+    """Los primeros `caidos` productos fallan siempre por red; el resto responde."""
+    estado = {'producto': None, 'fallas': 0}
+    def get(path, params=None):
+        if path == "/products/search" and estado['fallas'] < caidos * 4:
+            estado['fallas'] += 1
+            raise requests.ConnectionError('Remote end closed connection without response')
+        if path == "/products/search":
+            return {"results": [{"id": "MLA1", "name": "Monitor Samsung S36GD"}]}
+        return {"results": [{"price": 200000, "condition": "new", "currency_id": "ARS", "item_id": "MLA1"}]}
+    return get
+
+
+def test_cinco_productos_seguidos_con_red_agotada_cortan_la_etapa(tmp_path, capsys):
+    _productos(tmp_path, 7)
+    client = MLClient(Config(ml_pause=0), get=_get_con_red_caida(5), sleep=lambda _: None)
+    result = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
+    out = capsys.readouterr().out
+    assert result["status"] == "failed" and result["corte_red"] is True
+    assert result["productos_procesados"] == 5
+    assert "BARRIDO_ML_CORTE_RED" in out
+    reintento = next(l for l in out.splitlines() if 'BARRIDO_ML_REINTENTO_RED ' in l)
+    assert '"asin": "B0FIXTURE' in reintento or '"asin": "B0' in reintento
+
+
+def test_cuatro_seguidos_no_cortan(tmp_path):
+    _productos(tmp_path, 6)
+    client = MLClient(Config(ml_pause=0), get=_get_con_red_caida(4), sleep=lambda _: None)
+    result = run_ml_lookup(Config(), tmp_path, client=client, rate_loader=rate)
+    assert result["status"] == "partial" and not result["corte_red"]
+    assert result["productos_procesados"] == 6 and result["errores"] == 4
+
+
+@pytest.mark.parametrize('result,esperado', [
+    (dict(status="complete", errores=0, productos_procesados=10), True),
+    (dict(status="partial", errores=1, productos_procesados=4009), True),    # 12/11: 1 de 4009
+    (dict(status="partial", errores=20, productos_procesados=4009), True),   # tope min(20, 20)
+    (dict(status="partial", errores=21, productos_procesados=4009), False),
+    (dict(status="partial", errores=21, productos_procesados=100_000), False),  # tope absoluto 20
+    (dict(status="partial", errores=2, productos_procesados=10), True),      # piso de 2
+    (dict(status="partial", errores=3, productos_procesados=10), False),
+    (dict(status="partial", errores=0, productos_procesados=10, corte_red=True), False),
+    (dict(status="blocked", errores=0, productos_procesados=10), False),
+    (dict(status="partial", errores=0, productos_procesados=10, limitado=True), False),  # --limit: quedan filas
+    (dict(status="partial", errores=0, productos_procesados=4009, variation_failures=5), False),  # variantes cortadas
+    (dict(status="failed", errores=5, productos_procesados=5, corte_red=True), False),
+])
+def test_ml_ok(result, esperado):
+    from .__main__ import ml_ok
+    assert ml_ok(result) is esperado
+
+
+@pytest.mark.parametrize('result,codigo,tolerado', [
+    (dict(status="partial", errores=1, productos_procesados=4009), 0, True),
+    (dict(status="partial", errores=30, productos_procesados=4009), 1, False),
+    (dict(status="complete", errores=0, productos_procesados=4009), 0, False),
+    (dict(status="failed", errores=5, productos_procesados=5, corte_red=True), 1, False),
+])
+def test_salida_de_ml_lookup_con_tolerancia(tmp_path, monkeypatch, capsys, result, codigo, tolerado):
+    import argparse
+    from . import __main__ as cli
+    monkeypatch.setattr(cli, "run_ml_lookup", lambda *a, **kw: result)
+    args = argparse.Namespace(step="ml-lookup", store=None, category=None, dry_run=False, limit=None, date=None,
+                              output=str(tmp_path), catalog=None, catalog_auto=None)
+    assert cli.execute(args, Config()) == codigo
+    assert ("BARRIDO_ML_ERRORES_TOLERADOS" in capsys.readouterr().out) is tolerado

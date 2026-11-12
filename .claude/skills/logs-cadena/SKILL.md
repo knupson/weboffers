@@ -45,7 +45,7 @@ Los crons están en `ssh docker 'crontab -l'` (una sola línea: `cadena.py` 03:3
 - Dudosos (NVIDIA): `DUDOSO_DECISION par=… votos=…`, `DUDOSO_PARA_ALEJANDRO`, `DUDOSOS_OK`, `DUDOSOS_SIN_CLAVE`.
 - Worker: `LATIDO worker` cada hora (sólo Telegram corre por hora).
 - Worker: `ALTAS_OK promovidas=… rechazadas=… siguen_pendientes=…`.
-- Barrido: `BARRIDO_HTTP_INICIO/FIN` (mismo request ID), `BARRIDO_ESPERA`, `BARRIDO_DESCARTE`, `BARRIDO_ETAPA_INICIO/FIN`, `BARRIDO_LATIDO`, `BARRIDO_SIN_AVANCE` (pila principal), `BARRIDO_EXCEPCION`, `BARRIDO_CORTADO`. El lector consulta PID sólo en el contenedor de origen; un latido vencido no confirma identidad aunque el PID exista.
+- Barrido: `BARRIDO_HTTP_INICIO/FIN` (mismo request ID), `BARRIDO_ESPERA`, `BARRIDO_DESCARTE`, `BARRIDO_ETAPA_INICIO/FIN`, `BARRIDO_LATIDO`, `BARRIDO_SIN_AVANCE` (pila principal), `BARRIDO_EXCEPCION`, `BARRIDO_CORTADO`. ML (desde 12/11): `BARRIDO_ML_REINTENTO_RED` (reintento por corte/timeout/5xx), `BARRIDO_ML_CORTE_RED` (5 productos seguidos con red agotada: etapa cortada, código 1), `BARRIDO_ML_ERRORES_TOLERADOS` (`partial` que sale en 0 por estar bajo el tope). El lector consulta PID sólo en el contenedor de origen; un latido vencido no confirma identidad aunque el PID exista.
 - Deployer: `DEPLOY_FASE <fase> ok|…`, `DEPLOY_OK publicado con precios del …` (trae la ruta del desglose), `DEPLOY_MANUAL ok`, `Próximo despliegue previsto`.
 - Chrome de envío: `ENVIO_AR_CHROME_REINICIO` (no había CDP y se reinició `chrome-claude`). La hora en que Chrome se cae queda en `docker logs chrome-claude | grep "CDP caido"` (desde el 08/11).
 - Vigías y controles: `VIGIA_OK`, `VIGIA_EXTERNO_OK`, `FRANQUICIA_CONTROL_OK`, `ENVIO_AR_CHROME_OK`; cualquier variante sin `_OK` es la que hay que mirar.

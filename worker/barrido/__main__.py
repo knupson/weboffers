@@ -56,6 +56,25 @@ def tienda_ok(item):
             and not any(c.get("status") == "failed" for c in (item.get("categories") or {}).values()))
 
 
+def tope_errores_ml(result):
+    """Errores de producto tolerados: 0,5 % de los procesados, con piso de 2 y techo de 20."""
+    return min(20, max(2, int((result.get("productos_procesados") or 0) * 0.005)))
+
+
+def ml_ok(result):
+    """12/11: un solo RemoteDisconnected en 4009 productos (5938 pedidos) dejaba ml-lookup en «partial» y salía con
+    código 1. Como tienda_ok: «partial» no es falla si no hubo bloqueo ni corte por red y los errores que quedaron
+    tras los reintentos no pasan el tope. Bloqueo (403/429 seguidos) o ML caído (5 seguidos) siguen saliendo en 1."""
+    if result.get("status") == "complete":
+        return True
+    # --limit con filas sin consultar sigue saliendo en 1 (docs/barrido/OPERACION.md): quedó trabajo pendiente.
+    # Variantes sin leer (p. ej. BARRIDO_VARIANTES_CORTADAS por bloqueo de Amazon) siguen en 1: el tope es sólo
+    # para errores de producto que quedaron tras los reintentos de red.
+    return (result.get("status") == "partial" and not result.get("corte_red") and not result.get("limitado")
+            and not result.get("variation_failures")
+            and (result.get("errores") or 0) <= tope_errores_ml(result))
+
+
 def execute(args, config):
     try:
         if not args.dry_run and (config.min_usd, config.max_usd) != (Config().min_usd, Config().max_usd):
@@ -65,7 +84,12 @@ def execute(args, config):
                 raise ValueError("ml-lookup usa los JSONL de US y ES; no admite store ni category")
             result = run_ml_lookup(config, args.output, date=args.date, limit=args.limit, dry_run=args.dry_run,
                                    catalog_path=args.catalog, catalog_auto_path=args.catalog_auto)
-            return 0 if result["status"] == "complete" else 1
+            ok = ml_ok(result)
+            if ok and result["status"] == "partial":
+                emit_event("BARRIDO_ML_ERRORES_TOLERADOS", errores=result.get("errores", 0),
+                           procesados=result.get("productos_procesados", 0), tope=tope_errores_ml(result),
+                           variation_failures=result.get("variation_failures", 0))
+            return 0 if ok else 1
         if args.limit is not None:
             raise ValueError("--limit sólo se admite con --step ml-lookup")
         categories = load_config(args.categories)

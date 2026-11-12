@@ -18,6 +18,16 @@ from .ml_matching import amazon_identity, build_queries, candidate_score, starts
 from .state import State, LookupState, acquire_run_lock, write_summary
 
 
+ML_RED_ESPERA = 5          # s antes del 1.er reintento de red; después 10 y 20
+ML_RED_CONSECUTIVOS = 5    # productos seguidos con error de red agotado: ML caído, se corta la etapa
+
+
+def es_error_de_red(exc):
+    """Corte de conexión, timeout o 5xx de ML (ya agotados los reintentos de MLClient)."""
+    return (isinstance(exc, (requests.ConnectionError, requests.Timeout, ConnectionError, TimeoutError))
+            or (getattr(exc, "http", None) or 0) >= 500)
+
+
 class MLClient:
     def __init__(self, config, *, get=None, sleep=time.sleep, clock=time.monotonic):
         import ml_prices
@@ -38,8 +48,20 @@ class MLClient:
             return response
         return self._retry(perform, url)
 
+    def _transient(self, exc, path, transients):
+        """12/11: un RemoteDisconnected aislado (1 de 5938 pedidos) perdía el producto y dejaba la etapa en
+        «partial». Corte de conexión, timeout o 5xx se reintentan hasta transient_retries con 5, 10 y 20 s."""
+        if transients >= self.config.transient_retries:
+            return False
+        delay = ML_RED_ESPERA * 2 ** transients
+        emit_event('BARRIDO_ML_REINTENTO_RED', path=path, intento=transients + 1,
+                   limite=self.config.transient_retries, espera=delay, tipo=type(exc).__name__, motivo=str(exc)[:300])
+        wait(delay, 'reintento_red_ml', sleep=self.sleep)
+        return True
+
     def _retry(self, perform, path):
         """Pausa por intento real, también para OAuth; 429 no termina el producto."""
+        transients = 0
         while True:
             if self.last_request_started is not None:
                 remaining = self.config.ml_pause - (self.clock() - self.last_request_started)
@@ -60,6 +82,9 @@ class MLClient:
                     self.items_404 += 1
                 if status != 429:
                     self.consecutive_429 = 0
+                    if status is not None and status >= 500 and self._transient(exc, path, transients):
+                        transients += 1
+                        continue
                     raise
                 self.consecutive_429 += 1
                 emit_event('BARRIDO_ML_429', path=path, consecutivos=self.consecutive_429,
@@ -88,6 +113,12 @@ class MLClient:
                                 self.config.ml_backoff * 2 ** (self.consecutive_429 - 1))
                 wait(delay, 'backoff_429_ml', sleep=self.sleep)
                 continue
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                self.consecutive_429 = 0
+                if self._transient(exc, path, transients):
+                    transients += 1
+                    continue
+                raise
             except Exception:
                 self.consecutive_429 = 0
                 raise
@@ -234,6 +265,7 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         done = {(row["store"], row["asin"]) for row in records if row["lookup_status"] != "error"}
         processed, blocked, limited = [], False, False
         rejected_in_a_row = 0
+        network_in_a_row, cut_network = 0, False
         eligible_processed = 0
         for amazon in amazon_rows(output, date, config):
             set_action('evaluando producto Amazon para lookup ML')
@@ -342,8 +374,15 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                 elif rejected:
                     emit_event("BARRIDO_ML_CONSULTA_RECHAZADA", asin=row["asin"], motivo=str(exc), http=http,
                                seguidos=rejected_in_a_row, limite=config.consecutive_blocks, sigue=True)
+                # 12/11: un error de red aislado sigue; ML_RED_CONSECUTIVOS seguidos (ya reintentados) = ML caído.
+                network_in_a_row = network_in_a_row + 1 if es_error_de_red(exc) else 0
+                if network_in_a_row >= ML_RED_CONSECUTIVOS:
+                    cut_network = True
+                    emit_event("BARRIDO_ML_CORTE_RED", asin=row["asin"], motivo=str(exc)[:300], http=http,
+                               seguidos=network_in_a_row)
             else:
                 rejected_in_a_row = 0
+                network_in_a_row = 0
             if now_art().date().isoformat() != date:
                 raise SourceError("Cambió el día ART durante la consulta: registro sin confirmar")
             processed.append(row)
@@ -355,11 +394,11 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                     state.commit_lookup(row)
                     state.materialize_jsonl()
                 emit_event('BARRIDO_PERSISTIDO', asin=row['asin'])
-            if blocked:
+            if blocked or cut_network:
                 break
         records = state.materialize_jsonl() if state else processed
         variation_failures = 0
-        if not dry_run and not blocked:
+        if not dry_run and not blocked and not cut_network:
             variation_failures = enrich_ml_variations(config, output, date, records,
                                                       source_factory=source_factory, rate_loader=rate_loader)
             set_context(tienda='ML', asin=None, pagina=None)
@@ -391,7 +430,9 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         emit_event("BARRIDO_ML_OK", **summary)
         if not dry_run:
             write_summary(output, date, {'ML': summary})
-        return dict(status="blocked" if blocked else "partial" if summary["errores"] or limited or variation_failures else "complete", **summary)
+        status = ("blocked" if blocked else "failed" if cut_network
+                  else "partial" if summary["errores"] or limited or variation_failures else "complete")
+        return dict(status=status, corte_red=cut_network, limitado=limited, **summary)
 
 
 def enrich_ml_variations(config, output, date, records, *, source_factory=None, rate_loader=load_daily_rates):
