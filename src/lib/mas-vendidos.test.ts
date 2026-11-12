@@ -15,6 +15,14 @@ describe("masVendidos", () => {
   it("con menos de 3 frescas no se muestra aunque haya viejas", () => {
     expect(masVendidos([p("a", "2026-11-12"), p("b", "2026-11-11"), p("c", "2026-11-02")], "2026-11-12")).toEqual([]);
   });
+  it("12 destacados: sólo 6 (dos filas completas)", () => {
+    const hot = Array.from({ length: 12 }, (_, i) => p(`s${i}`, "2026-11-12"));
+    expect(masVendidos(hot, "2026-11-12").map((x) => x.slug)).toEqual(["s0", "s1", "s2", "s3", "s4", "s5"]);
+  });
+  it("4 o 5 destacados: una fila completa de 3", () => {
+    const hot = Array.from({ length: 5 }, (_, i) => p(`s${i}`, "2026-11-12"));
+    expect(masVendidos(hot, "2026-11-12")).toHaveLength(3);
+  });
   it("una marca con fecha futura no cuenta", () => {
     expect(masVendidos([p("a", "2026-11-13"), p("b", "2026-11-12"), p("c", "2026-11-12")], "2026-11-12")).toEqual([]);
   });
