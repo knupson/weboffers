@@ -202,3 +202,14 @@ def test_alta_ok_no_oculta_falla_verificacion_y_controla_todos_los_pasos(tmp_pat
                  PASOS + [f"alta:{p}" for p in ("amazon", "ml", "deploy", "estado")]]
         (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({"fecha": "2026-11-05", "fin": "2026-11-05T05:00:00-03:00", "pasos": steps}))
         assert set(v.chequear_cadena("2026-11-05", tmp_path)) == {f"cadena:{name}"}
+
+
+def test_motivo_de_cadena_largo_se_recorta_en_el_aviso(tmp_path):
+    # 12/11: el motivo de alta:barrido_ml medía 11.222 caracteres y salió entero por WhatsApp.
+    motivo = "error (código 1): BARRIDO_ML_ERROR RemoteDisconnected | " + "x" * 11_000
+    steps = [{"paso": p, "estado": "ok"} for p in PASOS + [f"alta:{p}" for p in ("amazon", "ml", "deploy", "estado")]]
+    steps.append({"paso": "alta:barrido_ml_extra", "estado": "fail", "motivo": motivo})
+    (tmp_path / "cadena-2026-11-05.json").write_text(json.dumps({"fecha": "2026-11-05", "fin": "2026-11-05T05:00:00-03:00", "pasos": steps}))
+    texto = v.chequear_cadena("2026-11-05", tmp_path)["cadena:alta:barrido_ml_extra"]
+    assert "RemoteDisconnected" in texto
+    assert len(texto) <= v.MOTIVO_MAX + len("la cadena de madrugada falló en alta:barrido_ml_extra ()")

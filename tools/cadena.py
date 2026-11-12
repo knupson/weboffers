@@ -30,6 +30,13 @@ BUSCAR_TIMEOUT = 24 * 3600
 # más margen para inicio y escritura (los timeouts HTTP son por lectura).
 OFFERS_TIMEOUT = 300
 HEARTBEAT = 30
+# 12/11: el motivo de un paso fallido viaja por WhatsApp (vigía). Eran las últimas 8 líneas crudas y en
+# barrido_ml quedaban los JSON de cierre (BARRIDO_ML_SIN_TRADUCCION con 579 palabras): 11.222 caracteres.
+# La salida completa sigue en cadena-AAAA-MM-DD.log; el motivo sólo resume.
+MOTIVO_MAX = 400
+LINEA_MAX = 200
+MARCAS_ERROR = re.compile(r"_ERROR\b|\bERROR\b|Traceback|Exception|Timeout|Killed|\b\w+Error\b:")
+CAMPOS_MOTIVO = ("asin", "categoria", "pagina", "motivo", "error", "reason", "tipo", "http")
 ART = timezone(timedelta(hours=-3))
 LOG_DIR = Path("/home/claude/logs")
 REPO = Path(__file__).resolve().parents[1]
@@ -55,6 +62,32 @@ CHROME_CHEQUEO_CDP = ("import os; from barrido.chrome_search import ChromeSearch
                       "c = ChromeSearch(os.environ['BARRIDO_CHROME_CDP']); c._connect(); "
                       "ok = c.page.evaluate('1+1') == 2; c.close(); raise SystemExit(0 if ok else 1)")
 CHROME_CHEQUEO_SEGUNDOS = 45  # connect_over_cdp tiene 30 s de timeout propio
+
+
+def _linea_corta(linea):
+    """Saca la hora ISO del principio y, si la línea trae JSON, deja sólo los campos que explican la falla."""
+    linea = re.sub(r"^\d{4}-\d{2}-\d{2}T\S+\s+", "", linea.strip())
+    inicio = linea.find("{")
+    if inicio >= 0:
+        try:
+            datos = json.loads(linea[inicio:])
+        except ValueError:
+            datos = None
+        if isinstance(datos, dict):
+            campos = " ".join(f"{k}={datos[k]}" for k in CAMPOS_MOTIVO if datos.get(k) not in (None, ""))
+            linea = f"{linea[:inicio].strip()} {campos}".strip()
+    return linea if len(linea) <= LINEA_MAX else linea[:LINEA_MAX - 1] + "…"
+
+
+def resumen_salida(lineas, limite=MOTIVO_MAX):
+    """Motivo corto de un proceso que falló: primero las líneas con marca de error (las 3 últimas); si no hay,
+    las últimas líneas sin JSON. Cada línea se recorta a LINEA_MAX y el total a `limite`."""
+    lineas = [linea for linea in lineas if linea.strip()]
+    errores = [linea for linea in lineas
+               if MARCAS_ERROR.search(linea) and not linea.lstrip().startswith("Traceback (most recent")]
+    elegidas = errores[-3:] or [linea for linea in lineas if "{" not in linea][-3:] or lineas[-2:]
+    texto = " | ".join(_linea_corta(linea) for linea in elegidas)
+    return texto if len(texto) <= limite else texto[:limite - 1] + "…"
 
 
 class Cadena:
@@ -137,7 +170,7 @@ class Cadena:
             if isinstance(exc, TimeoutError):
                 for reader in readers:
                     reader.join()
-                tail = " | ".join("".join(stderr_lines or stdout_lines).splitlines()[-8:])
+                tail = resumen_salida("".join(stderr_lines + stdout_lines).splitlines())
                 raise TimeoutError(f"timeout: {tail}" if tail else "timeout") from exc
             raise
         finally:
@@ -150,7 +183,7 @@ class Cadena:
             self.log(stdout)
             self.log(stderr)
         if child.returncode:
-            tail = " | ".join((stderr + "\n" + stdout).splitlines()[-8:])
+            tail = resumen_salida((stderr + "\n" + stdout).splitlines())
             # La ruta del desglose puede quedar fuera de las últimas líneas.
             report = re.search(r"desglose=\S+", stdout)
             if report and report[0] not in tail:

@@ -33,6 +33,9 @@ ML_FALLAS_TOLERADAS = 3  # "no se pudo consultar" sueltas por día antes de avis
 SIN_LATIDO_MIN = 75      # el worker imprime al menos una vez por hora
 
 
+MOTIVO_MAX = 400  # tope del motivo de un paso de la cadena dentro del aviso
+
+
 def sh(*cmd, timeout=30):
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     return r.returncode, r.stdout
@@ -202,7 +205,9 @@ def chequear_cadena(hoy, logs_dir):
     for nombre in dict.fromkeys(obligatorios + list(pasos)):
         paso = pasos.get(nombre, {})
         if paso.get("estado") != "ok":
-            motivo = paso.get("motivo") or paso.get("estado") or "paso sin ejecutar"
+            motivo = str(paso.get("motivo") or paso.get("estado") or "paso sin ejecutar")
+            if len(motivo) > MOTIVO_MAX:  # 12/11: un motivo de 11.222 caracteres salió entero por WhatsApp.
+                motivo = motivo[:MOTIVO_MAX - 1] + "…"
             problemas[f"cadena:{nombre}"] = f"la cadena de madrugada falló en {nombre} ({motivo})"
     return problemas
 

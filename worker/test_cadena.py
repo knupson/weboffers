@@ -415,3 +415,68 @@ def test_pasos_ml_y_altas_del_barrido(tmp_path):
     assert comandos[0][-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
     assert cadena.BARRIDO in comandos[0]
     assert comandos[1][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[1]
+
+
+# 12/11: barrido_ml salió con código 1 por un solo BARRIDO_ML_ERROR y el motivo guardó las últimas 8 líneas
+# crudas (BARRIDO_ML_SIN_TRADUCCION con 579 palabras, BARRIDO_PROCESO_FIN...): 11.222 caracteres por WhatsApp.
+LINEA_ML_ERROR = ('2026-11-12T04:26:54.033798-03:00 BARRIDO_ML_ERROR {"etapa": "ml_lookup", "tienda": "ML", '
+                  '"categoria": null, "pagina": 1, "asin": "B0FCFKQBSH", "intento": 1, "motivo": '
+                  '"(\'Connection aborted.\', RemoteDisconnected(\'Remote end closed connection without response\'))", '
+                  '"http": null, "run_id": "3d3506d13d504397941733cc3ad5b7e0", "pid": 88}')
+
+
+def salida_ml_con_json_pesado():
+    palabras = json.dumps({"etapa": "ml_lookup", "cantidad": 579, "palabras": [f"palabra{i}" for i in range(1200)]})
+    cierre = json.dumps({"etapa": "ml_lookup", "estado": "partial", "errors": 1, "args": {"x": "y" * 3000}})
+    return "\n".join([LINEA_ML_ERROR] + [f"2026-11-12T05:54:06-03:00 BARRIDO_DESCARTE {cierre}"] * 5 + [
+        f"2026-11-12T05:54:09-03:00 BARRIDO_ML_SIN_TRADUCCION {palabras}",
+        f"2026-11-12T05:54:09-03:00 BARRIDO_PROCESO_FIN {cierre}"]) + "\n"
+
+
+def test_motivo_de_falla_prioriza_la_linea_de_error_y_tiene_tope(tmp_path):
+    reloj = Reloj()
+    salida = salida_ml_con_json_pesado()
+    assert len(salida) > 10_000
+    runner = cadena.Cadena(tmp_path, lambda command, **kw: Hijo(reloj, code=1, out=salida), reloj.clock, reloj.now, reloj.sleep)
+    with pytest.raises(RuntimeError) as exc:
+        runner.process(["python", "-m", "barrido"], 100, "barrido_ml")
+    motivo = str(exc.value)
+    assert motivo.startswith("error (código 1): ")
+    assert "BARRIDO_ML_ERROR" in motivo and "RemoteDisconnected" in motivo and "B0FCFKQBSH" in motivo
+    assert "SIN_TRADUCCION" not in motivo and "palabra1" not in motivo
+    assert len(motivo) <= cadena.MOTIVO_MAX + len("error (código 1): ")
+
+
+def test_motivo_sin_marcas_toma_ultimas_lineas_no_json_recortadas():
+    lineas = ["arrancando", "x" * 2000, 'BARRIDO_OK {"a": "' + "b" * 3000 + '"}', "terminé sin marca"]
+    motivo = cadena.resumen_salida(lineas)
+    assert "terminé sin marca" in motivo and "bbbb" not in motivo
+    assert len(motivo) <= cadena.MOTIVO_MAX
+
+
+def test_motivo_de_traceback_muestra_la_excepcion_final():
+    lineas = ["Traceback (most recent call last):", '  File "x.py", line 3, in <module>',
+              "requests.exceptions.ConnectionError: HTTPConnectionPool(host='192.168.240.10', port=9222)"]
+    assert "ConnectionError: HTTPConnectionPool" in cadena.resumen_salida(lineas)
+
+
+def test_motivo_conserva_la_ruta_del_desglose(tmp_path):
+    reloj = Reloj()
+    ruta = "/state/logs/desglose-2026-11-06-0330.log"
+    salida = salida_ml_con_json_pesado() + f"DEPLOY_FAIL prueba desglose={ruta}\n"
+    runner = cadena.Cadena(tmp_path, lambda command, **kw: Hijo(reloj, code=1, out=salida), reloj.clock, reloj.now, reloj.sleep)
+    with pytest.raises(RuntimeError) as exc:
+        runner.process(["deploy"], 100, "deploy")
+    assert f"desglose={ruta}" in str(exc.value)
+
+
+def test_timeout_tambien_resume_la_salida(tmp_path, monkeypatch):
+    reloj = Reloj()
+    hijo = Hijo(reloj, seconds=1000, out=salida_ml_con_json_pesado())
+    hijo.pid = 12345
+    monkeypatch.setattr(cadena.os, "killpg", lambda *a: hijo.kill(), raising=False)
+    runner = cadena.Cadena(tmp_path, lambda *a, **kw: hijo, reloj.clock, reloj.now, reloj.sleep)
+    runner.step("amazon", 35)
+    motivo = json.loads((tmp_path / "cadena-2026-11-06.json").read_text())["pasos"][0]["motivo"]
+    assert motivo.startswith("timeout: ") and "RemoteDisconnected" in motivo
+    assert len(motivo) <= cadena.MOTIVO_MAX + len("timeout: ")
