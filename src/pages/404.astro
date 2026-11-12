@@ -1,0 +1,13 @@
+---
+// 12/11: con not_found_handling "404-page" (wrangler.jsonc) Cloudflare sirve este archivo con estado 404.
+// Antes «single-page-application» devolvía la portada con 200 para cualquier ruta inexistente.
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="No encontramos esa página" description="La página que buscás no existe o el producto ya no está comparado hoy.">
+  <div class="wrap page-head">
+    <h1 class="letra">No encontramos esa página</h1>
+    <p class="lead">Puede que el producto ya no tenga precio del día en Amazon o en Mercado Libre, o que el enlace esté mal escrito.</p>
+    <p><a class="btn" href="/productos/">Ver todo lo comparado hoy</a> <a href="/">Volver a la portada</a></p>
+  </div>
+</Base>
