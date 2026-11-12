@@ -23,6 +23,8 @@ def test_catalogo_ignora_corte_y_completa_con_cursor(tmp_path, monkeypatch, caps
     monkeypatch.setattr(auto.time, "monotonic", lambda: reloj[0])
     monkeypatch.setattr(auto.time, "sleep", lambda seconds: None)
     monkeypatch.setenv("CATALOG_AUTO_MAX_SECONDS", "10")
+    # 7732806 (09/11): el recorrido ML→Amazon es modo manual; sin esto no se visita ningún MLA y added=0.
+    monkeypatch.setenv("CATALOG_AUTO_DESDE_ML", "1")
     monkeypatch.setattr(auto.ml_prices, "is_configured", lambda: True)
     repo = tmp_path / "catalog.json"
     repo.write_text(json.dumps([{"asin": "EXISTENTE", "slug": "existente", "category": "Almacenamiento"}]))
