@@ -143,7 +143,10 @@ def test_falla_ml_conserva_par_y_sigue(tmp_path, monkeypatch, capsys):
 
 
 def test_vigia_detecta_dudoso_para_alejandro():
-    assert v.MARCAS_FALLA.search("2026-11-09 06:00:00 DUDOSO_PARA_ALEJANDRO par=A:MLA1")
+    # 12/11: el vigía lo resume (DUDOSO_PAR, un aviso con la cantidad) en vez de tratarlo como falla.
+    linea = "2026-11-09 06:00:00 DUDOSO_PARA_ALEJANDRO par=A:MLA1"
+    assert v.DUDOSO_PAR.search(linea).group(1) == "A:MLA1"
+    assert not v.MARCAS_FALLA.search(linea)
 
 
 @pytest.mark.parametrize("action", ["aprobar", "rechazar"])
