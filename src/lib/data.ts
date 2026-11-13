@@ -1,3 +1,4 @@
+import { bajadaDePrecio, type HistorialAmazon } from "./bajas-precio";
 import { fetchJsonWithRetry } from "./dolar";
 import fs from "node:fs";
 import path from "node:path";
@@ -41,6 +42,8 @@ export interface CatalogEntry {
   amazonArs?: number | null;
   /** Precio diario convertido a USD para validar la franquicia. */
   amazonUsd?: number | null;
+  /** 13/11: USD que bajó Amazon contra la mediana de la semana (src/lib/bajas-precio.ts); null si no aplica. */
+  bajadaUsd?: number | null;
   /** Fuente del estimado de Amazon: únicamente precio diario scrapeado ("amazon") o null. */
   amazonSource?: "amazon" | null;
   /** Fecha (AAAA-MM-DD) del precio usado para el estimado de Amazon. */
@@ -487,7 +490,14 @@ export async function loadProducts(now = Date.now()) {
   if (typeof mep !== "number" || !Number.isFinite(mep) || mep <= 0) {
     throw new Error("Sin cotización MEP válida de dolarapi.com ni respaldo vigente: no se puede publicar el sitio.");
   }
-  const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd, now);
+  const historial = readJson<HistorialAmazon>("data/historial-amazon.json");
+  const withAmazon = mergeAmazonPrices(catalog, loadAmazonPrices(), mep, quotes.eurUsd, now).map((entry) => ({
+    ...entry,
+    // Sólo Amazon.com (el historial está en USD) y con el precio de hoy: nunca una bajada sobre un precio viejo.
+    bajadaUsd: entry.store === "US" && entry.amazonSource === "amazon" && entry.amazonChecked
+      ? bajadaDePrecio(entry.slug, entry.amazonUsd, entry.amazonChecked, historial)?.usd ?? null
+      : null,
+  }));
   const byKey = new Map(offers.items.map((i) => [`${i.store}:${i.asin}`, i]));
   const products = withAmazon.map((entry) => {
     const offer = byKey.get(`${entry.store}:${entry.asin}`);

@@ -67,7 +67,7 @@ describe("clicks salientes", () => {
     expect(attrs).toEqual({
       "data-salida": "amazon", "data-salida-ubicacion": "ficha", "data-salida-slug": "garmin-rtl515",
       "data-salida-categoria": "Deportes", "data-salida-precio-usd": "149.99", "data-salida-ahorro-pct": "73",
-      "data-salida-boton": "veredicto",
+      "data-salida-boton": "veredicto", "data-salida-bajada-usd": "0",
     });
     // dataset del DOM: data-salida-precio-usd → salidaPrecioUsd
     const ds = { salida: "amazon", salidaUbicacion: "ficha", salidaSlug: "garmin-rtl515", salidaCategoria: "Deportes",
@@ -76,6 +76,17 @@ describe("clicks salientes", () => {
       slug: "garmin-rtl515", categoria: "Deportes", precio_usd: 149.99, ahorro_pct: 73, ubicacion: "ficha", boton: "veredicto" } });
     expect(salidaEvento({ salida: "ml", salidaUbicacion: "busqueda_vivo" })).toEqual({ event: "click_ml", data: { ubicacion: "busqueda_vivo" } });
     expect(salidaEvento({ salida: "otra" })).toBeNull();
+  });
+
+  it("click_amazon lleva bajo_precio y bajada_usd; click_ml no", () => {
+    const attrs = salidaAttrs("amazon", "portada", { ...p, bajadaUsd: 18 });
+    expect(attrs["data-salida-bajada-usd"]).toBe("18");
+    expect(salidaEvento({ salida: "amazon", salidaUbicacion: "portada", salidaBajadaUsd: "18" })?.data)
+      .toMatchObject({ bajo_precio: true, bajada_usd: 18 });
+    expect(salidaEvento({ salida: "amazon", salidaUbicacion: "ficha", salidaBajadaUsd: "0" })?.data)
+      .toMatchObject({ bajo_precio: false, bajada_usd: 0 });
+    expect(salidaAttrs("ml", "portada", { ...p, bajadaUsd: 18 })["data-salida-bajada-usd"]).toBeUndefined();
+    expect(salidaEvento({ salida: "ml", salidaUbicacion: "portada", salidaBajadaUsd: "18" })?.data).not.toHaveProperty("bajo_precio");
   });
 
   it("el ahorro es de Amazon contra ML; negativo si ML sale menos; null sin los dos precios", () => {

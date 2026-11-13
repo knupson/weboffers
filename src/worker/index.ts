@@ -8,6 +8,10 @@ const ML_API = "https://api.mercadolibre.com";
 // Mismos valores que ML_AFFILIATE en src/config.ts. Duplicados a propósito (ese archivo es de Astro).
 const ML_AFFILIATE = { word: "ale_benzoni", tool: "58527537" } as const;
 const MAX_PRODUCTS = 6;
+// 13/11: los productos con vendedores suelen estar más abajo («garmin»: posiciones 6, 8, 10, 14, 25 y 29 de 30).
+// Se revisan hasta 30, en tandas de 6: token + búsqueda + 30 precios = 32 subrequests (límite de Cloudflare: 50).
+const SEARCH_LIMIT = 30;
+const PRICE_BATCH = 6;
 const CACHE_SECONDS = 3600;
 const TIMEOUT_MS = 8000;
 const TOKEN_MARGIN_S = 300;
@@ -67,14 +71,26 @@ async function requestToken(env: Env): Promise<string> {
   return data.access_token;
 }
 
-async function mlGet(path: string, token: string): Promise<unknown> {
+async function mlGet(path: string, token: string, { noWinnersVacio = false } = {}): Promise<unknown> {
   const res = await fetch(`${ML_API}${path}`, {
     headers: { accept: "application/json", authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (res.status === 401) tokenCache = null; // token vencido antes de tiempo: se pide otro en la próxima
+  // 404 «No winners found»: el producto existe pero hoy no tiene vendedores activos. Es un dato (sin precio),
+  // no una falla de la consulta; igual que is_no_winners en worker/ml_prices.py.
+  if (noWinnersVacio && res.status === 404 && (await esNoWinners(res))) return { results: [] };
   if (!res.ok) throw new MlError(`Mercado Libre respondió HTTP ${res.status}`);
   return res.json();
+}
+
+async function esNoWinners(res: Response): Promise<boolean> {
+  try {
+    const body = (await res.json()) as { error?: unknown; message?: unknown };
+    return body?.error === "not_found" && String(body.message ?? "").toLowerCase().includes("no winners");
+  } catch {
+    return false;
+  }
 }
 
 // Acepta la forma {results: [...]} de Mercado Libre o un arreglo plano.
@@ -125,24 +141,38 @@ function parseProduct(raw: unknown): ProductHit | null {
 // Busca productos de catálogo en Mercado Libre y devuelve el precio nuevo más bajo de cada uno.
 export async function buscar(q: string, env: Env): Promise<MlResult[]> {
   const token = await getToken(env);
-  const search = await mlGet(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}`, token);
+  const search = await mlGet(`/products/search?status=active&site_id=MLA&limit=${SEARCH_LIMIT}&q=${encodeURIComponent(q)}`, token);
   const products = listOf(search)
     .map(parseProduct)
     .filter((p): p is ProductHit => p !== null)
-    .slice(0, MAX_PRODUCTS);
+    .slice(0, SEARCH_LIMIT);
   if (products.length === 0) return [];
 
-  const settled = await Promise.allSettled(
-    products.map(async (p) => {
-      const items = await mlGet(`/products/${encodeURIComponent(p.id)}/items`, token);
-      return { ...p, price: bestNewPrice(listOf(items)) };
-    }),
-  );
-  const ok = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+  const results: MlResult[] = [];
+  let respondieron = 0;
+  let fallas = 0;
+  for (let i = 0; i < products.length && results.length < MAX_PRODUCTS; i += PRICE_BATCH) {
+    const tanda = products.slice(i, i + PRICE_BATCH);
+    const settled = await Promise.allSettled(
+      tanda.map(async (p) => {
+        const items = await mlGet(`/products/${encodeURIComponent(p.id)}/items`, token, { noWinnersVacio: true });
+        return { ...p, price: bestNewPrice(listOf(items)) };
+      }),
+    );
+    for (const r of settled) {
+      if (r.status === "rejected") {
+        fallas++;
+        continue;
+      }
+      respondieron++;
+      const p = r.value;
+      if (p.price !== null && results.length < MAX_PRODUCTS) results.push({ id: p.id, name: p.name, price: p.price, url: productUrl(p.id) });
+    }
+  }
   // Si fallaron todas las consultas de precio, no hay nada útil que mostrar: es un error de Mercado Libre.
-  if (ok.length === 0) throw new MlError("No pudimos leer los precios de Mercado Libre");
-
-  return ok.flatMap((p) => (p.price === null ? [] : [{ id: p.id, name: p.name, price: p.price, url: productUrl(p.id) }]));
+  // Productos sin vendedores hoy no son error: se responde 200 sin resultados.
+  if (respondieron === 0) throw new MlError(`No pudimos leer los precios de Mercado Libre (${fallas} consultas fallidas)`);
+  return results;
 }
 
 // Minúsculas y espacios colapsados. Es la clave de caché y lo que se busca.

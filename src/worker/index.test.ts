@@ -25,7 +25,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 // Mock de la API de Mercado Libre según la URL pedida.
-function mlFetch(opts: { search?: unknown; items?: Record<string, unknown>; tokenStatus?: number; failItemsFor?: string[] } = {}) {
+function mlFetch(opts: { search?: unknown; items?: Record<string, unknown>; tokenStatus?: number; failItemsFor?: string[]; noWinnersFor?: string[] } = {}) {
   return vi.fn<typeof fetch>(async (input) => {
     const url = new URL(String(input));
     if (url.pathname === "/oauth/token") {
@@ -37,6 +37,8 @@ function mlFetch(opts: { search?: unknown; items?: Record<string, unknown>; toke
     if (itemsMatch) {
       const id = decodeURIComponent(itemsMatch[1]);
       if (opts.failItemsFor?.includes(id)) return new Response("boom", { status: 500 });
+      // 13/11: así responde ML un producto de catálogo sin vendedores activos hoy.
+      if (opts.noWinnersFor?.includes(id)) return json({ message: "No winners found", error: "not_found", status: 404, cause: [] }, 404);
       return json(opts.items?.[id] ?? { results: [] });
     }
     return new Response("no mockeado", { status: 404 });
@@ -175,6 +177,47 @@ describe("/api/buscar", () => {
     const res = await worker.default.fetch(search("monitor"), env);
     expect(res.status).toBe(502);
     expect(cache.store.size).toBe(0);
+  });
+
+  // 13/11: /api/buscar daba 502 en producción con «garmin»: los 6 primeros productos del catálogo respondían
+  // 404 «No winners found» y el worker lo contaba como falla (ml_prices.py ya lo trataba como «sin vendedores»).
+  it("404 «No winners found» no es una falla: sigue buscando más abajo hasta juntar resultados", async () => {
+    const ids = Array.from({ length: 30 }, (_, i) => `MLA${100 + i}`);
+    const conPrecio = new Set(["MLA106", "MLA108", "MLA110", "MLA114", "MLA125", "MLA129"]);
+    const fetchMock = mlFetch({
+      search: { results: ids.map((id) => ({ id, name: `Garmin ${id}` })) },
+      noWinnersFor: ids.filter((id) => !conPrecio.has(id)),
+      items: Object.fromEntries([...conPrecio].map((id, i) => [id, { results: [{ price: 100000 + i, condition: "new", currency_id: "ARS" }] }])),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await worker.handleBuscar(search("garmin"), env as never, cache);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { results: Array<{ id: string }> };
+    expect(body.results.map((r) => r.id)).toEqual([...conPrecio]);
+    const searchUrl = new URL(String(fetchMock.mock.calls.find(([u]) => String(u).includes("/products/search"))![0]));
+    expect(searchUrl.searchParams.get("limit")).toBe("30");
+    // token + búsqueda + como mucho 30 precios: dentro del límite de 50 subrequests de Cloudflare
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(32);
+  });
+
+  it("deja de pedir precios apenas junta 6 resultados", async () => {
+    const ids = Array.from({ length: 30 }, (_, i) => `MLA${200 + i}`);
+    const fetchMock = mlFetch({
+      search: { results: ids.map((id) => ({ id, name: `Joystick ${id}` })) },
+      items: Object.fromEntries(ids.map((id) => [id, { results: [{ price: 50000, condition: "new" }] }])),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await worker.handleBuscar(search("joystick ps5"), env as never, cache);
+    expect(((await res.json()) as { results: unknown[] }).results).toHaveLength(6);
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith("/items")).length).toBe(6);
+  });
+
+  it("si ningún producto tiene vendedores responde 200 sin resultados (no 502)", async () => {
+    const ids = ["MLA1", "MLA2", "MLA3"];
+    vi.stubGlobal("fetch", mlFetch({ search: { results: ids.map((id) => ({ id, name: id })) }, noWinnersFor: ids }));
+    const res = await worker.handleBuscar(search("kindle"), env as never, cache);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { results: unknown[] }).results).toEqual([]);
   });
 
   it("rechaza métodos que no son GET y rutas /api desconocidas", async () => {

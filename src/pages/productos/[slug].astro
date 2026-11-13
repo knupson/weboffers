@@ -1,5 +1,6 @@
 ---
 import { salidaAttrs } from "../../lib/analytics";
+import { etiquetaBajada } from "../../lib/bajas-precio";
 import Base from "../../layouts/Base.astro";
 import ShareButtons from "../../components/ShareButtons.astro";
 import { productJsonLd } from "../../lib/jsonld";
@@ -130,6 +131,7 @@ const specs: Array<[string, string]> = [
                   <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
                   <small data-price-sub hidden>{amzSub}</small>
                 </p>
+                {p.bajadaUsd ? <p class="bajo" data-price-sub hidden>{etiquetaBajada({ usd: p.bajadaUsd })}</p> : null}
                 {verdict === "sinEnvio" && (
                   <p class="veredicto nota" data-verdict-text hidden>Traerlo sale menos, pero no confirmamos que Amazon lo envíe a Argentina. Revisá el envío en Amazon antes de comprar.</p>
                 )}

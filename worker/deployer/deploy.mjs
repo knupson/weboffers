@@ -155,6 +155,35 @@ async function syncRepo(workDir = WORK_DIR, runImpl = run) {
   }
 }
 
+// 13/11: «Bajó de precio». Resume output/historial/AAAA-MM-DD-amazon-prices.json (worker/publish.py) en
+// data/historial-amazon.json = {"AAAA-MM-DD": {"slug": USD}} con los últimos HISTORIAL_DIAS días. Sólo entran precios
+// en USD relevados ese mismo día (checked == fecha del archivo): nunca un precio viejo. Opcional: sin historial no
+// hay etiquetas, y el deploy sigue igual.
+const HISTORIAL_DIAS = 8; // hoy + los 7 anteriores (VENTANA_DIAS de src/lib/bajas-precio.ts)
+async function resumirHistorialAmazon(outputDir, workDir) {
+  const dest = path.join(workDir, 'data', 'historial-amazon.json');
+  try {
+    const dir = path.join(outputDir, 'historial');
+    const files = (await fs.readdir(dir)).filter((f) => /^\d{4}-\d{2}-\d{2}-amazon-prices\.json$/.test(f)).sort().slice(-HISTORIAL_DIAS);
+    const out = {};
+    for (const file of files) {
+      const fecha = file.slice(0, 10);
+      const data = JSON.parse(await fs.readFile(path.join(dir, file), 'utf8'));
+      if (data?.date !== fecha || !data.items || typeof data.items !== 'object') continue;
+      const precios = {};
+      for (const [slug, item] of Object.entries(data.items)) {
+        if (item && item.currency === 'USD' && item.checked === fecha && Number.isFinite(item.amount) && item.amount > 0) precios[slug] = item.amount;
+      }
+      out[fecha] = precios;
+    }
+    await fs.writeFile(dest, JSON.stringify(out));
+    log(`HISTORIAL_OK dias=${Object.keys(out).length}`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') log(`HISTORIAL_SIN_COPIA ${redact(String(error.code ?? error.message))}`);
+    await fs.rm(dest, { force: true }).catch(() => {});
+  }
+}
+
 async function overlayCatalog(workDir, outputDir) {
   const sheetDest = path.join(workDir, 'data', 'ml-fichas.json');
   await fs.copyFile(path.join(outputDir, 'ml-fichas.json'), sheetDest).catch(async (error) => {
@@ -169,6 +198,7 @@ async function overlayCatalog(workDir, outputDir) {
     if (error.code !== 'ENOENT') log(`MAS_VENDIDOS_SIN_COPIA ${error.code ?? error.message}`);
     await fs.rm(hotDest, { force: true }).catch(() => {});
   });
+  await resumirHistorialAmazon(outputDir, workDir);
   const catalogPath = path.join(workDir, 'data', 'catalog.json');
   const repo = JSON.parse(await fs.readFile(catalogPath, 'utf8'));
   const origins = Object.fromEntries(repo.map((p) => [p.slug, 'repo']));
@@ -555,6 +585,7 @@ if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
 export {
   main,
   avisarIndexNow,
+  resumirHistorialAmazon,
   saveBreakdown,
   run,
   commandTimeout,

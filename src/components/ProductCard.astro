@@ -5,6 +5,7 @@ import { brandLogo } from "../lib/brands";
 import { formatArs } from "../lib/format";
 import { comparePrices, type CatalogEntry, type OfferItem } from "../lib/data";
 import { salidaAttrs, type Ubicacion } from "../lib/analytics";
+import { etiquetaBajada } from "../lib/bajas-precio";
 
 interface Props {
   product: CatalogEntry & { price: OfferItem | null; offer?: OfferItem };
@@ -82,6 +83,7 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
           <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
           <small data-price-sub hidden>{amzSub}</small>
         </p>
+        {p.bajadaUsd ? <p class="bajo" data-price-sub hidden>{etiquetaBajada({ usd: p.bajadaUsd })}</p> : null}
         {verdict === "sinEnvio" && (
           <p class="veredicto nota" data-verdict-text hidden>Sale menos, pero no confirmamos el envío a Argentina</p>
         )}

@@ -29,7 +29,7 @@ const NOTRACK_STORAGE = "f400_notrack";
 const UTM_MAX = 100; // un valor más largo es basura o un intento de inyectar texto: se recorta
 
 type Store = Pick<Storage, "getItem" | "setItem">;
-type Props = Record<string, string | number>;
+type Props = Record<string, string | number | boolean>;
 type UmamiWindow = { umami?: { track: (event: string, data?: Props) => unknown } };
 
 function sessionStore(): Store | null {
@@ -95,10 +95,10 @@ export function shouldTrack(search: string, webdriver: boolean | undefined, stor
   }
 }
 
-function limpiar(data: Record<string, string | number | null | undefined>): Props {
+function limpiar(data: Record<string, string | number | boolean | null | undefined>): Props {
   const out: Props = {};
   for (const [k, v] of Object.entries(data)) {
-    if (typeof v === "number" ? Number.isFinite(v) : typeof v === "string" && v !== "") out[k] = v as string | number;
+    if (typeof v === "boolean" || (typeof v === "number" ? Number.isFinite(v) : typeof v === "string" && v !== "")) out[k] = v as string | number | boolean;
   }
   return out;
 }
@@ -122,7 +122,7 @@ export function umamiListo(win: UmamiWindow | undefined = typeof window === "und
   }
 }
 
-export function track(event: string, data: Record<string, string | number | null | undefined> = {},
+export function track(event: string, data: Record<string, string | number | boolean | null | undefined> = {},
   win: UmamiWindow | undefined = typeof window === "undefined" ? undefined : (window as unknown as UmamiWindow),
   store: Store | null = sessionStore()): void {
   try {
@@ -143,6 +143,7 @@ export function ahorroPct(mlPrice: number | null | undefined, amazonArs: number 
 /** Atributos data-salida-* de un enlace saliente (se generan en el build, los lee el listener). */
 export function salidaAttrs(tienda: Tienda, ubicacion: Ubicacion, p: {
   slug?: string; category?: string; amazonUsd?: number | null; ml?: { price?: number } | null; amazonArs?: number | null;
+  bajadaUsd?: number | null;
 } = {}, boton?: string): Record<string, string> {
   const pct = ahorroPct(p.ml?.price, p.amazonArs);
   const attrs: Record<string, string> = { "data-salida": tienda, "data-salida-ubicacion": ubicacion };
@@ -151,6 +152,8 @@ export function salidaAttrs(tienda: Tienda, ubicacion: Ubicacion, p: {
   if (typeof p.amazonUsd === "number" && Number.isFinite(p.amazonUsd)) attrs["data-salida-precio-usd"] = p.amazonUsd.toFixed(2);
   if (pct !== null) attrs["data-salida-ahorro-pct"] = String(pct);
   if (boton) attrs["data-salida-boton"] = boton;
+  // 13/11: «Bajó de precio» viaja en click_amazon para medir si convierte más (src/lib/bajas-precio.ts).
+  if (tienda === "amazon") attrs["data-salida-bajada-usd"] = String(typeof p.bajadaUsd === "number" && p.bajadaUsd > 0 ? p.bajadaUsd : 0);
   return attrs;
 }
 
@@ -168,6 +171,9 @@ export function salidaEvento(ds: Record<string, string | undefined>): { event: s
       ahorro_pct: num(ds.salidaAhorroPct),
       ubicacion: ds.salidaUbicacion,
       boton: ds.salidaBoton,
+      ...(tienda === "amazon" && ds.salidaBajadaUsd !== undefined
+        ? { bajo_precio: Number(ds.salidaBajadaUsd) > 0, bajada_usd: Number(ds.salidaBajadaUsd) || 0 }
+        : {}),
     }),
   };
 }
