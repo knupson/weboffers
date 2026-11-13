@@ -150,6 +150,8 @@ const specs: Array<[string, string]> = [
                     <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
                   </a>
                 )}
+                {/* 13/11 (Alejandro): sólo con Amazon como opción principal (envío gratis a Argentina confirmado). */}
+                {verdict === "amazon" && <p class="courier">Llega por courier a tu casa · El courier gestiona la aduana con tu CUIL</p>}
               </div>
             )}
 

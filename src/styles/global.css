@@ -455,6 +455,9 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .bajo { justify-self: start; margin: 0; padding: 3px 8px; border-radius: 6px; background: rgba(92, 196, 137, 0.14); box-shadow: inset 0 0 0 1px rgba(92, 196, 137, 0.45); color: var(--verde-claro); font: 700 12px/1.3 var(--sans); }
 .bajo[hidden] { display: none; }
 .card .bajo { justify-self: center; }
+/* 13/11: micro-línea bajo el botón principal a Amazon, sólo en la ficha móvil. */
+.courier { margin: -2px 0 0; font: 500 12px/1.35 var(--sans); color: var(--apagado); text-align: center; }
+@media (min-width: 1024px) { .courier { display: none; } }
 .veredicto[hidden] { display: none; }
 .fila-compra.ml .veredicto { color: var(--amarillo); }
 .fila-compra.amazon .veredicto { color: var(--verde-claro); }
