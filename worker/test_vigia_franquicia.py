@@ -225,7 +225,8 @@ def test_dudosos_para_alejandro_van_en_un_solo_resumen(tmp_path):
     p = correr(tmp_path)
     assert not any(k.startswith("log:") for k in p)
     assert list(p) == ["dudosos:17"]
-    assert "17 pares" in p["dudosos:17"]
+    # 13/11: el texto no afirma el motivo (también hay votos inválidos y aprobados sin categoría).
+    assert p["dudosos:17"] == "17 pares dudosos esperan tu revisión"
 
 
 def test_dudosos_esperan_a_que_termine_la_cadena(tmp_path, monkeypatch):

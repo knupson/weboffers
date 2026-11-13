@@ -63,5 +63,6 @@ Los que aplica el código (relevados el 07/11/2026). Si un dato pasa su límite,
 | Ficha técnica de Mercado Libre | Hasta 7 días | `validMlSheet`, `src/lib/ml-fichas.ts` |
 | Producto que sale del sitio | Se reconsulta 3 días (republicación); después «no revisar» 7 días | `transicion`, `worker/publicacion.py` (09/11) |
 | Candidato que no cumple | «No revisar» 7 días; al vencer vuelve al alta con Chrome del día | `worker/publicacion.py`, `tools/confirmar_altas.py` (09/11) |
+| Marca «Lo más vendido esta semana» (`mas-vendidos.json`, destacados de ML) | Hasta 7 días desde su `fecha`; se renueva en la cadena (`alta:mas_vendidos`) y, si ML no da destacados o el alta corta antes, queda la del día que se obtuvo | `MAS_VENDIDOS_DIAS` en `src/lib/mas-vendidos.ts`, `tools/actualizar_mas_vendidos.py` (13/11) |
 
 Una sola corrida por día (cron 03:30, `tools/cadena.py`): verificación de publicados y republicación, y después alta de nuevos con revisión de dudosos por NVIDIA. Diseño: `docs/superpowers/specs/2026-11-09-procesos-publicacion-design.md`.

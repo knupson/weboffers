@@ -123,8 +123,8 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     # conteo dejó de crecer. Si después aparecen más, la clave cambia y sale un resumen nuevo con el total.
     dudosos = {m.group(1) for m in map(DUDOSO_PAR.search, lineas) if m}
     if dudosos and not cadena_en_curso(cadena_dir):
-        problemas[f"dudosos:{len(dudosos)}"] = (f"{len(dudosos)} pares dudosos esperan tu revisión: los dos modelos "
-                                                f"no coincidieron (DUDOSO_PARA_ALEJANDRO en worker-{hoy}.log)")
+        # 13/11: no se afirma por qué: también llegan votos inválidos y aprobados sin categoría para aplicar.
+        problemas[f"dudosos:{len(dudosos)}"] = f"{len(dudosos)} pares dudosos esperan tu revisión"
     ml_fallas = [l for l in lineas if "Mercado Libre: no se pudo consultar" in l]
     if len(ml_fallas) > ML_FALLAS_TOLERADAS:
         problemas["ml-fallas"] = f"Mercado Libre: {len(ml_fallas)} consultas fallidas hoy (ver log del worker)"

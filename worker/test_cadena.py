@@ -95,7 +95,7 @@ def test_bloqueo_compartido_impide_refresh_simultaneos(tmp_path):
 
 
 PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")] + [
-    f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml", "deploy", "estado")]
+    f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml", "mas_vendidos", "deploy", "estado")]
 
 
 def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, skip=False):
@@ -130,7 +130,7 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     assert code == 0
     assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
-    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 10
+    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 11
     assert runner.summary["fin"]
     barrido = next(i for i, c in enumerate(comandos) if c[-4:] == ["--store", "US", "--output", cadena.BARRIDO_SALIDA])
     assert cadena.CHROME_BARRIDO in comandos[barrido - 2]  # chequeo de pestaña de Chrome
@@ -145,10 +145,11 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
 def test_cada_paso_una_vez(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     pares = [(p["bloque"], p["paso"]) for p in runner.summary["pasos"]]
-    assert len(pares) == len(set(pares)) == 17
+    assert len(pares) == len(set(pares)) == 18
     # Los dos deploy copian su desglose al log; el barrido suma 3 pasos y el chequeo de Chrome (10/11),
     # que desde el 11/11 son dos comandos: pestaña y conexión real de Playwright.
-    assert len(comandos) == 22
+    # 13/11: más el paso de «Lo más vendido» antes del deploy del alta.
+    assert len(comandos) == 23
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -215,7 +216,7 @@ def test_alta_no_despliega_si_verificacion_fallo(tmp_path):
     runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
     assert code == 1
     alta = [p["paso"] for p in runner.summary["pasos"] if p["bloque"] == "alta"]
-    assert alta == [f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml")]
+    assert alta == [f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml", "mas_vendidos")]
     assert not any("--ahora" in c for c in comandos)
     assert "ALTA_SIN_DEPLOY verificacion_fallida" in (tmp_path / "cadena-2026-11-06.log").read_text()
 
@@ -293,7 +294,7 @@ def test_timeout_del_bloque_no_impide_el_alta(tmp_path):
     assert runner.summary["pasos"][5]["motivo"] == "deploy sin DEPLOY_OK"
     assert runner.summary["pasos"][6]["motivo"] == "sin desglose"
     assert any(cadena.BARRIDO in c for c in comandos)
-    assert len(runner.summary["pasos"]) == 15
+    assert len(runner.summary["pasos"]) == 16  # 7 de verificación + 9 del alta hasta el deploy
 
 
 def test_deploy_fallido_no_reutiliza_el_desglose_anterior(tmp_path):
@@ -416,6 +417,69 @@ def test_pasos_ml_y_altas_del_barrido(tmp_path):
     assert cadena.BARRIDO in comandos[0]
     assert comandos[1][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[1]
 
+
+
+# 13/11: «Lo más vendido» se renueva en la cadena, justo antes del deploy del alta.
+def test_mas_vendidos_corre_en_el_worker_justo_antes_del_deploy_del_alta(tmp_path):
+    runner, comandos, code = corrida(tmp_path)
+    assert code == 0
+    alta = [p["paso"] for p in runner.summary["pasos"] if p["bloque"] == "alta"]
+    assert alta.index("alta:mas_vendidos") == alta.index("alta:deploy") - 1
+    mas = [c for c in comandos if "/app/tools/actualizar_mas_vendidos.py" in c]
+    assert len(mas) == 1 and cadena.WORKER in mas[0]
+    assert comandos[comandos.index(mas[0]) + 1][-2:] == ["/app/deploy.mjs", "--ahora"]
+
+
+def test_mas_vendidos_sin_destacados_no_corta_la_cadena(tmp_path):
+    reloj = Reloj()
+    salida = "2026-11-13 07:12:28 MAS_VENDIDOS_FALLA sin destacados de ML hoy (categorias_con_error=3); no se escribe nada\n"
+    runner = cadena.Cadena(tmp_path, lambda *a, **kw: Hijo(reloj, code=1, out=salida),
+                           reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("mas_vendidos", cadena.MAS_VENDIDOS_TIMEOUT)
+    paso = runner.summary["pasos"][0]
+    assert paso["estado"] == "ok" and paso["motivo"] == "sin_destacados"
+    assert "MAS_VENDIDOS_FALLA" in (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+
+
+def test_mas_vendidos_sin_destacados_con_lineas_de_timeout_sigue_siendo_ok(tmp_path):
+    # Revisor, 13/11: con líneas «Timeout» antes, el motivo resumido dejaba afuera MAS_VENDIDOS_FALLA.
+    reloj = Reloj()
+    salida = "".join(
+        f"2026-11-13T07:12:2{i}-03:00 BUSCAR_CATEGORIA id=MLA100{i} estado=error motivo=ConnectTimeoutError\n"
+        for i in range(4)) + "2026-11-13 07:12:28 MAS_VENDIDOS_FALLA sin destacados de ML hoy (categorias_con_error=4); no se escribe nada\n"
+    runner = cadena.Cadena(tmp_path, lambda *a, **kw: Hijo(reloj, code=1, out=salida),
+                           reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("mas_vendidos", cadena.MAS_VENDIDOS_TIMEOUT)
+    paso = runner.summary["pasos"][0]
+    assert paso["estado"] == "ok" and paso["motivo"] == "sin_destacados"
+
+
+def test_mas_vendidos_codigo_distinto_de_1_falla_aunque_haya_marca(tmp_path):
+    reloj = Reloj()
+    runner = cadena.Cadena(tmp_path, lambda *a, **kw: Hijo(reloj, code=137, out="MAS_VENDIDOS_FALLA x\n"),
+                           reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("mas_vendidos", cadena.MAS_VENDIDOS_TIMEOUT)
+    assert runner.summary["pasos"][0]["estado"] == "fail"
+
+
+def test_mas_vendidos_con_error_real_falla_el_paso(tmp_path):
+    reloj = Reloj()
+    runner = cadena.Cadena(tmp_path, lambda *a, **kw: Hijo(reloj, code=1, err="Traceback\nValueError: catalogo roto\n"),
+                           reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("mas_vendidos", cadena.MAS_VENDIDOS_TIMEOUT)
+    paso = runner.summary["pasos"][0]
+    assert paso["estado"] == "fail" and "catalogo roto" in paso["motivo"]
+
+
+def test_mas_vendidos_falla_y_el_alta_igual_despliega(tmp_path):
+    runner, comandos, code = corrida(tmp_path, falla=("alta", "mas_vendidos"))
+    assert code == 1
+    assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
+    assert any("--ahora" in c for c in comandos)
 
 # 12/11: barrido_ml salió con código 1 por un solo BARRIDO_ML_ERROR y el motivo guardó las últimas 8 líneas
 # crudas (BARRIDO_ML_SIN_TRADUCCION con 579 palabras, BARRIDO_PROCESO_FIN...): 11.222 caracteres por WhatsApp.

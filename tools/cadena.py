@@ -50,6 +50,9 @@ BARRIDO_AMAZON_TIMEOUT = 2400
 BARRIDO_ML_TIMEOUT = 7200
 BARRIDO_ALTAS_TIMEOUT = 1800
 BARRIDO_SALIDA = "/app/output/barrido"
+# 13/11: «Lo más vendido» (destacados de ML) se renueva antes del deploy del alta. Medido el 13/11: 169,4 s.
+# Sin destacados el script sale con 1 y no escribe nada; eso no es una falla del paso.
+MAS_VENDIDOS_TIMEOUT = 600
 # Chequeo real del Chrome del barrido (igual que el healthcheck del compose): abre y cierra una pestaña.
 # 10/11: tras un OOM /json/version respondía 200 y el CDP no servía; Docker no reinicia un «unhealthy».
 CHROME_CHEQUEO = ("id=$(curl -sf -m 10 -X PUT 'http://127.0.0.1:9222/json/new?about:blank' | "
@@ -179,6 +182,8 @@ class Cadena:
             child.stdout.close()
             child.stderr.close()
         stdout, stderr = "".join(stdout_lines), "".join(stderr_lines)
+        # El motivo resume la salida; quien necesite clasificar una falla mira la salida completa.
+        self.ultima_salida = stdout
         if not emit and child.returncode:
             self.log(stdout)
             self.log(stderr)
@@ -316,6 +321,18 @@ class Cadena:
                 seconds = max(1, int(deadline - self.clock()))
                 self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
                                          "/app/tools/barrido_a_altas.py", BARRIDO_SALIDA, cwd="/app/worker"), deadline, paso)
+            elif paso == "mas_vendidos":
+                seconds = max(1, int(deadline - self.clock()))
+                self.ultima_salida = ""
+                try:
+                    self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
+                                             "/app/tools/actualizar_mas_vendidos.py", cwd="/app/worker"), deadline, paso)
+                except RuntimeError as exc:
+                    # Igual que el script: sin destacados nuevos no se toca la marca y la cadena sigue.
+                    # Se mira la salida completa: el motivo resumido puede dejar afuera la marca (13/11).
+                    if not str(exc).startswith("error (código 1)") or "MAS_VENDIDOS_FALLA" not in self.ultima_salida:
+                        raise
+                    record["motivo"] = "sin_destacados"
             elif paso == "chrome":
                 env_timeout = max(1, int(deadline - self.clock()))
                 extra = ["--pendientes"] if self.bloque == "alta" else []
@@ -365,7 +382,7 @@ class Cadena:
         alta = (("barrido_amazon", BARRIDO_AMAZON_TIMEOUT), ("barrido_ml", BARRIDO_ML_TIMEOUT),
                 ("barrido_altas", BARRIDO_ALTAS_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
                 ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
-                ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
+                ("mas_vendidos", MAS_VENDIDOS_TIMEOUT), ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         verificacion_fallida = False
         for bloque, pasos in (("verificacion", verificacion), ("alta", alta)):
             self.bloque = bloque
