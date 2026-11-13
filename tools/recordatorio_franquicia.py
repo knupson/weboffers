@@ -16,7 +16,7 @@ Cron (docker, hora ART):
   30 15 * * * recordatorio_franquicia.py --control sitio13  (sólo controla días con despliegue extra)
   20 12 * * * recordatorio_franquicia.py --control telegram12
   20 20 * * * recordatorio_franquicia.py --control telegram20
-  10 19 * * * recordatorio_franquicia.py --control reel19 (decide el script: mar-jue + REEL_EXTRA)   (API de Meta, token en /home/claude/franquicia400-meta/.env)
+  10 19 * * * recordatorio_franquicia.py --control reel19 (todos los días desde 13/11: el Reel sale solo, cron 18:15 generar_y_encolar_reel.sh)   (API de Meta, token en /home/claude/franquicia400-meta/.env)
 Logs sin números ni claves: FRANQUICIA_RECORDATORIO_OK / _NADA / _FAIL, FRANQUICIA_CONTROL_OK.
 """
 import datetime
@@ -44,13 +44,10 @@ FRASES = {
 # Avisos que no necesitan a Claude (una línea).
 NOTAS = {
 }
-SIN_REEL = {"2026-11-03"}  # el Reel 1 ya está programado
 SIN_CARRUSEL = {"2026-11-23"}  # feriado: pasa al 24
 MINIMO_PRODUCTOS = 100
 MAXIMO_SIN_ENVIO = 3  # tarjetas «no confirmamos el envío» toleradas antes de avisar
 EXTRA_DEPLOY_DATES = {"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-27", "2026-11-30"}
-# Reels especiales fuera de mar-jue (Black Friday vie 27/11, Cyber Monday lun 30/11): también se controlan (auditoría 05/11).
-REEL_EXTRA = {"2026-11-27", "2026-11-30"}
 
 
 def leer_env():
@@ -72,8 +69,7 @@ def mensaje(hoy):
     # Esqueleto semanal permanente (skill redes-proyectos): sin fecha de vencimiento (05/11).
     if hoy.weekday() == 0 and iso not in SIN_CARRUSEL:
         frases.append("armá el carrusel y las historias de la semana")
-    if hoy.weekday() in (1, 2, 3) and iso not in SIN_REEL:
-        frases.append("armá el Reel del día")
+    # 13/11: el Reel del día ya no se pide: lo genera y encola el cron de la VM (18:15, generar_y_encolar_reel.sh).
     frases += FRASES.get(iso, [])
     partes = [pedir(frases)] if frases else []
     if iso in NOTAS:
@@ -138,9 +134,7 @@ def control(que, ahora, bajar=bajar):
             return ""
         return pedir([f"no salió el Telegram de las {hora}, revisá la VM docker"])
     if que == "reel19":
-        # Días de Reel del calendario: mar a jue 19:00 en IG y FB. Se consulta la API oficial de Meta.
-        if ahora.weekday() not in (1, 2, 3) and hoy not in REEL_EXTRA:
-            return ""
+        # 13/11: Reel todos los días a las 19:00 en IG y FB (cron 18:15 en la VM). Se consulta la API oficial de Meta.
         desde = datetime.datetime.fromisoformat(f"{hoy}T18:50:00-03:00")
         try:
             env = leer_meta_env()

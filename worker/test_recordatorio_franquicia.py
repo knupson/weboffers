@@ -45,17 +45,23 @@ def test_failed_catalog_alerts_even_with_additions():
 def test_calendario_sin_vencimiento_despues_de_noviembre():
     """El esqueleto semanal sigue en diciembre (antes vencía el 30/11)."""
     import datetime as _dt
-    assert "armá el Reel del día" in reminder.mensaje(_dt.date(2026, 12, 8))  # martes
     assert "armá el carrusel" in reminder.mensaje(_dt.date(2026, 12, 7))  # lunes
 
 
-def test_reel19_controla_tambien_los_reels_especiales(monkeypatch):
+def test_el_recordatorio_ya_no_pide_el_reel_del_dia():
+    # 13/11: el Reel sale solo (cron 18:15 en la VM); ningún día de la semana se pide a mano.
+    import datetime as _dt
+    for dia in range(7, 14):  # lunes 07/12 a domingo 13/12
+        assert "Reel del día" not in reminder.mensaje(_dt.date(2026, 12, dia))
+
+
+@pytest.mark.parametrize("dia", range(16, 23))  # lunes 16/11 a domingo 22/11
+def test_reel19_controla_todos_los_dias(monkeypatch, dia):
+    # 13/11: Reel diario; el control de las 19:10 consulta Meta los 7 días (antes sólo mar-jue).
     import datetime as _dt
     monkeypatch.setattr(reminder, "leer_meta_env", lambda: (_ for _ in ()).throw(RuntimeError("se consultó Meta")))
-    viernes_normal = _dt.datetime(2026, 11, 6, 19, 10, tzinfo=reminder.ART)
-    assert reminder.control("reel19", viernes_normal) == ""
-    black_friday = _dt.datetime(2026, 11, 27, 19, 10, tzinfo=reminder.ART)
-    assert "no pude comprobar el Reel" in reminder.control("reel19", black_friday)  # el día especial se controla
+    ahora = _dt.datetime(2026, 11, dia, 19, 10, tzinfo=reminder.ART)
+    assert "no pude comprobar el Reel" in reminder.control("reel19", ahora)
 
 
 def test_no_manda_whatsapp_antes_de_las_7(monkeypatch):
