@@ -178,9 +178,53 @@ export function salidaEvento(ds: Record<string, string | undefined>): { event: s
   };
 }
 
-export function trackSalida(ds: Record<string, string | undefined>, win?: UmamiWindow, store?: Store | null): void {
+export function trackSalida(ds: Record<string, string | undefined>, win?: UmamiWindow, store?: Store | null,
+  extra: Record<string, string | number | boolean | null | undefined> = {}): void {
   const ev = salidaEvento(ds);
-  if (ev) track(ev.event, ev.data, win, store);
+  if (ev) track(ev.event, { ...ev.data, ...extra }, win, store);
+}
+
+// 13/11: tag de Amazon por canal. El canal sale de las UTMs de la sesión: utm_medium pago (paid, cpc, ppc,
+// paid_social) → meta_ads; si no, utm_source instagram / facebook / telegram. Sin canal, o con un canal que todavía
+// no tiene tag cargado, queda el tag principal del enlace (nunca se pierde la atribución en Associates).
+export type CanalAmazon = "instagram" | "facebook" | "telegram" | "meta_ads";
+const MEDIOS_PAGOS = new Set(["paid", "cpc", "ppc", "paid_social"]);
+const FUENTES = new Set<CanalAmazon>(["instagram", "facebook", "telegram"]);
+const TAG_VALIDO = /^[A-Za-z0-9-]{3,40}$/;
+
+export function canalDeSesion(utms: Utms): CanalAmazon | null {
+  if (MEDIOS_PAGOS.has((utms.utm_medium ?? "").toLowerCase())) return "meta_ads";
+  const fuente = (utms.utm_source ?? "").toLowerCase() as CanalAmazon;
+  return FUENTES.has(fuente) ? fuente : null;
+}
+
+/** Tag del canal de la sesión, o null si hay que dejar el del enlace. */
+export function resolverTagAmazon(utms: Utms, tags: Partial<Record<CanalAmazon, string>>): string | null {
+  const canal = canalDeSesion(utms);
+  const tag = canal ? (tags[canal] ?? "").trim() : "";
+  return TAG_VALIDO.test(tag) ? tag : null;
+}
+
+/** Cambia el tag= de un enlace de Amazon.com (los de Amazon.es tienen su propio tag y no se tocan). */
+export function aplicarTagAmazon(href: string, tag: string | null): string {
+  if (!tag) return href;
+  try {
+    const url = new URL(href);
+    if (url.hostname !== "www.amazon.com" && url.hostname !== "amazon.com") return href;
+    url.searchParams.set("tag", tag);
+    return url.toString();
+  } catch {
+    return href;
+  }
+}
+
+/** Tag que lleva un enlace de Amazon (para amazon_tag en click_amazon). */
+export function tagDeEnlace(href: string): string | null {
+  try {
+    return new URL(href).searchParams.get("tag");
+  } catch {
+    return null;
+  }
 }
 
 export const trackFiltrarCategoria = (categoria: string) => track("filtrar_categoria", { categoria: categoria || "todo" });

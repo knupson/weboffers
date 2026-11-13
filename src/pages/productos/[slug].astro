@@ -1,6 +1,8 @@
 ---
 import { salidaAttrs } from "../../lib/analytics";
 import { etiquetaBajada } from "../../lib/bajas-precio";
+import { ogFicha } from "../../lib/og";
+import { fotoLocal } from "../../lib/og-foto";
 import Base from "../../layouts/Base.astro";
 import ShareButtons from "../../components/ShareButtons.astro";
 import { productJsonLd } from "../../lib/jsonld";
@@ -43,6 +45,8 @@ const amzSub = amzFecha
   ? `puesto en tu casa, estimado al ${amzFecha}`
   : "puesto en tu casa, estimado";
 const { verdict, saving } = comparePrices(p);
+// La imagen de la vista previa es el JPEG que genera src/pages/og/[slug].jpg.ts (sólo si hay foto local).
+const og = ogFicha(p, verdict, saving, fotoLocal(photo) ? `/og/${p.slug}.jpg` : null, SITE.url);
 
 const specs: Array<[string, string]> = [
   ["Marca", p.brand],
@@ -69,6 +73,7 @@ const specs: Array<[string, string]> = [
   <Base
     title={`${p.name}: precio en Argentina, ¿Amazon o Mercado Libre?`}
     description={`${p.name} en Argentina: comparamos el precio en Mercado Libre contra el costo final trayéndolo de Amazon puesto en tu casa. ${p.summary}`}
+    og={og}
     jsonLd={[
       productJsonLd(p, SITE.url),
       {

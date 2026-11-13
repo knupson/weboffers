@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   _resetCalculadora,
+  aplicarTagAmazon,
+  canalDeSesion,
+  resolverTagAmazon,
+  tagDeEnlace,
   ahorroPct,
   captureUtms,
   salidaAttrs,
@@ -151,5 +155,40 @@ describe("cola mientras Umami carga", () => {
     const u = umami();
     umamiListo(u.win);
     expect(u.llamadas).toEqual([]);
+  });
+});
+
+describe("tag de Amazon por canal", () => {
+  const tags = { instagram: "f400-ig-20", facebook: "", telegram: "f400-tg-20", meta_ads: "f400-ads-20" };
+  const link = "https://www.amazon.com/dp/B086TVFX1D?tag=knunet-20";
+
+  it("sin UTM queda el tag principal del enlace", () => {
+    expect(resolverTagAmazon({}, tags)).toBeNull();
+    expect(aplicarTagAmazon(link, resolverTagAmazon({}, tags))).toBe(link);
+    expect(tagDeEnlace(link)).toBe("knunet-20");
+  });
+
+  it("con UTM de un canal con tag cargado, reemplaza tag=", () => {
+    const tag = resolverTagAmazon({ utm_source: "instagram", utm_medium: "social" }, tags);
+    expect(tag).toBe("f400-ig-20");
+    expect(tagDeEnlace(aplicarTagAmazon(link, tag))).toBe("f400-ig-20");
+  });
+
+  it("utm_medium pago (paid, cpc) es meta_ads aunque la fuente sea facebook", () => {
+    expect(canalDeSesion({ utm_source: "facebook", utm_medium: "cpc" })).toBe("meta_ads");
+    expect(canalDeSesion({ utm_source: "instagram", utm_medium: "Paid" })).toBe("meta_ads");
+    expect(resolverTagAmazon({ utm_source: "facebook", utm_medium: "paid" }, tags)).toBe("f400-ads-20");
+  });
+
+  it("canal sin tag cargado, o tag inválido, cae al principal", () => {
+    expect(resolverTagAmazon({ utm_source: "facebook", utm_medium: "social" }, tags)).toBeNull();
+    expect(resolverTagAmazon({ utm_source: "telegram" }, { telegram: "con espacios y &" })).toBeNull();
+    expect(resolverTagAmazon({ utm_source: "tiktok" }, tags)).toBeNull();
+  });
+
+  it("sólo toca Amazon.com: Amazon.es y URLs rotas quedan igual", () => {
+    const es = "https://www.amazon.es/dp/B0X?tag=knunet-21";
+    expect(aplicarTagAmazon(es, "f400-ig-20")).toBe(es);
+    expect(aplicarTagAmazon("no es url", "f400-ig-20")).toBe("no es url");
   });
 });
