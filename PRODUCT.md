@@ -64,5 +64,32 @@ Los que aplica el código (relevados el 07/11/2026). Si un dato pasa su límite,
 | Producto que sale del sitio | Se reconsulta 3 días (republicación); después «no revisar» 7 días | `transicion`, `worker/publicacion.py` (09/11) |
 | Candidato que no cumple | «No revisar» 7 días; al vencer vuelve al alta con Chrome del día | `worker/publicacion.py`, `tools/confirmar_altas.py` (09/11) |
 | Marca «Lo más vendido esta semana» (`mas-vendidos.json`, destacados de ML) | Hasta 7 días desde su `fecha`; se renueva en la cadena (`alta:mas_vendidos`) y, si ML no da destacados o el alta corta antes, queda la del día que se obtuvo | `MAS_VENDIDOS_DIAS` en `src/lib/mas-vendidos.ts`, `tools/actualizar_mas_vendidos.py` (13/11) |
+| Etiqueta «Bajó USD N esta semana» | Precio de Amazon.com de hoy contra los 7 días anteriores del historial (sólo precios relevados ese mismo día); ver «Bajó de precio» abajo | `bajadaDePrecio` en `src/lib/bajas-precio.ts`, `resumirHistorialAmazon` en `worker/deployer/deploy.mjs` (13/11) |
 
 Una sola corrida por día (cron 03:30, `tools/cadena.py`): verificación de publicados y republicación, y después alta de nuevos con revisión de dudosos por NVIDIA. Diseño: `docs/superpowers/specs/2026-11-09-procesos-publicacion-design.md`.
+
+## Bajó de precio (13/11)
+
+Etiqueta «Bajó USD N esta semana» en tarjetas y ficha, sin precio tachado ni «antes/ahora». Sale sólo si se cumplen las tres reglas (`src/lib/bajas-precio.ts`):
+
+1. Al menos **3 días** con precio de Amazon en los **7 días anteriores** a hoy (las altas recientes no la llevan).
+2. El precio de hoy bajó **5 % o más, o USD 10 o más**, contra la **mediana** de esos días.
+3. El precio de hoy es el **mínimo** de la semana (si un día subió de golpe y volvió, no cuenta como bajada).
+
+Sólo Amazon.com (USD) y sólo con el precio de hoy. El historial sale de `output/historial/AAAA-MM-DD-amazon-prices.json` (`worker/publish.py`, 60 días); el deployer lo resume en `data/historial-amazon.json` descartando los ítems con `checked` distinto de la fecha del archivo. La etiqueta se oculta como el resto de los precios si la página quedó vieja. `click_amazon` lleva `bajo_precio` y `bajada_usd`.
+
+## Búsqueda en vivo de Mercado Libre (`/api/buscar`, 13/11)
+
+`src/worker/index.ts` busca hasta 30 productos de catálogo y pide sus precios en tandas de 6 hasta juntar 6 con precio (máximo 32 consultas, límite de Cloudflare 50). Un producto que responde 404 «No winners found» no tiene vendedores hoy: es «sin precio», no una falla (igual que `worker/ml_prices.py`). Si ninguno tiene vendedores responde 200 sin resultados y la página muestra «Seguí buscando»; sólo da 502 si fallan todas las consultas de precio. Antes del 13/11 ese 404 contaba como falla y la búsqueda daba 502 (ej. «garmin»).
+
+## UTMs de difusión (13/11)
+
+Todo link al sitio desde redes lleva `utm_source=<red>&utm_medium=social&utm_campaign=<tipo de pieza>` y el detalle en `utm_content`:
+
+| Origen | UTMs |
+|---|---|
+| Telegram (producto del día, automático) | `utm_source=telegram&utm_medium=social&utm_campaign=producto-diario&utm_content=<slug>` (`worker/telegram.py`) |
+| Reel de Facebook (automático) | `utm_source=facebook&utm_medium=social&utm_campaign=reel-diario&utm_content=reel-DD-MM` (`tools/generar_y_encolar_reel.sh`) |
+| Bio de Instagram (manual) | `https://ofertas.knunet.com/?utm_source=instagram&utm_medium=social&utm_campaign=bio` — los Reels de IG dicen «link en la bio». La URL cargada hoy en el perfil no está verificada. |
+
+Hasta el 13/11 Telegram usaba `utm_medium=canal` y el Reel de FB `utm_campaign=reel-DD-MM`. Visitas desde la casa, la VM y pi3 no cuentan (`IGNORE_IP` de Umami); para revisar el sitio sin ensuciar métricas, abrirlo con `?notrack=1`.
