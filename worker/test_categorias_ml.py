@@ -46,6 +46,8 @@ def test_categoria_ml_por_subcadena_sin_cambios():
     # 12/11 (Alejandro): Hogar y la categoría nueva Anteojos.
     ("MLA-DIGITAL_WEATHER_STATIONS", "Hogar"), ("MLA-GAS_DETECTORS", "Hogar"), ("MLA-SUNGLASSES", "Anteojos"),
     ("MLA-SURVEILLANCE_CAMERAS", "Cámaras"),  # Ubiquiti G5 (MLA47225060); los Ring de Hogar son del catálogo manual
+    # 13/11 (Alejandro): llaves de impacto en Herramientas. Leído en la ficha de la Milwaukee 2962-20.
+    ("MLA-ELECTRIC_SCREWDRIVERS_AND_IMPACT_WRENCHES", "Herramientas"),  # MLA44953790
 ])
 def test_dominios_exactos_del_12_11(domain, expected):
     assert categoria_ml_exacta(domain) == expected

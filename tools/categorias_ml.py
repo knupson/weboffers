@@ -43,6 +43,8 @@ DOMINIOS_EXACTOS = {
     # 12/11: de las 25 filas de altas-revision.json sin categoría y del catálogo publicado.
     "MLA-HARD_DRIVES_AND_SSDS_ENCLOSURES": "Almacenamiento",        # Synology DS223 (MLA2071000151), UGREEN DXP2800 (MLA52659246)
     "MLA-COMBINED_TOOL_KITS": "Herramientas",                       # Flexcut SK107 (MLA62738921)
+    # 13/11 (Alejandro): llaves de impacto. ML junta en este dominio atornilladores eléctricos y llaves de impacto.
+    "MLA-ELECTRIC_SCREWDRIVERS_AND_IMPACT_WRENCHES": "Herramientas",  # Milwaukee 2962-20 (MLA44953790)
     "MLA-TOY_BUILDING_SETS": "Juguetes",                            # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
     # Ubiquiti G5 Turret Ultra (MLA47225060), publicada en «Herramientas» por la raíz «Tools & Home Improvement».
     # Los Ring de «Hogar» son del catálogo manual (data/catalog.json) y no pasan por el validador.
