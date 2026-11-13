@@ -43,11 +43,13 @@ REPO = Path(__file__).resolve().parents[1]
 WORKER = "franquicia400-weboffers-worker-1"
 DEPLOYER = "franquicia400-weboffers-deployer-1"
 # 10/11: el alta sale del barrido (Amazon → ML → matcheo), no de crecer_ahora. Plazos propios por paso.
-# Corrida A (19 raíces, pausa 3 s): 19 min 55 s. El ML de las 19 raíces no está medido: 2 h de tope.
+# Corrida A (19 raíces, pausa 3 s): 19 min 55 s. El ML de las 19 raíces se midió el 13/11 (ver BARRIDO_ML_TIMEOUT).
 BARRIDO = "franquicia400-weboffers-barrido-1"
 CHROME_BARRIDO = "franquicia400-weboffers-chrome-1"
 BARRIDO_AMAZON_TIMEOUT = 2400
-BARRIDO_ML_TIMEOUT = 7200
+# 13/11: medido 1,7 s por producto (11/11: 1195 en 2052 s; 13/11: 4002 en 6753 s, 94 % del tope de 7200 s).
+# Las esperas a ML fueron 910 s de esos 6753: el tiempo lo pone la cantidad de productos, no las pausas.
+BARRIDO_ML_TIMEOUT = 9600
 BARRIDO_ALTAS_TIMEOUT = 1800
 BARRIDO_SALIDA = "/app/output/barrido"
 # 13/11: «Lo más vendido» (destacados de ML) se renueva antes del deploy del alta. Medido el 13/11: 169,4 s.

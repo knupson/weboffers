@@ -470,6 +470,8 @@ async function deployOnceLocked(now = new Date(), opts = {}) {
     await saveResult('ok', `Publicado con precios del ${today}`, now, opts, alerta);
     endPhase();
     log(`DEPLOY_OK publicado con precios del ${today}${recovery ? ' (redespliegue por precios recuperados)' : ''}. ${elapsed()}s desglose=${breakdownPath}`);
+    // 13/11: avisar a IndexNow nunca cambia el resultado del deploy (ya está publicado).
+    await avisarIndexNow(path.join(workDir, 'dist'), opts);
     return 'ok';
   } catch (error) {
     if (!breakdownReady) {
@@ -485,6 +487,45 @@ async function deployOnceLocked(now = new Date(), opts = {}) {
     log(`DEPLOY_FAIL ${redact(error.message).replace(/[\r\n]+/g, ' | ')} ${elapsed()}s desglose=${breakdownPath}`);
     await saveResult('fail', error.message, now, opts);
     return 'fail';
+  }
+}
+
+// 13/11: IndexNow (Bing, Yandex, Seznam...) tras cada deploy OK. Las URLs salen del sitemap del build recién
+// publicado (todas: cada página trae los precios del día). Misma clave que tools/indexnow.mjs; el archivo de la
+// clave lo sirve el sitio en /<clave>.txt. Cualquier falla queda como INDEXNOW_AVISO y el deploy sigue en OK.
+const INDEXNOW_HOST = 'ofertas.knunet.com';
+const INDEXNOW_KEY = '4c6b2954da1fb15ffbe9500994ed7f54';
+const INDEXNOW_TIMEOUT_MS = 20e3;
+
+async function avisarIndexNow(distDir, opts = {}) {
+  try {
+    const files = (await fs.readdir(distDir)).filter((file) => /^sitemap-\d+\.xml$/.test(file)).sort();
+    const urls = [];
+    for (const file of files) {
+      const xml = await fs.readFile(path.join(distDir, file), 'utf8');
+      urls.push(...[...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]));
+    }
+    if (!urls.length) {
+      log('INDEXNOW_AVISO sin URLs en el sitemap del build; no se avisa');
+      return 'aviso';
+    }
+    const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+    const res = await fetchImpl('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ host: INDEXNOW_HOST, key: INDEXNOW_KEY, keyLocation: `https://${INDEXNOW_HOST}/${INDEXNOW_KEY}.txt`, urlList: urls }),
+      signal: AbortSignal.timeout(opts.indexNowTimeoutMs ?? INDEXNOW_TIMEOUT_MS),
+    });
+    // 200 y 202 son aceptación; cualquier otro código se registra y no se reintenta.
+    if (res.status === 200 || res.status === 202) {
+      log(`INDEXNOW_OK urls=${urls.length} respuesta=${res.status}`);
+      return 'ok';
+    }
+    log(`INDEXNOW_AVISO urls=${urls.length} respuesta=${res.status}`);
+    return 'aviso';
+  } catch (error) {
+    log(`INDEXNOW_AVISO ${redact(String(error?.message ?? error)).replace(/[\r\n]+/g, ' | ')}`);
+    return 'aviso';
   }
 }
 
@@ -513,6 +554,7 @@ if (process.argv[1] && process.argv[1].endsWith('deploy.mjs')) {
 
 export {
   main,
+  avisarIndexNow,
   saveBreakdown,
   run,
   commandTimeout,
