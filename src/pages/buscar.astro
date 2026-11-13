@@ -31,7 +31,7 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
       <div class="grid-products" id="resultados">
         {shown.map((p) => (
           <div class="hit" hidden data-q={norm(`${p.name} ${p.brand} ${p.category} ${p.summary} ${p.slug.replace(/-/g, " ")}`)}>
-            <ProductCard product={p} />
+            <ProductCard product={p} ubicacion="busqueda" />
           </div>
         ))}
       </div>
@@ -47,12 +47,21 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
         <h2 class="letra">Seguí buscando en las tiendas</h2>
         <p>Si no está en nuestra lista, compará vos: mirá el precio en Mercado Libre y pegá el de Amazon en la <a class="link" href="/calculadora/">calculadora</a> para ver cuánto te sale puesto en tu casa.</p>
         <div class="tiendas">
-          <a class="btn ml" id="ir-ml" href="https://listado.mercadolibre.com.ar/" target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-origen="busqueda">Buscar en Mercado Libre <Icon name="arrow-up-right" size={16} /></a>
-          <a class="btn" id="ir-amazon" href={amazonBase} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda="US" data-umami-event-origen="busqueda">Buscar en Amazon <Icon name="arrow-up-right" size={16} /></a>
+          <a class="btn ml" id="ir-ml" href="https://listado.mercadolibre.com.ar/" target="_blank" rel="noopener noreferrer sponsored" data-salida="ml" data-salida-ubicacion="busqueda" data-salida-boton="seguir_buscando">Buscar en Mercado Libre <Icon name="arrow-up-right" size={16} /></a>
+          <a class="btn" id="ir-amazon" href={amazonBase} target="_blank" rel="noopener noreferrer sponsored" data-salida="amazon" data-salida-ubicacion="busqueda" data-salida-boton="seguir_buscando">Buscar en Amazon <Icon name="arrow-up-right" size={16} /></a>
         </div>
       </div>
     </div>
   </section>
+
+  <script>
+    // 13/11: micro-conversión buscar_producto. Corre después del script de abajo (los módulos esperan al HTML),
+    // así que los resultados ya están marcados; si Umami todavía no cargó, el evento espera en la cola.
+    import { trackBuscarProducto } from "../lib/analytics";
+
+    const termino = (new URLSearchParams(location.search).get("q") || "").trim();
+    if (termino) trackBuscarProducto(termino, document.querySelectorAll(".hit:not([hidden])").length);
+  </script>
 
   <script is:inline define:vars={{ amazonBase, ml: ML_AFFILIATE, mlOficial }}>
     const q = (new URLSearchParams(location.search).get("q") || "").trim();
@@ -119,8 +128,8 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
             boton.href = r.url;
             boton.target = "_blank";
             boton.rel = "noopener noreferrer sponsored";
-            boton.dataset.umamiEvent = "mercadolibre";
-            boton.dataset.umamiEventOrigen = "busqueda-vivo";
+            boton.dataset.salida = "ml";
+            boton.dataset.salidaUbicacion = "busqueda_vivo";
             boton.textContent = "Ver en Mercado Libre";
             li.append(nombre, precio, boton);
             lista.append(li);

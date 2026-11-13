@@ -59,7 +59,8 @@ it('el deploy queda OK aunque IndexNow falle', async () => {
   const salida: string[] = [];
   const espia = vi.spyOn(process.stdout, 'write').mockImplementation((texto: any) => { salida.push(String(texto)); return true; });
   const result = await deployOnce(new Date('2026-10-30T10:00:00Z'), {
-    outputFile, amazonOutputFile, workDir, stateFile: path.join(dir, 'state', 'last-deploy.json'),
+    // logDir propio, como los otros tests del deployer: sin él el desglose va a /state/logs (sin permiso fuera de root).
+    outputFile, amazonOutputFile, workDir, stateFile: path.join(dir, 'state', 'last-deploy.json'), logDir: path.join(dir, 'logs'),
     fetchImpl: async () => { llamadas += 1; throw new Error('indexnow caído'); },
     runImpl: async (cmd: string, args: string[], _cwd: string, _exec: unknown, env: any) => {
       if (cmd === 'git' && args[0] === 'rev-parse') return 'a'.repeat(40);

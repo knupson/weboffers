@@ -41,6 +41,7 @@ Para desplegar a mano: `bash tools/deploy.sh` (corre el deployer de la VM; el c�
 
 Los tests no alcanzaron el 31/10: hay que mirar la página real. Con Chrome «Tu Chrome» de la VM (deviceId `7a76cb96-794e-4733-893f-85d888eab3fa`), para cada una de las 3 fichas que imprimió el script:
 
+0. Primera página de la sesión con `?notrack=1` (por ejemplo `https://ofertas.knunet.com/?notrack=1`): desde el 13/11 apaga Umami para toda la sesión de esa pestaña y nuestras visitas no ensucian las métricas. Los chequeos por HTTP (`verificar.mjs`, vigías, recordatorios) no ejecutan JavaScript y nunca contaron.
 1. Abrir la ficha y leer el precio de Amazon (USD y costo final) y el de Mercado Libre que muestra.
 2. Abrir el link de Amazon: mismo producto, mismo precio en USD, envío a Argentina.
 3. Abrir el link de Mercado Libre: mismo producto y precio en ARS.

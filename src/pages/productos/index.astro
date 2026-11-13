@@ -17,7 +17,7 @@ const shown = products.filter((p) => isComparable(p));
       {shown.length === 0 ? (
         <p class="lead">Todavía no hay productos revisados. Mientras tanto la <a class="link" href="/calculadora/">calculadora</a> funciona con cualquier precio.</p>
       ) : (
-        <Catalog products={shown} />
+        <Catalog products={shown} ubicacion="catalogo" />
       )}
     </div>
   </section>

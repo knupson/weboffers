@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 import html
+import urllib.parse
 import json
 import math
 import os
@@ -91,8 +92,16 @@ def _verdict_for_product(product):
     return product.get("verdict") if product.get("verdict") in ("amazon", "ml") else "ml"
 
 
+# 13/11: UTMs comunes de la difusión automática: utm_medium=social, campaña fija por tipo de pieza y el detalle
+# (slug o id del Reel) en utm_content, para sumar por campaña en Umami. Antes: utm_medium=canal (hasta el 13/11).
+def utm_url(path, source, campaign, content):
+    query = urllib.parse.urlencode({"utm_source": source, "utm_medium": "social", "utm_campaign": campaign,
+                                    "utm_content": content})
+    return f"{SITE}{path}?{query}"
+
+
 def caption(product):
-    url = f"{SITE}/productos/{product['slug']}/?utm_source=telegram&utm_medium=canal&utm_campaign=producto-diario"
+    url = utm_url(f"/productos/{product['slug']}/", "telegram", "producto-diario", product["slug"])
     ml = product.get("ml")
     lines = [f"<b>{html.escape(product['name'])}</b>", html.escape(product["summary"]), ""]
     if ml:

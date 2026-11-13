@@ -55,7 +55,10 @@ def test_posts_photo_first_then_once_per_day(tmp_path, monkeypatch):
     assert data["photo"] == "https://ofertas.knunet.com/products/con-foto.jpg"
     assert "Con &lt;foto&gt;" in data["caption"] and "Amazon.es" in data["caption"]
     assert "USD" not in data["caption"] and "EUR" not in data["caption"]
-    assert "utm_source=telegram" in data["caption"] and "comisión" in data["caption"]
+    assert "comisión" in data["caption"]
+    # 13/11: UTMs comunes de la difusión automática (las mismas claves que el Reel de Facebook).
+    assert ("https://ofertas.knunet.com/productos/con-foto/?utm_source=telegram&utm_medium=social"
+            "&utm_campaign=producto-diario&utm_content=con-foto") in data["caption"]
     assert telegram.maybe_post(CATALOG, state, noon_art()) is None
     assert post.call_count == 1
 

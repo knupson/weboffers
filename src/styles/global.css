@@ -286,8 +286,15 @@ section { padding: 64px 0; }
 .crumbs { display: flex; gap: 8px; font-size: 14px; color: var(--apagado); padding-top: 24px; }
 .crumbs a { text-decoration: none; }
 .crumbs a:hover { color: var(--crema); }
-.pdp { display: grid; gap: 32px; padding: 24px 0 64px; }
-@media (min-width: 1024px) { .pdp { grid-template-columns: 1.2fr 1fr; gap: 48px; align-items: start; } }
+/* 13/11: en móvil el bloque de compra va justo después del título (antes quedaba a ~2.600 px, debajo de la
+   ficha técnica). El HTML va intro → compra → detalle; en escritorio la grilla los vuelve a poner en dos columnas. */
+.pdp { display: grid; gap: 24px; padding: 24px 0 64px; }
+@media (min-width: 1024px) {
+  .pdp { grid-template-columns: 1.2fr 1fr; grid-template-areas: "intro buy" "detalle buy"; grid-template-rows: auto 1fr; column-gap: 48px; row-gap: 0; align-items: start; }
+  .pdp-intro { grid-area: intro; }
+  .pdp-detalle { grid-area: detalle; }
+  .pdp .buybox { grid-area: buy; }
+}
 .pdp .media { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-placa); overflow: hidden; background: #000; box-shadow: inset 0 0 0 2px var(--amarillo); }
 .pdp .media img { width: 100%; height: 100%; object-fit: cover; }
 .pdp .media img.photo { object-fit: contain; background: radial-gradient(120% 90% at 50% 40%, #fffdf8 0%, #efe7d6 100%); padding: 32px; }
@@ -303,6 +310,13 @@ section { padding: 64px 0; }
 @media (min-width: 1024px) { .buybox { position: sticky; top: 92px; } }
 .buy { background: var(--placa); border-radius: var(--r-placa); padding: 22px; display: grid; gap: 14px; box-shadow: inset 0 0 0 2px var(--amarillo), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--rojo); }
 .buy .price { font-family: var(--letra); font-size: 34px; color: var(--amarillo); }
+@media (max-width: 1023px) {
+  .pdp .media { aspect-ratio: 16 / 9; }
+  .pdp .media img.photo { padding: 16px; }
+  .pdp h1 { margin-top: 16px; }
+  /* La opción que conviene va primera: su precio y su botón quedan arriba del pliegue. */
+  .pdp .buy .fila-compra[data-winner] { order: -1; }
+}
 
 /* Calculadora */
 .calc { container-type: inline-size; background: var(--placa); border-radius: var(--r-placa); overflow: hidden; box-shadow: inset 0 0 0 1.5px var(--linea); }

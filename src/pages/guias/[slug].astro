@@ -71,7 +71,7 @@ const url = `${SITE.url}/guias/${g.slug}/`;
     <section style="padding-top: 0">
       <div class="wrap">
         <div class="head"><h2 class="letra">Productos de esta guía</h2></div>
-        <div class="grid-products">{related.map((p) => <ProductCard product={p} />)}</div>
+        <div class="grid-products">{related.map((p) => <ProductCard product={p} ubicacion="guia" />)}</div>
       </div>
     </section>
   )}

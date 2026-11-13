@@ -59,7 +59,7 @@ const cats = [
   <div class="wrap">
     <nav class="cats" aria-label="Categorías">
       {cats.map((c) => (
-        <a class="cat" href={c.href} {...(c.external ? { target: "_blank", rel: "noopener noreferrer sponsored", "data-umami-event": "amazon", "data-umami-event-tienda": "ES", "data-umami-event-origen": "categoria" } : {})}>
+        <a class="cat" href={c.href} {...(c.external ? { target: "_blank", rel: "noopener noreferrer sponsored", "data-salida": "amazon", "data-salida-ubicacion": "portada", "data-salida-boton": "categoria" } : {})}>
           <img src={CATEGORY_ART[c.name] ?? shown.find((p) => p.category === c.name)?.image} alt="" loading="lazy" width="900" height="658" />
           <span>{c.name}<small>{c.sub}</small></span>
         </a>
@@ -75,7 +75,7 @@ const cats = [
           <p>Lo que más se vende en tecnología en Mercado Libre, comparado con traerlo de Amazon.</p>
         </div>
         <div class="grid-products">
-          {hot.map((p) => <ProductCard product={p} />)}
+          {hot.map((p) => <ProductCard product={p} ubicacion="mas_vendidos" />)}
         </div>
       </div>
     </section>
@@ -94,7 +94,7 @@ const cats = [
         <h2 class="letra">Dónde conviene cada uno</h2>
         <p>Precio en pesos de Mercado Libre y el veredicto contra el total de Amazon con envío e impuestos.</p>
       </div>
-      <Catalog products={shown} />
+      <Catalog products={shown} ubicacion="portada" />
     </div>
   </section>
 

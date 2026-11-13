@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { fetchEurUsd, fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd, formatStamp } from "../lib/format";
 import { calculateAmazon, shippingFor } from "../lib/estimate";
+import { salidaAttrs, trackCalculadora } from "../lib/analytics";
 
 interface BuildRates {
   mep: number;
@@ -19,7 +20,7 @@ interface Props {
   /** Muestra el selector Amazon.com / Amazon.es. */
   switchable?: boolean;
   /** Link de afiliado del producto: aparece como botón de compra cuando ya hay resultado. */
-  buy?: { url: string; store: string; slug: string };
+  buy?: { url: string; store: string; slug: string; attrs?: Record<string, string> };
 }
 
 type LiveRates = BuildRates & { live: boolean };
@@ -101,7 +102,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
             <label for="c-fob">Precio del producto</label>
             <div class="money">
               <span>{currency}</span>
-              <input id="c-fob" class="in" inputMode="decimal" value={fob} onInput={(e) => setFob(e.currentTarget.value)} />
+              <input id="c-fob" class="in" inputMode="decimal" value={fob} onInput={(e) => { setFob(e.currentTarget.value); trackCalculadora(num(e.currentTarget.value) * (toUsd || 1)); }} />
             </div>
             <small>
               {currency === "EUR"
@@ -172,7 +173,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
 
               {buy && (
                 <div class="comprar">
-                  <a class="btn lg" href={buy.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={buy.store} data-umami-event-producto={buy.slug} data-umami-event-origen="calculadora">
+                  <a class="btn lg" href={buy.url} target="_blank" rel="noopener noreferrer sponsored" {...(buy.attrs ?? salidaAttrs("amazon", "calculadora", { slug: buy.slug }, "calculadora"))}>
                     Comprarlo en Amazon ↗
                   </a>
                   <p class="fine">Si comprás desde este botón, Amazon nos paga una comisión y a vos te sale lo mismo. Así sostenemos el sitio.</p>

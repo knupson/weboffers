@@ -3,6 +3,7 @@ import { calculate } from "../lib/calc";
 import { fetchRates } from "../lib/dolar";
 import { formatArs, formatUsd } from "../lib/format";
 import { AMAZON_EXTRA, shippingFor } from "../lib/estimate";
+import { trackCalculadora } from "../lib/analytics";
 
 interface Props {
   mep: number | null;
@@ -41,7 +42,10 @@ export default function QuickCalc({ mep: buildMep }: Props) {
           value={fob}
           aria-label="Precio del producto en Amazon, en dólares"
           aria-valuetext={formatUsd(fob)}
-          onInput={(e) => setFob(Number(e.currentTarget.value))}
+          onInput={(e) => {
+            setFob(Number(e.currentTarget.value));
+            trackCalculadora(Number(e.currentTarget.value));
+          }}
         />
       </div>
       <p class="k">te sale puesto en tu casa</p>

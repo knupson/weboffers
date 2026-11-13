@@ -1,4 +1,5 @@
 ---
+import { salidaAttrs } from "../../lib/analytics";
 import Base from "../../layouts/Base.astro";
 import ShareButtons from "../../components/ShareButtons.astro";
 import { productJsonLd } from "../../lib/jsonld";
@@ -83,7 +84,7 @@ const specs: Array<[string, string]> = [
         <a href="/productos/">Productos</a><span aria-hidden="true">/</span><span>{p.category}</span>
       </nav>
       <div class="pdp">
-        <div>
+        <div class="pdp-intro">
           <div class="media">
             {photo ? <img class="photo" src={photo} alt={p.name} /> : <img src={artFor(p)} alt="" width="900" height="658" />}
             <span class="badge">
@@ -96,6 +97,63 @@ const specs: Array<[string, string]> = [
             <p class="ilus">Ilustración de la categoría. La foto real del producto está en Amazon.</p>
           )}
           <h1>{p.name}</h1>
+        </div>
+
+        <div class="buybox">
+          <div class="buy" data-checked={checkedDate}>
+            {p.ml && (
+              <div class="fila-compra" data-winner={verdict === "ml" ? "ml" : undefined}>
+                <p class="precio">
+                  <span class="lab">Mercado Libre</span>
+                  <span class="monto num" data-price-amount hidden>{formatArs(p.ml.price)}</span>
+                  <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
+                  <small data-price-label hidden>{mlFecha ? `precio del ${mlFecha}` : ""}</small>
+                </p>
+                {verdict === "ml" ? (
+                  <a class="btn ghost sm" data-buy-link="ml" data-winner="ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" {...salidaAttrs("ml", "ficha", p, "veredicto")}>
+                    <span class="v" data-verdict-text hidden>Mejor opción: Mercado Libre. Mismo precio o menos, llega en días, sin aduana y con garantía local.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
+                    <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={18} /></span>
+                  </a>
+                ) : (
+                  <a class="btn ghost sm" data-buy-link="ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" {...salidaAttrs("ml", "ficha", p, "alternativa")}>
+                    <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {p.amazonArs != null && buy && (
+              <div class="fila-compra" data-winner={verdict === "amazon" ? "amazon" : undefined}>
+                <p class="precio">
+                  <span class="lab">{amzLabel}</span>
+                  <span class="monto num" data-price-amount hidden>~{formatArs(p.amazonArs)}</span>
+                  <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
+                  <small data-price-sub hidden>{amzSub}</small>
+                </p>
+                {verdict === "sinEnvio" && (
+                  <p class="veredicto nota" data-verdict-text hidden>Traerlo sale menos, pero no confirmamos que Amazon lo envíe a Argentina. Revisá el envío en Amazon antes de comprar.</p>
+                )}
+                {verdict === "amazon" ? (
+                  <a class="btn ghost sm" data-buy-link="amazon" data-winner="amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" {...salidaAttrs("amazon", "ficha", p, "veredicto")}>
+                    <span class="v" data-verdict-text hidden>Mejor opción: Amazon. Puesto en tu casa sale bastante menos, aunque tarda más.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
+                    <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={18} /></span>
+                  </a>
+                ) : (
+                  <a class="btn ghost sm" data-buy-link="amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" {...salidaAttrs("amazon", "ficha", p, "alternativa")}>
+                    <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            <p class="fine">Comparamos el total que cobra Amazon con envío e impuestos contra el precio nuevo más barato del mismo modelo en Mercado Libre. Para tu cuenta exacta, pegá abajo el precio de Amazon de hoy. {SITE.disclosure}</p>
+          </div>
+          <div id="calculadora" style="scroll-margin-top: 96px">
+            <Calculator client:visible buildRates={rates} initialFob={null} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={buy ? { url: buy, store: p.store, slug: p.slug, attrs: salidaAttrs("amazon", "calculadora", p, "calculadora") } : undefined} />
+          </div>
+        </div>
+
+        <div class="pdp-detalle">
           <p class="lead">{p.summary}</p>
           <ShareButtons title={p.name} />
           <dl class="specs">
@@ -116,60 +174,6 @@ const specs: Array<[string, string]> = [
             </section>
           )}
         </div>
-
-        <div class="buybox">
-          <div class="buy" data-checked={checkedDate}>
-            {p.ml && (
-              <div class="fila-compra" data-winner={verdict === "ml" ? "ml" : undefined}>
-                <p class="precio">
-                  <span class="lab">Mercado Libre</span>
-                  <span class="monto num" data-price-amount hidden>{formatArs(p.ml.price)}</span>
-                  <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
-                  <small data-price-label hidden>{mlFecha ? `precio del ${mlFecha}` : ""}</small>
-                </p>
-                {verdict === "ml" ? (
-                  <a class="btn ghost sm" data-buy-link="ml" data-winner="ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-tienda="ML" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
-                    <span class="v" data-verdict-text hidden>Mejor opción: Mercado Libre. Mismo precio o menos, llega en días, sin aduana y con garantía local.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
-                    <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={18} /></span>
-                  </a>
-                ) : (
-                  <a class="btn ghost sm" data-buy-link="ml" href={p.ml.url} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="mercadolibre" data-umami-event-tienda="ML" data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">
-                    <span class="cta"><span data-buy-verb>Ver</span> en Mercado Libre <Icon name="arrow-up-right" size={16} /></span>
-                  </a>
-                )}
-              </div>
-            )}
-
-            {p.amazonArs != null && buy && (
-              <div class="fila-compra" data-winner={verdict === "amazon" ? "amazon" : undefined}>
-                <p class="precio">
-                  <span class="lab">{amzLabel}</span>
-                  <span class="monto num" data-price-amount hidden>~{formatArs(p.amazonArs)}</span>
-                  <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
-                  <small data-price-sub hidden>{amzSub}</small>
-                </p>
-                {verdict === "sinEnvio" && (
-                  <p class="veredicto nota" data-verdict-text hidden>Traerlo sale menos, pero no confirmamos que Amazon lo envíe a Argentina. Revisá el envío en Amazon antes de comprar.</p>
-                )}
-                {verdict === "amazon" ? (
-                  <a class="btn ghost sm" data-buy-link="amazon" data-winner="amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-veredicto">
-                    <span class="v" data-verdict-text hidden>Mejor opción: Amazon. Puesto en tu casa sale bastante menos, aunque tarda más.{saving > 0 ? ` Ahorrás ~${formatArs(saving)}.` : ""}</span>
-                    <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={18} /></span>
-                  </a>
-                ) : (
-                  <a class="btn ghost sm" data-buy-link="amazon" href={buy} target="_blank" rel="noopener noreferrer sponsored" data-umami-event="amazon" data-umami-event-tienda={p.store} data-umami-event-producto={p.slug} data-umami-event-origen="ficha-alternativa">
-                    <span class="cta"><span data-buy-verb>Ver</span> en Amazon <Icon name="arrow-up-right" size={16} /></span>
-                  </a>
-                )}
-              </div>
-            )}
-
-            <p class="fine">Comparamos el total que cobra Amazon con envío e impuestos contra el precio nuevo más barato del mismo modelo en Mercado Libre. Para tu cuenta exacta, pegá abajo el precio de Amazon de hoy. {SITE.disclosure}</p>
-          </div>
-          <div id="calculadora" style="scroll-margin-top: 96px">
-            <Calculator client:visible buildRates={rates} initialFob={null} currency={p.store === "ES" ? "EUR" : "USD"} title="¿Cuánto te sale traerlo?" buy={buy ? { url: buy, store: p.store, slug: p.slug } : undefined} />
-          </div>
-        </div>
       </div>
     </div>
 
@@ -178,7 +182,7 @@ const specs: Array<[string, string]> = [
         <div class="wrap">
           <div class="head"><h2>Más {p.category.toLowerCase()}</h2></div>
           <div class="grid-products">
-            {related.map((r) => <ProductCard product={r} />)}
+            {related.map((r) => <ProductCard product={r} ubicacion="ficha_relacionados" />)}
           </div>
         </div>
       </section>

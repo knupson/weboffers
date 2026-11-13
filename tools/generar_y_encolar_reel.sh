@@ -49,7 +49,8 @@ import json, os, sys
 cola_path, pid, cuando, url, txt = sys.argv[1:]
 texto_ig = open(txt, encoding="utf-8").read()
 # Facebook sí admite links: «link en la bio» pasa a la URL con UTM y quedan 3 hashtags (igual que reel-11-11).
-utm = f"https://ofertas.knunet.com/?utm_source=facebook&utm_medium=social&utm_campaign={pid}"
+# UTMs comunes de la difusión (13/11, igual que Telegram): campaña fija por tipo de pieza, el id del día en utm_content.
+utm = f"https://ofertas.knunet.com/?utm_source=facebook&utm_medium=social&utm_campaign=reel-diario&utm_content={pid}"
 texto_fb = texto_ig.replace("link en la bio.", utm + ".").replace(
     "#amazonargentina #mercadolibre #comprasalexterior #franquicia400 #tecnologia",
     "#amazonargentina #mercadolibre #franquicia400")

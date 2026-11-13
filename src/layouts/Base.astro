@@ -2,7 +2,7 @@
 import "@fontsource/ultra";
 import "@fontsource-variable/archivo";
 import "../styles/global.css";
-import { SITE, SOCIAL, UMAMI } from "../config";
+import { SITE, SOCIAL } from "../config";
 import { siInstagram, siTelegram, siYoutube } from "simple-icons";
 
 const socialIcon = { YouTube: siYoutube, Telegram: siTelegram, Instagram: siInstagram };
@@ -55,7 +55,6 @@ const nav = [
     <meta property="og:image" content={`${SITE.url}/og.png`} />
     <meta name="twitter:card" content="summary_large_image" />
     {jsonLd.map((d) => <script type="application/ld+json" set:html={JSON.stringify({ "@context": "https://schema.org", ...d })} />)}
-    <script is:inline defer src={UMAMI.src} data-website-id={UMAMI.id} data-domains="ofertas.knunet.com" data-do-not-track="true" data-exclude-hash="true"></script>
     <slot name="head" />
   </head>
   <body data-prices-date={pricesDate}>
@@ -112,6 +111,34 @@ const nav = [
       </div>
     </footer>
 
+    <script>
+      // 13/11: Umami se carga sólo si corresponde (ni Chrome automatizado ni sesiones con ?notrack=1), guarda las
+      // UTMs de la landing y un solo listener manda click_amazon / click_ml de todos los enlaces con data-salida.
+      import { UMAMI } from "../config";
+      import { captureUtms, shouldTrack, trackSalida, umamiListo, umamiNoSeCarga } from "../lib/analytics";
+
+      if (shouldTrack(location.search, navigator.webdriver)) {
+        captureUtms(location.search);
+        const s = document.createElement("script");
+        s.src = UMAMI.src;
+        s.dataset.websiteId = UMAMI.id;
+        s.dataset.domains = "ofertas.knunet.com";
+        s.dataset.doNotTrack = "true";
+        s.dataset.excludeHash = "true";
+        s.addEventListener("load", () => umamiListo());
+        s.addEventListener("error", () => umamiListo());
+        document.head.append(s);
+      } else {
+        umamiNoSeCarga();
+      }
+      const salida = (e: MouseEvent) => {
+        if (e.type === "auxclick" && e.button !== 1) return; // rueda del mouse = abrir en pestaña nueva
+        const a = (e.target as Element | null)?.closest?.<HTMLElement>("[data-salida]");
+        if (a) trackSalida({ ...a.dataset });
+      };
+      document.addEventListener("click", salida, true);
+      document.addEventListener("auxclick", salida, true);
+    </script>
     <script is:inline>
       (() => {
         const ART_OFFSET_MS = -3 * 3600 * 1000;
