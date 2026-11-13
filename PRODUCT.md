@@ -90,6 +90,6 @@ Todo link al sitio desde redes lleva `utm_source=<red>&utm_medium=social&utm_cam
 |---|---|
 | Telegram (producto del día, automático) | `utm_source=telegram&utm_medium=social&utm_campaign=producto-diario&utm_content=<slug>` (`worker/telegram.py`) |
 | Reel de Facebook (automático) | `utm_source=facebook&utm_medium=social&utm_campaign=reel-diario&utm_content=reel-DD-MM` (`tools/generar_y_encolar_reel.sh`) |
-| Bio de Instagram (manual) | `https://ofertas.knunet.com/?utm_source=instagram&utm_medium=social&utm_campaign=bio` — los Reels de IG dicen «link en la bio». La URL cargada hoy en el perfil no está verificada. |
+| Bio de Instagram (manual) | `https://ofertas.knunet.com/?utm_source=instagram&utm_medium=social&utm_campaign=bio` — los Reels de IG dicen «link en la bio». **Pendiente:** el 13/11 el perfil @franquicia.400 tenía `https://ofertas.knunet.com/` sin UTMs (visto en el perfil público); las visitas desde la bio entran como directas o referidas por instagram.com. |
 
 Hasta el 13/11 Telegram usaba `utm_medium=canal` y el Reel de FB `utm_campaign=reel-DD-MM`. Visitas desde la casa, la VM y pi3 no cuentan (`IGNORE_IP` de Umami); para revisar el sitio sin ensuciar métricas, abrirlo con `?notrack=1`.
