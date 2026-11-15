@@ -125,7 +125,10 @@ def interpretar(d):
         # en otro idioma no se decide nada (07/11 «Entrega GRATIS» se leyó como envío pago).
         return {"ships": None, "free": None, "text": (d.get("envio") or "")[:160] or None, "motivo": "pagina_no_ingles"}
     if "argentina" not in (d.get("deliver") or "").lower():
-        return {"ships": None, "free": None, "text": None, "motivo": "ubicacion_no_ar"}
+        # 15/11: 200 de 200 salieron así a las 03:30 y el log no decía qué ubicación mostraba Amazon.
+        # Se guarda el texto literal de «Deliver to …» (sigue siendo sin dato: ships None).
+        return {"ships": None, "free": None, "text": f"deliver={(d.get('deliver') or '').strip()[:120] or 'vacio'}",
+                "motivo": "ubicacion_no_ar"}
     if d.get("buybox") is False:
         return {"ships": None, "free": None, "text": None, "motivo": "sin_recuadro_de_compra"}
     envio = d.get("envio")
