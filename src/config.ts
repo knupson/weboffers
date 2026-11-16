@@ -29,11 +29,12 @@ const ES_TAG = import.meta.env.PUBLIC_AMAZON_ES_TAG ?? "knunet-21";
 // 13/11: Tracking IDs de Amazon Associates (Amazon.com) por canal de la sesión. Vacíos = se usa el tag principal
 // (US_TAG). Para activar uno: darlo de alta en Associates (Cuenta → Administrar IDs de seguimiento), cargar la
 // variable PUBLIC_AMAZON_TAG_<CANAL> en el build (o el valor acá) y redesplegar. Ver PRODUCT.md «Tags de Amazon por canal».
+// 16/11: los cuatro dados de alta en Associates por el titular y activos (el deployer no define estas variables).
 export const AMAZON_TAGS_POR_CANAL = {
-  instagram: (import.meta.env.PUBLIC_AMAZON_TAG_INSTAGRAM ?? "").trim(),
-  facebook: (import.meta.env.PUBLIC_AMAZON_TAG_FACEBOOK ?? "").trim(),
-  telegram: (import.meta.env.PUBLIC_AMAZON_TAG_TELEGRAM ?? "").trim(),
-  meta_ads: (import.meta.env.PUBLIC_AMAZON_TAG_META_ADS ?? "").trim(),
+  instagram: (import.meta.env.PUBLIC_AMAZON_TAG_INSTAGRAM ?? "knunet-ig-20").trim(),
+  facebook: (import.meta.env.PUBLIC_AMAZON_TAG_FACEBOOK ?? "knunet-fb-20").trim(),
+  telegram: (import.meta.env.PUBLIC_AMAZON_TAG_TELEGRAM ?? "knunet-tg-20").trim(),
+  meta_ads: (import.meta.env.PUBLIC_AMAZON_TAG_META_ADS ?? "knunet-ads-20").trim(),
 };
 
 export type Store = "US" | "ES";

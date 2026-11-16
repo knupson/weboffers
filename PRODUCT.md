@@ -98,13 +98,13 @@ Hasta el 13/11 Telegram usaba `utm_medium=canal` y el Reel de FB `utm_campaign=r
 
 Tag principal: `knunet-20` (Amazon.com) y `knunet-21` (Amazon.es) en `src/config.ts`. Además hay un Tracking ID opcional por canal para Amazon.com (`AMAZON_TAGS_POR_CANAL`), elegido por las UTMs de la sesión (`resolverTagAmazon` en `src/lib/analytics.ts`):
 
-| Canal | Cuándo | Variable del build |
-|---|---|---|
-| `meta_ads` | `utm_medium` = `paid`, `cpc`, `ppc` o `paid_social` (gana sobre la fuente) | `PUBLIC_AMAZON_TAG_META_ADS` |
-| `instagram` | `utm_source=instagram` | `PUBLIC_AMAZON_TAG_INSTAGRAM` |
-| `facebook` | `utm_source=facebook` | `PUBLIC_AMAZON_TAG_FACEBOOK` |
-| `telegram` | `utm_source=telegram` | `PUBLIC_AMAZON_TAG_TELEGRAM` |
+| Canal | Cuándo | Variable del build | Tag (activo desde 16/11) |
+|---|---|---|---|
+| `meta_ads` | `utm_medium` = `paid`, `cpc`, `ppc` o `paid_social` (gana sobre la fuente) | `PUBLIC_AMAZON_TAG_META_ADS` | `knunet-ads-20` |
+| `instagram` | `utm_source=instagram` | `PUBLIC_AMAZON_TAG_INSTAGRAM` | `knunet-ig-20` |
+| `facebook` | `utm_source=facebook` | `PUBLIC_AMAZON_TAG_FACEBOOK` | `knunet-fb-20` |
+| `telegram` | `utm_source=telegram` | `PUBLIC_AMAZON_TAG_TELEGRAM` | `knunet-tg-20` |
 
 Al hacer clic en un enlace a Amazon.com, si el canal tiene tag cargado se reemplaza `tag=`; si no hay UTMs o el canal no tiene tag, queda el principal (nunca se pierde la atribución). Amazon.es no se toca. `click_amazon` lleva `amazon_tag` con el tag final, para cruzar Umami con el informe de Associates.
 
-**Para activar un canal:** (1) en Amazon Associates, Cuenta → Administrar IDs de seguimiento → agregar el ID (por ejemplo `f400ig-20`); (2) cargarlo en `src/config.ts` o como variable `PUBLIC_AMAZON_TAG_<CANAL>` del build; (3) commit, push y deploy; (4) verificar en una ficha abierta con `?utm_source=<canal>&notrack=1` que el enlace a Amazon salga con el tag nuevo. Hoy (13/11) los cuatro están vacíos.
+**Para activar un canal:** (1) en Amazon Associates, Cuenta → Administrar IDs de seguimiento → agregar el ID (por ejemplo `f400ig-20`); (2) cargarlo en `src/config.ts` o como variable `PUBLIC_AMAZON_TAG_<CANAL>` del build; (3) commit, push y deploy; (4) verificar en una ficha abierta con `?utm_source=<canal>&notrack=1` que el enlace a Amazon salga con el tag nuevo. Desde el 16/11 los cuatro están activos con los valores de la tabla, cargados en `src/config.ts` (el deployer no define las variables); `knunet-20` sigue como tag por defecto.
