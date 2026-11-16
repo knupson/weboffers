@@ -3025,7 +3025,8 @@
     "brand": "Western Digital",
     "category": "Almacenamiento",
     "summary": "SSD SATA III de 2,5\" y 1 TB con lecturas de hasta 545 MB/s, pensado para renovar notebooks y PC de uso general.",
-    "verified": true,
+    "verified": false,
+    "motivoNoVerificado": "par equivocado (16/11): Amazon B0FNCPHMXM es WDS100T5G0A y ML MLA14661338 es WDS100T3G0A/WDS200T2G0A",
     "image": "/products/wd-green-sata-1tb.webp",
     "imageSource": "https://www.sandisk.com/products/ssd/internal-ssd/wd-green-sata-internal-ssd-7mm",
     "shipsToAr": {

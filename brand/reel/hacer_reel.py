@@ -156,7 +156,7 @@ def elegir(productos, historial):
             max(ml, key=lambda p: (p['az'] - p['ml']) / p['az'])]
 
 
-def elegir_anuncio(productos, slug):
+def elegir_anuncio(productos, slug, duelo=None):
     a = next((p for p in productos if p['slug'] == slug), None)
     if a is None:
         raise ValueError(f'El producto «{slug}» no está entre los comparables de hoy.')
@@ -167,6 +167,11 @@ def elegir_anuncio(productos, slug):
     ml = [p for p in productos if p['slug'] != slug and p['gana'] == 'ml'
           and p['ml'] < p['az']
           and (REPO / 'public/products' / (p['slug'] + '.webp')).is_file()]
+    if duelo is not None:
+        # 16/11: el segundo producto del anuncio se fija a mano (uno con el mismo código de modelo en las dos tiendas).
+        ml = [p for p in ml if p['slug'] == duelo]
+        if not ml:
+            raise ValueError(f'El producto de duelo «{duelo}» no gana en Mercado Libre hoy, no tiene foto o es el mismo del anuncio.')
     if not ml:
         raise ValueError('Falta otro producto con foto y ahorro en Mercado Libre para el anuncio.')
     return [a, max(ml, key=lambda p: (p['az'] - p['ml']) / p['az'])]
@@ -283,7 +288,7 @@ Voz: Piper «es_AR-daniela-high» (CC BY-SA 4.0). Música: «Hip Hop 02», Mixki
 '''
 
 
-def main(anuncio=None):
+def main(anuncio=None, duelo=None):
     hoy = datetime.now(ART).date().isoformat()
     ml, amazon, catalogo = datos_hoy(hoy)  # Antes de red, audio, props o historial.
     historial_path = BASE / 'historial.json'
@@ -291,7 +296,7 @@ def main(anuncio=None):
         historial = leer(historial_path) if historial_path.exists() else []
     mep, eur_usd = cotizaciones(any(a.get('currency') == 'EUR' and a.get('checked') == hoy for a in amazon.values()))
     productos = comparables(ml, amazon, catalogo, hoy, mep, eur_usd)
-    a, b = elegir(productos, historial) if anuncio is None else elegir_anuncio(productos, anuncio)
+    a, b = elegir(productos, historial) if anuncio is None else elegir_anuncio(productos, anuncio, duelo)
     print(f"Ejemplo Amazon: {a['name']} | FOB USD {a['usd']:.2f} | MEP ${mep} (dolarapi.com) | estimado ARS ${ars(estimate_from_amazon(a['usd'], mep))} | sitio ${ars(a['az'])}", flush=True)
     npx = shutil.which('npx.cmd') or shutil.which('npx')
     ffmpeg = shutil.which('ffmpeg')
@@ -307,7 +312,8 @@ def main(anuncio=None):
     for i, producto in enumerate((a, b)):
         escena = 1 if i == 0 else 3
         dur = duraciones[escena]
-        nota = (f"Te ahorrás ~$ {ars(producto['ml'] - producto['az'])}" if i == 0 else
+        # 16/11: mismo redondeo que el «Ahorrás» de la ficha (roundArs10k en src/lib/data.ts): decía ~$ 741.009 con ~$ 740.000 en el sitio.
+        nota = (f"Te ahorrás ~$ {ars(redondear((producto['ml'] - producto['az']) / 10000) * 10000)}" if i == 0 else
                 'El envío se come la diferencia' if b['usd'] < 100 else 'Conviene comprarlo acá')
         props['duelos'].append(dict(img=producto['slug'] + '.webp', nombre=producto['name'],
                                     ml=producto['ml'], az=producto['az'], gana=producto['gana'],
@@ -342,9 +348,12 @@ def main(anuncio=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--anuncio', metavar='SLUG', help='Generá un anuncio del producto elegido.')
+    parser.add_argument('--duelo', metavar='SLUG', help='Con --anuncio: segundo producto (gana Mercado Libre) fijo.')
     args = parser.parse_args()
+    if args.duelo and not args.anuncio:
+        parser.error('--duelo sólo se usa con --anuncio')
     try:
-        main(anuncio=args.anuncio)
+        main(anuncio=args.anuncio, duelo=args.duelo)
     except (ValueError, OSError, KeyError, subprocess.SubprocessError) as exc:
         print(f'Error: {exc}', file=sys.stderr)
         sys.exit(1)

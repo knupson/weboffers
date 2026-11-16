@@ -70,6 +70,11 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
         self.assertEqual(a['slug'], 'pedido')
         self.assertEqual(b['slug'], 'ml-mayor-porcentaje')
         self.assertNotEqual(a['slug'], b['slug'])
+        # 16/11: --duelo fija el segundo producto aunque no sea el de mayor ahorro; uno que no gana ML es error.
+        with patch.object(Path, 'is_file', return_value=True):
+            self.assertEqual(r.elegir_anuncio(productos, 'pedido', 'ml-mayor-monto')[1]['slug'], 'ml-mayor-monto')
+            with self.assertRaisesRegex(ValueError, 'no gana en Mercado Libre'):
+                r.elegir_anuncio(productos, 'pedido', 'mejor-amazon')
 
     def test_anuncio_valida_producto_y_fotos(self):
         casos = [([], 'no está entre los comparables'),
