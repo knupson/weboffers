@@ -90,6 +90,9 @@ Todo link al sitio desde redes lleva `utm_source=<red>&utm_medium=social&utm_cam
 |---|---|
 | Telegram (producto del día, automático) | `utm_source=telegram&utm_medium=social&utm_campaign=producto-diario&utm_content=<slug>` (`worker/telegram.py`) |
 | Reel de Facebook (automático) | `utm_source=facebook&utm_medium=social&utm_campaign=reel-diario&utm_content=reel-DD-MM` (`tools/generar_y_encolar_reel.sh`) |
+| Historias de IG/FB (manual, Business Suite) | a la ficha del producto: `/productos/<slug>/?utm_source=<instagram\|facebook>&utm_medium=social&utm_campaign=historia&utm_content=historia-DD-MM` (desde 16/11; antes `utm_campaign=historia-DD-MM`) |
+| Carrusel del lunes en FB (manual) | `https://ofertas.knunet.com/?utm_source=facebook&utm_medium=social&utm_campaign=carrusel&utm_content=carrusel-DD-MM` (desde 16/11); en IG dice «link en la bio» |
+| Meta Ads (pago) | `/productos/<slug>/?utm_source=instagram&utm_medium=paid_social&utm_campaign=<campaña>&utm_content=<slug>`; el medio pago activa el tag `knunet-ads-20` (primera campaña: `smoke_nov`, 16/11) |
 | Bio de Instagram (manual) | `https://ofertas.knunet.com/?utm_source=instagram&utm_medium=social&utm_campaign=bio` — los Reels de IG dicen «link en la bio». **Cargada el 13/11** y verificada en el perfil público. Instagram le agrega por su cuenta `utm_content=link_in_bio` y `fbclid` al pasar por `l.instagram.com`. El link sólo se edita desde la app del celular (la web lo bloquea). |
 
 Hasta el 13/11 Telegram usaba `utm_medium=canal` y el Reel de FB `utm_campaign=reel-DD-MM`. Visitas desde la casa, la VM y pi3 no cuentan (`IGNORE_IP` de Umami); para revisar el sitio sin ensuciar métricas, abrirlo con `?notrack=1`.
