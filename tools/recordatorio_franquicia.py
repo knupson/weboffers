@@ -82,7 +82,21 @@ def bajar(url):
     return urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "replace")
 
 
-def control(que, ahora, bajar=bajar):
+def contar_revision():
+    """Pares en altas-revision.json del worker (root 600: se lee con docker exec); None si no se pudo leer."""
+    import subprocess
+    try:
+        r = subprocess.run(["docker", "exec", "franquicia400-weboffers-worker-1", "cat", "/app/output/altas-revision.json"],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            return None
+        cola = json.loads(r.stdout or "[]")
+        return len(cola) if isinstance(cola, list) else None
+    except Exception:
+        return None
+
+
+def control(que, ahora, bajar=bajar, revision=contar_revision):
     """Texto de alerta si algo falló; "" si está todo bien."""
     hoy = ahora.date().isoformat()
     if que == "sitio13" and hoy not in EXTRA_DEPLOY_DATES:
@@ -114,13 +128,18 @@ def control(que, ahora, bajar=bajar):
             sin_envio = 0
         if sin_envio > MAXIMO_SIN_ENVIO:
             problemas.append(f"hay {sin_envio} productos con «no confirmamos el envío», revisá el envío a Argentina")
-        if ahora.weekday() == 0:
-            problema = control_catalogo(ahora, bajar)
-            if problema:
-                problemas.append(problema)
+        # 16/11: se sacó el control de los lunes de la búsqueda semanal del domingo. Esa búsqueda se retiró el 09/11
+        # (commit 8a5005a, alta diaria dentro de la cadena) y el control seguía leyendo catalogo.week de estado.json,
+        # congelado en 2026-W45 «running»: avisaba en falso todos los lunes. El alta diaria la controla el vigía
+        # (bloque alta:* de cadena-<hoy>.json).
         # 07/11: altas sin identificador fuerte esperan revisión en Chrome (decisión de Alejandro); sólo en el control de las 07:30.
-        if que == "sitio" and ((estado.get("catalogo") or {}).get("revision") or 0) > 0:
-            problemas.append("revisá las altas")
+        # 16/11: se cuenta la cola real (altas-revision.json del worker), no catalogo.revision de estado.json (quedó en 5 desde el 09/11).
+        if que == "sitio":
+            pendientes = revision()
+            if pendientes is None:
+                problemas.append("no pude leer la cola de altas en revisión, revisá la VM docker")
+            elif pendientes > 0:
+                problemas.append("revisá las altas")
         return pedir(problemas) if problemas else ""
     if que in ("telegram12", "telegram20"):
         hora = int(que[-2:])
@@ -151,25 +170,6 @@ def control(que, ahora, bajar=bajar):
             falta.append("Facebook")
         return pedir([f"no salió el Reel de las 19 en {' ni en '.join(falta)}, revisalo"]) if falta else ""
     raise SystemExit(f"control desconocido: {que}")
-
-
-def control_catalogo(ahora, bajar):
-    """Lunes: la búsqueda semanal del domingo tiene que haber corrido y sumado productos."""
-    try:
-        estado = (json.loads(bajar("https://ofertas.knunet.com/estado.json")) or {}).get("catalogo") or {}
-    except Exception:
-        estado = {}
-    domingo = ahora.date() - datetime.timedelta(days=1)
-    año, semana, _ = domingo.isocalendar()
-    if estado.get("week") != f"{año}-W{semana:02d}" or estado.get("status") == "running":
-        return "la búsqueda de productos nuevos del domingo no corrió, revisá la VM docker"
-    if estado.get("status") == "failed":
-        motivos = ", ".join(estado.get("motivos") or []) or "sin detalle"
-        return f"la búsqueda del domingo falló ({motivos}, altas={estado.get('added', 0)}), revisala"
-    if not estado.get("added"):
-        motivos = ", ".join(estado.get("motivos") or []) or "ningún par seguro"
-        return f"la búsqueda del domingo no sumó productos ({motivos}), revisala"
-    return ""
 
 
 def causa_amazon(bajar):

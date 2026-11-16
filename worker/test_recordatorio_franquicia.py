@@ -18,14 +18,14 @@ def download(state):
 @pytest.mark.parametrize("prices", [None, "2026-11-02"])
 def test_estado_requires_today_prices(mode, prices):
     now = datetime.fromisoformat("2026-11-03T15:30:00-03:00")
-    text = reminder.control(mode, now, download({"preciosDe": prices, "amazon": {}}))
+    text = reminder.control(mode, now, download({"preciosDe": prices, "amazon": {}}), revision=lambda: 0)
     assert "estado.json no tiene los precios de hoy" in text
 
 
 def test_missing_worker_data_alerts_even_with_hundred_products():
     now = datetime.fromisoformat("2026-11-03T07:30:00-03:00")
-    assert "sin datos del worker" in reminder.control("sitio", now, download({"preciosDe": "2026-11-03", "amazon": None}))
-    assert not reminder.control("sitio", now, download({"preciosDe": "2026-11-03", "amazon": {}}))
+    assert "sin datos del worker" in reminder.control("sitio", now, download({"preciosDe": "2026-11-03", "amazon": None}), revision=lambda: 0)
+    assert not reminder.control("sitio", now, download({"preciosDe": "2026-11-03", "amazon": {}}), revision=lambda: 0)
 
 
 def test_extra_check_skips_regular_days_and_checks_minimum():
@@ -36,10 +36,12 @@ def test_extra_check_skips_regular_days_and_checks_minimum():
         {"preciosDe": "2026-11-03", "amazon": {}}) if url.endswith(".json") else '"2026-11-03"')
 
 
-def test_failed_catalog_alerts_even_with_additions():
-    state = {"catalogo": {"week": "2026-W45", "status": "failed", "added": 2, "motivos": ["sin_foto"]}}
-    text = reminder.control_catalogo(datetime.fromisoformat("2026-11-09T07:30:00-03:00"), download(state))
-    assert "falló" in text and "altas=2" in text and "sin_foto" in text
+def test_lunes_no_avisa_por_la_busqueda_semanal_retirada():
+    # 16/11: catalogo.week quedó en 2026-W45 «running» desde el 09/11; el lunes no debe avisar «no corrió».
+    now = datetime.fromisoformat("2026-11-16T07:30:00-03:00")
+    estado = {"preciosDe": "2026-11-16", "amazon": {}, "catalogo": {"week": "2026-W45", "status": "running", "revision": 5}}
+    texto = reminder.control("sitio", now, download(estado), revision=lambda: 0)
+    assert "domingo" not in texto
 
 
 def test_calendario_sin_vencimiento_despues_de_noviembre():
@@ -86,10 +88,11 @@ def test_manda_whatsapp_desde_las_7(monkeypatch):
 
 def test_cola_de_revision_pide_revisar_las_altas_solo_a_las_0730():
     now = datetime.fromisoformat("2026-11-03T07:30:00-03:00")
-    base = {"preciosDe": "2026-11-03", "amazon": {}}
-    assert not reminder.control("sitio", now, download({**base, "catalogo": {"revision": 0}}))
-    assert "«revisá las altas»" in reminder.control("sitio", now, download({**base, "catalogo": {"revision": 3}}))
-    assert "revisá las altas" not in reminder.control("sitio13", now, download({**base, "catalogo": {"revision": 3}}))
+    base = {"preciosDe": "2026-11-03", "amazon": {}, "catalogo": {"revision": 5}}  # el número viejo de estado.json no cuenta
+    assert not reminder.control("sitio", now, download(base), revision=lambda: 0)
+    assert "«revisá las altas»" in reminder.control("sitio", now, download(base), revision=lambda: 2)
+    assert "no pude leer la cola de altas" in reminder.control("sitio", now, download(base), revision=lambda: None)
+    assert "revisá las altas" not in reminder.control("sitio13", now, download(base), revision=lambda: 2)
 
 
 def _estado(amazon):
