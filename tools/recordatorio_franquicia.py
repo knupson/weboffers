@@ -30,7 +30,8 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = datetime.timezone(datetime.timedelta(hours=-3))
 
-CLAUDE = r"Abrí Claude Code en E:\Repositorios\Personal\weboffers, con tu Chrome personal abierto, y decile:"
+# 16/11: formato compacto (Alejandro: «sin repetir el texto largo de "Abrí Claude Code..." en cada mensaje»).
+CLAUDE = "F400 · decile a Claude en weboffers:"
 
 # Frases extra por fecha (AAAA-MM-DD). Calendario: claude.ai/artifact/MaxRa2pv8JYqNEeeykpQpr
 FRASES = {
@@ -56,7 +57,9 @@ def leer_env():
 
 def pedir(frases):
     citas = [f"«{f}»" for f in frases]
-    return f"{CLAUDE} " + (", ".join(citas[:-1]) + " y " + citas[-1] if len(citas) > 1 else citas[0]) + "."
+    if len(citas) == 1:
+        return f"{CLAUDE} {citas[0]}"
+    return CLAUDE + "\n" + "\n".join(f"• {c}" for c in citas)
 
 
 def mensaje(hoy):

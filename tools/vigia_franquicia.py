@@ -117,7 +117,11 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     for linea in lineas:
         if MARCAS_FALLA.search(linea):
             texto = linea.split(" ", 1)[-1][:160]
-            problemas["log:" + texto[:80]] = f"el worker registró: {texto}"
+            # 16/11: la clave llevaba la hora y la misma falla (Telegram 12:01:03 y 13:01:01) salía como dos
+            # alertas. Sin la hora es una sola; el texto dice la última vez que pasó.
+            m = re.match(r"(\d\d:\d\d):\d\d (.*)", texto)
+            sin_hora, cuando = (m.group(2), m.group(1)) if m else (texto, "")
+            problemas["log:" + sin_hora[:80]] = f"el worker registró: {sin_hora}" + (f" (última {cuando})" if cuando else "")
     # 12/11: cada DUDOSO_PARA_ALEJANDRO salía como una falla aparte (17 pares en 4 WhatsApp de a 6). Es trabajo
     # pendiente, no una falla: un solo resumen con la cantidad de pares, cuando la cadena ya no corre y el
     # conteo dejó de crecer. Si después aparecen más, la clave cambia y sale un resumen nuevo con el total.
@@ -220,16 +224,42 @@ def chequear_cadena(hoy, logs_dir):
     return problemas
 
 
+REPETIR_CADA_HORAS = 6  # 16/11 (Alejandro): la misma alerta, como mucho una vez cada 6 h mientras siga abierta.
+
+
 def cargar_estado(hoy):
     try:
         estado = json.load(open(ESTADO, encoding="utf-8"))
     except Exception:
         estado = {}
     if estado.get("fecha") != hoy:
-        # Lo pendiente de ayer (no enviado) se conserva; lo ya avisado se olvida.
-        estado = {"fecha": hoy, "avisados": [], "pendientes": estado.get("pendientes", {}),
+        # Lo pendiente de ayer (no enviado) se conserva. El último aviso de cada clave también: antes del 16/11
+        # se olvidaba a medianoche y una falla abierta volvía a salir cada día.
+        estado = {"fecha": hoy, "pendientes": estado.get("pendientes", {}),
+                  "ultimo_aviso": estado.get("ultimo_aviso", {}),
                   "sin_internet_desde": estado.get("sin_internet_desde")}
+    estado.setdefault("ultimo_aviso", {})
+    # Estado del formato anterior (lista «avisados» del día, claves de log con hora): lo ya avisado hoy no se repite.
+    for k in estado.pop("avisados", None) or []:
+        estado["ultimo_aviso"].setdefault(re.sub(r"^log:\d\d:\d\d:\d\d ", "log:", k), f"{hoy}T00:00:00-03:00")
     return estado
+
+
+# Alertas que salen de una línea del log del día: la línea queda aunque ya se haya resuelto, así que van una vez por día.
+EVENTOS_DEL_DIA = ("log:", "dudosos:", "deploy:")
+
+
+def toca_avisar(clave, estado, ahora):
+    ultimo = estado["ultimo_aviso"].get(clave)
+    if not ultimo:
+        return True
+    try:
+        cuando = datetime.datetime.fromisoformat(ultimo)
+    except (TypeError, ValueError):
+        return True
+    if clave.startswith(EVENTOS_DEL_DIA):
+        return cuando.date() != ahora.date()
+    return (ahora - cuando).total_seconds() >= REPETIR_CADA_HORAS * 3600
 
 
 def main(ahora=None, enviar=rf.enviar):
@@ -246,16 +276,19 @@ def main(ahora=None, enviar=rf.enviar):
                                         f"hasta las {ahora.strftime('%H:%M')}; revisá qué no corrió")
         estado["sin_internet_desde"] = None
 
-    nuevos = {k: v for k, v in problemas.items() if k not in estado["avisados"]}
+    nuevos = {k: v for k, v in problemas.items() if k not in estado["pendientes"] and toca_avisar(k, estado, ahora)}
     estado["pendientes"].update(nuevos)
+    # Se cerró el incidente: si vuelve a pasar, avisa enseguida.
+    for k in [k for k in estado["ultimo_aviso"] if k not in problemas]:
+        estado["ultimo_aviso"].pop(k)
     if estado["pendientes"] and "internet" not in problemas:
         # Hasta 6 por mensaje; sólo se marcan como avisados los que salieron (el resto va en la pasada siguiente).
         lote = list(estado["pendientes"])[:6]
         texto = rf.pedir([estado["pendientes"][k] for k in lote])
         try:
             enviar(texto, f"vigia {hoy}")
-            estado["avisados"] += lote
             for k in lote:
+                estado["ultimo_aviso"][k] = ahora.isoformat()
                 estado["pendientes"].pop(k)
             print("VIGIA_AVISO", ",".join(lote))
         except SystemExit:

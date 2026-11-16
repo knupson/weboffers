@@ -118,6 +118,55 @@ def test_avisa_una_vez_y_reintenta_si_no_sale(tmp_path, monkeypatch):
     assert len(enviados) == 1  # se reintentó y después no se repite
 
 
+def test_falla_abierta_se_repite_recien_a_las_6_horas(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {"latido": "el worker no da señales"})
+    enviados = []
+    for minutos in range(0, 6 * 60, 15):  # el vigía corre cada 15 min
+        v.main(HOY + datetime.timedelta(minutes=minutos), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1
+    v.main(HOY + datetime.timedelta(hours=6), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 2
+
+
+def test_misma_falla_del_log_a_otra_hora_no_es_alerta_nueva(tmp_path, monkeypatch):
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker", "2026-11-05 09:01:03 Falló Telegram (ConnectionError).")
+    p1 = correr(tmp_path)
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker", "2026-11-05 09:01:03 Falló Telegram (ConnectionError).",
+        "2026-11-05 10:01:01 Falló Telegram (ConnectionError).")
+    p2 = correr(tmp_path)
+    claves = [k for k in p2 if k.startswith("log:")]
+    assert claves == [k for k in p1 if k.startswith("log:")] and len(claves) == 1
+    assert "(última 10:01)" in p2[claves[0]]
+
+
+def test_evento_del_log_sale_una_vez_por_dia(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {"dudosos:2": "2 pares dudosos esperan tu revisión"})
+    enviados = []
+    for horas in (0, 7, 13):
+        v.main(HOY + datetime.timedelta(hours=horas), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1
+
+
+def test_estado_viejo_no_repite_lo_avisado_hoy(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    (tmp_path / "estado.json").write_text(json.dumps({
+        "fecha": "2026-11-05", "avisados": ["log:09:01:03 Falló Telegram (ConnectionError).", "dudosos:2"],
+        "pendientes": {}}), encoding="utf-8")
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {
+        "log:Falló Telegram (ConnectionError).": "el worker registró: Falló Telegram (ConnectionError). (última 09:01)",
+        "dudosos:2": "2 pares dudosos esperan tu revisión"})
+    enviados = []
+    v.main(HOY, enviar=lambda t, e: enviados.append(t))
+    assert enviados == []
+
+
+def test_formato_compacto(tmp_path, monkeypatch):
+    texto = v.rf.pedir(["uno", "dos"])
+    assert "Abrí Claude Code" not in texto and "• «uno»" in texto and len(texto) < 80
+
+
 def test_avisa_cuando_vuelve_internet(tmp_path, monkeypatch):
     monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
     enviados = []
