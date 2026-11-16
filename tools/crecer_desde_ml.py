@@ -81,6 +81,14 @@ def mas_vendidos_ml(catalog_ids_existentes, journal=None, failures=None):
             else:
                 try:
                     r = _get(f"/highlights/MLA/category/{cat}")
+                    if r.status_code == 404 and "not found" in (r.text or "").lower():
+                        # 16/11: ML responde 404 «Dimension CATEGORY with id … not found» en las categorías sin lista
+                        # de destacados (242 de 936 cada día): es una categoría con 0 destacados, no un error.
+                        # Errores reales (5xx, timeouts, red, JSON inválido) siguen contando en failures.
+                        line("BUSCAR_CATEGORIA", id=cat, estado="sin_destacados", n=0)
+                        if journal:
+                            journal.append("destacados", cat, "ok", content=[])
+                        continue
                     r.raise_for_status()
                     content = r.json().get("content") or []
                     if not isinstance(content, list) or any(not isinstance(x, dict) for x in content):

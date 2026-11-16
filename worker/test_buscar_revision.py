@@ -277,6 +277,36 @@ def test_i3_categoria_fallida_sigue_y_cuenta(tmp_path, monkeypatch):
     assert failures and journal.resolved("categoria_error")
 
 
+def test_destacados_404_es_categoria_sin_destacados_y_5xx_es_error(tmp_path, monkeypatch):
+    # 16/11: ML responde 404 «Dimension CATEGORY with id … not found» en 242 de 936 categorías: no es una falla.
+    class R404(Response):
+        status_code = 404
+        text = '{"error":"NOT_FOUND","message":"Dimension CATEGORY with id MLA1914 not found","status":404}'
+
+        def raise_for_status(self):
+            raise requests.HTTPError("404 Client Error: Not Found")
+
+    class R503(Response):
+        status_code = 503
+        text = "Service Unavailable"
+
+        def raise_for_status(self):
+            raise requests.HTTPError("503 Server Error")
+
+    monkeypatch.setattr(ml, "RAICES", ("raiz",))
+    monkeypatch.setattr(ml, "categorias", lambda raiz, **kw: ["SIN", "CAIDA", "OK"])
+
+    def get(path):
+        return {"SIN": R404({}), "CAIDA": R503({})}.get(path.rsplit("/", 1)[-1]) or Response(
+            {"content": [{"type": "PRODUCT", "id": "MLA1"}]})
+    monkeypatch.setattr(ml, "_get", get)
+    journal = BuscarLog(tmp_path)
+    failures = []
+    assert ml.mas_vendidos_ml(set(), journal=journal, failures=failures) == {"MLA1": "OK"}
+    assert [f["categoria"] for f in failures] == ["CAIDA"]
+    assert journal.resolved("destacados")["SIN"]["content"] == []
+
+
 @pytest.mark.parametrize("payload", [{}, {"A": {"error": "bloqueado"}}])
 def test_i4_identificador_fallido_conserva_par(tmp_path, payload):
     rows = [{"asin": "A"}]
