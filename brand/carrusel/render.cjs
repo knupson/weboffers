@@ -1,12 +1,13 @@
 // Uso (desde la raíz): python brand/carrusel/datos.py <slugs...> && node brand/carrusel/render.cjs
 // Genera out/carrusel-1..7.png (1080x1350) y out/historia-1..5.png (1080x1920).
-const { chromium } = require("C:/Users/KnuPwns/AppData/Local/npm-cache/_npx/13ab0715f9f30c2e/node_modules/playwright");
+// 16/11: módulo, base y Chrome configurables para correr en la VM (imagen franquicia400-reel); en Windows quedan los de siempre.
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "C:/Users/KnuPwns/AppData/Local/npm-cache/_npx/13ab0715f9f30c2e/node_modules/playwright");
 const fs = require("fs");
 const path = require("path");
 
 const OUT = path.join(__dirname, "out");
 const D = JSON.parse(fs.readFileSync(path.join(OUT, "datos.json"), "utf8"));
-const R = "file:///E:/Repositorios/Personal/weboffers";
+const R = process.env.CARRUSEL_BASE || "file:///E:/Repositorios/Personal/weboffers";
 const N = D.productos.length + 2;
 const ars = (n) => "$ " + Math.round(n).toLocaleString("es-AR");
 const foto = (s) => `${R}/public/products/${s}.webp`;
@@ -40,7 +41,7 @@ const page = (w, h, body) => `<!doctype html><html><head><meta charset="utf-8"><
 
 const portada = () => page(1080, 1350, `
 <div class="t" style="font-size:120px;margin-top:40px">¿Amazon o<br>Mercado<br>Libre?</div>
-<div style="font:700 44px/1.2 A;margin-top:40px;max-width:820px">${D.productos.length} productos del CyberMonday con los dos precios de hoy</div>
+<div style="font:700 44px/1.2 A;margin-top:40px;max-width:820px">${D.productos.length} productos con los dos precios de hoy</div>
 <div style="flex:1;position:relative;margin-top:30px">${D.productos.map((p, i) =>
   `<img src="${foto(p.slug)}" style="position:absolute;bottom:0;left:${i * 17.5 - 2}%;width:34%;height:95%;object-fit:contain;transform:rotate(${(i - 2) * 5}deg);filter:drop-shadow(0 16px 24px rgba(0,0,0,.6))">`).join("")}</div>
 <div class="foot" style="font-size:30px">Precios del ${D.fecha} · deslizá →</div>`);
@@ -75,7 +76,7 @@ const historia = (p) => page(1080, 1920, `
 <div style="height:250px"></div>`);
 
 (async () => {
-  const b = await chromium.launch();
+  const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const shots = [
     ...[portada(), ...D.productos.map(producto), cierre()].map((h, i) => [h, 1080, 1350, `carrusel-${i + 1}.png`]),
     ...D.productos.map((p, i) => [historia(p), 1080, 1920, `historia-${i + 1}.png`]),
