@@ -119,7 +119,8 @@
     "brand": "SanDisk",
     "category": "Almacenamiento",
     "summary": "SSD portátil de 1 TB con USB-C 3.2 Gen 2, lectura de hasta 1050 MB/s, resistencia IP65 y cifrado AES de 256 bits.",
-    "verified": true,
+    "verified": false,
+    "motivoNoVerificado": "capacidad dudosa (16/11): Amazon B08GTYFC37 SDSSDE61-1T00 (1 TB); la publicación ML MLA54977132 dice 1 TB en título y descripción pero Capacidad 4 TB y modelo SDSSDE61-4T00",
     "image": "/products/sandisk-extreme-portable-ssd-1tb.webp",
     "imageSource": "https://www.sandisk.com/products/ssd/external-ssd/portable-ssd-sandisk-extreme-usb-3-2?sku=SDSSDE61-1T00-G25",
     "listPrice": {
