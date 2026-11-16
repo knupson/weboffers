@@ -77,7 +77,9 @@ def run_once():
             resolve_path(os.environ.get("TELEGRAM_STATE_PATH", "output/telegram-state.json")),
         )
     except Exception as exc:
-        print(f"Falló Telegram ({type(exc).__name__}).", flush=True)
+        # 16/11: dos ConnectionError (12:01 y 13:01) sin detalle; el token va en la URL, así que se tapa.
+        detalle = str(exc).replace(os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or "\0", "<TOKEN>")[:500]
+        print(f"Falló Telegram ({type(exc).__name__}): {detalle}", flush=True)
 
 
 def with_ar_shipping(products, amazon_prices_path, now=None):
