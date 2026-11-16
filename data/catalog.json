@@ -4841,7 +4841,8 @@
     "brand": "Marshall",
     "category": "Audio y video",
     "summary": "Parlante Bluetooth portátil resistente al agua y al polvo, con más de 20 horas de batería.",
-    "verified": true,
+    "verified": false,
+    "motivoNoVerificado": "par equivocado (16/11): Amazon B0BTHL673V color Black (USD 309,54) vs ML MLA44710755 color Cream",
     "ml": {
       "price": 1243800,
       "url": "https://www.mercadolibre.com.ar/p/MLA44710755?pdp_filters=item_id%3AMLA4013383274&matt_word=ale_benzoni&matt_tool=58527537",
