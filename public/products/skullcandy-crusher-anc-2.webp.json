@@ -1,4 +1,4 @@
 {
-  "prompt": "Origen: foto oficial del fabricante (Skullcandy). Imagen: https://cdn.shopify.com/s/files/1/0635/5114/3993/files/CrusherANC2_Hazard_1.png Página: https://www.skullcandy.com/products/crusher-anc-2-sensory-bass-headphones-with-active-noise-canceling. Recortada y convertida a webp con ImageMagick. No es contenido de Amazon.",
-  "createdAt": "2026-10-30T18:12:00.000Z"
+  "prompt": "Origen: foto oficial del fabricante (Skullcandy), variante True Black. Imagen: https://www.skullcandy.com/cdn/shop/files/CrusherANC2_Black_1_3965f8d7-df6e-47d4-9a87-ea2b607ec2f8.png Página: https://www.skullcandy.com/products/crusher-anc-2-sensory-bass-headphones-with-active-noise-canceling. Convertida a webp con tools/fetch_photos.to_webp (16/11; antes era la variante Hazard, naranja, y Amazon/ML venden la negra). No es contenido de Amazon.",
+  "createdAt": "2026-11-16T14:35:00.000Z"
 }
