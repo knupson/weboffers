@@ -22,5 +22,5 @@ docker run --rm \
   -v "$R/voz:/voz:ro" \
   -v "$R/historial.json:/repo/brand/reel/historial.json" \
   -v "$R/out:/repo/brand/reel/out" \
-  franquicia400-reel python3 hacer_reel.py
+  franquicia400-reel python3 hacer_reel.py "$@"
 echo "$(TS) REEL_FIN codigo=$?"

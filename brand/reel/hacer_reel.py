@@ -1,6 +1,7 @@
 """Generá el Duelo de hoy: python hacer_reel.py (Python 3.13, sin paquetes extra)."""
 from __future__ import annotations
 
+import argparse
 import copy
 from datetime import datetime, timedelta, timezone
 import json
@@ -155,6 +156,22 @@ def elegir(productos, historial):
             max(ml, key=lambda p: (p['az'] - p['ml']) / p['az'])]
 
 
+def elegir_anuncio(productos, slug):
+    a = next((p for p in productos if p['slug'] == slug), None)
+    if a is None:
+        raise ValueError(f'El producto «{slug}» no está entre los comparables de hoy.')
+    if a['gana'] != 'amazon' or a['az'] >= a['ml']:
+        raise ValueError(f'El producto «{slug}» debe ganar en Amazon y costar menos que en Mercado Libre.')
+    if not (REPO / 'public/products' / (slug + '.webp')).is_file():
+        raise ValueError(f'Falta la foto del producto: public/products/{slug}.webp.')
+    ml = [p for p in productos if p['slug'] != slug and p['gana'] == 'ml'
+          and p['ml'] < p['az']
+          and (REPO / 'public/products' / (p['slug'] + '.webp')).is_file()]
+    if not ml:
+        raise ValueError('Falta otro producto con foto y ahorro en Mercado Libre para el anuncio.')
+    return [a, max(ml, key=lambda p: (p['az'] - p['ml']) / p['az'])]
+
+
 UNIDADES = ('cero uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince dieciséis diecisiete dieciocho diecinueve veinte veintiuno veintidós veintitrés veinticuatro veinticinco veintiséis veintisiete veintiocho veintinueve').split()
 DECENAS = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
 CIENTOS = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos']
@@ -191,17 +208,18 @@ def ars(n):
     return f'{redondear(n):,}'.replace(',', '.')
 
 
-def guiones(a, b, cantidad):
+def guiones(a, b, cantidad, anuncio=False):
     doble = a['ml'] > 2 * a['az']
     hook = ('Podés pagar más del doble si comprás este producto en Mercado Libre.' if doble else
             'Este producto sale menos traído de Amazon. Mirá la diferencia.')
     motivo = 'El envío se come la diferencia.' if b['usd'] < 100 else 'Incluso con envío gratis, conviene comprarlo acá.'
+    cierre = 'Tocá Más información y compará el precio de hoy.' if anuncio else 'Link en la bio.'
     return [hook,
             f"{a['name']}. {hablado(a['ml'])} en Mercado Libre. Traído de Amazon, unos {hablado(a['az'])}. Gana Amazon.",
             'Pero ojo, no siempre gana Amazon.',
             f"{b['name']}. {hablado(b['ml'])} en Mercado Libre. De Amazon, unos {hablado(b['az'])}. Gana Mercado Libre. {motivo}",
             'La regla: debajo de cien dólares, el envío puede matar el ahorro. Desde cien, compará el total con envío e impuestos.',
-            f'Comparamos {palabras(cantidad)} productos con los precios de hoy. Link en la bio.']
+            f'Comparamos {palabras(cantidad)} productos con los precios de hoy. {cierre}']
 
 
 def subtitulos(texto, duracion):
@@ -265,21 +283,22 @@ Voz: Piper «es_AR-daniela-high» (CC BY-SA 4.0). Música: «Hip Hop 02», Mixki
 '''
 
 
-def main():
+def main(anuncio=None):
     hoy = datetime.now(ART).date().isoformat()
     ml, amazon, catalogo = datos_hoy(hoy)  # Antes de red, audio, props o historial.
     historial_path = BASE / 'historial.json'
-    historial = leer(historial_path) if historial_path.exists() else []
+    if anuncio is None:
+        historial = leer(historial_path) if historial_path.exists() else []
     mep, eur_usd = cotizaciones(any(a.get('currency') == 'EUR' and a.get('checked') == hoy for a in amazon.values()))
     productos = comparables(ml, amazon, catalogo, hoy, mep, eur_usd)
-    a, b = elegir(productos, historial)
+    a, b = elegir(productos, historial) if anuncio is None else elegir_anuncio(productos, anuncio)
     print(f"Ejemplo Amazon: {a['name']} | FOB USD {a['usd']:.2f} | MEP ${mep} (dolarapi.com) | estimado ARS ${ars(estimate_from_amazon(a['usd'], mep))} | sitio ${ars(a['az'])}", flush=True)
     npx = shutil.which('npx.cmd') or shutil.which('npx')
     ffmpeg = shutil.which('ffmpeg')
     if not npx or not ffmpeg or not PIPER.is_file() or not MODELO.is_file():
         raise ValueError('Falta npx, ffmpeg, Piper o el modelo es_AR-daniela-high en las rutas configuradas.')
     props = copy.deepcopy(leer(BASE / 'src/duelo.json'))
-    textos = guiones(a, b, len(productos))
+    textos = guiones(a, b, len(productos), anuncio=anuncio is not None)
     duraciones = sintetizar(textos)
     props.update(voz=duraciones, audio=[f'd{i}.wav' for i in range(6)],
                  subs=[subtitulos(t, d) for t, d in zip(textos, duraciones)],
@@ -297,6 +316,7 @@ def main():
         shutil.copyfile(REPO / 'public/products' / (producto['slug'] + '.webp'), BASE / 'public' / (producto['slug'] + '.webp'))
     fecha = datetime.fromisoformat(hoy).strftime('%d/%m/%Y')
     t = props['textos']
+    t['cierre'][4] = 'TOCÁ MÁS INFORMACIÓN' if anuncio is not None else '☝ LINK EN LA BIO'
     t['gancho'] = ['PAGÁS', 'MÁS DEL', 'DOBLE'] if a['ml'] > 2 * a['az'] else ['AMAZON', 'SALE', 'MENOS']
     t['ganchoSub'] = 'si lo comprás en Mercado Libre' if a['ml'] > 2 * a['az'] else 'Mirá la diferencia con Mercado Libre'
     t['tarjetas'] = [dict(titulo='MENOS DE USD 100', sub='El envío puede comerse el ahorro. Compará el total.'),
@@ -305,20 +325,26 @@ def main():
     escribir(BASE / 'src/duelo.json', props)
     out = BASE / 'out'
     out.mkdir(exist_ok=True)
-    raw = out / f'duelo-{hoy}.mp4'
-    final = out / f'duelo-{hoy}-final.mp4'
+    nombre = f'duelo-{hoy}' if anuncio is None else f'anuncio-{anuncio}'
+    raw = out / f'{nombre}.mp4'
+    final = out / f'{nombre}-final.mp4'
     ejecutar([npx, 'remotion', 'render', 'Duelo', raw], timeout=3600)
     ejecutar([ffmpeg, '-y', '-i', raw, '-c:v', 'copy', '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11',
               '-c:a', 'aac', '-b:a', '192k', final], timeout=600)
-    (out / f'duelo-{hoy}.txt').write_text(caption(a, b, len(productos), fecha), encoding='utf-8')
-    historial.append(dict(fecha=hoy, reel=final.name, productos=[a['slug'], b['slug']]))
-    escribir(historial_path, historial)  # Sólo consumir los productos si terminó el render.
-    print(f'Reel listo: {final}', flush=True)
+    if anuncio is None:
+        (out / f'duelo-{hoy}.txt').write_text(caption(a, b, len(productos), fecha), encoding='utf-8')
+        historial.append(dict(fecha=hoy, reel=final.name, productos=[a['slug'], b['slug']]))
+        escribir(historial_path, historial)  # Sólo consumir los productos si terminó el render.
+    etiqueta = 'Reel' if anuncio is None else 'Anuncio'
+    print(f'{etiqueta} listo: {final}', flush=True)
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--anuncio', metavar='SLUG', help='Generá un anuncio del producto elegido.')
+    args = parser.parse_args()
     try:
-        main()
+        main(anuncio=args.anuncio)
     except (ValueError, OSError, KeyError, subprocess.SubprocessError) as exc:
         print(f'Error: {exc}', file=sys.stderr)
         sys.exit(1)

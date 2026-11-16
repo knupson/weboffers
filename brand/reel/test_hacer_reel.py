@@ -55,13 +55,63 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
             seleccion = r.elegir(productos, [dict(productos=['viejo'])])
         self.assertEqual([p['slug'] for p in seleccion], ['a', 'c'])
 
+    def test_anuncio_elige_slug_y_ml_por_ahorro_sin_historial(self):
+        productos = [dict(slug=s, gana=w, ml=m, az=a) for s, w, m, a in
+                     [('mejor-amazon', 'amazon', 100, 10), ('pedido', 'amazon', 100, 50),
+                      ('ml-mayor-monto', 'ml', 600, 1000), ('ml-mayor-porcentaje', 'ml', 10, 100),
+                      ('ml-sin-foto', 'ml', 1, 100), ('ml-sin-ahorro', 'ml', 100, 95)]]
+        with patch.object(Path, 'is_file', return_value=True):
+            # El diario excluye el mejor ML por historial; el anuncio debe poder usarlo.
+            diario = r.elegir(productos[:-2], [dict(productos=['ml-mayor-porcentaje'])])
+        with patch.object(Path, 'is_file', autospec=True,
+                          side_effect=lambda path: path.stem != 'ml-sin-foto'):
+            a, b = r.elegir_anuncio(productos, 'pedido')
+        self.assertEqual(diario[1]['slug'], 'ml-mayor-monto')
+        self.assertEqual(a['slug'], 'pedido')
+        self.assertEqual(b['slug'], 'ml-mayor-porcentaje')
+        self.assertNotEqual(a['slug'], b['slug'])
+
+    def test_anuncio_valida_producto_y_fotos(self):
+        casos = [([], 'no está entre los comparables'),
+                 ([dict(slug='pedido', gana='ml', az=100, ml=50)], 'debe ganar en Amazon'),
+                 ([dict(slug='pedido', gana='amazon', az=100, ml=100)], 'debe ganar en Amazon')]
+        for productos, error in casos:
+            with self.subTest(error=error, productos=productos):
+                with self.assertRaisesRegex(ValueError, error):
+                    r.elegir_anuncio(productos, 'pedido')
+        producto = dict(slug='pedido', gana='amazon', az=50, ml=100)
+        with patch.object(Path, 'is_file', return_value=False):
+            with self.assertRaisesRegex(ValueError, 'Falta la foto.*pedido.webp'):
+                r.elegir_anuncio([producto], 'pedido')
+        with patch.object(Path, 'is_file', return_value=True):
+            with self.assertRaisesRegex(ValueError, 'Falta otro producto con foto y ahorro'):
+                r.elegir_anuncio([producto], 'pedido')
+
+    def test_guion_anuncio_y_diario(self):
+        a = dict(name='Amazon', ml=800000, az=380000)
+        b = dict(name='ML', ml=50000, az=380000, usd=200)
+        self.assertEqual(r.guiones(a, b, 2)[-1],
+                         'Comparamos dos productos con los precios de hoy. Link en la bio.')
+        self.assertEqual(r.guiones(a, b, 2, anuncio=True)[-1],
+                         'Comparamos dos productos con los precios de hoy. '
+                         'Tocá Más información y compará el precio de hoy.')
+
     def test_fechas_viejas_abortan_antes_de_escribir(self):
         with patch.object(r, 'leer', side_effect=[dict(date='2000-01-01'), dict(date='2000-01-01'), []]):
             with self.assertRaisesRegex(ValueError, 'nunca se usan precios viejos'):
                 r.datos_hoy('2026-11-01')
 
     def test_pipeline_con_datos_sinteticos_y_subprocesos_simulados(self):
+        self._pipeline()
+
+    def test_pipeline_anuncio_sin_consumir_historial_ni_caption(self):
+        self._pipeline(anuncio=True)
+
+    def _pipeline(self, anuncio=False):
         defaults = r.leer(r.BASE / 'src/duelo.json')
+        # También comprueba que el diario restaura el cierre después de un anuncio.
+        defaults['textos']['cierre'][4] = 'TOCÁ MÁS INFORMACIÓN'
+        (r.BASE / 'out').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=r.BASE / 'out') as tmp:
             repo = Path(tmp)
             base = repo / 'brand/reel'
@@ -81,6 +131,11 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
             r.escribir(repo / 'data/amazon-prices.json', dict(date=hoy, items={
                 'prueba-amazon': dict(amount=200, currency='USD', checked=hoy),
                 'prueba-ml': dict(amount=200, currency='USD', checked=hoy)}))
+            historial_path = base / 'historial.json'
+            if anuncio:
+                # Si se intenta leer como JSON, la prueba falla; tampoco debe sobrescribirse.
+                historial_path.write_text('historial que no se debe leer', encoding='utf-8')
+            salida = io.StringIO()
             comandos = []
 
             def fake_exec(args, **kwargs):
@@ -97,15 +152,33 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
                  patch.object(r, 'ejecutar', side_effect=fake_exec), \
                  patch.object(Path, 'is_file', return_value=True), \
                  patch.object(r.shutil, 'which', side_effect=lambda p: p), \
-                 contextlib.redirect_stdout(io.StringIO()):
-                r.main()
+                 contextlib.redirect_stdout(salida):
+                if anuncio:
+                    r.main(anuncio='prueba-amazon')
+                else:
+                    r.main()
             props = r.leer(base / 'src/duelo.json')
             self.assertEqual(props['voz'], [5] * 6)
             self.assertEqual(props['duelos'][0]['az'], 380000)
             self.assertEqual(len(comandos), 8)
             self.assertIn('loudnorm=I=-14:TP=-1.5:LRA=11', comandos[-1])
-            self.assertEqual(len(r.leer(base / 'historial.json')), 1)
-            self.assertTrue((base / f'out/duelo-{hoy}.txt').is_file())
+            self.assertEqual(props['hookImage'], 'prueba-amazon.webp')
+            self.assertEqual([p['img'] for p in props['duelos']], ['prueba-amazon.webp', 'prueba-ml.webp'])
+            if anuncio:
+                self.assertEqual(props['textos']['cierre'][4], 'TOCÁ MÁS INFORMACIÓN')
+                cierre = ' '.join(parte[1] for parte in props['subs'][5])
+                self.assertEqual(cierre, 'Comparamos dos productos con los precios de hoy. '
+                                 'Tocá Más información y compará el precio de hoy.')
+                self.assertEqual(historial_path.read_text(encoding='utf-8'), 'historial que no se debe leer')
+                self.assertEqual(sorted(p.name for p in (base / 'out').iterdir()),
+                                 ['anuncio-prueba-amazon-final.mp4', 'anuncio-prueba-amazon.mp4'])
+                self.assertEqual(comandos[-2][-1], str(base / 'out/anuncio-prueba-amazon.mp4'))
+                self.assertEqual(comandos[-1][-1], str(base / 'out/anuncio-prueba-amazon-final.mp4'))
+                self.assertIn(f'Anuncio listo: {base / "out/anuncio-prueba-amazon-final.mp4"}', salida.getvalue())
+            else:
+                self.assertEqual(props['textos']['cierre'][4], '☝ LINK EN LA BIO')
+                self.assertEqual(len(r.leer(historial_path)), 1)
+                self.assertTrue((base / f'out/duelo-{hoy}.txt').is_file())
 
 
 if __name__ == '__main__':
