@@ -22,9 +22,12 @@ function memoria() {
   const m = new Map<string, string>();
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
 }
+type UmamiWin = NonNullable<Parameters<typeof umamiListo>[0]>;
+type UmamiProps = Parameters<NonNullable<UmamiWin["umami"]>["track"]>[1];
+
 function umami() {
   const llamadas: Array<[string, Record<string, unknown> | undefined]> = [];
-  return { llamadas, win: { umami: { track: (e: string, d?: Record<string, string | number>) => llamadas.push([e, d]) } } };
+  return { llamadas, win: { umami: { track: (e: string, d?: UmamiProps) => llamadas.push([e, d]) } } };
 }
 
 describe("UTMs first-touch en la sesión", () => {

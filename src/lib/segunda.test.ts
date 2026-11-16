@@ -90,6 +90,6 @@ it('expone el MEP efectivo del cálculo y la cabecera lo mantiene fijo', async (
   vi.stubEnv('OFFERS_URL', '');
   vi.spyOn(estimate, 'buildQuotes').mockResolvedValue({ mep: 1300, eurUsd: 1.1 });
   vi.spyOn(fs, 'readFileSync').mockImplementation(((file: string) =>
-    String(file).endsWith('offers.json') ? '{"items":[],"rates":{"mep":1200}}' : '[]') as typeof fs.readFileSync);
+    String(file).endsWith('offers.json') ? '{"items":[],"rates":{"mep":1200}}' : '[]') as unknown as typeof fs.readFileSync);
   expect((await loadProducts()).buildMep).toBe(1300);
 });

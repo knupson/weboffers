@@ -33,3 +33,6 @@ worker/.pytest_tmp/
 .claude/skills/verificar-produccion/ultima-foto.json
 data/ml-fichas.json
 graphify-out/
+
+# 16/11: videos y hoja de carga de la campaña de prueba de Meta Ads (binarios pesados)
+ads-smoke-nov/

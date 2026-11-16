@@ -20,7 +20,7 @@ it('el endpoint escribe el desglose privado del mismo merge que cuenta en estado
     kindle: { price: 650000, checked: date },
   } }, now), { date, generatedAt: '', items: {
     kindle: { asin: 'B0CFPJYX7P', amount: 200, currency: 'EUR', checked: date },
-  } }, 1200, 1.25, now);
+  } }, 1200, 1.25, now).map((p) => ({ ...p, offer: undefined, price: null, bajadaUsd: null }));
   vi.mocked(loadProducts).mockResolvedValue({ products, offers: { items: [], mode: 'offline', rates: null, generatedAt: null }, buildMep: 1200 });
   vi.stubEnv('CADENA_DESGLOSE_PATH', 'informe-privado.json');
   const read = fs.readFileSync;

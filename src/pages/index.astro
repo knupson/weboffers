@@ -12,7 +12,7 @@ const { products, offers } = await loadProducts();
 const shown = products.filter((p) => isComparable(p));
 // Lo más vendido de Mercado Libre va en su sección y también en el catálogo de abajo, para que no se pierda al scrollear o filtrar.
 // 12/11: sólo marcas de los últimos 7 días y sólo con una fila completa (3+); si no, la sección no sale.
-const hot = masVendidos(shown, artDate());
+const hot = masVendidos(shown, artDate()) as typeof shown;
 const stamp = offers.rates ? `de las ${new Date(offers.rates.fetchedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" })}` : "de hoy";
 
 // Categorías con productos van al catálogo; las demás, directo a una búsqueda en Amazon.
