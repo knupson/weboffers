@@ -16,7 +16,13 @@ afterEach(async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
+// 16/11: la clave sale del <clave>.txt del build (copia de public/), no del código.
+const CLAVE = 'clave-de-prueba-0001';
+const ponerClave = (destino: string, clave = CLAVE) => fs.writeFile(path.join(destino, `${clave}.txt`), `${clave}\n`);
+
 it('manda las URLs de los sitemap-N.xml del build (no las del índice) y acepta 202', async () => {
+  await ponerClave(dir);
+  await fs.writeFile(path.join(dir, 'robots.txt'), 'User-agent: *\n');
   await fs.writeFile(path.join(dir, 'sitemap-index.xml'), sitemap(['https://ofertas.knunet.com/sitemap-0.xml']));
   await fs.writeFile(path.join(dir, 'sitemap-0.xml'), sitemap(['https://ofertas.knunet.com/', 'https://ofertas.knunet.com/productos/a/']));
   const calls: any[] = [];
@@ -26,15 +32,30 @@ it('manda las URLs de los sitemap-N.xml del build (no las del índice) y acepta 
   expect(calls[0][0]).toBe('https://api.indexnow.org/indexnow');
   expect(calls[0][1].urlList).toEqual(['https://ofertas.knunet.com/', 'https://ofertas.knunet.com/productos/a/']);
   expect(calls[0][1].host).toBe('ofertas.knunet.com');
+  expect(calls[0][1].key).toBe(CLAVE);
+  expect(calls[0][1].keyLocation).toBe(`https://ofertas.knunet.com/${CLAVE}.txt`);
+});
+
+it('sin archivo de clave, o con más de uno, es un aviso y no llama a la red', async () => {
+  await fs.writeFile(path.join(dir, 'sitemap-0.xml'), sitemap(['https://ofertas.knunet.com/']));
+  let llamadas = 0;
+  const fetchImpl = async () => { llamadas += 1; return { status: 200 }; };
+  expect(await avisarIndexNow(dir, { fetchImpl })).toBe('aviso');
+  await ponerClave(dir);
+  await ponerClave(dir, 'otra-clave-de-prueba');
+  expect(await avisarIndexNow(dir, { fetchImpl })).toBe('aviso');
+  expect(llamadas).toBe(0);
 });
 
 it('una caída de la red o un código distinto de 200/202 es sólo un aviso', async () => {
+  await ponerClave(dir);
   await fs.writeFile(path.join(dir, 'sitemap-0.xml'), sitemap(['https://ofertas.knunet.com/']));
   expect(await avisarIndexNow(dir, { fetchImpl: async () => { throw new Error('fetch failed'); } })).toBe('aviso');
   expect(await avisarIndexNow(dir, { fetchImpl: async () => ({ status: 429 }) })).toBe('aviso');
 });
 
 it('sin sitemap en el build no llama a la red', async () => {
+  await ponerClave(dir);
   let llamadas = 0;
   expect(await avisarIndexNow(dir, { fetchImpl: async () => { llamadas += 1; return { status: 200 }; } })).toBe('aviso');
   expect(llamadas).toBe(0);
@@ -48,6 +69,7 @@ it('el deploy queda OK aunque IndexNow falle', async () => {
   await fs.writeFile(path.join(workDir, 'data', 'catalog.json'), '[]');
   await fs.writeFile(path.join(workDir, 'dist', 'estado.json'), JSON.stringify({ publicados: 100 }));
   await fs.writeFile(path.join(workDir, 'dist', 'sitemap-0.xml'), sitemap(['https://ofertas.knunet.com/']));
+  await ponerClave(path.join(workDir, 'dist'));
   const outputFile = path.join(dir, 'ml-prices.json');
   const amazonOutputFile = path.join(dir, 'amazon-prices.json');
   await fs.writeFile(outputFile, JSON.stringify({ date: '2026-10-30', items: { a: { price: 1000 } } }));

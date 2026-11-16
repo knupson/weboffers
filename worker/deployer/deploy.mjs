@@ -521,14 +521,27 @@ async function deployOnceLocked(now = new Date(), opts = {}) {
 }
 
 // 13/11: IndexNow (Bing, Yandex, Seznam...) tras cada deploy OK. Las URLs salen del sitemap del build recién
-// publicado (todas: cada página trae los precios del día). Misma clave que tools/indexnow.mjs; el archivo de la
-// clave lo sirve el sitio en /<clave>.txt. Cualquier falla queda como INDEXNOW_AVISO y el deploy sigue en OK.
+// publicado (todas: cada página trae los precios del día). Cualquier falla queda como INDEXNOW_AVISO y el deploy
+// sigue en OK.
+// 16/11: la clave no se escribe en el código. Su única fuente es public/<clave>.txt (el protocolo exige servirla
+// así); el build la copia a dist/ y de ahí se lee. tools/indexnow.mjs la lee de public/ con la misma regla.
 const INDEXNOW_HOST = 'ofertas.knunet.com';
-const INDEXNOW_KEY = '4c6b2954da1fb15ffbe9500994ed7f54';
 const INDEXNOW_TIMEOUT_MS = 20e3;
+
+// El archivo de la clave es el único <clave>.txt cuyo contenido es su propio nombre (robots.txt no cumple).
+async function leerClaveIndexNow(dir) {
+  const claves = [];
+  for (const file of await fs.readdir(dir)) {
+    const match = /^([A-Za-z0-9-]{8,128})\.txt$/.exec(file);
+    if (match && (await fs.readFile(path.join(dir, file), 'utf8')).trim() === match[1]) claves.push(match[1]);
+  }
+  if (claves.length !== 1) throw new Error(`se esperaba 1 archivo de clave en ${dir} y hay ${claves.length}`);
+  return claves[0];
+}
 
 async function avisarIndexNow(distDir, opts = {}) {
   try {
+    const INDEXNOW_KEY = await leerClaveIndexNow(distDir);
     const files = (await fs.readdir(distDir)).filter((file) => /^sitemap-\d+\.xml$/.test(file)).sort();
     const urls = [];
     for (const file of files) {
