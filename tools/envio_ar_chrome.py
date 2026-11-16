@@ -45,6 +45,7 @@ const b=bb?(bb.innerText||''):'';
 return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||{}).innerText||'').replace(/\s+/g,' '),
  buybox:!!bb,
  envio:entrega||null,
+ stock:((document.getElementById('availability')||{}).innerText||'').trim(),
  sinOferta:(b.match(/[^\n]*(See All Buying Options|No featured offers available|cannot be shipped to your selected delivery location|This item cannot be shipped|Currently unavailable)[^\n]*/)||[])[0]||null,
  captcha:/captcha|Enter the characters you see/i.test(t),
  lang:(document.documentElement.lang||'').toLowerCase(),
@@ -129,6 +130,9 @@ def interpretar(d):
         # Se guarda el texto literal de «Deliver to …» (sigue siendo sin dato: ships None).
         return {"ships": None, "free": None, "text": f"deliver={(d.get('deliver') or '').strip()[:120] or 'vacio'}",
                 "motivo": "ubicacion_no_ar"}
+    stock = d.get("stock") or ""
+    if re.search(r"\b(out of stock|currently unavailable)\b", stock, re.I):
+        return {"ships": None, "free": None, "text": stock[:160], "motivo": "sin_stock"}
     if d.get("buybox") is False:
         return {"ships": None, "free": None, "text": None, "motivo": "sin_recuadro_de_compra"}
     envio = d.get("envio")

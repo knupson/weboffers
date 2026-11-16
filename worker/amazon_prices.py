@@ -792,7 +792,10 @@ def chrome_shipping(products, prices_path, today):
     out = {}
     for p in products:
         it = (items or {}).get(p.get("asin")) if p.get("store") == "US" else None
-        if isinstance(it, dict) and isinstance(it.get("ships"), bool):
+        if isinstance(it, dict) and it.get("motivo") == "sin_stock":
+            # La falta de stock de hoy invalida también la confirmación de envío anterior.
+            out[p["slug"]] = {"ships": None, "free": None, "checked": today}
+        elif isinstance(it, dict) and isinstance(it.get("ships"), bool):
             out[p["slug"]] = {"ships": it["ships"], "free": it.get("free") if isinstance(it.get("free"), bool) else None,
                               "checked": today}
     return out
@@ -803,7 +806,8 @@ def chrome_sin_envio_gratis(prices_path, today):
 
     Alejandro: «se tienen que filtrar en el mismo momento que se ve envío internacional». El paso chrome
     corre primero en la cadena; con su dato, Amazon y ML no gastan consultas en productos que no se publican.
-    Sólo evidencia de hoy (ships/free booleanos); sin dato no se saltea nada.
+    Sólo evidencia de hoy: ships/free booleanos o falta de stock explícita.
+    «sin_stock» queda sin precio de hoy; no se intenta rescatar otra oferta con el scraper.
     """
     if prices_path is None:
         return {}
@@ -813,7 +817,9 @@ def chrome_sin_envio_gratis(prices_path, today):
     for asin, it in (items or {}).items():
         if not isinstance(it, dict):
             continue
-        if it.get("ships") is False:
+        if it.get("motivo") == "sin_stock":
+            out[asin] = "sin_stock"
+        elif it.get("ships") is False:
             out[asin] = "sin_oferta_ar_chrome"
         elif it.get("ships") is True and it.get("free") is False:
             out[asin] = "envio_pago_chrome"
@@ -848,6 +854,7 @@ def prices_with_chrome(base_url, products, today, prices_path=None):
 
 def _prices_with_chrome(base_url, products, today, prices_path=None):
     """Precios del día: primero Chrome (tienda US), el resto con el scraper. Devuelve (items, ok, faltantes)."""
+    sin_gratis = chrome_sin_envio_gratis(prices_path, today)
     resumidos = {}
     if _journal_path is not None:
         for record in diario.leer(_journal_path):
@@ -859,7 +866,8 @@ def _prices_with_chrome(base_url, products, today, prices_path=None):
     pendientes = []
     for p in products:
         item = resumidos.get(p["slug"])
-        if item is not None and item.get("asin") == p["asin"]:
+        if (item is not None and item.get("asin") == p["asin"]
+                and not (p.get("store") == "US" and p["asin"] in sin_gratis)):
             retomados[p["slug"]] = item
             print(amazon_line(p, "diario", item, "ya_consultado_hoy"), flush=True)
         else:
@@ -872,7 +880,6 @@ def _prices_with_chrome(base_url, products, today, prices_path=None):
     raw_chrome = load_json(Path(prices_path).with_name(f"ar-chrome-{today}.json"), {}) if prices_path else {}
     items, ok, missing, resto = {}, 0, 0, []
     chrome_fallas = []
-    sin_gratis = chrome_sin_envio_gratis(prices_path, today)
     for p in products:
         evidence = (raw_chrome.get("items") or {}).get(p["asin"]) if p.get("store") == "US" else None
         if evidence is not None:
@@ -880,7 +887,7 @@ def _prices_with_chrome(base_url, products, today, prices_path=None):
         amount, ships = chrome.get(p["asin"], (None, None)) if p.get("store") == "US" else (None, None)
         motivo = sin_gratis.get(p["asin"]) if p.get("store") == "US" else None
         if motivo:
-            # Chrome vio la página sin oferta o con envío pago a Argentina: no se publica (REGLA 0) y no se
+            # Chrome vio la página sin stock, sin oferta o con envío pago: no se publica (REGLA 0) y no se
             # gasta el scraper (08/11: antes sólo se salteaba «sin oferta»; los de envío pago se consultaban igual).
             missing += 1
             chrome_fallas.append({"slug": p["slug"], "asin": p["asin"], "store": "US", "motivo": motivo})
