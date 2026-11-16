@@ -97,6 +97,7 @@ def test_decisiones_con_evidencia_y_sin_tocar_existentes(state, ships, free, pri
 
 
 @pytest.mark.parametrize("item", [
+    {"ships": None, "free": None, "motivo": "sin_stock", "text": "Temporarily out of stock."},
     {"ships": None, "free": None, "motivo": "ubicacion_no_ar"},
     {"ships": None, "motivo": "captcha"},
     {"ships": None, "motivo": "envio_sin_precio"},
