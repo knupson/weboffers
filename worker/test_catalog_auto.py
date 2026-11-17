@@ -149,9 +149,7 @@ def test_merge_repo_wins_on_asin_and_slug(tmp_path):
 def test_photo_official_webp_max_900(tmp_path, monkeypatch):
     monkeypatch.setattr(auto.ml_prices, "get_json", lambda _: {"pictures": [{"url": "https://http2.mlstatic.com/test.jpg"}]})
     monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
-    buf = io.BytesIO()
-    Image.new("RGB", (1800, 1200)).save(buf, "JPEG")
-    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(content=buf.getvalue())))
+    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(content=foto("white"))))
     entry = {"slug": "foto", "ml": {"catalogId": "MLA123"}}
     assert auto.fetch_photo(entry, tmp_path)
     with Image.open(tmp_path / "products" / "foto.webp") as img:
@@ -161,6 +159,58 @@ def test_photo_official_webp_max_900(tmp_path, monkeypatch):
         assert img.size == (900, 600)
         assert img.format == "JPEG"
     assert entry["imageSource"] == "https://http2.mlstatic.com/test.jpg"
+
+
+def foto(fondo, size=(1800, 1200)):
+    """JPEG con un producto oscuro en el centro sobre el fondo dado."""
+    img = Image.new("RGB", size, fondo)
+    img.paste((30, 30, 120), (size[0] // 4, size[1] // 4, 3 * size[0] // 4, 3 * size[1] // 4))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=95)
+    return buf.getvalue()
+
+
+def test_photo_skips_box_shot_and_takes_first_clean(tmp_path, monkeypatch):
+    """17/11: pictures[0] era la caja o una foto de ambiente; se guarda la primera con el borde blanco."""
+    urls = [f"https://http2.mlstatic.com/{n}.jpg" for n in ("caja", "limpia", "otra")]
+    monkeypatch.setattr(auto.ml_prices, "get_json", lambda _: {"pictures": [{"url": u} for u in urls]})
+    monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
+    contenido = {urls[0]: foto((180, 40, 40)), urls[1]: foto("white"), urls[2]: foto("white")}
+    get = Mock(side_effect=lambda url, timeout: Mock(content=contenido[url]))
+    monkeypatch.setattr(auto.requests, "get", get)
+    entry = {"slug": "foto", "ml": {"catalogId": "MLA123"}}
+    assert auto.fetch_photo(entry, tmp_path)
+    assert entry["imageSource"] == urls[1]
+    assert get.call_count == 2
+    data = (tmp_path / "products" / "foto.webp").read_bytes()
+    assert auto.borde_limpio(data) >= auto.FOTO_MIN_BORDE
+
+
+def test_photo_none_clean_raises_and_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(auto.ml_prices, "get_json", lambda _: {"pictures": [{"url": "https://http2.mlstatic.com/a.jpg"},
+                                                                           {"url": "https://http2.mlstatic.com/b.jpg"}]})
+    monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
+    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(content=foto((200, 200, 200)))))
+    with pytest.raises(auto.FotoSinFondoLimpio, match="ninguna de 2 fotos"):
+        auto.fetch_photo({"slug": "foto", "ml": {"catalogId": "MLA1"}}, tmp_path)
+    assert not (tmp_path / "products").exists()
+
+
+def test_alta_sin_foto_limpia_va_a_revision(setup_job, monkeypatch, capsys):
+    repo, output, _ = setup_job
+
+    def sin_foto_limpia(entry, out):
+        raise auto.FotoSinFondoLimpio("ninguna de 3 fotos con borde limpio")
+    monkeypatch.setattr(auto, "fetch_photo", sin_foto_limpia)
+    row = candidate()
+    added, failures = auto.add_accepted(load_catalog(repo, output / "catalog-auto.json"),
+                                        {"accepted": [row]}, output, "2026-11-17")
+    review = json.loads((output / "altas-revision.json").read_text())
+    assert not added and not failures
+    assert not json.loads((output / "altas-pendientes.json").read_text())
+    assert review[0]["motivoRevision"] == "foto_sin_fondo_limpio"
+    assert review[0]["revisionDesde"] == "2026-11-17"
+    assert "motivo=foto_sin_fondo_limpio" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("pictures", [[], [{"url": "https://otro.com/foto.jpg"}]])

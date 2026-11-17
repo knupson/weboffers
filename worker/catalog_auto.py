@@ -96,24 +96,65 @@ class PacedScraper:
             self.progress()
 
 
+# 17/11: las fotos van sobre fondo oscuro en el carrusel, las historias y el Reel; brand/reel/recorte.py borra el
+# fondo blanco conectado con el borde y aborta si el borde no queda transparente. Mismo criterio que recorte.py
+# (ALFA_TRANSPARENTE, CLARO, CROMA, MIN_BORDE): un píxel del borde es fondo si es transparente o blanco neutro.
+# Con pictures[0] a ciegas entraron fotos en caja o de ambiente (37 de public/products/ no se podían recortar el
+# 17/11, entre ellas el aviso de la app LEGO Builder publicado como foto del 71869).
+FOTO_ALFA_TRANSPARENTE = 16
+FOTO_CLARO = 250
+FOTO_CROMA = 12
+FOTO_MIN_BORDE = 0.80
+
+
+class FotoSinFondoLimpio(ValueError):
+    """La ficha de ML tiene fotos, pero ninguna tiene el borde transparente o blanco: el alta va a revisión."""
+
+
+def borde_limpio(data):
+    """Fracción del borde que recorte.py deja transparente (transparente o blanco neutro)."""
+    with Image.open(io.BytesIO(data)) as img:
+        img = img.convert("RGBA")
+        w, h = img.size
+        px = img.load()
+    borde = {(x, y) for x in range(w) for y in (0, h - 1)} | {(x, y) for y in range(h) for x in (0, w - 1)}
+
+    def fondo(r, g, b, a):
+        return a <= FOTO_ALFA_TRANSPARENTE or (min(r, g, b) >= FOTO_CLARO and max(r, g, b) - min(r, g, b) <= FOTO_CROMA)
+    return sum(fondo(*px[p]) for p in borde) / len(borde)
+
+
 def fetch_photo(entry, output):
+    """Recorre las fotos de la ficha de ML en orden y guarda la primera con fondo limpio o recortable."""
     product = ml_prices.get_json(f"/products/{entry['ml']['catalogId']}")
     ml_prices.pause()
-    pictures = product.get("pictures") or []
-    url = pictures[0].get("url") if pictures else None
-    parsed = urlsplit(url or "")
-    if parsed.scheme != "https" or parsed.netloc not in ALLOWED_HOSTS:
+    urls = []
+    for picture in product.get("pictures") or []:
+        parsed = urlsplit(picture.get("url") or "")
+        if parsed.scheme == "https" and parsed.netloc in ALLOWED_HOSTS:
+            urls.append(picture["url"])
+    if not urls:
         return False
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
-    data = to_webp(response.content)
-    dest = Path(output) / "products" / f"{entry['slug']}.webp"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(data)
-    with Image.open(io.BytesIO(data)) as image:
-        image.convert("RGB").save(dest.with_suffix(".jpg"), "JPEG", quality=90)
-    entry.update(image=f"/products/{entry['slug']}.webp", imageSource=url)
-    return True
+    probadas = []
+    for url in urls:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        data = to_webp(response.content)
+        fraccion = borde_limpio(data)
+        if fraccion < FOTO_MIN_BORDE:
+            probadas.append(f"{url}={fraccion:.2f}")
+            continue
+        dest = Path(output) / "products" / f"{entry['slug']}.webp"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        with Image.open(io.BytesIO(data)) as image:
+            image = image.convert("RGBA")
+            fondo = Image.new("RGB", image.size, "white")
+            fondo.paste(image, mask=image.split()[3])
+            fondo.save(dest.with_suffix(".jpg"), "JPEG", quality=90)
+        entry.update(image=f"/products/{entry['slug']}.webp", imageSource=url)
+        return True
+    raise FotoSinFondoLimpio(f"ninguna de {len(urls)} fotos con borde limpio: " + " ".join(probadas))
 
 
 def mismo_producto(row, existente):
@@ -225,7 +266,17 @@ def _add_accepted(catalog, matches, output, today, journal=None):
             publish.write_atomic(review_path, list(review.values()))
             print(alta_line(row, "revision", "sin_identificador_fuerte", {"precio": usd}), flush=True)
             return "revision", "sin_identificador_fuerte"
-        entry = build_pending(row, catalog + added, output, today)
+        try:
+            entry = build_pending(row, catalog + added, output, today)
+        except FotoSinFondoLimpio as exc:
+            key = (row["asin"], row["catalogId"])
+            review[key] = {**row, "amazonIds": row.get("amazonIds") or {},
+                           "mlIds": row.get("mlIds") or {},
+                           "motivoRevision": "foto_sin_fondo_limpio", "dudas": str(exc),
+                           "revisionDesde": review.get(key, {}).get("revisionDesde", today)}
+            publish.write_atomic(review_path, list(review.values()))
+            print(alta_line(row, "revision", "foto_sin_fondo_limpio", {"precio": usd, "text": str(exc)}), flush=True)
+            return "revision", "foto_sin_fondo_limpio"
         if entry is None:
             failures.append({"slug": row["slug"], "motivo": "sin_foto"})
             print(alta_line(row, "descartado", "sin_foto", {"precio": usd}), flush=True)
