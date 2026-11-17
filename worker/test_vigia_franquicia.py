@@ -165,6 +165,21 @@ def test_paso_fallido_de_la_cadena_sale_una_vez_por_dia(tmp_path, monkeypatch):
     assert len(enviados) == 2
 
 
+def test_resumen_faltante_o_cadena_interrumpida_salen_una_vez_por_dia(tmp_path, monkeypatch):
+    # 17/11 (Alejandro): también corresponden a la corrida diaria de las 03:30; repetirlos cada 6 h no aporta.
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {
+        "cadena": "falta el resumen válido de la cadena de madrugada (sin archivo)",
+        "cadena-interrumpida": "la cadena se interrumpió desde 03:30; paso en_curso=alta:barrido_ml"})
+    enviados = []
+    madrugada = HOY.replace(hour=5, minute=30)
+    for minutos in range(0, 18 * 60, 15):
+        v.main(madrugada + datetime.timedelta(minutes=minutos), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1
+    v.main(madrugada + datetime.timedelta(days=1), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 2
+
+
 def test_paso_recuperado_de_la_cadena_no_avisa(tmp_path):
     # Si el reintento de la cadena recuperó el paso, el resumen lo trae «ok» y no hay aviso.
     log(tmp_path, "2026-11-05 09:16:05 LATIDO worker")

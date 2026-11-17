@@ -248,7 +248,9 @@ def cargar_estado(hoy):
 # Alertas que salen de una línea del log del día: la línea queda aunque ya se haya resuelto, así que van una vez por día.
 # 17/11: «cadena:» también: el resumen de la corrida de madrugada no cambia en el día y el aviso de
 # alta:barrido_ml salía a las 05:30 y otra vez a las 11:30. Un paso que el reintento recuperó queda «ok» y no avisa.
-EVENTOS_DEL_DIA = ("log:", "dudosos:", "deploy:", "cadena:")
+# «cadena» cubre las tres claves de chequear_cadena: «cadena» (falta el resumen), «cadena-interrumpida» y
+# «cadena:<paso>»; todas corresponden a la corrida diaria de las 03:30 (Alejandro, 17/11).
+EVENTOS_DEL_DIA = ("log:", "dudosos:", "deploy:", "cadena")
 
 
 def toca_avisar(clave, estado, ahora):
