@@ -159,8 +159,13 @@ def test_docker_contexto_y_memoria():
     root = Path(__file__).resolve().parents[1]
     ignored = (root / '.dockerignore').read_text().splitlines()
     assert {'output/', '__pycache__/', '*.pyc', '.pytest_cache/'} <= set(ignored)
-    service = (root / 'docker-compose.yml').read_text().split('  weboffers-barrido:')[1].split('  weboffers-deployer:')[0]
-    assert 'mem_limit: 512m' in service
+    compose = (root / 'docker-compose.yml').read_text()
+    # 17/11: el recorte llegaba hasta el deployer y el test pasaba por el 512m de WARP, no por el del barrido.
+    # Anclado al principio de línea: «weboffers-warp:» también aparece dentro de depends_on.
+    barrido = compose.split('\n  weboffers-barrido:\n')[1].split('\n  weboffers-chrome:\n')[0]
+    warp = compose.split('\n  weboffers-warp:\n')[1].split('\n  weboffers-deployer:\n')[0]
+    assert 'mem_limit: 1g' in barrido  # 10/11: OOM a 512m en la página 183
+    assert 'mem_limit: 1g' in warp  # 17/11: OOM de warp-svc a 512m (anon-rss 503 MB)
 
 
 def test_reintentos_bloqueos_y_transitorios_independientes():
