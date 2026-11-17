@@ -14,6 +14,9 @@ import sys
 import urllib.request
 import wave
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # también si se carga desde otra carpeta (worker/test_reel_shipping.py)
+import recorte  # noqa: E402
+
 BASE = Path(__file__).resolve().parent
 REPO = BASE.parent.parent
 # 11/11: el Reel se genera en la VM docker (brand/reel/Dockerfile); en Windows quedan las rutas de siempre.
@@ -307,7 +310,7 @@ def main(anuncio=None, duelo=None):
     duraciones = sintetizar(textos)
     props.update(voz=duraciones, audio=[f'd{i}.wav' for i in range(6)],
                  subs=[subtitulos(t, d) for t, d in zip(textos, duraciones)],
-                 cantidad=len(productos), hookImage=a['slug'] + '.webp')
+                 cantidad=len(productos), hookImage=a['slug'] + '.png')
     props['duelos'] = []
     for i, producto in enumerate((a, b)):
         escena = 1 if i == 0 else 3
@@ -315,11 +318,13 @@ def main(anuncio=None, duelo=None):
         # 16/11: mismo redondeo que el «Ahorrás» de la ficha (roundArs10k en src/lib/data.ts): decía ~$ 741.009 con ~$ 740.000 en el sitio.
         nota = (f"Te ahorrás ~$ {ars(redondear((producto['ml'] - producto['az']) / 10000) * 10000)}" if i == 0 else
                 'El envío se come la diferencia' if b['usd'] < 100 else 'Conviene comprarlo acá')
-        props['duelos'].append(dict(img=producto['slug'] + '.webp', nombre=producto['name'],
+        props['duelos'].append(dict(img=producto['slug'] + '.png', nombre=producto['name'],
                                     ml=producto['ml'], az=producto['az'], gana=producto['gana'],
                                     mlAt=[dur * .16, dur * .36], azAt=[dur * .53, dur * .73],
                                     ganaAt=dur * .83, nota=nota))
-        shutil.copyfile(REPO / 'public/products' / (producto['slug'] + '.webp'), BASE / 'public' / (producto['slug'] + '.webp'))
+        # 17/11: la foto va sobre el fondo oscuro; recorte.py verifica el borde transparente y recorta el fondo blanco.
+        # Si no queda transparente, SinFondoTransparente corta antes del render (el carrusel del 16/11 salió con rectángulos blancos).
+        recorte.asegurar_transparente(REPO / 'public/products' / (producto['slug'] + '.webp'), BASE / 'public' / (producto['slug'] + '.png'))
     fecha = datetime.fromisoformat(hoy).strftime('%d/%m/%Y')
     t = props['textos']
     t['cierre'][4] = 'TOCÁ MÁS INFORMACIÓN' if anuncio is not None else '☝ LINK EN LA BIO'

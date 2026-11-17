@@ -1,16 +1,25 @@
 // Uso (desde la raíz): python brand/carrusel/datos.py <slugs...> && node brand/carrusel/render.cjs
 // Genera out/carrusel-1..7.png (1080x1350) y out/historia-1..5.png (1080x1920).
 // 16/11: módulo, base y Chrome configurables para correr en la VM (imagen franquicia400-reel); en Windows quedan los de siempre.
-const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "C:/Users/KnuPwns/AppData/Local/npm-cache/_npx/13ab0715f9f30c2e/node_modules/playwright");
+// 17/11: las fotos salen de out/fotos/<slug>.png, que deja datos.py después de verificar (y si hace falta recortar)
+// el fondo transparente con brand/reel/recorte.py. Sin esa foto no se compone ninguna placa: el 16/11 salieron 4 de 5
+// productos en un rectángulo blanco porque se usaba public/products/<slug>.webp (RGB, fondo blanco) directo.
 const fs = require("fs");
 const path = require("path");
+const { pathToFileURL } = require("url");
 
-const OUT = path.join(__dirname, "out");
+const OUT = process.env.CARRUSEL_OUT || path.join(__dirname, "out");
 const D = JSON.parse(fs.readFileSync(path.join(OUT, "datos.json"), "utf8"));
 const R = process.env.CARRUSEL_BASE || "file:///E:/Repositorios/Personal/weboffers";
 const N = D.productos.length + 2;
 const ars = (n) => "$ " + Math.round(n).toLocaleString("es-AR");
-const foto = (s) => `${R}/public/products/${s}.webp`;
+const sinFoto = D.productos.filter((p) => !p.foto || !fs.existsSync(path.join(OUT, p.foto))).map((p) => p.slug);
+if (sinFoto.length) {
+  console.error(`CARRUSEL_FALLA productos sin foto con fondo transparente (correr antes brand/carrusel/datos.py): ${sinFoto.join(", ")}`);
+  process.exit(1);
+}
+const fotos = Object.fromEntries(D.productos.map((p) => [p.slug, pathToFileURL(path.join(OUT, p.foto)).href]));
+const foto = (s) => fotos[s];
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 const css = (w, h) => `
@@ -76,6 +85,7 @@ const historia = (p) => page(1080, 1920, `
 <div style="height:250px"></div>`);
 
 (async () => {
+  const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "C:/Users/KnuPwns/AppData/Local/npm-cache/_npx/13ab0715f9f30c2e/node_modules/playwright");
   const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   const shots = [
     ...[portada(), ...D.productos.map(producto), cierre()].map((h, i) => [h, 1080, 1350, `carrusel-${i + 1}.png`]),

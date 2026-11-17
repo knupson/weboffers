@@ -1,9 +1,10 @@
 """Arma brand/carrusel/out/datos.json con los precios de hoy (data/*.json frescos de la Pi4).
 Uso: python brand/carrusel/datos.py slug1 slug2=Nombre corto ...  (en el orden del carrusel; «=Nombre» opcional)"""
-import sys, json, datetime
+import sys, json, datetime, shutil
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'reel'))
 import hacer_reel as h
+import recorte  # brand/reel/recorte.py: fondo transparente obligatorio (17/11)
 
 hoy = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3))).date().isoformat()
 ml, az, cat = h.datos_hoy(hoy)
@@ -24,6 +25,18 @@ for s, corto in pedidos:
                     ahorro=(h.redondear(dif / 10000) * 10000) if dif >= 5000 else 0))
 d = Path(__file__).parent / 'out'
 d.mkdir(exist_ok=True)
+# 17/11: cada foto se verifica (y si tiene fondo blanco, se recorta) antes de componer; si no queda transparente,
+# se corta acá y render.cjs no genera ninguna placa. El 16/11 salieron 4 de 5 en un rectángulo blanco.
+fotos = d / 'fotos'
+shutil.rmtree(fotos, ignore_errors=True)
+for p in out:
+    origen = Path(__file__).resolve().parents[2] / 'public/products' / f"{p['slug']}.webp"
+    try:
+        recortada = recorte.asegurar_transparente(origen, fotos / f"{p['slug']}.png")
+    except recorte.SinFondoTransparente as e:
+        sys.exit(f'CARRUSEL_FALLA {e}')
+    p['foto'] = f"fotos/{p['slug']}.png"
+    print(f"foto {p['slug']}: {'fondo recortado' if recortada else 'ya era transparente'}")
 fecha = datetime.date.fromisoformat(hoy).strftime('%d/%m')
 (d / 'datos.json').write_text(json.dumps(dict(fecha=fecha, total=len(ps), link='ofertas.knunet.com', productos=out),
                                          ensure_ascii=False, indent=2), encoding='utf-8')

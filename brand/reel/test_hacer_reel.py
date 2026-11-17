@@ -10,6 +10,7 @@ from unittest.mock import patch
 import wave
 
 import hacer_reel as r
+import recorte
 
 
 class GeneradorTest(unittest.TestCase):
@@ -128,7 +129,10 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
                              image=f'/products/{s}.webp', shipsToAr=dict(freeShipping=True, checked=hoy))
                         for s in ('prueba-amazon', 'prueba-ml')]
             for p in catalogo:
-                (repo / 'public/products' / (p['slug'] + '.webp')).write_bytes(b'imagen-de-prueba')
+                # 17/11: foto real RGB con fondo blanco (como las del sitio): hacer_reel la tiene que recortar.
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=white:s=40x30', '-vf',
+                                'drawbox=x=10:y=8:w=20:h=14:color=black:t=fill', '-frames:v', '1', '-lossless', '1',
+                                str(repo / 'public/products' / (p['slug'] + '.webp'))], check=True)
             r.escribir(repo / 'data/catalog.json', catalogo)
             r.escribir(repo / 'data/ml-prices.json', dict(date=hoy, items={
                 'prueba-amazon': dict(price=800000, checked=hoy),
@@ -167,8 +171,11 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
             self.assertEqual(props['duelos'][0]['az'], 380000)
             self.assertEqual(len(comandos), 8)
             self.assertIn('loudnorm=I=-14:TP=-1.5:LRA=11', comandos[-1])
-            self.assertEqual(props['hookImage'], 'prueba-amazon.webp')
-            self.assertEqual([p['img'] for p in props['duelos']], ['prueba-amazon.webp', 'prueba-ml.webp'])
+            self.assertEqual(props['hookImage'], 'prueba-amazon.png')
+            self.assertEqual([p['img'] for p in props['duelos']], ['prueba-amazon.png', 'prueba-ml.png'])
+            for p in props['duelos']:
+                w, h, rgba = recorte.leer_rgba(base / 'public' / p['img'])
+                self.assertEqual(recorte.fraccion_borde_transparente(w, h, rgba), 1)
             if anuncio:
                 self.assertEqual(props['textos']['cierre'][4], 'TOCÁ MÁS INFORMACIÓN')
                 cierre = ' '.join(parte[1] for parte in props['subs'][5])
