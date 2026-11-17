@@ -235,9 +235,23 @@ async function overlayCatalog(workDir, outputDir) {
     throw error;
   });
   for (const file of files.filter((name) => /\.(webp|jpg)$/.test(name))) {
-    await fs.copyFile(path.join(products, file), path.join(dest, file), fs.constants.COPYFILE_EXCL).catch((error) => {
-      if (error.code !== 'EEXIST') throw error;
+    const target = path.join(dest, file);
+    // La foto de un producto del repo manda; la de un producto automático se pisa si cambió,
+    // así un reemplazo puesto en output/products llega al sitio (antes quedaba la primera copia).
+    if (origins[file.replace(/\.(webp|jpg)$/, '')] === 'repo') {
+      await fs.copyFile(path.join(products, file), target, fs.constants.COPYFILE_EXCL).catch((error) => {
+        if (error.code !== 'EEXIST') throw error;
+      });
+      continue;
+    }
+    const nueva = await fs.readFile(path.join(products, file));
+    const actual = await fs.readFile(target).catch((error) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
     });
+    if (actual && actual.equals(nueva)) continue;
+    await fs.writeFile(target, nueva);
+    if (actual) log(`FOTO_REEMPLAZADA ${file}`);
   }
   await fs.writeFile(catalogPath, JSON.stringify(repo, null, 2) + '\n');
   await saveOrigins();

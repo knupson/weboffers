@@ -73,6 +73,27 @@ describe('deployer', () => {
     expect(JSON.parse(await fs.readFile(path.join(workDir, 'data', 'catalog-origins.json'), 'utf8'))).toEqual({ a: 'repo', c: 'auto' });
   });
 
+  it('pisa la foto de un producto automático cuando cambió y respeta la del repo', async () => {
+    const workDir = path.join(tmpDir, 'work');
+    const outputDir = path.join(tmpDir, 'output');
+    const fotos = path.join(workDir, 'public', 'products');
+    await fs.mkdir(path.join(workDir, 'data'), { recursive: true });
+    await fs.mkdir(fotos, { recursive: true });
+    await fs.mkdir(path.join(outputDir, 'products'), { recursive: true });
+    await fs.writeFile(path.join(workDir, 'data', 'catalog.json'), JSON.stringify([{ asin: 'A', slug: 'a' }]));
+    await fs.writeFile(path.join(outputDir, 'catalog-auto.json'), JSON.stringify([{ asin: 'C', slug: 'c' }]));
+    await fs.writeFile(path.join(fotos, 'a.webp'), 'del repo');
+    await fs.writeFile(path.join(fotos, 'c.webp'), 'foto vieja');
+    await fs.writeFile(path.join(fotos, 'c.jpg'), 'jpg viejo');
+    await fs.writeFile(path.join(outputDir, 'products', 'a.webp'), 'automática');
+    await fs.writeFile(path.join(outputDir, 'products', 'c.webp'), 'foto nueva');
+    await fs.writeFile(path.join(outputDir, 'products', 'c.jpg'), 'jpg nuevo');
+    await overlayCatalog(workDir, outputDir);
+    expect(await fs.readFile(path.join(fotos, 'a.webp'), 'utf8')).toBe('del repo');
+    expect(await fs.readFile(path.join(fotos, 'c.webp'), 'utf8')).toBe('foto nueva');
+    expect(await fs.readFile(path.join(fotos, 'c.jpg'), 'utf8')).toBe('jpg nuevo');
+  });
+
   it('tolera ausencia del overlay pero rechaza JSON inválido', async () => {
     await overlayCatalog(path.join(tmpDir, 'work'), tmpDir);
     await fs.writeFile(path.join(tmpDir, 'catalog-auto.json'), '{}');
