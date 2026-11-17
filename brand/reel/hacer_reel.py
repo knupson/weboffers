@@ -146,17 +146,33 @@ def comparables(ml, amazon, catalogo, hoy, mep, eur_usd):
     return productos
 
 
-def elegir(productos, historial):
+def foto_usable(slug):
+    """17/11: True si la foto queda con el borde transparente (recorte.py); si no, avisa y el Reel la saltea."""
+    try:
+        recorte.asegurar_transparente(REPO / 'public/products' / (slug + '.webp'), BASE / 'public' / (slug + '.png'))
+        return True
+    except recorte.SinFondoTransparente as e:
+        print(f'REEL_FOTO_DESCARTADA {slug}: {e}', flush=True)
+        return False
+
+
+def elegir(productos, historial, foto_ok=None):
+    foto_ok = foto_ok or foto_usable
     usados = {slug for reel in historial[-6:] for slug in reel['productos']}
     disponibles = [p for p in productos if p['slug'] not in usados
                    and (REPO / 'public/products' / (p['slug'] + '.webp')).is_file()]
-    az = [p for p in disponibles if p['gana'] == 'amazon' and p['az'] < p['ml']]
-    ml = [p for p in disponibles if p['gana'] == 'ml' and p['ml'] < p['az']]
-    if not az or not ml:
-        raise ValueError('Faltan dos productos nuevos con foto: uno con ahorro en Amazon y otro con ahorro en ML, fuera de los últimos seis Reels.')
     # Ahorro respecto de la alternativa más cara, igual denominador para ambos lados.
-    return [max(az, key=lambda p: (p['ml'] - p['az']) / p['ml']),
-            max(ml, key=lambda p: (p['az'] - p['ml']) / p['az'])]
+    az = sorted((p for p in disponibles if p['gana'] == 'amazon' and p['az'] < p['ml']),
+                key=lambda p: (p['ml'] - p['az']) / p['ml'], reverse=True)
+    ml = sorted((p for p in disponibles if p['gana'] == 'ml' and p['ml'] < p['az']),
+                key=lambda p: (p['az'] - p['ml']) / p['az'], reverse=True)
+    # 17/11: el mejor de cada lado cuya foto se puede dejar transparente; uno con foto en caja o escena se saltea
+    # (antes cortaba el Reel entero en el paso del render).
+    a = next((p for p in az if foto_ok(p['slug'])), None)
+    b = next((p for p in ml if foto_ok(p['slug'])), None)
+    if not a or not b:
+        raise ValueError('Faltan dos productos nuevos con foto: uno con ahorro en Amazon y otro con ahorro en ML, fuera de los últimos seis Reels.')
+    return [a, b]
 
 
 def elegir_anuncio(productos, slug, duelo=None):

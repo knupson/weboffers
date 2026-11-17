@@ -53,8 +53,19 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
                      [('viejo', 'amazon', 100, 10), ('a', 'amazon', 100, 50),
                       ('b', 'amazon', 1000, 600), ('c', 'ml', 50, 100)]]
         with patch.object(Path, 'is_file', return_value=True):
-            seleccion = r.elegir(productos, [dict(productos=['viejo'])])
+            seleccion = r.elegir(productos, [dict(productos=['viejo'])], foto_ok=lambda s: True)
         self.assertEqual([p['slug'] for p in seleccion], ['a', 'c'])
+
+    def test_saltea_producto_con_foto_no_recortable(self):
+        # 17/11: 8 publicados (7 LEGO y el Godox TT685IIC) tienen foto en caja o escena; el Reel no se corta: pasa al siguiente.
+        productos = [dict(slug=s, gana=w, ml=m, az=a) for s, w, m, a in
+                     [('lego-en-escena', 'amazon', 100, 10), ('a', 'amazon', 100, 50), ('c', 'ml', 50, 100)]]
+        salida = io.StringIO()
+        with patch.object(Path, 'is_file', return_value=True), contextlib.redirect_stdout(salida):
+            seleccion = r.elegir(productos, [], foto_ok=lambda s: s != 'lego-en-escena')
+        self.assertEqual([p['slug'] for p in seleccion], ['a', 'c'])
+        with patch.object(Path, 'is_file', return_value=True), self.assertRaisesRegex(ValueError, 'Faltan dos productos'):
+            r.elegir(productos, [], foto_ok=lambda s: s == 'c')
 
     def test_anuncio_elige_slug_y_ml_por_ahorro_sin_historial(self):
         productos = [dict(slug=s, gana=w, ml=m, az=a) for s, w, m, a in
@@ -63,7 +74,7 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
                       ('ml-sin-foto', 'ml', 1, 100), ('ml-sin-ahorro', 'ml', 100, 95)]]
         with patch.object(Path, 'is_file', return_value=True):
             # El diario excluye el mejor ML por historial; el anuncio debe poder usarlo.
-            diario = r.elegir(productos[:-2], [dict(productos=['ml-mayor-porcentaje'])])
+            diario = r.elegir(productos[:-2], [dict(productos=['ml-mayor-porcentaje'])], foto_ok=lambda s: True)
         with patch.object(Path, 'is_file', autospec=True,
                           side_effect=lambda path: path.stem != 'ml-sin-foto'):
             a, b = r.elegir_anuncio(productos, 'pedido')
