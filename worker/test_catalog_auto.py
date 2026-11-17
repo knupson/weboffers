@@ -4,7 +4,7 @@ import io
 import json
 from unittest.mock import Mock
 
-from PIL import Image
+from PIL import Image, ImageDraw
 import pytest
 import requests
 
@@ -161,10 +161,12 @@ def test_photo_official_webp_max_900(tmp_path, monkeypatch):
     assert entry["imageSource"] == "https://http2.mlstatic.com/test.jpg"
 
 
-def foto(fondo, size=(1800, 1200)):
-    """JPEG con un producto oscuro en el centro sobre el fondo dado."""
+def foto(fondo, size=(1800, 1200), caja=False):
+    """JPEG con un producto oscuro (elipse) en el centro sobre el fondo dado; caja=True lo dibuja como rectángulo lleno."""
     img = Image.new("RGB", size, fondo)
-    img.paste((30, 30, 120), (size[0] // 4, size[1] // 4, 3 * size[0] // 4, 3 * size[1] // 4))
+    marco = (size[0] // 4, size[1] // 4, 3 * size[0] // 4, 3 * size[1] // 4)
+    dibujo = ImageDraw.Draw(img)
+    (dibujo.rectangle if caja else dibujo.ellipse)(marco, fill=(30, 30, 120))
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=95)
     return buf.getvalue()
@@ -184,6 +186,30 @@ def test_photo_skips_box_shot_and_takes_first_clean(tmp_path, monkeypatch):
     assert get.call_count == 2
     data = (tmp_path / "products" / "foto.webp").read_bytes()
     assert auto.borde_limpio(data) >= auto.FOTO_MIN_BORDE
+
+
+def test_photo_skips_box_on_white_background(tmp_path, monkeypatch):
+    """17/11: una caja o infografía sobre blanco pasa el borde, pero es un bloque que llena su rectángulo (>= 0,85)."""
+    urls = ["https://http2.mlstatic.com/caja.jpg", "https://http2.mlstatic.com/producto.jpg"]
+    monkeypatch.setattr(auto.ml_prices, "get_json", lambda _: {"pictures": [{"url": u} for u in urls]})
+    monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
+    contenido = {urls[0]: foto("white", caja=True), urls[1]: foto("white")}
+    monkeypatch.setattr(auto.requests, "get", Mock(side_effect=lambda url, timeout: Mock(content=contenido[url])))
+    assert auto.borde_limpio(contenido[urls[0]]) >= auto.FOTO_MIN_BORDE
+    assert auto.llenado_rectangular(contenido[urls[0]]) >= auto.FOTO_MAX_LLENADO
+    assert auto.llenado_rectangular(contenido[urls[1]]) < auto.FOTO_MAX_LLENADO
+    entry = {"slug": "foto", "ml": {"catalogId": "MLA123"}}
+    assert auto.fetch_photo(entry, tmp_path)
+    assert entry["imageSource"] == urls[1]
+
+
+def test_photo_only_boxes_goes_to_review(tmp_path, monkeypatch):
+    monkeypatch.setattr(auto.ml_prices, "get_json", lambda _: {"pictures": [{"url": "https://http2.mlstatic.com/a.jpg"}]})
+    monkeypatch.setattr(auto.ml_prices, "pause", lambda: None)
+    monkeypatch.setattr(auto.requests, "get", Mock(return_value=Mock(content=foto("white", caja=True))))
+    with pytest.raises(auto.FotoSinFondoLimpio, match="caja:"):
+        auto.fetch_photo({"slug": "foto", "ml": {"catalogId": "MLA1"}}, tmp_path)
+    assert not (tmp_path / "products").exists()
 
 
 def test_photo_none_clean_raises_and_writes_nothing(tmp_path, monkeypatch):

@@ -105,6 +105,15 @@ FOTO_ALFA_TRANSPARENTE = 16
 FOTO_CLARO = 250
 FOTO_CROMA = 12
 FOTO_MIN_BORDE = 0.80
+# 17/11, medido con 17 fotos de las 8 fichas corregidas (6 buenas, 11 malas, clasificadas a ojo): una caja, un recuadro
+# o una infografía es un bloque no blanco que llena casi todo su rectángulo. Con 0,85 se frenaron 3 de las 11 malas
+# (infografía Godox 0,96, caja gt3 0,87, collage 71860 0,98) y ninguna buena (la más alta, 0,65). Las otras 8 malas
+# (caja pegada al producto, texto o flechas finas) no se distinguen así.
+FOTO_MAX_LLENADO = 0.85
+FOTO_LLENADO_LADO = 300  # se mide sobre una miniatura
+FOTO_LLENADO_CLARO = 235
+FOTO_LLENADO_CROMA = 15
+FOTO_LLENADO_BLOQUE = 0.05  # sólo cuentan los bloques cuyo rectángulo ocupa más del 5 % de la foto
 
 
 class FotoSinFondoLimpio(ValueError):
@@ -122,6 +131,42 @@ def borde_limpio(data):
     def fondo(r, g, b, a):
         return a <= FOTO_ALFA_TRANSPARENTE or (min(r, g, b) >= FOTO_CLARO and max(r, g, b) - min(r, g, b) <= FOTO_CROMA)
     return sum(fondo(*px[p]) for p in borde) / len(borde)
+
+
+def llenado_rectangular(data):
+    """Máximo, entre los bloques no blancos grandes, de píxeles del bloque / área de su rectángulo (1 = caja llena)."""
+    with Image.open(io.BytesIO(data)) as img:
+        img = img.convert("RGB")
+        img.thumbnail((FOTO_LLENADO_LADO, FOTO_LLENADO_LADO))
+        w, h = img.size
+        px = img.load()
+    fg = bytearray(w * h)
+    for y in range(h):
+        for x in range(w):
+            r, g, b = px[x, y]
+            fg[y * w + x] = not (min(r, g, b) >= FOTO_LLENADO_CLARO and max(r, g, b) - min(r, g, b) <= FOTO_LLENADO_CROMA)
+    seen = bytearray(w * h)
+    mejor = 0.0
+    for inicio in range(w * h):
+        if not fg[inicio] or seen[inicio]:
+            continue
+        seen[inicio] = 1
+        pila, pixeles = [inicio], 0
+        x0 = x1 = inicio % w
+        y0 = y1 = inicio // w
+        while pila:
+            i = pila.pop()
+            pixeles += 1
+            x, y = i % w, i // w
+            x0, x1, y0, y1 = min(x0, x), max(x1, x), min(y0, y), max(y1, y)
+            for j in ((i + 1) if x + 1 < w else -1, (i - 1) if x else -1, (i + w) if y + 1 < h else -1, (i - w) if y else -1):
+                if j >= 0 and fg[j] and not seen[j]:
+                    seen[j] = 1
+                    pila.append(j)
+        area = (x1 - x0 + 1) * (y1 - y0 + 1)
+        if area > FOTO_LLENADO_BLOQUE * w * h:
+            mejor = max(mejor, pixeles / area)
+    return mejor
 
 
 def fetch_photo(entry, output):
@@ -142,7 +187,11 @@ def fetch_photo(entry, output):
         data = to_webp(response.content)
         fraccion = borde_limpio(data)
         if fraccion < FOTO_MIN_BORDE:
-            probadas.append(f"{url}={fraccion:.2f}")
+            probadas.append(f"{url}=borde:{fraccion:.2f}")
+            continue
+        llenado = llenado_rectangular(data)
+        if llenado >= FOTO_MAX_LLENADO:
+            probadas.append(f"{url}=caja:{llenado:.2f}")
             continue
         dest = Path(output) / "products" / f"{entry['slug']}.webp"
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -154,7 +203,7 @@ def fetch_photo(entry, output):
             fondo.save(dest.with_suffix(".jpg"), "JPEG", quality=90)
         entry.update(image=f"/products/{entry['slug']}.webp", imageSource=url)
         return True
-    raise FotoSinFondoLimpio(f"ninguna de {len(urls)} fotos con borde limpio: " + " ".join(probadas))
+    raise FotoSinFondoLimpio(f"ninguna de {len(urls)} fotos con borde limpio y sin caja: " + " ".join(probadas))
 
 
 def mismo_producto(row, existente):
