@@ -45,7 +45,10 @@ DOMINIOS_EXACTOS = {
     "MLA-COMBINED_TOOL_KITS": "Herramientas",                       # Flexcut SK107 (MLA62738921)
     # 13/11 (Alejandro): llaves de impacto. ML junta en este dominio atornilladores eléctricos y llaves de impacto.
     "MLA-ELECTRIC_SCREWDRIVERS_AND_IMPACT_WRENCHES": "Herramientas",  # Milwaukee 2962-20 (MLA44953790)
-    "MLA-TOY_BUILDING_SETS": "Juguetes",                            # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
+    # 17/11: categorías que ya existen en el sitio (6 Cámaras y 6 Herramientas publicadas en catalog-auto.json).
+    "MLA-CAMERA_FLASHES": "Cámaras",                                # Godox TT685II-C (MLA79386702)
+    "MLA-ELECTRIC_RECIPROCATING_SAWS": "Herramientas",              # DeWalt DCS369B (MLA27346009)
+    "MLA-TOY_BUILDING_SETS": "Juguetes",                           # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
     # Ubiquiti G5 Turret Ultra (MLA47225060), publicada en «Herramientas» por la raíz «Tools & Home Improvement».
     # Los Ring de «Hogar» son del catálogo manual (data/catalog.json) y no pasan por el validador.
     "MLA-SURVEILLANCE_CAMERAS": "Cámaras",

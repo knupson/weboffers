@@ -48,6 +48,9 @@ def test_categoria_ml_por_subcadena_sin_cambios():
     ("MLA-SURVEILLANCE_CAMERAS", "Cámaras"),  # Ubiquiti G5 (MLA47225060); los Ring de Hogar son del catálogo manual
     # 13/11 (Alejandro): llaves de impacto en Herramientas. Leído en la ficha de la Milwaukee 2962-20.
     ("MLA-ELECTRIC_SCREWDRIVERS_AND_IMPACT_WRENCHES", "Herramientas"),  # MLA44953790
+    # 17/11: leídos en las fichas de dos pares aprobados en revisión que fallaban por categoría vacía.
+    ("MLA-CAMERA_FLASHES", "Cámaras"),                       # Godox TT685II-C (MLA79386702)
+    ("MLA-ELECTRIC_RECIPROCATING_SAWS", "Herramientas"),     # DeWalt DCS369B (MLA27346009)
 ])
 def test_dominios_exactos_del_12_11(domain, expected):
     assert categoria_ml_exacta(domain) == expected
