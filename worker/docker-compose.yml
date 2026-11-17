@@ -118,7 +118,18 @@ services:
   weboffers-warp:
     image: caomingjun/warp@sha256:2891b92420a193a49c74cbd4387bee91f5c35fbc487fca8e8f739baed52c1d2b
     restart: unless-stopped
-    mem_limit: 512m
+    # 17/11: el kernel mató warp-svc por memoria con 512m (anon-rss 503 MB a las 04:37:45) y el contenedor
+    # siguió «Up» sólo con gost. Tope 1 GB (la VM tenía 6,2 GB disponibles) y el vigilante sale si muere
+    # warp-svc, así «restart: unless-stopped» lo levanta solo. Docker no reinicia por «unhealthy».
+    mem_limit: 1g
+    entrypoint: ["/bin/bash", "/vigilante/vigilante.sh"]
+    # El chequeo pasa por el proxy SOCKS5 (gost + DNS de WARP + túnel), que es lo que usa el barrido.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -m 10 -x socks5h://127.0.0.1:1080 https://cloudflare.com/cdn-cgi/trace | grep -qE 'warp=(plus|on)'"]
+      interval: 15s
+      timeout: 15s
+      start_period: 30s
+      retries: 3
     device_cgroup_rules:
       - 'c 10:200 rwm'
     environment:
@@ -132,6 +143,7 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
     volumes:
       - ./warp-data:/var/lib/cloudflare-warp
+      - ./warp:/vigilante:ro
 
   weboffers-deployer:
     build: ./deployer

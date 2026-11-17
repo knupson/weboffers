@@ -149,6 +149,28 @@ def test_evento_del_log_sale_una_vez_por_dia(tmp_path, monkeypatch):
     assert len(enviados) == 1
 
 
+def test_paso_fallido_de_la_cadena_sale_una_vez_por_dia(tmp_path, monkeypatch):
+    # 17/11: «la cadena de madrugada falló en alta:barrido_ml» salió a las 05:30 y de nuevo a las 11:30 por la
+    # misma corrida. El resumen de la cadena no cambia en el día: es un evento del día, como Telegram o deploy.
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    monkeypatch.setattr(v, "chequeos", lambda ahora: {
+        "cadena:alta:barrido_ml": "la cadena de madrugada falló en alta:barrido_ml (error SOCKS5)"})
+    enviados = []
+    madrugada = HOY.replace(hour=5, minute=30)
+    for minutos in range(0, 18 * 60, 15):  # el vigía corre cada 15 min hasta las 23:15
+        v.main(madrugada + datetime.timedelta(minutes=minutos), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1
+    # Si al día siguiente la cadena vuelve a fallar en el mismo paso, es una falla nueva y se avisa.
+    v.main(madrugada + datetime.timedelta(days=1), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 2
+
+
+def test_paso_recuperado_de_la_cadena_no_avisa(tmp_path):
+    # Si el reintento de la cadena recuperó el paso, el resumen lo trae «ok» y no hay aviso.
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker")
+    assert not any(k.startswith("cadena") for k in correr(tmp_path))
+
+
 def test_estado_viejo_no_repite_lo_avisado_hoy(tmp_path, monkeypatch):
     monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
     (tmp_path / "estado.json").write_text(json.dumps({

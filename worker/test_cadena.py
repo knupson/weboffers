@@ -103,6 +103,9 @@ def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, 
     runner = None
 
     def popen(command, **kwargs):
+        if command == cadena.WARP_CHEQUEO:  # 17/11: al inicio y antes de barrido_ml; se cuentan aparte
+            runner.warp_chequeos.append(runner.summary["pasos"][-1]["paso"] if runner.summary["pasos"] else "inicio")
+            return Hijo(reloj)
         comandos.append(command)
         if "--verificar-estado" in command:
             return Hijo(reloj, out="PUBLICACION_ESTADO_OK\n")
@@ -121,7 +124,7 @@ def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, 
         return Hijo(reloj)
 
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
-    runner.llamadas = []
+    runner.llamadas, runner.warp_chequeos = [], []
     code = runner.run()
     return runner, comandos, code
 
@@ -135,6 +138,8 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     barrido = next(i for i, c in enumerate(comandos) if c[-4:] == ["--store", "US", "--output", cadena.BARRIDO_SALIDA])
     assert cadena.CHROME_BARRIDO in comandos[barrido - 2]  # chequeo de pestaña de Chrome
     assert cadena.CHROME_CHEQUEO_CDP in comandos[barrido - 1]  # y conexión real de Playwright, justo antes del barrido
+    # WARP al arrancar y antes de cada barrido que sale a Amazon por el proxy (17/11)
+    assert runner.warp_chequeos == ["inicio", "alta:barrido_amazon", "alta:barrido_ml"]
     assert comandos[barrido + 3][-1] == "/app/tools/dudosos_nvidia.py"
     chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
     assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
@@ -149,7 +154,7 @@ def test_cada_paso_una_vez(tmp_path):
     # Los dos deploy copian su desglose al log; el barrido suma 3 pasos y el chequeo de Chrome (10/11),
     # que desde el 11/11 son dos comandos: pestaña y conexión real de Playwright.
     # 13/11: más el paso de «Lo más vendido» antes del deploy del alta.
-    assert len(comandos) == 23
+    assert len(comandos) == 23  # los chequeos de WARP (17/11) se cuentan aparte en runner.warp_chequeos
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -413,6 +418,7 @@ def test_pasos_ml_y_altas_del_barrido(tmp_path):
     runner.bloque = "alta"
     runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
     runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
+    assert comandos.pop(0) == cadena.WARP_CHEQUEO
     assert comandos[0][-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
     assert cadena.BARRIDO in comandos[0]
     assert comandos[1][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[1]
@@ -544,3 +550,128 @@ def test_timeout_tambien_resume_la_salida(tmp_path, monkeypatch):
     motivo = json.loads((tmp_path / "cadena-2026-11-06.json").read_text())["pasos"][0]["motivo"]
     assert motivo.startswith("timeout: ") and "RemoteDisconnected" in motivo
     assert len(motivo) <= cadena.MOTIVO_MAX + len("timeout: ")
+
+
+
+# 17/11: warp-svc murió por OOM a las 04:37:45 dentro de franquicia400-weboffers-warp-1; el proxy siguió
+# escuchando sin DNS y alta:barrido_ml cayó a las 06:46:39 con «cannot complete SOCKS5 connection».
+SOCKS5 = ("BARRIDO_SESION_FALLA asin=B0BX4PX242 motivo=ProxyError: Failed to perform, curl: (97) "
+          "cannot complete SOCKS5 connection to www.amazon.com. (4).\n")
+REINICIO_WARP = ["docker", "restart", cadena.WARP]
+
+
+def es_barrido_ml(command):
+    return command[-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
+
+
+def correr_barrido_ml(tmp_path, chequeos=(), corridas=()):
+    reloj, comandos = Reloj(), []
+    chequeos, corridas = iter(chequeos), iter(corridas)
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        if command == cadena.WARP_CHEQUEO:
+            return Hijo(reloj, code=next(chequeos, 0))
+        if es_barrido_ml(command):
+            code, out = next(corridas, (0, ""))
+            return Hijo(reloj, code=code, out=out)
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
+    log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    return runner.summary["pasos"][-1], comandos, log
+
+
+def test_warp_sano_antes_de_barrido_ml_no_reinicia(tmp_path):
+    paso, comandos, log = correr_barrido_ml(tmp_path)
+    assert paso["estado"] == "ok"
+    assert REINICIO_WARP not in comandos and "WARP_OK antes de barrido_ml" in log
+
+
+def test_warp_caido_antes_de_barrido_ml_se_reinicia_y_espera(tmp_path):
+    paso, comandos, log = correr_barrido_ml(tmp_path, chequeos=[1, 1, 0])
+    assert paso["estado"] == "ok"
+    reinicio = comandos.index(REINICIO_WARP)
+    assert sum(map(es_barrido_ml, comandos[:reinicio])) == 0 and sum(map(es_barrido_ml, comandos)) == 1
+    assert "WARP_REINICIO" in log and "WARP_OK tras el reinicio (10 s)" in log
+
+
+def test_warp_que_no_vuelve_falla_barrido_ml_sin_correrlo(tmp_path):
+    paso, comandos, log = correr_barrido_ml(tmp_path, chequeos=[1] * 100)
+    assert paso["estado"] == "fail" and "WARP_FALLA" in paso["motivo"]
+    assert not any(map(es_barrido_ml, comandos))
+
+
+def test_barrido_ml_con_socks5_reinicia_warp_y_reintenta_una_vez(tmp_path):
+    paso, comandos, log = correr_barrido_ml(tmp_path, corridas=[(1, SOCKS5), (0, "")])
+    assert paso["estado"] == "ok"
+    assert sum(map(es_barrido_ml, comandos)) == 2
+    primera = next(i for i, c in enumerate(comandos) if es_barrido_ml(c))
+    assert REINICIO_WARP in comandos[primera:]
+    assert "BARRIDO_ML_REINTENTO_WARP" in log
+    assert "PASO_FAIL" not in log
+
+
+def test_barrido_ml_con_socks5_dos_veces_falla(tmp_path):
+    paso, comandos, log = correr_barrido_ml(tmp_path, corridas=[(1, SOCKS5), (1, SOCKS5), (0, "")])
+    assert paso["estado"] == "fail" and "SOCKS5" in paso["motivo"]
+    assert sum(map(es_barrido_ml, comandos)) == 2
+
+
+def test_barrido_ml_con_otro_error_no_reintenta(tmp_path):
+    paso, comandos, log = correr_barrido_ml(tmp_path, corridas=[(1, "BARRIDO_EXCEPCION ValueError: otra cosa\n")])
+    assert paso["estado"] == "fail"
+    assert sum(map(es_barrido_ml, comandos)) == 1 and REINICIO_WARP not in comandos
+
+
+def test_warp_caido_al_inicio_se_reinicia_y_la_cadena_sigue(tmp_path):
+    reloj, comandos = Reloj(), []
+    chequeos = iter([1, 0])
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        if command == cadena.WARP_CHEQUEO:
+            return Hijo(reloj, code=next(chequeos, 0))
+        if "--verificar-estado" in command:
+            return Hijo(reloj, out="PUBLICACION_ESTADO_OK\n")
+        if "/app/deploy.mjs" in command:
+            return Hijo(reloj, out="DEPLOY_OK publicado desglose=/state/logs/desglose-2026-11-06-0330.log\n")
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.run()
+    assert comandos[1] == cadena.WARP_CHEQUEO and comandos[2] == REINICIO_WARP
+    log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    assert "WARP_REINICIO" in log and "inicio de la cadena" in log
+    assert runner.summary["pasos"][0]["paso"] == "verificacion:offers"
+
+
+def test_warp_que_no_vuelve_al_inicio_no_corta_la_verificacion(tmp_path):
+    reloj, comandos = Reloj(), []
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        if command == cadena.WARP_CHEQUEO:
+            return Hijo(reloj, code=1)
+        if "--verificar-estado" in command:
+            return Hijo(reloj, out="PUBLICACION_ESTADO_OK\n")
+        return Hijo(reloj)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.run()
+    log = (tmp_path / "cadena-2026-11-06.log").read_text(encoding="utf-8")
+    assert "WARP_FALLA_INICIO" in log
+    assert runner.summary["pasos"][0]["paso"] == "verificacion:offers"
+
+
+def test_espera_de_warp_no_pasa_el_plazo_del_paso(tmp_path):
+    # Revisión 17/11: el bucle de espera no miraba el plazo y podía pasarse hasta 120 s.
+    reloj, comandos = Reloj(), []
+
+    def spawn(command, **kwargs):
+        comandos.append(command)
+        return Hijo(reloj, code=1 if command == cadena.WARP_CHEQUEO else 0)
+    runner = cadena.Cadena(tmp_path, spawn, reloj.clock, reloj.now, reloj.sleep)
+    runner.step_start = reloj.clock()
+    with pytest.raises(TimeoutError, match="WARP_FALLA"):
+        runner.warp(reloj.clock() + 20, "prueba")
+    assert reloj.clock() <= 20

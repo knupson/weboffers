@@ -6,6 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
+import shlex
 import signal
 import subprocess
 import sys
@@ -67,6 +68,19 @@ CHROME_CHEQUEO_CDP = ("import os; from barrido.chrome_search import ChromeSearch
                       "c = ChromeSearch(os.environ['BARRIDO_CHROME_CDP']); c._connect(); "
                       "ok = c.page.evaluate('1+1') == 2; c.close(); raise SystemExit(0 if ok else 1)")
 CHROME_CHEQUEO_SEGUNDOS = 45  # connect_over_cdp tiene 30 s de timeout propio
+# 17/11: warp-svc murió por OOM (kernel 04:37:45) dentro de WARP; el proxy siguió escuchando sin DNS y
+# alta:barrido_ml cayó a las 06:46:39 con «cannot complete SOCKS5 connection». La cadena lo chequea al
+# arrancar y antes de barrido_ml: contenedor healthy y una consulta real por el mismo proxy que usa el barrido.
+WARP = "franquicia400-weboffers-warp-1"
+WARP_PRUEBA = ("import os; from curl_cffi import requests; p = os.environ['BARRIDO_AMAZON_PROXY']; "
+               "r = requests.get('https://cloudflare.com/cdn-cgi/trace', proxies={'http': p, 'https': p}, timeout=20); "
+               "assert r.status_code == 200 and ('warp=on' in r.text or 'warp=plus' in r.text), r.text[:200]")
+WARP_CHEQUEO = ["sh", "-c", f"test \"$(docker inspect -f '{{{{.State.Health.Status}}}}' {WARP})\" = healthy && "
+                f"docker exec -w /app {BARRIDO} python -c {shlex.quote(WARP_PRUEBA)}"]
+WARP_CHEQUEO_SEGUNDOS = 45
+WARP_ESPERAS = 24  # tras el reinicio: hasta 24 chequeos separados por 5 s (el healthcheck arranca a los 10 s)
+WARP_PLAZO_INICIO = 300
+PROXY_CAIDO = re.compile(r"SOCKS5|ProxyError")
 
 
 def _linea_corta(linea):
@@ -186,6 +200,7 @@ class Cadena:
         stdout, stderr = "".join(stdout_lines), "".join(stderr_lines)
         # El motivo resume la salida; quien necesite clasificar una falla mira la salida completa.
         self.ultima_salida = stdout
+        self.ultimo_error = stderr
         if not emit and child.returncode:
             self.log(stdout)
             self.log(stderr)
@@ -279,6 +294,29 @@ class Cadena:
                 return
         raise RuntimeError(f"CHROME_BARRIDO_FALLA sigue sin abrir pestañas {CHROME_ESPERAS * 3} s después del reinicio")
 
+    def warp(self, deadline, motivo, forzar=False):
+        """El proxy WARP tiene que responder; si no (o si `forzar`), se reinicia el contenedor y se espera a que vuelva."""
+        def sano():
+            try:
+                self.process(WARP_CHEQUEO, min(deadline, self.clock() + WARP_CHEQUEO_SEGUNDOS), "warp", emit=False)
+                return True
+            except Exception:  # noqa: BLE001 — cualquier falla del chequeo cuenta como WARP caído
+                return False
+
+        if not forzar and sano():
+            self.log(f"WARP_OK {motivo}")
+            return
+        self.log(f"WARP_REINICIO {WARP} ({motivo}); reinicio el contenedor")
+        self.process(["docker", "restart", WARP], min(deadline, self.clock() + 90), "warp")
+        for intento in range(1, WARP_ESPERAS + 1):
+            if self.clock() + 5 >= deadline:
+                raise TimeoutError(f"WARP_FALLA {WARP} sin respuesta y sin plazo para seguir esperando ({(intento - 1) * 5} s)")
+            self.sleep(5)
+            if sano():
+                self.log(f"WARP_OK tras el reinicio ({intento * 5} s)")
+                return
+        raise RuntimeError(f"WARP_FALLA {WARP} sigue sin responder {WARP_ESPERAS * 5} s después del reinicio")
+
     def step(self, paso, timeout):
         self.step_start = self.clock()
         nombre = f"{self.bloque}:{paso}"
@@ -312,13 +350,26 @@ class Cadena:
                                          cwd="/app/worker"), deadline, paso)
             elif paso == "barrido_amazon":
                 self.chrome_barrido(deadline)
-                seconds = max(1, int(deadline - self.clock()))
+                self.warp(deadline, "antes de barrido_amazon")  # el barrido sale a Amazon por WARP (bootstrap.py)
+                seconds =max(1, int(deadline - self.clock()))
                 self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
                                          "--store", "US", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
             elif paso == "barrido_ml":
-                seconds = max(1, int(deadline - self.clock()))
-                self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
-                                         "--step", "ml-lookup", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
+                self.warp(deadline, "antes de barrido_ml")
+                for intento in (1, 2):
+                    seconds = max(1, int(deadline - self.clock()))
+                    self.ultima_salida = self.ultimo_error = ""
+                    try:
+                        self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
+                                                 "--step", "ml-lookup", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
+                        break
+                    except RuntimeError as exc:
+                        # Una falla de proxy se reintenta una vez con WARP reiniciado; ml-lookup reanuda desde
+                        # su checkpoint (los ASIN confirmados no se vuelven a consultar, los «error» sí).
+                        if intento == 2 or not PROXY_CAIDO.search(f"{exc}\n{self.ultima_salida}\n{self.ultimo_error}"):
+                            raise
+                        self.log(f"BARRIDO_ML_REINTENTO_WARP falla de proxy: {_linea_corta(str(exc))[:MOTIVO_MAX]}")
+                        self.warp(deadline, "falla de proxy en barrido_ml", forzar=True)
             elif paso == "barrido_altas":
                 seconds = max(1, int(deadline - self.clock()))
                 self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
@@ -378,6 +429,10 @@ class Cadena:
             self.save()
             return 1
         self.promovidas = self.vencidos = None
+        try:
+            self.warp(min(self.clock() + WARP_PLAZO_INICIO, self.alta_deadline), "inicio de la cadena")
+        except Exception as exc:  # noqa: BLE001 — la verificación no usa WARP; barrido_ml lo vuelve a chequear
+            self.log(f"WARP_FALLA_INICIO {exc}")
         verificacion = (("offers", OFFERS_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         # 10/11: «buscar» (crecer_ahora) queda para uso manual; el alta diaria es el barrido en tres pasos.
