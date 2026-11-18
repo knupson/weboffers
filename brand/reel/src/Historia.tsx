@@ -86,22 +86,30 @@ const Duelo = () => {
   );
 };
 
-const Llamado = () => {
-  const { frame, s } = useSec();
-  const rebote = Math.abs(Math.sin((frame - s(6.2)) / 6)) * 22;
-  return (
-    <div style={{ position: "absolute", top: 1330, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-      <Pop at={6.2} from={0.4} y={60}>
-        <div style={{ fontFamily: ARCHIVO, fontWeight: 900, fontSize: 60, color: "#fff", background: C.rojo, padding: "16px 40px", borderRadius: 24, boxShadow: "0 14px 30px rgba(0,0,0,.45)" }}>
-          Tocá el enlace y fijate
-        </div>
-      </Pop>
-      <Pop at={6.5} y={0}>
-        <div style={{ fontFamily: ULTRA, fontSize: 90, color: C.amarillo, translate: `0px ${frame >= s(6.5) ? rebote : 0}px`, lineHeight: 1 }}>↓</div>
-      </Pop>
-    </div>
-  );
-};
+// 17/11: las historias salen por la API de Meta, que no pone sticker de enlace: el link va escrito en pantalla.
+export const SITIO_VISIBLE = "ofertas.knunet.com";
+
+const Llamado = () => (
+  <div style={{ position: "absolute", top: 1300, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+    <Pop at={6.2} from={0.4} y={60}>
+      <div style={{ fontFamily: ARCHIVO, fontWeight: 900, fontSize: 54, color: C.crema, textAlign: "center" }}>
+        Mirá el precio de hoy en
+      </div>
+    </Pop>
+    <Pop at={6.5} from={0.4} y={40}>
+      <div style={{ fontFamily: ULTRA, fontSize: 74, color: "#fff", background: C.rojo, padding: "18px 44px", borderRadius: 24, boxShadow: "0 14px 30px rgba(0,0,0,.45)" }}>
+        {SITIO_VISIBLE}
+      </div>
+    </Pop>
+  </div>
+);
+
+// El sitio queda escrito durante toda la historia (debajo de la barra de progreso de Instagram).
+const SitioArriba = () => (
+  <div style={{ position: "absolute", top: 150, width: "100%", textAlign: "center", fontFamily: ARCHIVO, fontWeight: 900, fontSize: 40, color: C.crema, letterSpacing: 1, textShadow: "0 3px 10px rgba(0,0,0,.6)" }}>
+    {SITIO_VISIBLE}
+  </div>
+);
 
 export const Historia = ({ img, nombre }: HistoriaProps) => {
   const { frame, s, fps } = useSec();
@@ -139,6 +147,7 @@ export const Historia = ({ img, nombre }: HistoriaProps) => {
             ¿Cuál te sale menos <span style={{ color: C.amarillo }}>hoy</span>?
           </div>
         )}
+        <SitioArriba />
         <Llamado />
       </AbsoluteFill>
     </ConFuentes>

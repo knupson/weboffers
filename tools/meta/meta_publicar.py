@@ -113,7 +113,11 @@ def esperar_finished(contenedor, token):
 def publicar_ig(entry, token):
     ig = ENV["META_IG_USER_ID"]
     media = entry["media"]
-    if entry["tipo"] == "reel":
+    if entry["tipo"] == "historia":
+        # 17/11 (opción A): historia por API; sin sticker de enlace (la API no lo permite), el link va en el video.
+        r = graph_post("/%s/media" % ig, {"media_type": "STORIES", "video_url": media[0]}, token)
+        contenedor = r["id"]
+    elif entry["tipo"] == "reel":
         r = graph_post("/%s/media" % ig, {"media_type": "REELS", "video_url": media[0], "caption": entry["texto_ig"], "share_to_feed": "true"}, token)
         contenedor = r["id"]
     else:
@@ -175,9 +179,40 @@ def publicar_fb_reel(pagina, video_url, descripcion, token):
     return video_id
 
 
+def rupload(video_id, video_url, token, que):
+    req = urllib.request.Request("https://rupload.facebook.com/video-upload/v21.0/%s" % video_id, data=b"", method="POST")
+    req.add_header("Authorization", "OAuth " + token)
+    req.add_header("file_url", video_url)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            ok = json.loads(resp.read().decode("utf-8")).get("success")
+    except urllib.error.HTTPError as e:
+        raise _sanear(e)
+    except urllib.error.URLError as e:
+        raise MetaError(type(e).__name__)
+    if not ok:
+        raise MetaError("rupload sin success para %s %s" % (que, video_id))
+
+
+def publicar_fb_historia(pagina, video_url, token):
+    """Historia de página con la Page Stories API (start → rupload con file_url → finish), 17/11.
+
+    Doc: developers.facebook.com/docs/page-stories-api (video ≤ 60 s, devuelve post_id).
+    """
+    r = graph_post("/%s/video_stories" % pagina, {"upload_phase": "start"}, token)
+    video_id = r["video_id"]
+    rupload(video_id, video_url, token, "la historia")
+    r = graph_post("/%s/video_stories" % pagina, {"upload_phase": "finish", "video_id": video_id}, token)
+    if not r.get("success"):
+        raise MetaError("finish sin success para la historia %s" % video_id)
+    return r.get("post_id") or video_id
+
+
 def publicar_fb(entry, token):
     pagina = ENV["META_PAGE_ID"]
     media = entry["media"]
+    if entry["tipo"] == "historia":
+        return publicar_fb_historia(pagina, media[0], token)
     if entry["tipo"] == "reel":
         return publicar_fb_reel(pagina, media[0], entry["texto_fb"], token)
     ids = []
