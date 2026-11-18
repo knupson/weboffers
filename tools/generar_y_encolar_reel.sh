@@ -10,7 +10,10 @@
 # Pasos: 1) si el Reel de hoy ya está en la cola, no hace nada; 2) hacer_reel_vm.sh (precios y fotos del último deploy,
 # nunca precios viejos); 3) copia el mp4 a la lista de Blackseam y verifica que la URL pública dé 200 (Meta lo descarga
 # de ahí); 4) upsert en cola_meta.json con el caption de hacer_reel.py (IG) y su versión para FB (link con UTM).
-# Marcadores de log: REEL_AUTO_INICIO, REEL_AUTO_YA_ENCOLADO, REEL_AUTO_FALLA <motivo>, REEL_AUTO_ENCOLADO.
+# 5) (17/11) programa el mismo video como Short de YouTube y post de X por la API de Buffer (buffer_publicar.py,
+# idempotente). Nunca por Chrome: regla número uno de la skill redes-proyectos.
+# Marcadores de log: REEL_AUTO_INICIO, REEL_AUTO_YA_ENCOLADO, REEL_AUTO_FALLA <motivo>, REEL_AUTO_ENCOLADO,
+# BUFFER_OK / BUFFER_YA / BUFFER_FALLA (de buffer_publicar.py).
 set -eu
 R=/home/claude/reel
 COLA=/home/claude/franquicia400-meta/cola_meta.json
@@ -25,22 +28,28 @@ else
     CUANDO="${HOY}T19:00:00-03:00"
 fi
 falla() { echo "$(TS) REEL_AUTO_FALLA $*"; exit 1; }
+MP4="$R/out/duelo-$HOY-final.mp4"
+TXT="$R/out/duelo-$HOY.txt"
+URL="$URL_BASE/f400-$ID/$ID.mp4"
+buffer() {
+    # Una falla de Buffer no deshace lo de Meta: se loguea, avisa por WhatsApp (lo hace el script) y sale con 1.
+    python3 "$(dirname "$0")/buffer_publicar.py" --id "$ID" --cuando "$CUANDO" --video "$URL" --texto "$TXT"         || { echo "$(TS) REEL_AUTO_FALLA buffer (ver BUFFER_FALLA arriba)"; exit 1; }
+}
 
 echo "$(TS) REEL_AUTO_INICIO id=$ID cuando=$CUANDO"
 if python3 -c 'import json,sys; sys.exit(0 if any(e.get("id") == sys.argv[2] for e in json.load(open(sys.argv[1]))) else 1)' "$COLA" "$ID"; then
     echo "$(TS) REEL_AUTO_YA_ENCOLADO id=$ID (no se genera otro: consumiría productos del historial)"
+    # Reintento de Buffer si la vez anterior falló (buffer_publicar.py no repite lo que ya creó).
+    [ -s "$TXT" ] && buffer
     exit 0
 fi
 
 sh "$R/codigo/hacer_reel_vm.sh" || falla "hacer_reel_vm.sh salió con error"
-MP4="$R/out/duelo-$HOY-final.mp4"
-TXT="$R/out/duelo-$HOY.txt"
 [ -s "$MP4" ] && [ -s "$TXT" ] || falla "no está el Reel de hoy ($MP4 / $TXT)"
 
 DESTINO="$LISTA/f400-$ID"
 mkdir -p "$DESTINO"
 cp "$MP4" "$DESTINO/$ID.mp4"
-URL="$URL_BASE/f400-$ID/$ID.mp4"
 CODIGO=$(curl -s -o /dev/null -I -m 30 -w '%{http_code}' "$URL" || true)
 [ "$CODIGO" = "200" ] || falla "la URL pública no responde 200 ($CODIGO): $URL"
 
@@ -67,3 +76,4 @@ with open(tmp, "w", encoding="utf-8") as f:
 os.replace(tmp, cola_path)
 PY
 echo "$(TS) REEL_AUTO_ENCOLADO id=$ID cuando=$CUANDO url=$URL"
+buffer
