@@ -37,7 +37,7 @@ CLAUDE = "F400 · decile a Claude en weboffers:"
 FRASES = {
     "2026-11-02": ["revisá que el sitio tenga los precios del Cyber"],
     "2026-11-07": ["informe de la semana y propuesta de publicidad"],
-    "2026-11-24": ["armá el carrusel y las historias de la semana"],
+    "2026-11-24": ["armá el carrusel de la semana por API"],
     "2026-11-27": ["armá el Reel especial de Black Friday"],
     "2026-11-30": ["armá el Reel especial de Cyber Monday"],
     "2026-12-01": ["informe del mes y armá el calendario de diciembre"],
@@ -71,7 +71,8 @@ def mensaje(hoy):
             frases.append("informe del mes")
     # Esqueleto semanal permanente (skill redes-proyectos): sin fecha de vencimiento (05/11).
     if hoy.weekday() == 0 and iso not in SIN_CARRUSEL:
-        frases.append("armá el carrusel y las historias de la semana")
+        frases.append("armá el carrusel de la semana por API")
+    # 17/11: sin historias ni Shorts por Chrome (regla redes-proyectos: sólo API oficial); el carrusel va por la cola de Meta.
     # 13/11: el Reel del día ya no se pide: lo genera y encola el cron de la VM (18:15, generar_y_encolar_reel.sh).
     frases += FRASES.get(iso, [])
     partes = [pedir(frases)] if frases else []
