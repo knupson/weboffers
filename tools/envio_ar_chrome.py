@@ -29,6 +29,8 @@ CDP = "http://127.0.0.1:9222"
 ART = timezone(timedelta(hours=-3))
 TIMEOUT_PRODUCTO = 30
 ESPERA_CARGA = 4
+RECONEXIONES = 3  # 18/11: si Chrome se cuelga a mitad del relevamiento, se reconecta por CDP y se sigue con lo pendiente
+ESPERA_RECONEXION = 20  # s: claude-ext-reload tarda ~25 s en volver a levantar Chrome
 RECICLAR_CADA = 10  # pestaña nueva cada N productos: libera memoria (05/11 el kernel mató un Chrome por OOM con 3 GB)
 # Para leer el texto de envío no hacen falta imágenes, videos ni fuentes: se bloquean para bajar memoria y tráfico.
 BLOQUEADOS = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.avif", "*.svg", "*.mp4", "*.webm", "*.m3u8",
@@ -301,25 +303,49 @@ async def main(asins):
         asin, _, names = argument.partition(":")
         slugs.setdefault(asin, []).extend(names.split(",") if names else [])
     asins = list(slugs)
-    ver = json.load(urllib.request.urlopen(CDP + "/json/version"))
     items, inicio = {}, time.time()
     parcial = ruta_parcial()
+    for reconexion in range(RECONEXIONES + 1):
+        # Sólo lo que no quedó anotado: un ASIN a medio leer cuando se cayó la conexión se pide de nuevo.
+        pendientes = [a for a in asins if "leido" not in items.get(a, {})]
+        if not pendientes:
+            break
+        try:
+            await sesion(pendientes, slugs, items, parcial)
+            break
+        except Exception as exc:  # noqa: BLE001
+            # 18/11 03:37: Chrome dejó de responder (claude-ext-reload lo reinició 03:35:40) y Target.attachToTarget
+            # venció a los 30 s; el TimeoutError mató el relevamiento con 113 ASIN sin pedir. Se reconecta de cero.
+            if reconexion == RECONEXIONES:
+                raise
+            quedan = sum("leido" not in items.get(a, {}) for a in asins)
+            print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ENVIO_AR_CHROME_RECONEXION intento={reconexion + 1}/{RECONEXIONES} "
+                  f"pendientes={quedan} motivo={type(exc).__name__}: {str(exc)[:120]}", file=sys.stderr, flush=True)
+            await asyncio.sleep(ESPERA_RECONEXION)
+    print(json.dumps({"generado": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "segundos": round(time.time() - inicio),
+                      "items": items}, ensure_ascii=False))
+
+
+async def sesion(asins, slugs, items, parcial):
+    """Una conexión CDP con su contexto anónimo; si Chrome se cuelga, la excepción sube y main reconecta."""
+    ver = json.load(urllib.request.urlopen(CDP + "/json/version", timeout=10))
     async with websockets.connect(ver["webSocketDebuggerUrl"], max_size=2**24) as ws:
         c = Cdp(ws)
         lector = asyncio.create_task(c.run())
-        ctx = (await c.call("Target.createBrowserContext", {"disposeOnDetach": True}))["browserContextId"]
-        tid, s = await nueva_pestana(c, ctx)
+        ctx, tid = None, None
         try:
+            ctx = (await c.call("Target.createBrowserContext", {"disposeOnDetach": True}))["browserContextId"]
+            tid, s = await nueva_pestana(c, ctx)
             tid = await recorrer(c, ctx, tid, s, asins, slugs, items, parcial)
         finally:
             try:
-                await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
-                await c.call("Target.disposeBrowserContext", {"browserContextId": ctx}, timeout=10)
+                if tid:
+                    await c.call("Target.closeTarget", {"targetId": tid}, timeout=10)
+                if ctx:
+                    await c.call("Target.disposeBrowserContext", {"browserContextId": ctx}, timeout=10)
             except Exception:  # noqa: BLE001
                 pass
             lector.cancel()
-    print(json.dumps({"generado": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "segundos": round(time.time() - inicio),
-                      "items": items}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -73,6 +73,10 @@ if ! cdp; then
     done
     echo "ENVIO_AR_CHROME_REINICIO CDP arriba tras $((i * 3)) s"
 fi
+# 15/11 y 18/11 a las 03:30 Amazon ubicó al contexto anónimo en «Nashville 37217» (ubicacion_no_ar) y a las 07:00
+# en Argentina. Se anota la IP pública del contenedor chrome-claude (Chrome no usa proxy propio) para poder comparar.
+IP=$(docker exec chrome-claude curl -s -m5 https://api.ipify.org 2>/dev/null || true)
+echo "ENVIO_AR_CHROME_IP ip=${IP:-desconocida}"
 docker cp /opt/docker/franquicia400/tools/envio_ar_chrome.py chrome-claude:/tmp/envio_ar_chrome.py
 docker cp /opt/docker/franquicia400/worker/article_log.py chrome-claude:/tmp/article_log.py
 # F-17: el tope que manda la cadena corre desde que arrancó este script; lo gastado en listar, chequear CDP y

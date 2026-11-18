@@ -58,6 +58,46 @@ def test_cada_asin_queda_anotado_y_el_kill_pierde_solo_el_que_estaba_en_curso(tm
     assert sorted(snap["items"]) == ["A1", "A2"] and snap["generado"] == lineas[1]["t"]
 
 
+def test_chrome_colgado_reconecta_y_sigue_con_lo_pendiente(tmp_path, monkeypatch, capsys):
+    """18/11 03:37: Target.attachToTarget venció (Chrome colgado) y el TimeoutError cortó todo el relevamiento."""
+    import asyncio
+    chrome_mod = cargar_envio_ar_chrome()
+    monkeypatch.setenv("AR_CHROME_PARCIAL", str(tmp_path / "parcial.jsonl"))
+    monkeypatch.setattr(chrome_mod, "ESPERA_RECONEXION", 0)
+    pedidos = []
+
+    async def sesion(asins, slugs, items, parcial):
+        pedidos.append(list(asins))
+        for asin in asins:
+            if asin == "A3" and len(pedidos) == 1:
+                items[asin] = {"ships": None, "motivo": "error:TimeoutError"}  # a medio leer: sin «leido»
+                raise TimeoutError()
+            items[asin] = {"ships": True, "free": True, "leido": "2026-11-18T03:30:00-03:00"}
+
+    monkeypatch.setattr(chrome_mod, "sesion", sesion)
+    asyncio.run(chrome_mod.main(["A1:s1", "A2:s2", "A3:s3", "A4:s4"]))
+    assert pedidos == [["A1", "A2", "A3", "A4"], ["A3", "A4"]]  # lo ya leído no se vuelve a pedir
+    salida = capsys.readouterr()
+    assert "ENVIO_AR_CHROME_RECONEXION intento=1/3 pendientes=2 motivo=TimeoutError" in salida.err
+    assert all(x["ships"] is True for x in json.loads(salida.out)["items"].values())
+
+
+def test_chrome_que_no_vuelve_agota_las_reconexiones_y_falla(monkeypatch):
+    import asyncio
+    chrome_mod = cargar_envio_ar_chrome()
+    monkeypatch.setattr(chrome_mod, "ESPERA_RECONEXION", 0)
+    intentos = []
+
+    async def sesion(asins, slugs, items, parcial):
+        intentos.append(1)
+        raise TimeoutError()
+
+    monkeypatch.setattr(chrome_mod, "sesion", sesion)
+    with pytest.raises(TimeoutError):
+        asyncio.run(chrome_mod.main(["A1:s1"]))
+    assert len(intentos) == chrome_mod.RECONEXIONES + 1
+
+
 def test_reintento_del_dia_salta_lo_ya_leido_y_pide_lo_que_quedo_sin_dato(tmp_path, monkeypatch):
     import publicacion
     hoy = altas_chrome.hora()[:10]
