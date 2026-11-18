@@ -239,9 +239,9 @@ def guiones(a, b, cantidad, anuncio=False):
     motivo = 'El envío se come la diferencia.' if b['usd'] < 100 else 'Incluso con envío gratis, conviene comprarlo acá.'
     cierre = 'Tocá Más información y compará el precio de hoy.' if anuncio else 'Link en la bio.'
     return [hook,
-            f"{a['name']}. {hablado(a['ml'])} en Mercado Libre. Traído de Amazon, unos {hablado(a['az'])}. Gana Amazon.",
+            f"{nombre_corto(a)}. {hablado(a['ml'])} en Mercado Libre. Traído de Amazon, unos {hablado(a['az'])}. Gana Amazon.",
             'Pero ojo, no siempre gana Amazon.',
-            f"{b['name']}. {hablado(b['ml'])} en Mercado Libre. De Amazon, unos {hablado(b['az'])}. Gana Mercado Libre. {motivo}",
+            f"{nombre_corto(b)}. {hablado(b['ml'])} en Mercado Libre. De Amazon, unos {hablado(b['az'])}. Gana Mercado Libre. {motivo}",
             'La regla: debajo de cien dólares, el envío puede matar el ahorro. Desde cien, compará el total con envío e impuestos.',
             f'Comparamos {palabras(cantidad)} productos con los precios de hoy. {cierre}']
 
@@ -280,21 +280,49 @@ def sintetizar(textos):
 
 
 def emoji(p):
+    # 17/11: faltaban categorías del catálogo automático (Anteojos, Juguetes, Auto…) y caían en 💻 (Versace con 💻 el 17/11).
     categoria = p.get('category', '').lower()
     for fragmento, icono in [('auricular', '🎧'), ('audio', '🔊'), ('joystick', '🎮'), ('gaming', '🎮'),
                             ('almacenamiento', '💾'), ('monitor', '🖥️'), ('teclado', '⌨️'),
-                            ('mouse', '🖱️'), ('cámara', '📷'), ('reloj', '⌚')]:
+                            ('mouse', '🖱️'), ('periférico', '🖱️'), ('cámara', '📷'), ('reloj', '⌚'),
+                            ('anteojo', '🕶️'), ('juguete', '🧸'), ('auto', '🚗'), ('herramienta', '🛠️'),
+                            ('componente', '🔧'), ('cuidado personal', '🪒'), ('mochila', '🎒'),
+                            ('tablet', '📱'), ('celular', '📱'), ('deporte', '🏃'), ('hogar', '🏠'),
+                            ('salud', '🩺'), ('mascota', '🐾'), ('cocina', '🍳'), ('notebook', '💻')]:
         if fragmento in categoria:
             return icono
-    return '💻'
+    return '🛒'
+
+
+def nombre_corto(p, maximo=40):
+    """17/11: los productos automáticos traen el título entero de Mercado Libre (63 de 144 con más de 60 caracteres)
+    y la voz lo leía completo. Si es largo: palabras desde el principio hasta el modelo (primera palabra con letras y
+    números, desde la segunda), cortando antes de un paréntesis, en una coma y en `maximo` caracteres."""
+    nombre = ' '.join(str(p.get('name', '')).split())
+    if len(nombre) <= maximo:
+        return nombre
+    salida = []
+    for palabra in nombre.split():
+        if palabra.startswith('('):
+            break
+        limpia = palabra.rstrip(',;:')
+        if len(' '.join(salida + [limpia])) > maximo:
+            break
+        salida.append(limpia)
+        modelo = len(limpia) >= 3 and any(c.isdigit() for c in limpia) and any(c.isalpha() for c in limpia)
+        if palabra != limpia or (modelo and len(salida) >= 2):
+            break
+    while len(salida) > 1 and salida[-1].lower() in ('de', 'del', 'y', 'e', 'con', 'para', 'en', 'a', 'la', 'el', '&', '-', 'with', 'and', 'for'):
+        salida.pop()  # «hervidor de», «aspirador y»: no termina en un conector
+    return ' '.join(salida) or nombre[:maximo]
 
 
 def caption(a, b, cantidad, fecha):
     motivo = 'el envío se come la diferencia.' if b['usd'] < 100 else 'incluso con envío gratis, conviene comprar acá.'
     return f'''¿Amazon o Mercado Libre? Depende del producto 👇
 
-{emoji(a)} {a['name']}: ${ars(a['ml'])} en Mercado Libre vs ~${ars(a['az'])} traídos de Amazon. Gana Amazon.
-{emoji(b)} {b['name']}: ${ars(b['ml'])} en Mercado Libre vs ~${ars(b['az'])} de Amazon. Gana Mercado Libre: {motivo}
+{emoji(a)} {nombre_corto(a)}: ${ars(a['ml'])} en Mercado Libre vs ~${ars(a['az'])} traídos de Amazon. Gana Amazon.
+{emoji(b)} {nombre_corto(b)}: ${ars(b['ml'])} en Mercado Libre vs ~${ars(b['az'])} de Amazon. Gana Mercado Libre: {motivo}
 
 Comparamos {cantidad} productos con los precios de hoy: link en la bio.
 La mejor oferta del día, todos los días a las 12 y a las 20, en Telegram: t.me/franquicia400
@@ -334,7 +362,7 @@ def main(anuncio=None, duelo=None):
         # 16/11: mismo redondeo que el «Ahorrás» de la ficha (roundArs10k en src/lib/data.ts): decía ~$ 741.009 con ~$ 740.000 en el sitio.
         nota = (f"Te ahorrás ~$ {ars(redondear((producto['ml'] - producto['az']) / 10000) * 10000)}" if i == 0 else
                 'El envío se come la diferencia' if b['usd'] < 100 else 'Conviene comprarlo acá')
-        props['duelos'].append(dict(img=producto['slug'] + '.png', nombre=producto['name'],
+        props['duelos'].append(dict(img=producto['slug'] + '.png', nombre=nombre_corto(producto),
                                     ml=producto['ml'], az=producto['az'], gana=producto['gana'],
                                     mlAt=[dur * .16, dur * .36], azAt=[dur * .53, dur * .73],
                                     ganaAt=dur * .83, nota=nota))

@@ -104,6 +104,26 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
             with self.assertRaisesRegex(ValueError, 'Falta otro producto con foto y ahorro'):
                 r.elegir_anuncio([producto], 'pedido')
 
+    def test_nombre_corto_y_emoji(self):
+        # Caso real del 17/11: título entero de Mercado Libre y 💻 en unos anteojos.
+        versace = dict(name='Versace VE2199 1002/81 Sunglasses Lentes Estilo Italiano Diseño Sofisticado y '
+                            'Versátil Accesorio de Moda Premium', brand='Versace', category='Anteojos')
+        self.assertEqual(r.nombre_corto(versace), 'Versace VE2199')
+        self.assertEqual(r.emoji(versace), '🕶️')
+        gafas = dict(name='Gafas De Sol Versace Ve4406 Hombre Originales Color Negro Color Del Armazón Negro',
+                     brand='Versace', category='Anteojos')
+        self.assertEqual(r.nombre_corto(gafas), 'Gafas De Sol Versace Ve4406')
+        self.assertEqual(r.nombre_corto(dict(name='Samsung SSD 990 PRO 1TB PCIe 4.0 M.2 2280')), 'Samsung SSD 990 PRO 1TB')
+        self.assertEqual(r.nombre_corto(dict(name='Kindle Paperwhite 16 GB, Fastest Kindle E-Reader')), 'Kindle Paperwhite 16 GB')
+        self.assertEqual(r.nombre_corto(dict(name='AMD Ryzen 7 5700X 8-Core Desktop Processor')), 'AMD Ryzen 7 5700X')
+        self.assertEqual(r.nombre_corto(dict(name='Philips Daily Collection hervidor de agua HD9350/90 de 1,7 L')), 'Philips Daily Collection hervidor')
+        corto = dict(name='Logitech G Yeti GX', brand='Logitech', category='Audio y video')
+        self.assertEqual(r.nombre_corto(corto), 'Logitech G Yeti GX')
+        self.assertEqual(r.emoji(corto), '🔊')
+        sin_modelo = dict(name='Mochila Grande Impermeable Para Viaje Con Muchos Bolsillos Y Correas', category='Mochilas')
+        self.assertLessEqual(len(r.nombre_corto(sin_modelo)), 40)
+        self.assertEqual(r.emoji(dict(category='Algo nuevo')), '🛒')
+
     def test_guion_anuncio_y_diario(self):
         a = dict(name='Amazon', ml=800000, az=380000)
         b = dict(name='ML', ml=50000, az=380000, usd=200)
