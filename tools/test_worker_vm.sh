@@ -27,6 +27,6 @@ FROM $BASE
 RUN apt-get update -qq && apt-get install -y -qq nodejs >/dev/null && rm -rf /var/lib/apt/lists/* \
     && pip install -q pytest websockets
 DOCKERFILE
-docker run --rm -v "$DEST:/repo" -w /repo -e PYTHONDONTWRITEBYTECODE=1 franquicia400-tests \
+docker run --rm -v "$DEST:/repo" -w /repo -e PYTHONDONTWRITEBYTECODE=1 -e TEST_MODE=1 franquicia400-tests \
     python -m pytest -q -p no:cacheprovider worker "$@"
 REMOTO
