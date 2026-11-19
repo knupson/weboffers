@@ -48,7 +48,8 @@ DOMINIOS_EXACTOS = {
     # 17/11: categorías que ya existen en el sitio (6 Cámaras y 6 Herramientas publicadas en catalog-auto.json).
     "MLA-CAMERA_FLASHES": "Cámaras",                                # Godox TT685II-C (MLA79386702)
     "MLA-ELECTRIC_RECIPROCATING_SAWS": "Herramientas",              # DeWalt DCS369B (MLA27346009)
-    "MLA-TOY_BUILDING_SETS": "Juguetes",                           # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
+    "MLA-MULTIMETERS": "Herramientas",                              # 19/11: Klein Tools ET600 (MLA70506968)
+    "MLA-TOY_BUILDING_SETS": "Juguetes",                          # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
     # Ubiquiti G5 Turret Ultra (MLA47225060), publicada en «Herramientas» por la raíz «Tools & Home Improvement».
     # Los Ring de «Hogar» son del catálogo manual (data/catalog.json) y no pasan por el validador.
     "MLA-SURVEILLANCE_CAMERAS": "Cámaras",
