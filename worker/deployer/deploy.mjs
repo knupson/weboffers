@@ -4,6 +4,7 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, readdirSync, unlinkSync, promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const REPO_URL = 'https://github.com/knupson/weboffers.git';
@@ -20,7 +21,10 @@ const LOCK_EMPTY_STALE_MS = 2 * 60e3; // un candado sin pid legible se da por mu
 
 
 // `docker logs` se pierde al recrear el contenedor; /state es un volumen con nombre y sobrevive (05/11).
-const LOG_DIR = process.env.DEPLOYER_LOG_DIR ?? '/state/logs';
+// 19/11: correr vitest dentro del deployer escribió 502 líneas DEPLOY_FAIL de prueba en /state/logs y el vigía las
+// mandó por WhatsApp. Con VITEST (lo pone vitest) o TEST_MODE=1 el log va a una carpeta temporal.
+const MODO_TEST = Boolean(process.env.VITEST) || process.env.TEST_MODE === '1';
+const LOG_DIR = process.env.DEPLOYER_LOG_DIR ?? (MODO_TEST ? path.join(os.tmpdir(), 'deployer-test-logs') : '/state/logs');
 
 function log(line) {
   const now = new Date();

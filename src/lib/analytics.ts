@@ -77,6 +77,12 @@ export function sessionUtms(store: Store | null = sessionStore()): Utms {
   return leerUtms(store);
 }
 
+/** true en el navegador interno de Instagram o Facebook (19/11, Alejandro: ahí los enlaces con target="_blank"
+ * pueden no abrir; las salidas a Amazon y Mercado Libre van en la misma ventana). */
+export function navegadorDeApp(ua: string | undefined): boolean {
+  return /Instagram|FBAN|FBAV/.test(ua ?? "");
+}
+
 /** false para Chrome automatizado o sesiones con ?notrack=1 (la marca dura toda la sesión). */
 export function shouldTrack(search: string, webdriver: boolean | undefined, store: Store | null = sessionStore()): boolean {
   if (webdriver === true) return false;

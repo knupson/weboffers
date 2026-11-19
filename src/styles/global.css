@@ -311,8 +311,12 @@ section { padding: 64px 0; }
 .buy { background: var(--placa); border-radius: var(--r-placa); padding: 22px; display: grid; gap: 14px; box-shadow: inset 0 0 0 2px var(--amarillo), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--rojo); }
 .buy .price { font-family: var(--letra); font-size: 34px; color: var(--amarillo); }
 @media (max-width: 1023px) {
-  .pdp .media { aspect-ratio: 16 / 9; }
-  .pdp .media img.photo { padding: 16px; }
+  /* 19/11 (Alejandro): foto más baja en móvil para que el botón de la opción ganadora quede arriba del pliegue aun
+     con la barra del navegador de Instagram (~150 px). En 390 px de ancho: 201 → 149 px de foto. */
+  .pdp { padding-top: 16px; }
+  .crumbs:has(+ .pdp) { padding-top: 16px; }
+  .pdp .media { aspect-ratio: 12 / 5; }
+  .pdp .media img.photo { padding: 12px; }
   .pdp h1 { margin-top: 16px; }
   /* La opción que conviene va primera: su precio y su botón quedan arriba del pliegue. */
   .pdp .buy .fila-compra[data-winner] { order: -1; }
