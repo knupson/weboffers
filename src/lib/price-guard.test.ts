@@ -196,9 +196,12 @@ describe("guarda de precios y estado inicial en HTML/CSS", () => {
       expect(labels.length).toBe(1);
       expect(labels[0]).toMatch(/\bhidden\b/);
 
+      // «puesto en tu casa, estimado al …» y (19/11) «Incluye envío e impuestos…»: sin precio vigente no se ven.
       const subs = content.match(/<small[^>]*data-price-sub[^>]*>/g) ?? [];
-      expect(subs.length).toBe(1);
-      expect(subs[0]).toMatch(/\bhidden\b/);
+      expect(subs.length).toBe(file.endsWith("[slug].astro") ? 2 : 1);
+      for (const tag of subs) {
+        expect(tag).toMatch(/\bhidden\b/);
+      }
 
       const verdicts = content.match(/<(?:span|p)[^>]*data-verdict-text[^>]*>/g) ?? [];
       // ganador en ML, ganador en Amazon y la nota de "sin envío confirmado"

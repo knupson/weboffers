@@ -136,7 +136,7 @@ const specs: Array<[string, string]> = [
                   <span class="precio-actualizando" data-price-stale>Precio en actualización</span>
                   <small data-price-sub hidden>{amzSub}</small>
                   {/* 19/11 (Alejandro): que se lea que el estimado ya es el total a la puerta. */}
-                  <small class="incluye">Incluye envío e impuestos hasta tu puerta en Argentina.</small>
+                  <small class="incluye" data-price-sub hidden>Incluye envío e impuestos hasta tu puerta en Argentina.</small>
                 </p>
                 {p.bajadaUsd ? <p class="bajo" data-price-sub hidden>{etiquetaBajada({ usd: p.bajadaUsd })}</p> : null}
                 {verdict === "sinEnvio" && (
