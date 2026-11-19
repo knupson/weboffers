@@ -16,6 +16,7 @@ import wave
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # también si se carga desde otra carpeta (worker/test_reel_shipping.py)
 import recorte  # noqa: E402
+import registro_dia  # noqa: E402
 
 BASE = Path(__file__).resolve().parent
 REPO = BASE.parent.parent
@@ -156,9 +157,10 @@ def foto_usable(slug):
         return False
 
 
-def elegir(productos, historial, foto_ok=None):
+def elegir(productos, historial, foto_ok=None, excluir=frozenset()):
     foto_ok = foto_ok or foto_usable
-    usados = {slug for reel in historial[-6:] for slug in reel['productos']}
+    # 19/11: `excluir` = productos de las historias de hoy (registro_dia): el Reel no los repite.
+    usados = {slug for reel in historial[-6:] for slug in reel['productos']} | set(excluir)
     disponibles = [p for p in productos if p['slug'] not in usados
                    and (REPO / 'public/products' / (p['slug'] + '.webp')).is_file()]
     # Ahorro respecto de la alternativa más cara, igual denominador para ambos lados.
@@ -343,7 +345,12 @@ def main(anuncio=None, duelo=None):
         historial = leer(historial_path) if historial_path.exists() else []
     mep, eur_usd = cotizaciones(any(a.get('currency') == 'EUR' and a.get('checked') == hoy for a in amazon.values()))
     productos = comparables(ml, amazon, catalogo, hoy, mep, eur_usd)
-    a, b = elegir(productos, historial) if anuncio is None else elegir_anuncio(productos, anuncio, duelo)
+    if anuncio is None:
+        historias_hoy = registro_dia.reservados(hoy, excepto='reel19')
+        print(f'REEL_REGISTRO historias_de_hoy={sorted(historias_hoy)}', flush=True)
+        a, b = elegir(productos, historial, excluir=historias_hoy)
+    else:
+        a, b = elegir_anuncio(productos, anuncio, duelo)
     print(f"Ejemplo Amazon: {a['name']} | FOB USD {a['usd']:.2f} | MEP ${mep} (dolarapi.com) | estimado ARS ${ars(estimate_from_amazon(a['usd'], mep))} | sitio ${ars(a['az'])}", flush=True)
     npx = shutil.which('npx.cmd') or shutil.which('npx')
     ffmpeg = shutil.which('ffmpeg')
@@ -390,6 +397,7 @@ def main(anuncio=None, duelo=None):
         (out / f'duelo-{hoy}.txt').write_text(caption(a, b, len(productos), fecha), encoding='utf-8')
         historial.append(dict(fecha=hoy, reel=final.name, productos=[a['slug'], b['slug']]))
         escribir(historial_path, historial)  # Sólo consumir los productos si terminó el render.
+        registro_dia.reservar(hoy, 'reel19', [a['slug'], b['slug']])
     etiqueta = 'Reel' if anuncio is None else 'Anuncio'
     print(f'{etiqueta} listo: {final}', flush=True)
 

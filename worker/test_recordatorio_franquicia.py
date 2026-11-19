@@ -50,6 +50,14 @@ def test_calendario_sin_vencimiento_despues_de_noviembre():
     assert "armá el carrusel" in reminder.mensaje(_dt.date(2026, 12, 7))  # lunes
 
 
+def test_lunes_pide_el_lote_de_historias_y_el_resto_de_la_semana_no():
+    # 19/11 (Alejandro, opción 1): historias con sticker en lote semanal por Business Suite, cada lunes.
+    import datetime as _dt
+    assert "armá el lote de historias de la semana" in reminder.mensaje(_dt.date(2026, 11, 23))  # lunes
+    for dia in range(24, 30):
+        assert "lote de historias" not in reminder.mensaje(_dt.date(2026, 11, dia))
+
+
 def test_el_recordatorio_ya_no_pide_el_reel_del_dia():
     # 13/11: el Reel sale solo (cron 18:15 en la VM); ningún día de la semana se pide a mano.
     import datetime as _dt

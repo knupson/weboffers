@@ -72,7 +72,10 @@ def mensaje(hoy):
     # Esqueleto semanal permanente (skill redes-proyectos): sin fecha de vencimiento (05/11).
     if hoy.weekday() == 0 and iso not in SIN_CARRUSEL:
         frases.append("armá el carrusel de la semana por API")
-    # 17/11: sin historias ni Shorts por Chrome (regla redes-proyectos: sólo API oficial); el carrusel va por la cola de Meta.
+    # 19/11 (Alejandro, opción 1): historias con sticker por Business Suite en lote semanal; excepción a la regla
+    # redes-proyectos sólo para historias. Shorts y lo demás siguen sin Chrome; el carrusel va por la cola de Meta.
+    if hoy.weekday() == 0:
+        frases.append("armá el lote de historias de la semana")
     # 13/11: el Reel del día ya no se pide: lo genera y encola el cron de la VM (18:15, generar_y_encolar_reel.sh).
     frases += FRASES.get(iso, [])
     partes = [pedir(frases)] if frases else []
