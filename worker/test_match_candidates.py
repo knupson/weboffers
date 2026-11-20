@@ -833,7 +833,7 @@ def test_10_11_generacion_distinta_y_configuracion_no_es_modelo():
     ("Computers", "MLA-DESKTOP_COMPUTER_POWER_SUPPLIES", "Componentes"),   # CORSAIR RM1000x
     ("Computers", "MLA-HARD_DRIVES_AND_SSDS", "Almacenamiento"),           # Samsung 9100 PRO
     ("Computers", "MLA-COMPUTER_MONITORS", "Monitores"),                   # ARZOPA Z1FC
-    ("Computers", "MLA-TONER_DRUMS", None),                                # Brother DR830: queda en revisión
+    ("Computers", "MLA-TONER_DRUMS", "Oficina"),                           # Brother DR830: aprobado por Alejandro 20/11
     ("Luggage", "MLA-CAMERA_BACKPACKS", None),                             # WANDRD: mochila, no cámara
     ("Men's Fashion", "MLA-SUNGLASSES", "Anteojos"),                       # categoría nueva (12/11)
     ("Industrial & Scientific", "MLA-GAS_DETECTORS", "Hogar"),             # Airthings (12/11)
