@@ -251,16 +251,25 @@ section { padding: 64px 0; }
 }
 .badge svg { height: 16px; width: auto; fill: var(--crema); }
 .store { z-index: 3; position: absolute; top: 10px; right: 10px; height: 26px; padding: 0 8px; display: inline-flex; align-items: center; border-radius: 8px; background: var(--celeste); color: var(--esmalte); font: 700 12px var(--sans); }
-.card .body { padding: 16px 18px 0; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+/* 20/11: el cuerpo no se estira; el sobrante va al pie, arriba de «Ver la cuenta completa», para que las cajas
+   de Mercado Libre y Amazon arranquen a la misma altura en todas las columnas de la fila. */
+.card .body { padding: 16px 18px 0; display: flex; flex-direction: column; gap: 6px; flex: none; }
 /* Tarjeta centrada: título, resumen, precios, veredicto y botones (pedido del user, 31/10). */
 .card .body, .card .foot, .card .precio { text-align: center; }
 .card .precio { justify-items: center; }
-.card h3 { font: 700 17px/1.3 var(--sans); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card h3 { font: 700 17px/1.3 var(--sans); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2lh; }
 .card h3 a { text-decoration: none; }
 .card h3 a::after { content: ""; position: absolute; inset: 0; }
-.card .sum { font-size: 14px; color: var(--crema-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card .foot { padding: 16px 18px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: auto; }
-.card .costo { position: relative; z-index: 1; justify-self: center; font-size: 14px; font-weight: 600; color: var(--amarillo); text-decoration: none; }
+.card .sum { font-size: 14px; color: var(--crema-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2lh; }
+.card .foot { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+/* Alto mínimo de cada caja = la más alta medida el 20/11 (ML con «Conviene»: 178 px; Amazon con «Bajó USD…» y
+   «Conviene»: 194 px), así los botones y la caja de Amazon quedan nivelados entre columnas. Medido de 1 a 4
+   columnas, con la tarjeta más angosta de la grilla (270 px). */
+.card .fila-compra { display: flex; flex-direction: column; padding: 12px 10px; }
+.card .caja-ml { min-height: 178px; }
+.card .caja-amazon { min-height: 194px; }
+.card .fila-compra > a { margin-top: auto; min-height: 40px; }
+.card .costo { position: relative; z-index: 1; align-self: center; margin-top: auto; font-size: 14px; font-weight: 600; color: var(--amarillo); text-decoration: none; }
 .card .costo:hover { text-decoration: underline; }
 .card .foot .btn { position: relative; z-index: 1; }
 .card .price { font-family: var(--letra); font-size: 22px; color: var(--amarillo); }
@@ -452,13 +461,16 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .cta-txt { white-space: normal; text-wrap: balance; min-width: 0; }
 .card .gana, .card .fila-compra .btn { min-width: 0; max-width: 100%; }
 .card .gana, .card .fila-compra .btn { width: 100%; justify-content: center; text-align: center; }
-.card .gana { padding: 10px 12px; }
-.card .gana .cta { justify-content: center; font: 800 14px/1.2 var(--sans); }
+/* 20/11: «Comprar en Mercado Libre» en una línea (184 px) también en la tarjeta de 270 px; antes se partía en dos y
+   ese botón medía 54 px contra 40 de los demás. */
+.card .gana { padding: 10px 4px; }
+.card .gana .cta { justify-content: center; gap: 6px; font: 800 14px/1.2 var(--sans); }
+.card .gana .cta-txt { white-space: nowrap; }
 .veredicto { margin: 0; font: 700 13px/1.3 var(--sans); }
 /* 13/11: «Bajó USD N esta semana» (src/lib/bajas-precio.ts). Dato concreto, sin precio tachado. */
 .bajo { justify-self: start; margin: 0; padding: 3px 8px; border-radius: 6px; background: rgba(92, 196, 137, 0.14); box-shadow: inset 0 0 0 1px rgba(92, 196, 137, 0.45); color: var(--verde-claro); font: 700 12px/1.3 var(--sans); }
 .bajo[hidden] { display: none; }
-.card .bajo { justify-self: center; }
+.card .bajo { justify-self: center; align-self: center; }
 /* 13/11: micro-línea bajo el botón principal a Amazon, sólo en la ficha móvil. */
 .courier { margin: -2px 0 0; font: 500 12px/1.35 var(--sans); color: var(--apagado); text-align: center; }
 @media (min-width: 1024px) { .courier { display: none; } }
