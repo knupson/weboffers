@@ -461,11 +461,13 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .cta-txt { white-space: normal; text-wrap: balance; min-width: 0; }
 .card .gana, .card .fila-compra .btn { min-width: 0; max-width: 100%; }
 .card .gana, .card .fila-compra .btn { width: 100%; justify-content: center; text-align: center; }
-/* 20/11: «Comprar en Mercado Libre» en una línea (184 px) también en la tarjeta de 270 px; antes se partía en dos y
-   ese botón medía 54 px contra 40 de los demás. */
+/* 20/11: «Comprar en Mercado Libre» en una línea (184 px) también en la tarjeta de 270 px; antes se partía en dos:
+   el botón ganador medía 54 px contra 40 de los demás y el común quedaba apretado en dos renglones. */
 .card .gana { padding: 10px 4px; }
-.card .gana .cta { justify-content: center; gap: 6px; font: 800 14px/1.2 var(--sans); }
-.card .gana .cta-txt { white-space: nowrap; }
+.card .fila-compra .btn { padding-left: 4px; padding-right: 4px; }
+.card .gana .cta { justify-content: center; font: 800 14px/1.2 var(--sans); }
+.card .fila-compra > a .cta { gap: 6px; }
+.card .fila-compra > a .cta-txt { white-space: nowrap; }
 .veredicto { margin: 0; font: 700 13px/1.3 var(--sans); }
 /* 13/11: «Bajó USD N esta semana» (src/lib/bajas-precio.ts). Dato concreto, sin precio tachado. */
 .bajo { justify-self: start; margin: 0; padding: 3px 8px; border-radius: 6px; background: rgba(92, 196, 137, 0.14); box-shadow: inset 0 0 0 1px rgba(92, 196, 137, 0.45); color: var(--verde-claro); font: 700 12px/1.3 var(--sans); }
