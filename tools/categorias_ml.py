@@ -49,6 +49,8 @@ DOMINIOS_EXACTOS = {
     "MLA-CAMERA_FLASHES": "Cámaras",                                # Godox TT685II-C (MLA79386702)
     "MLA-ELECTRIC_RECIPROCATING_SAWS": "Herramientas",              # DeWalt DCS369B (MLA27346009)
     "MLA-MULTIMETERS": "Herramientas",                              # 19/11: Klein Tools ET600 (MLA70506968)
+    "MLA-LASER_METERS": "Herramientas",                             # 20/11: Bosch GLM165-25G (MLA37183376)
+    "MLA-TONER_DRUMS": "Oficina",                                   # 20/11: Brother DR830 (MLA39172442)
     "MLA-TOY_BUILDING_SETS": "Juguetes",                          # LEGO 10327 (MLA30924256); 28 publicados en Juguetes
     # Ubiquiti G5 Turret Ultra (MLA47225060), publicada en «Herramientas» por la raíz «Tools & Home Improvement».
     # Los Ring de «Hogar» son del catálogo manual (data/catalog.json) y no pasan por el validador.

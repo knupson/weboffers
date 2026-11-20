@@ -21,7 +21,7 @@ from tools.categorias_ml import categoria_ml, categoria_ml_exacta
     ("MLA-FOOD_PROCESSORS", ""),
     ("MLA-CAMERA_BACKPACKS", ""),
     ("MLA-NOTEBOOKS", ""),
-    ("MLA-TONER_DRUMS", ""),
+    ("MLA-INK_CARTRIDGES", ""),
     (None, ""),
 ])
 def test_categoria_ml_exacta(domain, expected):
