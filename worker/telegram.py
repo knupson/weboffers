@@ -120,17 +120,35 @@ def caption(product):
     return "\n".join(lines)
 
 
+def photo_url(product):
+    """JPEG público de la foto. 20/11: 37 de 160 publicados no tenían /products/<slug>.jpg (sólo .webp) y el
+    sendPhoto de samsung-t9 dio 400 el 19/11 20:01; para esos se usa la vista previa /og/<slug>.jpg del build."""
+    jpg = SITE + product["image"].replace(".webp", ".jpg")
+    try:
+        if requests.head(jpg, timeout=10, allow_redirects=True).status_code == 200:
+            return jpg
+    except requests.RequestException:
+        pass
+    og = f"{SITE}/og/{product['slug']}.jpg"
+    print(f"TELEGRAM_FOTO_OG {product['slug']} sin {jpg}", flush=True)
+    return og
+
+
 def send(product):
     token = os.environ["TELEGRAM_BOT_TOKEN"].strip()
     chat = os.environ["TELEGRAM_CHAT_ID"].strip()
     text = caption(product)
+    # 20/11: el 19/11 21:01 sendPhoto dio ReadTimeout con 20 s; Telegram baja la foto antes de responder.
     if product.get("image"):
-        photo = SITE + product["image"].replace(".webp", ".jpg")
         resp = requests.post(f"https://api.telegram.org/bot{token}/sendPhoto",
-                             data={"chat_id": chat, "photo": photo, "caption": text, "parse_mode": "HTML"}, timeout=20)
+                             data={"chat_id": chat, "photo": photo_url(product), "caption": text,
+                                   "parse_mode": "HTML"}, timeout=60)
     else:
         resp = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                             data={"chat_id": chat, "text": text, "parse_mode": "HTML"}, timeout=20)
+                             data={"chat_id": chat, "text": text, "parse_mode": "HTML"}, timeout=60)
+    if not resp.ok:
+        # 20/11: el 400 del 19/11 20:01 no dejó la descripción de Telegram en el log.
+        print(f"TELEGRAM_RESPUESTA {resp.status_code} {resp.text[:300]}", flush=True)
     resp.raise_for_status()
 
 

@@ -37,6 +37,30 @@ def env(monkeypatch):
     monkeypatch.setattr(telegram, "datetime", Clock)
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "@canal")
+    monkeypatch.setattr(telegram.requests, "head", Mock(return_value=Mock(status_code=200)))
+
+
+def test_sin_jpg_usa_la_vista_previa_og(tmp_path, monkeypatch, capsys):
+    # 19/11 20:01: samsung-t9 sólo tenía .webp, el .jpg daba 404 y sendPhoto devolvió 400.
+    monkeypatch.setattr(telegram.requests, "head", Mock(return_value=Mock(status_code=404)))
+    post = Mock()
+    post.return_value.ok = True
+    monkeypatch.setattr(telegram.requests, "post", post)
+    assert telegram.maybe_post(CATALOG, tmp_path / "s.json", noon_art()) == "con-foto"
+    assert post.call_args.kwargs["data"]["photo"] == "https://ofertas.knunet.com/og/con-foto.jpg"
+    assert "TELEGRAM_FOTO_OG con-foto" in capsys.readouterr().out
+
+
+def test_error_de_la_api_deja_la_descripcion_en_el_log(tmp_path, monkeypatch, capsys):
+    post = Mock()
+    post.return_value.ok = False
+    post.return_value.status_code = 400
+    post.return_value.text = '{"ok":false,"description":"Bad Request: wrong file identifier"}'
+    post.return_value.raise_for_status.side_effect = telegram.requests.HTTPError("400")
+    monkeypatch.setattr(telegram.requests, "post", post)
+    with pytest.raises(telegram.requests.HTTPError):
+        telegram.maybe_post(CATALOG, tmp_path / "s.json", noon_art())
+    assert "TELEGRAM_RESPUESTA 400" in capsys.readouterr().out
 
 
 def noon_art():
