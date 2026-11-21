@@ -27,10 +27,12 @@ NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 # (Mistral 101 s de media, Minimax 34 s; 136 s por par). Ahora los votos de un par van en paralelo y se
 # revisan varios pares a la vez, con un tope de pedidos en vuelo a NVIDIA (plan gratis).
 PARES_EN_PARALELO = int(os.environ.get("DUDOSOS_PARES", "3"))
-NVIDIA_EN_VUELO = int(os.environ.get("DUDOSOS_NVIDIA_EN_VUELO", "3"))
+# 21/11: con 3 en vuelo y 300 s, Mistral dio ReadTimeout en 9 de 13 votos (worker-2026-11-21.log 06:25-06:40)
+# y una prueba aislada tardó 173 s. Pedido de Alejandro: 2 en vuelo, 600 s y un reintento ante ReadTimeout.
+NVIDIA_EN_VUELO = int(os.environ.get("DUDOSOS_NVIDIA_EN_VUELO", "2"))
 # 12/11: en serie, 3 de 36 votos válidos de Mistral pasaron los 180 s (máx. 272 s); en el replay con 3 en vuelo,
-# 7 de 54 votos vencieron a los 180 s. Se queda en 300 s: con pares en paralelo un voto lento ya no frena la cola.
-NVIDIA_TIMEOUT = int(os.environ.get("DUDOSOS_NVIDIA_TIMEOUT", "300"))
+# 7 de 54 votos vencieron a los 180 s. Se había quedado en 300 s; desde el 21/11, 600 s (ver arriba).
+NVIDIA_TIMEOUT = int(os.environ.get("DUDOSOS_NVIDIA_TIMEOUT", "600"))
 # 12/11: se probó un prompt que no rechazaba por falta de UPC/EAN en ML. En el replay de 27 pares de hoy, un
 # modelo aprobó pares que los dos habían rechazado con razón (OneSkin RICH CREAM vs OS-01 FACE, Medicube) y
 # ninguna barrera posterior compara identidad: se mantiene el criterio original (ante la duda, rechazar).
@@ -103,12 +105,19 @@ def votar(modelo: str, evidencia: dict, post=requests.post) -> tuple[str, str]:
         return "invalido", "sin clave NVIDIA"
     try:
         for intento in range(REINTENTOS_NVIDIA + 1):
-            with _nvidia:
-                response = post(NVIDIA_URL, headers={"Authorization": f"Bearer {key}"}, json={
-                    "model": modelo, "temperature": 0, "max_tokens": 4000,
-                    "messages": [
-                        {"role": "system", "content": PROMPT},
-                        {"role": "user", "content": json.dumps(evidencia, ensure_ascii=False)}]}, timeout=NVIDIA_TIMEOUT)
+            try:
+                with _nvidia:
+                    response = post(NVIDIA_URL, headers={"Authorization": f"Bearer {key}"}, json={
+                        "model": modelo, "temperature": 0, "max_tokens": 4000,
+                        "messages": [
+                            {"role": "system", "content": PROMPT},
+                            {"role": "user", "content": json.dumps(evidencia, ensure_ascii=False)}]}, timeout=NVIDIA_TIMEOUT)
+            except requests.exceptions.ReadTimeout:
+                if intento >= REINTENTOS_NVIDIA:
+                    raise
+                log(f"DUDOSO_REINTENTO modelo={modelo} motivo=ReadTimeout timeout={NVIDIA_TIMEOUT}s")
+                time.sleep(ESPERA_REINTENTO)
+                continue
             status = getattr(response, "status_code", None)
             if isinstance(status, int) and (status == 429 or status >= 500) and intento < REINTENTOS_NVIDIA:
                 time.sleep(ESPERA_REINTENTO)

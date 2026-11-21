@@ -32,7 +32,7 @@ def test_dos_aprobar_aprueba():
     assert d.decidir([d.votar(modelo, {}, post=post) for modelo in d.MODELOS]) == "aprobar"
     for call, modelo in zip(post.call_args_list, d.MODELOS):
         assert call.args == ("https://integrate.api.nvidia.com/v1/chat/completions",)
-        assert call.kwargs["timeout"] == d.NVIDIA_TIMEOUT == 300
+        assert call.kwargs["timeout"] == d.NVIDIA_TIMEOUT == 600
         assert call.kwargs["json"]["max_tokens"] == 4000
         assert call.kwargs["json"]["temperature"] == 0
         assert call.kwargs["json"]["model"] == modelo
@@ -324,6 +324,21 @@ def test_429_se_reintenta_una_vez(monkeypatch):
     assert d.votar("a", {}, post=post) == ("aprobar", "Mismo modelo") and post.call_count == 2
     post = Mock(side_effect=[malo, malo])
     assert d.votar("a", {}, post=post)[0] == "invalido" and post.call_count == 2
+
+
+def test_read_timeout_se_reintenta_una_vez(monkeypatch):
+    # 21/11: Mistral pasó los 300 s en 9 de 13 votos (ReadTimeout) y los 9 pares fueron a Alejandro.
+    monkeypatch.setattr(d.time, "sleep", lambda s: None)
+    ok = post_falso(voto())()
+    ok.status_code = 200
+    post = Mock(side_effect=[requests.exceptions.ReadTimeout(), ok])
+    assert d.votar("a", {}, post=post) == ("aprobar", "Mismo modelo") and post.call_count == 2
+    post = Mock(side_effect=[requests.exceptions.ReadTimeout(), requests.exceptions.ReadTimeout()])
+    assert d.votar("a", {}, post=post) == ("invalido", "falló la respuesta (ReadTimeout)") and post.call_count == 2
+
+
+def test_timeout_600_y_dos_pedidos_en_vuelo_por_defecto():
+    assert d.NVIDIA_TIMEOUT == 600 and d.NVIDIA_EN_VUELO == 2
 
 
 def test_version_del_prompt_sale_del_texto():
