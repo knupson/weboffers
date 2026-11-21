@@ -72,7 +72,7 @@ const nav = [
         <a class="logo letra" href="/" aria-label={`${SITE.name}, inicio`}>{SITE.name}</a>
         <nav aria-label="Secciones">
           {nav.map(([href, label]) => (
-            <a href={href} class={href === "/guias/" || href === "/conviene-hoy/" ? "hide-sm" : undefined} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
+            <a href={href} aria-current={path.startsWith(href) ? "page" : undefined}>{label}</a>
           ))}
         </nav>
         <span class="rate-pill">MEP usado en cálculos <b class="num" data-build-mep>{mep}</b></span>
