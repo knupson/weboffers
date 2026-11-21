@@ -4,24 +4,23 @@ import ShareButtons from "../../components/ShareButtons.astro";
 import ProductCard from "../../components/ProductCard.astro";
 import Icon from "../../components/Icon.astro";
 import { SITE } from "../../config";
-import { loadGuias, linkify } from "../../lib/guias";
-import { isComparable, loadProducts } from "../../lib/data";
+import { guiasPublicables, loadGuias, linkify } from "../../lib/guias";
+import { isComparable, loadProducts, MIN_AMAZON_SAVING } from "../../lib/data";
 
 export async function getStaticPaths() {
   const { products } = await loadProducts();
-  const guias = loadGuias();
-  return guias.map((g) => ({
+  // Una guía dinámica con menos productos publicados hoy que su mínimo no se genera: /guias/<slug>/ da 404.
+  const publicables = guiasPublicables(loadGuias(), products.filter((p) => isComparable(p)));
+  return publicables.map(({ g, productos, notas }) => ({
     params: { slug: g.slug },
-    props: {
-      g,
-      related: g.related.map((s) => products.find((p) => p.slug === s && isComparable(p))).filter((p) => p != null),
-      otras: guias.filter((o) => o.slug !== g.slug),
-    },
+    props: { g, productos, notas, otras: publicables.map((o) => o.g).filter((o) => o.slug !== g.slug) },
   }));
 }
 
-const { g, related, otras } = Astro.props;
+const { g, productos, notas, otras } = Astro.props;
 const url = `${SITE.url}/guias/${g.slug}/`;
+const conNotas = Object.keys(notas).length > 0;
+const minimoPct = Math.round(MIN_AMAZON_SAVING * 100);
 ---
 
 <Base
@@ -47,6 +46,25 @@ const url = `${SITE.url}/guias/${g.slug}/`;
     <p class="lead" set:html={linkify(g.intro)} />
     <ShareButtons title={g.h1} />
   </div>
+
+  {g.filtro && productos.length > 0 && (
+    <section style="padding-top: 16px">
+      <div class="wrap">
+        <div class="transparencia">
+          <h2>Cómo hacemos la cuenta</h2>
+          <ul>
+            <li>El monto de Amazon es el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000.</li>
+            <li>Hasta USD 400 por envío no se pagan derechos de importación ni tasa de estadística: es la franquicia del régimen courier (Decreto 1065/2024), con un máximo de 5 envíos por año por persona.</li>
+            <li>Si traerlo no ahorra al menos un {minimoPct} %, recomendamos Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos del año.</li>
+            <li>La lista se arma de nuevo cada madrugada con los precios de ese día. Un producto sin precio del día en las dos tiendas no aparece.</li>
+          </ul>
+          <p set:html={linkify("El detalle de cada producto está en «Ver la cuenta completa», y podés probar con tus números en la calculadora (/calculadora/).")} />
+        </div>
+        <div class="grid-products" style="margin-top: 24px">{productos.map((p) => <ProductCard product={p} ubicacion="guia" nota={conNotas ? (notas[p.slug] ?? {}) : undefined} />)}</div>
+      </div>
+    </section>
+  )}
+
   <section style="padding-top: 16px">
     <div class="wrap"><div class="prose">
       {g.sections.map((s) => (
@@ -56,6 +74,27 @@ const url = `${SITE.url}/guias/${g.slug}/`;
           {s.bullets && <ul>{s.bullets.map((b) => <li set:html={linkify(b)} />)}</ul>}
         </>
       ))}
+    </div></div>
+  </section>
+
+  {!g.filtro && productos.length > 0 && (
+    <section style="padding-top: 0">
+      <div class="wrap">
+        <div class="head"><h2 class="letra">Productos de esta guía</h2></div>
+        <div class="grid-products">{productos.map((p) => <ProductCard product={p} ubicacion="guia" nota={conNotas ? (notas[p.slug] ?? {}) : undefined} />)}</div>
+      </div>
+    </section>
+  )}
+
+  <section class="wrap" style="padding-top: 8px">
+    <a class="telegram-cta" href="https://t.me/franquicia400" target="_blank" rel="noopener noreferrer" data-umami-event="telegram" data-umami-event-origen="guia" data-umami-event-guia={g.slug}>
+      <span><b>Seguí los precios sin volver a entrar</b>Todos los días a las 12 y a las 20 publicamos en Telegram la mejor oferta del momento, comparada con los precios de ese día.</span>
+      <span class="btn">Unirme al canal</span>
+    </a>
+  </section>
+
+  <section style="padding-top: 24px">
+    <div class="wrap"><div class="prose">
       <h2>Preguntas frecuentes</h2>
       {g.faq.map((f) => (
         <details class="faq">
@@ -67,19 +106,12 @@ const url = `${SITE.url}/guias/${g.slug}/`;
     </div></div>
   </section>
 
-  {related.length > 0 && (
+  {otras.length > 0 && (
     <section style="padding-top: 0">
-      <div class="wrap">
-        <div class="head"><h2 class="letra">Productos de esta guía</h2></div>
-        <div class="grid-products">{related.map((p) => <ProductCard product={p} ubicacion="guia" />)}</div>
-      </div>
+      <div class="wrap"><div class="prose">
+        <h2>Otras guías</h2>
+        <ul>{otras.map((o) => <li><a href={`/guias/${o.slug}/`}>{o.h1}</a></li>)}</ul>
+      </div></div>
     </section>
   )}
-
-  <section style="padding-top: 0">
-    <div class="wrap"><div class="prose">
-      <h2>Otras guías</h2>
-      <ul>{otras.map((o) => <li><a href={`/guias/${o.slug}/`}>{o.h1}</a></li>)}</ul>
-    </div></div>
-  </section>
 </Base>

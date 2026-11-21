@@ -1,5 +1,200 @@
 [
   {
+    "slug": "relojes-importados-amazon-vs-mercadolibre",
+    "title": "Relojes importados: Amazon o Mercado Libre, con precios de hoy",
+    "description": "Bulova, Casio G-Shock, Seiko, Orient e Invicta: cuánto sale traerlos de Amazon puesto en tu casa contra el precio de hoy en Mercado Libre.",
+    "h1": "Relojes importados: ¿traerlo de Amazon o comprarlo en Mercado Libre?",
+    "intro": "Los relojes que comparamos hoy, ordenados por cuánto ahorrás trayéndolos de Amazon. Comparamos dos números en pesos: el precio de hoy en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa, con IVA y cargos de importación. La lista se arma de nuevo cada madrugada con los precios de ese día.",
+    "filtro": {
+      "categorias": [
+        "Relojes"
+      ],
+      "ordenarPor": "ahorro_ars",
+      "limite": 8,
+      "minimo": 4
+    },
+    "badgePrimero": "Mayor ahorro real",
+    "sections": [
+      {
+        "heading": "Qué relojes entran en la lista",
+        "paragraphs": [
+          "Sólo entran relojes que encontramos en las dos tiendas con el mismo modelo y el mismo código, con precio de hoy de los dos lados y con envío gratis a Argentina confirmado en Amazon. Si un día falta alguno de esos datos, el reloj no aparece.",
+          "El orden sale del ahorro en pesos: primero el que más baja trayéndolo de Amazon. Cada tarjeta tiene el detalle de la cuenta en «Ver la cuenta completa»."
+        ]
+      },
+      {
+        "heading": "Por qué la diferencia suele ser grande en relojes",
+        "paragraphs": [
+          "Un reloj pesa poco, entra en un solo paquete y casi siempre queda por debajo de USD 400. Dentro de ese monto no se pagan derechos de importación ni tasa de estadística (franquicia del régimen courier, Decreto 1065/2024), así que el total es el precio de Amazon más el IVA y los cargos de importación que Amazon cobra en el checkout.",
+          "La cuenta completa está en la guía de la franquicia (/guias/franquicia-400-dolares/)."
+        ]
+      },
+      {
+        "heading": "Qué mirar antes de comprar",
+        "paragraphs": [
+          "Antes de pagar, revisá estos puntos:"
+        ],
+        "bullets": [
+          "Que el código del modelo coincida con el que buscás (por ejemplo, la variante de color o de malla).",
+          "Que el total del checkout de Amazon sea parecido al estimado de la tarjeta.",
+          "Que te queden envíos con franquicia en el año: son 5 por persona.",
+          "Si el ahorro es chico, Mercado Libre te da garantía local, entrega en días y cuotas."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿El precio de Amazon que muestran incluye los impuestos?",
+        "a": "Sí. Es el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000. El número final es el que te muestra Amazon al pagar."
+      },
+      {
+        "q": "¿Por qué a veces recomiendan Mercado Libre aunque Amazon salga menos?",
+        "a": "Porque si traerlo no ahorra al menos un 10 %, conviene Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos con franquicia del año."
+      },
+      {
+        "q": "¿Puedo traer más de un reloj en el mismo envío?",
+        "a": "Sí, mientras el total del envío no pase de USD 400 para quedar dentro de la franquicia. El exceso sobre USD 400 paga derechos de importación y tasa de estadística. Podés hacer la cuenta en la calculadora (/calculadora/)."
+      },
+      {
+        "q": "¿Cada cuánto se actualiza la lista?",
+        "a": "Todos los días de madrugada, con los precios de ese día en las dos tiendas. Un reloj sin precio del día en alguna de las dos no aparece."
+      }
+    ]
+  },
+  {
+    "slug": "herramientas-profesionales-y-auto-courier",
+    "title": "Herramientas y accesorios para auto por courier: Amazon o Mercado Libre",
+    "description": "DeWalt, Bosch, Milwaukee, Klein Tools, Ingersoll Rand, Viair y más: cuánto sale traerlos de Amazon puesto en tu casa contra Mercado Libre hoy.",
+    "h1": "Herramientas profesionales y accesorios para auto: ¿conviene traerlos por courier?",
+    "intro": "Herramientas y accesorios para auto que comparamos hoy, ordenados por cuánto ahorrás trayéndolos de Amazon. Comparamos dos números en pesos: el precio de hoy en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa, con IVA y cargos de importación. La lista se arma de nuevo cada madrugada con los precios de ese día.",
+    "filtro": {
+      "categorias": [
+        "Herramientas",
+        "Auto"
+      ],
+      "ordenarPor": "ahorro_ars",
+      "limite": 8,
+      "minimo": 4
+    },
+    "badgePrimero": "Mayor ahorro real",
+    "notas": {
+      "dewalt-dch273b": {
+        "texto": "Solo herramienta: sin batería ni cargador"
+      },
+      "jigoo-15kpa-t600-700w": {
+        "texto": "Funciona a 120 V"
+      }
+    },
+    "sections": [
+      {
+        "heading": "Qué entra en la lista",
+        "paragraphs": [
+          "Sólo entran productos que encontramos en las dos tiendas con el mismo modelo, con precio de hoy de los dos lados y con envío gratis a Argentina confirmado en Amazon. El orden sale del ahorro en pesos.",
+          "En algunos productos Mercado Libre sale igual o menos. En esos casos la tarjeta lo marca y te lleva a Mercado Libre."
+        ]
+      },
+      {
+        "heading": "Qué revisar en herramientas",
+        "paragraphs": [
+          "Antes de pagar, revisá estos puntos:"
+        ],
+        "bullets": [
+          "Si dice «solo herramienta» o «tool only», viene sin batería ni cargador. Compará con eso en mente.",
+          "Lo que se enchufa a la red tiene que funcionar con 220 V. Si la ficha dice sólo 110 o 120 V, vas a necesitar un transformador.",
+          "Las herramientas a batería usan baterías del mismo sistema de la marca: revisá que sean compatibles con las que ya tenés.",
+          "Mirá el peso: el envío gratis de Amazon depende del producto, y la tarjeta sólo lo marca cuando está confirmado."
+        ]
+      },
+      {
+        "heading": "Accesorios para auto",
+        "paragraphs": [
+          "Cámaras para auto, compresores, inversores y reguladores de carga entran en la misma cuenta. Muchos se alimentan con los 12 V del auto; los que se enchufan a la red tienen el mismo cuidado del voltaje que las herramientas."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Las herramientas de EE.UU. funcionan en Argentina?",
+        "a": "Las que van a batería sí, porque no dependen de la red. Lo que se enchufa tiene que aceptar 220 V; si la ficha dice sólo 110 o 120 V, hace falta un transformador. El cargador de las baterías también se enchufa, así que revisá su voltaje."
+      },
+      {
+        "q": "¿Qué significa «solo herramienta»?",
+        "a": "Que la caja trae la herramienta sin batería ni cargador. Sirve si ya tenés baterías de la misma marca y sistema."
+      },
+      {
+        "q": "¿El precio de Amazon que muestran incluye los impuestos?",
+        "a": "Sí. Es el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000. Hasta USD 400 por envío no se pagan derechos de importación ni tasa de estadística."
+      },
+      {
+        "q": "¿Y la garantía?",
+        "a": "Comprando en Mercado Libre tenés garantía local. Por eso, si traerlo de Amazon no ahorra al menos un 10 %, recomendamos Mercado Libre."
+      }
+    ]
+  },
+  {
+    "slug": "redes-almacenamiento-hardware-usa",
+    "title": "Routers Wi-Fi 7, discos SSD y componentes de PC: Amazon o Mercado Libre",
+    "description": "Routers ASUS y TP-Link, SSD Samsung, Crucial y WD, procesadores AMD y motherboards: cuánto sale traerlos de Amazon contra el precio de hoy en Mercado Libre.",
+    "h1": "Redes, almacenamiento y componentes de PC: ¿traerlos de EE.UU. o comprarlos acá?",
+    "intro": "Routers, discos y componentes que comparamos hoy, ordenados por cuánto ahorrás trayéndolos de Amazon. Comparamos dos números en pesos: el precio de hoy en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa, con IVA y cargos de importación. La lista se arma de nuevo cada madrugada con los precios de ese día.",
+    "filtro": {
+      "categorias": [
+        "Redes",
+        "Almacenamiento",
+        "Componentes"
+      ],
+      "ordenarPor": "ahorro_ars",
+      "limite": 8,
+      "minimo": 4
+    },
+    "badgePrimero": "Mayor ahorro real",
+    "sections": [
+      {
+        "heading": "Qué entra en la lista",
+        "paragraphs": [
+          "Sólo entran productos que encontramos en las dos tiendas con el mismo modelo y la misma capacidad, con precio de hoy de los dos lados y con envío gratis a Argentina confirmado en Amazon. El orden sale del ahorro en pesos.",
+          "En discos y componentes la diferencia cambia mucho de un día a otro, y en varios Mercado Libre sale igual o menos. La tarjeta te marca dónde conviene hoy."
+        ]
+      },
+      {
+        "heading": "Qué revisar antes de comprar",
+        "paragraphs": [
+          "Antes de pagar, revisá estos puntos:"
+        ],
+        "bullets": [
+          "En discos, que coincidan la capacidad y el formato (por ejemplo, M.2 2280 o 2230).",
+          "En routers, que la fuente diga 100-240 V para enchufarla en Argentina sin transformador.",
+          "En procesadores y motherboards, que el socket sea compatible (AM4 o AM5 en AMD).",
+          "Si el ahorro es chico, Mercado Libre te da garantía local, entrega en días y cuotas."
+        ]
+      },
+      {
+        "heading": "La franquicia y los componentes caros",
+        "paragraphs": [
+          "Hasta USD 400 por envío no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). Si juntás varios componentes en un solo pedido y el total pasa de USD 400, el exceso paga esos dos conceptos. Podés hacer la cuenta en la calculadora (/calculadora/)."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿Un router comprado en EE.UU. funciona en Argentina?",
+        "a": "El router sí; lo que hay que revisar es la fuente. Si dice 100-240 V, se enchufa directo con un adaptador de ficha. Si dice sólo 110 o 120 V, hace falta un transformador."
+      },
+      {
+        "q": "¿Conviene traer varios componentes juntos?",
+        "a": "Mientras el total del envío no pase de USD 400, sí: usás un solo envío de los 5 que tenés por año. Si pasa de USD 400, el exceso paga derechos de importación y tasa de estadística."
+      },
+      {
+        "q": "¿El precio de Amazon que muestran incluye los impuestos?",
+        "a": "Sí. Es el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000."
+      },
+      {
+        "q": "¿Por qué a veces recomiendan Mercado Libre?",
+        "a": "Porque si traerlo no ahorra al menos un 10 %, conviene Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos del año."
+      }
+    ]
+  },
+  {
     "slug": "franquicia-400-dolares",
     "title": "Franquicia de 400 dólares courier Argentina 2026",
     "description": "Cómo funciona la franquicia de 400 dólares del courier en Argentina 2026: qué se paga, cuántos envíos entran y qué límites tiene.",
@@ -143,7 +338,7 @@
       {
         "heading": "Paso 6: elegí cómo pagar",
         "paragraphs": [
-          "Podés pagar con tarjeta argentina o con dólares que ya tengas, por ejemplo en una tarjeta o cuenta en dólares. El tipo de cambio que se aplica cambia el total en pesos, y por eso el sitio muestra el resultado con el dólar MEP y con el dólar tarjeta. Tenés el detalle en la guía sobre dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/)."
+          "Podés pagar con tarjeta argentina o con dólares que ya tengas, por ejemplo en una tarjeta o cuenta en dólares. El tipo de cambio que se aplica cambia el total en pesos, y por eso el sitio muestra el resultado con el dólar MEP y con el dólar tarjeta."
         ]
       },
       {
@@ -184,294 +379,5 @@
       "logitech-mx-master-3s",
       "samsung-t7-portable-ssd-1tb"
     ]
-  },
-  {
-    "slug": "amazon-espana-desde-argentina",
-    "title": "Comprar en Amazon España desde Argentina",
-    "description": "Comprar en Amazon España desde Argentina: precios en euros, voltaje de 220 V, enchufe europeo y adaptador, y cómo calcular el costo final.",
-    "h1": "Comprar en Amazon España desde Argentina: euros, voltaje y enchufe",
-    "intro": "Amazon.es tiene un catálogo distinto al de Amazon.com y, en algunas categorías, productos que no encontrás con facilidad del otro lado, como electrodomésticos pensados para 220 V. Pero hay tres cosas que conviene entender antes de comprar: el precio está en euros, el régimen de impuestos es el mismo del courier y el enchufe no es el argentino. Esta guía repasa cada punto.",
-    "sections": [
-      {
-        "heading": "Precios en euros y cómo se convierten",
-        "paragraphs": [
-          "Amazon.es muestra todo en euros. Para comparar con una compra en dólares, el sitio convierte usando el euro oficial dividido por el dólar oficial. De esa manera obtenés el precio equivalente en dólares, que es la base sobre la que se calcula el régimen de courier.",
-          "Los impuestos argentinos se calculan en dólares, así que ese paso intermedio importa. El resultado final en pesos depende después del tipo de cambio con el que pagues, y por eso el sitio muestra el total con dólar MEP y con dólar tarjeta."
-        ]
-      },
-      {
-        "heading": "Qué impuestos se aplican",
-        "paragraphs": [
-          "El régimen es el mismo que para cualquier compra por courier. Hay una franquicia de USD 400 FOB por envío, hasta 5 envíos por año por persona. Dentro de la franquicia no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). El exceso sobre USD 400 paga ambos, y los demás impuestos, como el IVA, siguen el régimen general (RG ARCA 5608/2024).",
-          "El tope por envío es de USD 3.000 FOB y 50 kg. El detalle completo está en la guía de la franquicia (/guias/franquicia-400-dolares/).",
-          "El IVA es del 21%, el mismo que cobra Amazon.com en el checkout para Argentina. La calculadora (/calculadora/) lo aplica solo."
-        ]
-      },
-      {
-        "heading": "Voltaje: qué funciona en Argentina",
-        "paragraphs": [
-          "Argentina usa 220 V y 50 Hz, igual que España. La corriente es compatible. El punto a revisar es el equipo en sí.",
-          "La mayoría de la electrónica tiene fuentes multivoltaje, de 100 a 240 V. Eso incluye cargadores, notebooks, e-readers, auriculares, monitores y discos externos. Fijate que la etiqueta o la ficha técnica diga el rango de entrada.",
-          "Los electrodomésticos con motor o resistencia, como cafeteras, secadores, aspiradoras o freidoras de aire, deberían ser de 220 a 240 V. Amazon.es vende esa versión, que es una de las razones para mirarlo."
-        ]
-      },
-      {
-        "heading": "Enchufe: vas a necesitar un adaptador",
-        "paragraphs": [
-          "Los productos de Amazon.es vienen con enchufe europeo tipo Schuko, con dos patas redondas y contactos laterales a tierra. El enchufe argentino es el tipo I, con patas planas en V.",
-          "Necesitás un adaptador de Schuko a tipo I. Suele ser barato y se consigue en ferreterías o tiendas de electrónica. Para electrodomésticos de mucha potencia elegí un adaptador de buena calidad, porque calientan más que un cargador.",
-          "Otra opción es cambiar la ficha del cable si el cable es desmontable, pero para la mayoría de la gente el adaptador es lo más simple."
-        ]
-      },
-      {
-        "heading": "Cómo comprar paso a paso",
-        "paragraphs": [
-          "Primero, verificá que tengas CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA. Después, buscá el producto en Amazon.es y mirá si el vendedor envía a Argentina. No todos los productos lo hacen, y Amazon lo avisa al cargar la dirección.",
-          "Con el precio en euros y el costo de envío, usá la calculadora (/calculadora/) para ver el total en dólares y en pesos. Para ver el paso a paso general de la compra, tenés la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/)."
-        ]
-      },
-      {
-        "heading": "Cuándo conviene mirar Amazon.es",
-        "paragraphs": [
-          "Amazon.es tiene sentido cuando buscás un producto que no está en Amazon.com, o cuando necesitás una versión de 220 a 240 V de un electrodoméstico. También cuando el modelo europeo tiene una variante que te interesa.",
-          "Dicho sin vueltas: Amazon.es casi nunca compensa el envío. Medimos envíos desde Amazon.es a Argentina de entre 36 y 95 € por artículo; por ejemplo, una pava de 37 € se envió por 42 €. Solo conviene con productos caros, donde el envío pesa menos en el total.",
-          "Si el mismo producto está en las dos tiendas, comparalo con el costo final. Pasá cada precio a dólares, sumá el envío y compará los totales en la calculadora (/calculadora/). La diferencia de precio de lista a veces desaparece cuando se agrega el envío.",
-          "Verificá también que el vendedor despache a Argentina. Si el producto no aparece disponible para tu dirección, no hay forma de avanzar con esa publicación."
-        ]
-      },
-      {
-        "heading": "Qué mirar antes de confirmar",
-        "bullets": [
-          "Que el producto se envíe a Argentina.",
-          "El costo de envío internacional, que va dentro del cálculo de impuestos.",
-          "El voltaje del equipo, sobre todo si tiene motor o resistencia.",
-          "Que tengas el adaptador de Schuko a tipo I.",
-          "Las condiciones de Amazon sobre cargos de importación, que conviene leer en Amazon antes de pagar."
-        ],
-        "paragraphs": [
-          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
-        ]
-      }
-    ],
-    "faq": [
-      {
-        "q": "¿Los productos de Amazon.es funcionan en Argentina?",
-        "a": "La electrónica con fuente de 100 a 240 V funciona sin problema. Los electrodomésticos con motor o resistencia deberían ser de 220 a 240 V, y Amazon.es vende esa versión. Siempre revisá la etiqueta del equipo."
-      },
-      {
-        "q": "¿Qué enchufe traen los productos de Amazon.es?",
-        "a": "Enchufe europeo tipo Schuko. Para usarlos en Argentina necesitás un adaptador al enchufe tipo I."
-      },
-      {
-        "q": "¿Cómo se convierte el precio en euros?",
-        "a": "El sitio usa el euro oficial dividido por el dólar oficial para llevar el precio a dólares, y sobre esa base calcula el régimen de courier."
-      },
-      {
-        "q": "¿Pago diferentes impuestos si compro en Amazon.es?",
-        "a": "No, rige el mismo régimen de courier. Hay franquicia de USD 400 FOB por envío y el exceso paga derechos y tasa de estadística. El IVA sigue el régimen general."
-      }
-    ],
-    "related": []
-  },
-  {
-    "slug": "cuanto-sale-traer-un-kindle",
-    "title": "Kindle en Argentina: por qué Amazon no lo envía y qué lector traer",
-    "description": "Amazon.com no envía el Kindle a Argentina. Qué lector traer (Kobo Clara Colour o Libra Colour con envío gratis), cuánto cobra Amazon y cómo calcular el total.",
-    "h1": "Kindle en Argentina: por qué Amazon no lo envía y qué lector traer",
-    "intro": "Mucha gente busca traer un Kindle desde Amazon.com, pero el Kindle no se envía a Argentina. Esta guía explica por qué, qué lector Kobo sí llega con envío gratis y cuánto puede terminar costando puesto en tu casa.",
-    "sections": [
-      {
-        "heading": "Por qué Amazon no envía el Kindle a Argentina",
-        "paragraphs": [
-          "Amazon.com no envía el Kindle Paperwhite a Argentina. Si elegís una dirección argentina en la ficha, la página muestra el mensaje “This item cannot be shipped to your selected delivery location”, y no hay forma de avanzar con esa compra.",
-          "Lo mismo pasa con otros productos populares, como los AirPods, los power banks de Anker o las mini PC de Beelink. Por eso conviene revisar la ficha antes de hacer cualquier otra cuenta."
-        ]
-      },
-      {
-        "heading": "La alternativa: un lector Kobo",
-        "paragraphs": [
-          "Los lectores Kobo Clara Colour (/productos/kobo-clara-colour/) y Kobo Libra Colour (/productos/kobo-libra-colour/) sí se envían a Argentina desde Amazon.com, con envío gratis. Son la alternativa a considerar si buscás un lector electrónico traído del exterior."
-        ]
-      },
-      {
-        "heading": "Un ejemplo con números",
-        "paragraphs": [
-          "Supongamos un lector de USD 160 en Amazon.com. Como el precio supera los USD 100, el envío es gratis. Aun así, Amazon cobra alrededor de USD 200 en total al pagar, es decir unos 25% más que el precio del producto. Ese recargo incluye el IVA del 21% y los cargos de importación de Amazon. Es un ejemplo con cifras redondas, no el precio de ningún modelo.",
-          "Como el producto vale menos de USD 400 FOB, entra en la franquicia del courier: no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). Cada envío con franquicia cuenta dentro del cupo de 5 por año por persona."
-        ]
-      },
-      {
-        "heading": "Qué revisar antes de pagar",
-        "paragraphs": [
-          "Confirmá el total exacto en el checkout de Amazon. El 25% es una referencia para comparar, no reemplaza el número final.",
-          "Para ver el total en pesos, cargá el precio y el envío en la calculadora (/calculadora/). Si querés entender la diferencia entre los dos tipos de cambio, leé la guía de dólar MEP o tarjeta (/guias/mep-o-tarjeta-para-comprar-en-amazon/).",
-          "Sobre el IVA: Amazon cobra el 21% en el checkout, más unos cargos de importación propios. Ya está incluido en la cuenta."
-        ]
-      },
-      {
-        "heading": "Antes de comprar: requisitos",
-        "paragraphs": [
-          "Para recibir el paquete por courier necesitás CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA. Verificalo antes de pagar.",
-          "Para el paso a paso completo, mirá la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/).",
-          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
-        ]
-      }
-    ],
-    "faq": [
-      {
-        "q": "¿Amazon envía el Kindle a Argentina?",
-        "a": "No. Amazon.com no envía el Kindle Paperwhite a Argentina: al elegir una dirección argentina, la ficha indica que el producto no puede enviarse a esa ubicación."
-      },
-      {
-        "q": "¿Qué lector puedo traer desde Amazon?",
-        "a": "Los Kobo Clara Colour y Kobo Libra Colour sí se envían a Argentina desde Amazon.com, con envío gratis."
-      },
-      {
-        "q": "¿Cuánto termina costando?",
-        "a": "Amazon cobra alrededor de un 25% por encima del precio del producto, entre IVA y cargos de importación. En el ejemplo de esta guía, con un lector de USD 160, el total es de unos USD 200."
-      },
-      {
-        "q": "¿Se pagan aranceles por un lector?",
-        "a": "Si el producto no supera USD 400 FOB y el envío entra dentro de los 5 envíos anuales con franquicia, no hay derechos de importación ni tasa de estadística. El IVA ya está incluido en el total que cobra Amazon."
-      }
-    ],
-    "related": []
-  },
-  {
-    "slug": "mep-o-tarjeta-para-comprar-en-amazon",
-    "title": "Dólar MEP o tarjeta para comprar en Amazon",
-    "description": "Dólar MEP o tarjeta para comprar en Amazon desde Argentina: en qué se diferencian, cuándo se usa cada uno y cómo los muestra el sitio.",
-    "h1": "Dólar MEP o tarjeta para comprar en Amazon: en qué se diferencian",
-    "intro": "Cuando comprás en Amazon desde Argentina, el total en dólares es solo la mitad de la cuenta. La otra mitad es cuántos pesos te cuesta ese dólar, y eso depende de cómo pagues. Las dos formas más comunes son pagar con una tarjeta argentina, que usa el dólar tarjeta, o pagar con dólares comprados a MEP. Esta guía explica la diferencia y cómo la ves reflejada en el sitio.",
-    "sections": [
-      {
-        "heading": "Qué es el dólar tarjeta",
-        "paragraphs": [
-          "El dólar tarjeta es el tipo de cambio que se aplica cuando pagás una compra en el exterior con una tarjeta argentina, de crédito o débito, que resuelve el pago en pesos. Es un valor más alto que el MEP, porque incluye conceptos adicionales que se suman en el resumen.",
-          "La ventaja es la comodidad. No necesitás tener dólares: pagás y el banco te cobra en pesos en el resumen. La desventaja es que el total en pesos suele ser mayor."
-        ]
-      },
-      {
-        "heading": "Qué es el dólar MEP",
-        "paragraphs": [
-          "El dólar MEP es el que resulta de comprar dólares a través del mercado de bonos, de manera legal y desde tu cuenta. Una vez que tenés esos dólares disponibles, por ejemplo en una cuenta o tarjeta en dólares, pagás la compra en esa moneda.",
-          "En ese caso, el costo en pesos de tu compra se mide con el dólar MEP que usaste para conseguir los dólares. El número final suele ser menor que con tarjeta, pero requiere organizarse antes: tener la cuenta, comprar los dólares y después pagar."
-        ]
-      },
-      {
-        "heading": "Cómo lo muestra el sitio",
-        "paragraphs": [
-          "En ofertas.knunet.com cada total se muestra en las dos versiones: con dólar MEP y con dólar tarjeta. Así podés ver cuánto cambia el costo en pesos según tu forma de pago, sin hacer la cuenta a mano.",
-          "El total en dólares es el mismo en los dos casos. Lo que cambia es el tipo de cambio que se le aplica. Para ver tu caso cargá el precio y el envío en la calculadora (/calculadora/).",
-          "Recordá la fórmula: total = (producto + envío + derechos + tasa de estadística) × (1 + IVA). Los derechos y la tasa se aplican solo al exceso sobre la franquicia de USD 400 FOB por envío. El resultado en pesos es ese total multiplicado por el tipo de cambio que corresponda."
-        ]
-      },
-      {
-        "heading": "Cuál conviene según tu situación",
-        "paragraphs": [
-          "No hay una respuesta única. Depende de si ya tenés dólares, de cuánto tiempo querés dedicarle y del monto de la compra.",
-          "Algunos criterios para decidir:"
-        ],
-        "bullets": [
-          "Si ya tenés una cuenta o tarjeta en dólares con fondos, pagar con esos dólares suele dar un total en pesos menor.",
-          "Si no tenés dólares y la compra es chica, pagar con tarjeta argentina es más cómodo, aunque el total en pesos sea mayor.",
-          "Si la compra es grande, la diferencia entre ambos totales también es grande, y vale la pena compararlos en la calculadora antes de pagar.",
-          "Si vas a hacer varias compras en el año, organizar una cuenta en dólares puede simplificar todo."
-        ]
-      },
-      {
-        "heading": "Lo que no cambia con el método de pago",
-        "paragraphs": [
-          "El régimen de courier es el mismo. Franquicia de USD 400 FOB por envío, hasta 5 envíos por año por persona, y sin derechos ni tasa de estadística dentro de ese monto (Decreto 1065/2024). El exceso paga ambos, y los demás impuestos siguen el régimen general (RG ARCA 5608/2024).",
-          "El IVA se calcula con 21% por defecto en el sitio. La alícuota correcta depende del producto y podés modificarla en la calculadora. Un despachante o el micrositio de envíos internacionales de ARCA pueden confirmarla.",
-          "También se mantiene el requisito de tener CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico en ARCA para recibir compras por courier."
-        ]
-      },
-      {
-        "heading": "Un ejemplo de cómo leer los dos totales",
-        "paragraphs": [
-          "Imaginá, como ejemplo hipotético, que el total de una compra da USD 235,95. En el sitio vas a ver ese mismo número convertido a pesos de dos maneras: multiplicado por el dólar MEP del día y multiplicado por el dólar tarjeta del día.",
-          "La diferencia entre las dos columnas es lo que te cuesta pagar con tarjeta argentina en lugar de hacerlo con dólares MEP. No estamos mencionando porcentajes porque los componentes del dólar tarjeta pueden cambiar con el tiempo. Lo importante es que veas el número final de cada opción.",
-          "Con esos dos valores a la vista, decidir es más simple: si la diferencia justifica el trabajo de conseguir dólares antes de comprar, o si preferís la comodidad de la tarjeta."
-        ]
-      },
-      {
-        "heading": "Un consejo antes de pagar",
-        "paragraphs": [
-          "Comparar siempre los dos totales antes de confirmar. Fijate también qué dice Amazon sobre el depósito de import fees que cobra al pagar con destino a Argentina y qué ocurre si la liquidación final difiere. Las condiciones están en Amazon y conviene leerlas.",
-          "Si todavía no compraste nunca, la guía de cómo comprar en Amazon desde Argentina (/guias/comprar-en-amazon-desde-argentina/) te lleva por el proceso completo.",
-          "Los links a Amazon son de afiliado: si comprás, Amazon nos paga una comisión y a vos te sale lo mismo."
-        ]
-      }
-    ],
-    "faq": [
-      {
-        "q": "¿Qué diferencia hay entre dólar MEP y dólar tarjeta?",
-        "a": "El dólar tarjeta se aplica cuando pagás con una tarjeta argentina y es más alto. El MEP se usa cuando pagás con dólares que conseguiste por esa vía, por ejemplo desde una cuenta o tarjeta en dólares."
-      },
-      {
-        "q": "¿El total en dólares cambia según cómo pague?",
-        "a": "No. El total en dólares es el mismo. Lo que cambia es el tipo de cambio con el que se calcula el costo en pesos."
-      },
-      {
-        "q": "¿El sitio muestra los dos valores?",
-        "a": "Sí. Cada total aparece con dólar MEP y con dólar tarjeta, para que compares antes de comprar."
-      },
-      {
-        "q": "¿Cambian los impuestos según el método de pago?",
-        "a": "No. El régimen de courier y el cálculo de derechos, tasa e IVA son los mismos. Solo cambia el tipo de cambio aplicado al total."
-      }
-    ],
-    "related": [
-      "asus-tuf-gaming-vg27aq3a"
-    ]
-  },
-  {
-    "slug": "garantia-mercado-libre-o-amazon",
-    "title": "Garantía: comprar en Mercado Libre o traer de Amazon",
-    "description": "Qué garantía tenés si comprás en Mercado Libre y qué pasa si lo traés de Amazon por courier: ley 24.240, devoluciones de Amazon y qué mirar antes de decidir.",
-    "h1": "Garantía: qué cambia entre comprar en Mercado Libre y traerlo de Amazon",
-    "intro": "Cuando el sitio te dice que algo sale más barato en Amazon, la diferencia de precio no es lo único que cambia. También cambia a quién le reclamás si el producto falla. Esta guía explica qué garantía tenés en cada caso, según la ley argentina y las reglas de Amazon, para que sepas qué estás resignando cuando elegís el precio más bajo.",
-    "sections": [
-      {
-        "heading": "Si lo comprás en Mercado Libre",
-        "paragraphs": [
-          "Quien vende en forma profesional es proveedor según el artículo 2 de la ley 24.240 de Defensa del Consumidor y está obligado a cumplirla. Eso incluye a las tiendas oficiales y a los vendedores que comercializan productos de manera habitual. Un particular que vende algo propio puede no serlo.",
-          "Para cosas muebles no consumibles, como un celular, un auricular o una notebook, el artículo 11 te da garantía legal por defectos que afecten el funcionamiento o la identidad entre lo que te ofrecieron y lo que te entregaron: 6 meses para productos nuevos y 3 para usados, contados desde la entrega. El vendedor puede ofrecerte más plazo, nunca menos.",
-          "El artículo 13 hace responsables a la vez al productor, al importador, al distribuidor y al vendedor. Si el vendedor te manda a hablar con la marca, igual podés reclamarle a él."
-        ]
-      },
-      {
-        "heading": "Si lo traés de Amazon por courier",
-        "paragraphs": [
-          "Cuando traés algo de Amazon, le comprás a una tienda del exterior y el producto entra por courier a tu nombre. El artículo 13 te deja reclamar la garantía legal al vendedor, al importador, al distribuidor o al productor, pero en esa compra no hay un vendedor ni un importador en el país a quien reclamarle. Si tenés dudas sobre tu caso, consultá en Defensa del Consumidor.",
-          "Lo que sí tenés son las reglas de Amazon. Según su página de devoluciones internacionales de Amazon.com, los artículos enviados por Amazon (fulfilled by Amazon) se pueden devolver dentro de los 30 días desde que los recibís. Si el producto llegó fallado, dañado o no es el que pediste, Amazon dice que te reintegra el envío de vuelta completo y el depósito de impuestos de importación. Si lo vende y lo envía otro vendedor, la devolución va a ese vendedor.",
-          "Después de esos 30 días, lo que puede quedar es la garantía del fabricante. Si la marca la cumple en Argentina para un producto comprado afuera depende de cada marca: revisalo en su web oficial antes de comprar."
-        ]
-      },
-      {
-        "heading": "Cómo decidir",
-        "paragraphs": [
-          "Si la diferencia de precio es chica, la garantía local suele valer más que el ahorro: un reclamo en el país no te obliga a mandar el producto de vuelta al exterior.",
-          "Si la diferencia es grande, traerlo de Amazon puede compensar lo que resignás. Depende de cuánto te cueste quedarte sin el producto si falla.",
-          "En cada ficha del sitio ves el ahorro del día en pesos. Usalo para pesar cuánto te cuesta quedarte con la garantía local."
-        ]
-      }
-    ],
-    "faq": [
-      {
-        "q": "¿Cuánto dura la garantía legal en Argentina?",
-        "a": "6 meses para productos nuevos y 3 meses para usados, desde la entrega (artículo 11 de la ley 24.240). El vendedor puede darte más plazo, no menos."
-      },
-      {
-        "q": "Si compro en Mercado Libre y el vendedor me deriva a la marca, ¿qué hago?",
-        "a": "Podés reclamarle igual al vendedor. El artículo 13 de la ley 24.240 hace responsables a la vez al productor, al importador, al distribuidor y al vendedor."
-      },
-      {
-        "q": "¿Puedo devolver algo que traje de Amazon?",
-        "a": "Según la página de devoluciones internacionales de Amazon.com, los artículos enviados por Amazon se pueden devolver dentro de los 30 días desde que los recibís, y si vino fallado, dañado o equivocado te reintegran el envío de vuelta completo. Si lo vende y lo envía otro vendedor, la devolución va a ese vendedor."
-      }
-    ],
-    "related": []
   }
 ]
