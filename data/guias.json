@@ -195,6 +195,190 @@
     ]
   },
   {
+    "slug": "mochilas-viaje-equipaje-courier",
+    "title": "Mochilas de viaje y para notebook: Amazon o Mercado Libre",
+    "description": "Osprey, Maxpedition, Bellroy y Timbuk2: cuánto sale traerlas de Amazon puesto en tu casa contra el precio del día en Mercado Libre.",
+    "h1": "Mochilas de viaje y para notebook: ¿traerlas de Amazon o comprarlas acá?",
+    "intro": "Las mochilas que comparamos con los precios del día, ordenadas por cuánto ahorrás trayéndolas de Amazon. Comparamos dos números en pesos: el precio del día en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa, con IVA y cargos de importación. La lista se arma de nuevo todos los días con los precios de ese día.",
+    "filtro": {
+      "categorias": [
+        "Mochilas"
+      ],
+      "ordenarPor": "ahorro_ars",
+      "limite": 8,
+      "minimo": 3
+    },
+    "badgePrimero": "Mayor ahorro real",
+    "sections": [
+      {
+        "heading": "Qué mochilas entran en la lista",
+        "paragraphs": [
+          "Sólo entran productos que encontramos en las dos tiendas con el mismo modelo, con precio de hoy de los dos lados y con envío gratis a Argentina confirmado en Amazon. El orden sale del ahorro en pesos.",
+          "En algunas Mercado Libre sale igual o menos. En esos casos la tarjeta lo marca y te lleva a Mercado Libre."
+        ]
+      },
+      {
+        "heading": "Qué mirar antes de comprar",
+        "paragraphs": [
+          "Antes de pagar, revisá estos puntos:"
+        ],
+        "bullets": [
+          "Que coincidan el modelo, la capacidad en litros y el color. Algunas mochilas tienen versión de hombre y de mujer con medidas distintas.",
+          "Si es para notebook, que el compartimento sea del tamaño de tu equipo.",
+          "Que el total del checkout de Amazon sea parecido al estimado de la tarjeta.",
+          "Que te queden envíos con franquicia en el año: son 5 por persona."
+        ]
+      },
+      {
+        "heading": "Juntar compras en un envío",
+        "paragraphs": [
+          "Una mochila suele quedar lejos de USD 400. Si comprás otra cosa en Amazon, juntarlas en un mismo pedido usa un solo envío de los 5 del año, mientras el total no pase de USD 400. Podés hacer la cuenta en la calculadora (/calculadora/)."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿El precio de Amazon que muestran incluye los impuestos?",
+        "a": "Sí. Es una estimación: el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000. El total exacto es el que te muestra Amazon al pagar."
+      },
+      {
+        "q": "¿Por qué a veces recomiendan Mercado Libre aunque Amazon salga menos?",
+        "a": "Porque si traerlo no ahorra al menos un 10 %, conviene Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos con franquicia del año."
+      },
+      {
+        "q": "¿Puedo traer una mochila y algo más en el mismo envío?",
+        "a": "Sí, mientras el total del envío no pase de USD 400 para quedar dentro de la franquicia. El exceso sobre USD 400 paga derechos de importación y tasa de estadística."
+      },
+      {
+        "q": "¿Qué necesito para recibir una compra por courier?",
+        "a": "CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico activo en ARCA. Revisalo antes de comprar: si falta, el paquete puede frenarse hasta que lo resuelvas."
+      }
+    ]
+  },
+  {
+    "slug": "audio-y-camaras-profesionales-courier",
+    "title": "Auriculares, micrófonos y cámaras: Amazon o Mercado Libre",
+    "description": "Sony, Shure, RØDE, Audio-Technica, DJI, Nikon, Canon y Godox: cuánto sale traerlos de Amazon puesto en tu casa contra Mercado Libre.",
+    "h1": "Audio y cámaras: ¿conviene traer auriculares, micrófonos y lentes por courier?",
+    "intro": "Equipos de audio y foto que comparamos con los precios del día, ordenados por cuánto ahorrás trayéndolos de Amazon. Comparamos dos números en pesos: el precio del día en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa, con IVA y cargos de importación. La lista se arma de nuevo todos los días con los precios de ese día.",
+    "filtro": {
+      "categorias": [
+        "Audio y video",
+        "Cámaras"
+      ],
+      "ordenarPor": "ahorro_ars",
+      "limite": 8,
+      "minimo": 4
+    },
+    "badgePrimero": "Mayor ahorro real",
+    "sections": [
+      {
+        "heading": "Qué entra en la lista",
+        "paragraphs": [
+          "Sólo entran productos que encontramos en las dos tiendas con el mismo modelo, con precio de hoy de los dos lados y con envío gratis a Argentina confirmado en Amazon. El orden sale del ahorro en pesos.",
+          "En audio y foto la diferencia cambia mucho según el modelo, y en varios Mercado Libre sale igual o menos. La tarjeta te marca dónde conviene hoy."
+        ]
+      },
+      {
+        "heading": "Qué revisar antes de comprar",
+        "paragraphs": [
+          "Antes de pagar, revisá estos puntos:"
+        ],
+        "bullets": [
+          "En lentes y flashes, que la montura o el sistema sea el de tu cámara (por ejemplo Canon EF, Nikon Z o Sony E).",
+          "En micrófonos, cómo se conectan: USB, XLR o los dos.",
+          "En cámaras y drones, qué trae la caja. Un «combo» puede incluir baterías o accesorios que la versión simple no trae.",
+          "Si el ahorro es chico, Mercado Libre te da garantía local, entrega en días y cuotas."
+        ]
+      },
+      {
+        "heading": "Equipos que se enchufan",
+        "paragraphs": [
+          "Lo que se carga por USB no depende de la red. Lo que trae fuente o cargador propio tiene que aceptar 220 V: casi todo lo electrónico tiene fuente de 100-240 V, pero revisalo en la ficha antes de pagar."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿El precio de Amazon que muestran incluye los impuestos?",
+        "a": "Sí. Es una estimación: el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000. El total exacto es el que te muestra Amazon al pagar."
+      },
+      {
+        "q": "¿Por qué a veces recomiendan Mercado Libre aunque Amazon salga menos?",
+        "a": "Porque si traerlo no ahorra al menos un 10 %, conviene Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos con franquicia del año."
+      },
+      {
+        "q": "¿Un lente comprado en EE.UU. sirve para mi cámara?",
+        "a": "Sí, si la montura es la misma. El nombre del lente la dice: EF y RF son de Canon, Z de Nikon, E de Sony. Revisá también si es para sensor completo o APS-C."
+      },
+      {
+        "q": "¿Qué necesito para recibir una compra por courier?",
+        "a": "CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico activo en ARCA. Revisalo antes de comprar: si falta, el paquete puede frenarse hasta que lo resuelvas."
+      }
+    ]
+  },
+  {
+    "slug": "lego-y-coleccionables-importados-usa",
+    "title": "LEGO y coleccionables: Amazon o Mercado Libre, con precios del día",
+    "description": "Sets LEGO Architecture, Icons, Ideas, Technic, Star Wars y más: cuánto sale traerlos de Amazon puesto en tu casa contra Mercado Libre.",
+    "h1": "LEGO y coleccionables: ¿conviene traerlos de Amazon?",
+    "intro": "Los sets y juguetes que comparamos con los precios del día, ordenados por cuánto ahorrás trayéndolos de Amazon. Comparamos dos números en pesos: el precio del día en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa, con IVA y cargos de importación. La lista se arma de nuevo todos los días con los precios de ese día.",
+    "filtro": {
+      "categorias": [
+        "Juguetes"
+      ],
+      "ordenarPor": "ahorro_ars",
+      "limite": 8,
+      "minimo": 4
+    },
+    "badgePrimero": "Mayor ahorro real",
+    "sections": [
+      {
+        "heading": "Qué sets entran en la lista",
+        "paragraphs": [
+          "Sólo entran productos que encontramos en las dos tiendas con el mismo modelo, con precio de hoy de los dos lados y con envío gratis a Argentina confirmado en Amazon. El orden sale del ahorro en pesos. En LEGO, el modelo es el número del set.",
+          "Cada tarjeta tiene el detalle de la cuenta en «Ver la cuenta completa»."
+        ]
+      },
+      {
+        "heading": "Qué mirar antes de comprar",
+        "paragraphs": [
+          "Antes de pagar, revisá estos puntos:"
+        ],
+        "bullets": [
+          "Que el número del set coincida con el que buscás: es el que identifica el modelo, no el nombre.",
+          "La caja grande pesa y ocupa: el envío gratis depende del producto, y la tarjeta sólo lo marca cuando está confirmado.",
+          "Si es para regalar en una fecha, contá el tiempo del courier. Mercado Libre llega en días.",
+          "Que te queden envíos con franquicia en el año: son 5 por persona."
+        ]
+      },
+      {
+        "heading": "Varios sets en un pedido",
+        "paragraphs": [
+          "Juntar sets en un solo pedido usa un envío de los 5 del año, mientras el total no pase de USD 400. Si pasa, el exceso paga derechos de importación y tasa de estadística. Podés hacer la cuenta en la calculadora (/calculadora/)."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "¿El precio de Amazon que muestran incluye los impuestos?",
+        "a": "Sí. Es una estimación: el precio de hoy en Amazon más el IVA del 21 % y los cargos de importación que Amazon suma en el checkout, pasado a pesos con el dólar MEP del día y redondeado a $ 10.000. El total exacto es el que te muestra Amazon al pagar."
+      },
+      {
+        "q": "¿Por qué a veces recomiendan Mercado Libre aunque Amazon salga menos?",
+        "a": "Porque si traerlo no ahorra al menos un 10 %, conviene Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos con franquicia del año."
+      },
+      {
+        "q": "¿Cómo sé que es el mismo set en las dos tiendas?",
+        "a": "Por el número del set, que figura en la caja y en las dos publicaciones. Antes de pagar, fijate que sea el mismo en las dos."
+      },
+      {
+        "q": "¿Qué necesito para recibir una compra por courier?",
+        "a": "CUIT o CUIL, Clave Fiscal y domicilio fiscal electrónico activo en ARCA. Revisalo antes de comprar: si falta, el paquete puede frenarse hasta que lo resuelvas."
+      }
+    ]
+  },
+  {
     "slug": "franquicia-400-dolares",
     "title": "Franquicia de 400 dólares courier Argentina 2026",
     "description": "Cómo funciona la franquicia de 400 dólares del courier en Argentina 2026: qué se paga, cuántos envíos entran y qué límites tiene.",

@@ -119,6 +119,11 @@ export function guiasPublicables<T extends ProductoGuia>(guias: Guia[], comparab
   return out;
 }
 
+/** La guía dinámica publicada que cubre esa categoría (la primera de guias.json), para ofrecerla desde la ficha. */
+export function guiaDeCategoria<T extends ProductoGuia>(publicables: GuiaPublicable<T>[], categoria: string): Guia | null {
+  return publicables.find((r) => r.g.filtro?.categorias.includes(categoria))?.g ?? null;
+}
+
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** Escapa el texto y convierte las rutas internas escritas entre paréntesis en links. */

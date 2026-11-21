@@ -1,0 +1,53 @@
+---
+import Base from "../layouts/Base.astro";
+import ShareButtons from "../components/ShareButtons.astro";
+import { MIN_AMAZON_SAVING } from "../lib/data";
+
+// Todo lo que dice esta página sale del código que arma los precios (src/lib/estimate.ts, src/lib/calc,
+// comparePrices en src/lib/data.ts) y de lo ya publicado en /guia/ y /legal/afiliados/. Sin cifras del día.
+const minimoPct = Math.round(MIN_AMAZON_SAVING * 100);
+---
+
+<Base title="Cómo calculamos los precios" description="Cómo estimamos lo que te sale traer un producto de Amazon puesto en tu casa, cuándo recomendamos Mercado Libre y cómo ganamos plata con el sitio.">
+  <div class="wrap page-head">
+    <h1 class="letra">Cómo calculamos</h1>
+    <p class="lead">Cada producto tiene dos números en pesos: el precio de hoy en Mercado Libre y lo que te sale traerlo de Amazon puesto en tu casa. Acá está de dónde sale cada uno y por qué a veces te mandamos a Mercado Libre.</p>
+    <ShareButtons title="Cómo calculamos los precios" />
+  </div>
+
+  <section style="padding-top: 16px">
+    <div class="wrap"><div class="prose">
+      <h2 style="margin-top: 0">El régimen de envíos por courier</h2>
+      <ul>
+        <li>Hasta <strong>USD 400 de valor FOB por envío</strong>, y hasta 5 envíos por año y por persona, no se pagan derechos de importación ni tasa de estadística (Decreto 1065/2024). Lo que pasa de USD 400 paga los dos.</li>
+        <li>El IVA sigue el régimen general. En el checkout de Amazon con dirección en Argentina, Amazon cobra el 21 % de IVA más sus propios cargos de importación, en el mismo pago.</li>
+        <li>Para recibir compras por courier necesitás CUIT o CUIL, <strong>Clave Fiscal y domicilio fiscal electrónico activo en ARCA</strong>. Conviene revisarlo antes de comprar: si falta, el paquete puede frenarse hasta que lo resuelvas.</li>
+      </ul>
+      <p>El detalle de la norma está en <a href="/guia/">Cómo funciona la franquicia</a>.</p>
+
+      <h2>Cómo armamos el precio de Amazon puesto en tu casa</h2>
+      <ol>
+        <li>Tomamos el precio de Amazon relevado ese mismo día. Si no lo tenemos del día, el producto no se muestra.</li>
+        <li>Le sumamos el envío a Argentina. Desde USD 100, en los productos elegibles, Amazon lo envía gratis; la tarjeta marca «Envío gratis a Argentina» sólo cuando lo confirmamos.</li>
+        <li>Le sumamos el IVA del 21 % y los cargos de importación que cobra Amazon. Los medimos el 30/10/2026 en 15 productos con envío gratis: el total cobrado fue de 23 % a 27 % del precio.</li>
+        <li>Lo pasamos a pesos con el dólar MEP del día y lo redondeamos a $ 10.000. Por eso lo mostramos como estimado, con «~».</li>
+      </ol>
+      <p>El número que vale es el que te muestra Amazon al pagar. Podés probar con tus propios números en la <a href="/calculadora/">calculadora</a>.</p>
+
+      <h2>Cuándo recomendamos Mercado Libre</h2>
+      <p>Traerlo de afuera sólo conviene si ahorrás al menos un {minimoPct} % y el envío gratis a Argentina está confirmado. Si no, recomendamos Mercado Libre aunque Amazon salga un poco menos:</p>
+      <ul>
+        <li>Llega en días, sin esperar al courier.</li>
+        <li>Tiene garantía local y cuotas.</li>
+        <li>No gastás uno de tus 5 envíos con franquicia del año.</li>
+      </ul>
+      <p>Un producto sin precio del día en las dos tiendas, o sin envío a Argentina confirmado, no se publica. No lo rellenamos con precios de días anteriores.</p>
+
+      <h2>Cómo ganamos plata</h2>
+      <p>No vendemos productos ni cobramos nada. Los links a Amazon y a Mercado Libre llevan un código de afiliado: si comprás después de entrar por uno, la tienda nos paga una comisión. Vos pagás lo mismo que si entraras por tu cuenta.</p>
+      <p>Cobrar de las dos tiendas no cambia el veredicto: recomendamos la que te deja el producto más barato puesto en tu casa, con el criterio de arriba. El detalle está en <a href="/legal/afiliados/">Afiliación con Amazon y Mercado Libre</a>.</p>
+
+      <p style="margin-top: 32px"><a class="btn" href="/guias/">Ver las guías</a></p>
+    </div></div>
+  </section>
+</Base>

@@ -14,10 +14,13 @@ import { amazonUrl, artFor, SITE, STORE_LABEL } from "../../config";
 import { brandLogo } from "../../lib/brands";
 import { formatArs } from "../../lib/format";
 import { comparePrices, isComparable, loadProducts } from "../../lib/data";
+import { guiaDeCategoria, guiasPublicables, loadGuias } from "../../lib/guias";
 
 export async function getStaticPaths() {
   const { products, offers } = await loadProducts();
   const comparable = products.filter((p) => isComparable(p));
+  // Mismas guías que /guias/: sólo las que hoy llegan a su mínimo de productos publicados.
+  const guias = guiasPublicables(loadGuias(), comparable);
   return products.map((product) => ({
     params: { slug: product.slug },
     props: {
@@ -25,11 +28,12 @@ export async function getStaticPaths() {
       comparable: isComparable(product),
       rates: offers.rates,
       related: comparable.filter((o) => o.slug !== product.slug && o.category === product.category).slice(0, 3),
+      guia: isComparable(product) ? guiaDeCategoria(guias, product.category) : null,
     },
   }));
 }
 
-const { product: p, comparable, rates, related } = Astro.props;
+const { product: p, comparable, rates, related, guia } = Astro.props;
 const sheet = comparable ? loadMlSheet(p.ml?.catalogId, p.name) : null;
 const buy = p.asin ? amazonUrl(p.asin, p.store) : null;
 const photo = p.price?.imageUrl ?? p.image ?? null;
@@ -195,6 +199,17 @@ const specs: Array<[string, string]> = [
           <div class="grid-products">
             {related.map((r) => <ProductCard product={r} ubicacion="ficha_relacionados" />)}
           </div>
+        </div>
+      </section>
+    )}
+
+    {guia && (
+      <section style="padding-top: 0">
+        <div class="wrap">
+          <a class="guia-cta" href={`/guias/${guia.slug}/`} data-umami-event="guia_desde_ficha" data-umami-event-guia={guia.slug} data-umami-event-slug={p.slug}>
+            <span>Compará este equipo con otras opciones de su categoría en nuestra guía actualizada: <b>{guia.title}</b></span>
+            <span class="btn">Ver la guía</span>
+          </a>
         </div>
       </section>
     )}

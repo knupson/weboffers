@@ -537,6 +537,12 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .telegram-cta .btn { flex-shrink: 0; }
 @media (max-width: 640px) { .telegram-cta { flex-direction: column; align-items: stretch; text-align: center; } }
 
+/* Ficha: invitación a la guía de su categoría (mismo formato que el bloque de Telegram). */
+.guia-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 24px; border-radius: var(--r-placa); background: var(--placa); border: 1px solid var(--linea); color: var(--crema-2); text-decoration: none; }
+.guia-cta b { color: var(--crema); }
+.guia-cta .btn { flex-shrink: 0; }
+@media (max-width: 640px) { .guia-cta { flex-direction: column; align-items: stretch; text-align: center; } }
+
 /* Guías: cómo se hace la cuenta (arriba de las tarjetas) y nota editorial por producto. */
 .transparencia { padding: 20px 24px; border-radius: var(--r-placa); background: var(--placa); border: 1px solid var(--linea); color: var(--crema-2); font-size: 15px; line-height: 1.5; }
 .transparencia h2 { font: 700 1.15rem/1.3 var(--sans); color: var(--crema); margin: 0 0 10px; }

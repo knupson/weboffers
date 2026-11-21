@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ahorroGuia, guiasPublicables, productosDeGuia, validarGuias, type Guia } from "./guias";
+import { ahorroGuia, guiaDeCategoria, guiasPublicables, productosDeGuia, validarGuias, type Guia } from "./guias";
 
 const prod = (slug: string, category: string, ml: number, amazonArs: number, freeShipping = true) => ({
   slug, category, ml: { price: ml, url: "", checked: "2026-11-21" }, amazonArs,
@@ -90,5 +90,18 @@ describe("validarGuias", () => {
     expect(mal({ categorias: ["Relojes"], ordenarPor: "precio", limite: 8, minimo: 4 })).toThrow(/ordenarPor/);
     expect(mal({ categorias: ["Relojes"], ordenarPor: "ahorro_ars", limite: 3, minimo: 4 })).toThrow(/minimo/);
     expect(() => validarGuias([base, base])).toThrow(/repetido/);
+  });
+});
+
+describe("guiaDeCategoria", () => {
+  it("devuelve la primera guía dinámica publicada que cubre la categoría", () => {
+    const relojes = { ...base, slug: "relojes", filtro: { categorias: ["Relojes"], ordenarPor: "ahorro_ars" as const, limite: 8, minimo: 2 } };
+    const vacia = { ...base, slug: "herramientas", filtro: { categorias: ["Herramientas"], ordenarPor: "ahorro_ars" as const, limite: 8, minimo: 2 } };
+    const publicables = guiasPublicables([base, vacia, relojes], comparables);
+    expect(guiaDeCategoria(publicables, "Relojes")?.slug).toBe("relojes");
+    // La de herramientas no llega al mínimo (1 de 2): no se publica, así que no se ofrece desde la ficha.
+    expect(guiaDeCategoria(publicables, "Herramientas")).toBeNull();
+    // Las guías sin filtro no cubren categorías.
+    expect(guiaDeCategoria(publicables, "Mochilas")).toBeNull();
   });
 });

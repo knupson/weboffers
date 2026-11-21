@@ -58,7 +58,7 @@ const minimoPct = Math.round(MIN_AMAZON_SAVING * 100);
             <li>Si traerlo no ahorra al menos un {minimoPct} %, recomendamos Mercado Libre: llega en días, tiene garantía local y cuotas, y no gastás uno de tus 5 envíos del año.</li>
             <li>La lista se arma de nuevo todos los días con los precios de ese día. Un producto sin precio del día en las dos tiendas no aparece.</li>
           </ul>
-          <p set:html={linkify("El detalle de cada producto está en «Ver la cuenta completa», y podés probar con tus números en la calculadora (/calculadora/).")} />
+          <p>El detalle de cada producto está en «Ver la cuenta completa». Cómo armamos cada número y cuándo recomendamos Mercado Libre: <a href="/como-calculamos/">Cómo calculamos</a>. También podés probar con tus números en la <a href="/calculadora/">calculadora</a>.</p>
         </div>
         <div class="grid-products" style="margin-top: 24px">{productos.map((p) => <ProductCard product={p} ubicacion="guia" nota={conNotas ? (notas[p.slug] ?? {}) : undefined} />)}</div>
       </div>
