@@ -51,9 +51,10 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
     {free && <span class="envio"><Icon name="truck" size={14} /> Envío gratis a Argentina</span>}
   </div>
   <div class="body">
-    {/* Si la guía tiene notas, todas sus tarjetas llevan la línea (aunque vacía) para que los bloques queden nivelados. */}
+    {/* Si la guía tiene notas, todas sus tarjetas llevan la línea (aunque vacía) para que los bloques queden nivelados.
+        La insignia habla del precio: se oculta como el veredicto cuando los precios no son de hoy (data-checked). */}
     {nota && (
-      <p class="nota-guia">{nota.badge && <span class="insignia">{nota.badge}</span>}{nota.texto && <span>{nota.texto}</span>}</p>
+      <p class="nota-guia" data-checked={checkedDate}>{nota.badge && <span class="insignia" data-verdict-text hidden>{nota.badge}</span>}{nota.texto && <span>{nota.texto}</span>}</p>
     )}
     <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
     <p class="sum">{p.summary}</p>

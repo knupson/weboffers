@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ahorroGuia, guiasPublicables, productosDeGuia, validarGuias, type Guia } from "./guias";
 
-const prod = (slug: string, category: string, ml: number, amazonArs: number) => ({
+const prod = (slug: string, category: string, ml: number, amazonArs: number, freeShipping = true) => ({
   slug, category, ml: { price: ml, url: "", checked: "2026-11-21" }, amazonArs,
+  shipsToAr: { freeShipping, checked: "2026-11-21" },
 });
 
 const base: Guia = {
@@ -62,6 +63,15 @@ describe("guiasPublicables", () => {
     expect(r.notas["reloj-b"]).toEqual({ badge: "Mayor ahorro real" });
     const soloMl = { ...g, related: ["reloj-d"] };
     expect(guiasPublicables([soloMl], comparables)[0].notas["reloj-d"]).toBeUndefined();
+  });
+
+  it("la insignia exige el mismo veredicto que la tarjeta: ahorro de al menos 10 % y envío gratis", () => {
+    const g = { ...base, badgePrimero: "Mayor ahorro real", filtro: { categorias: ["X"], ordenarPor: "ahorro_ars" as const, limite: 3, minimo: 1 } };
+    // Ahorra 5 %: la tarjeta dice que conviene Mercado Libre, así que no va la insignia.
+    expect(guiasPublicables([g], [prod("chico", "X", 1_000_000, 950_000)])[0].notas).toEqual({});
+    // Ahorra 50 % pero sin envío gratis confirmado: la tarjeta dice «sin envío», tampoco.
+    expect(guiasPublicables([g], [prod("sin-envio", "X", 1_000_000, 500_000, false)])[0].notas).toEqual({});
+    expect(guiasPublicables([g], [prod("ok", "X", 1_000_000, 900_000)])[0].notas).toEqual({ ok: { badge: "Mayor ahorro real" } });
   });
 
   it("combina la nota editorial del JSON con la insignia automática", () => {

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { comparePrices, type CatalogEntry } from "./data";
 
 /** Selección dinámica: los productos publicados hoy de esas categorías, ordenados por ahorro trayéndolos por Amazon. */
 export interface FiltroGuia {
@@ -30,17 +31,12 @@ export interface Guia {
   filtro?: FiltroGuia;
   /** Notas por slug. Si el producto no está en la guía ese día, la nota no aparece. */
   notas?: Record<string, NotaProducto>;
-  /** Insignia automática para el primer producto, sólo si trayéndolo por Amazon se ahorra. */
+  /** Insignia automática para el primer producto, sólo si la tarjeta también da ganador a Amazon. */
   badgePrimero?: string;
 }
 
 /** Lo mínimo que la guía necesita de un producto ya filtrado por `isComparable`. */
-export interface ProductoGuia {
-  slug: string;
-  category: string;
-  ml?: { price: number };
-  amazonArs?: number | null;
-}
+export type ProductoGuia = Pick<CatalogEntry, "slug" | "category" | "ml" | "amazonArs" | "shipsToAr">;
 
 export interface GuiaPublicable<T extends ProductoGuia> {
   g: Guia;
@@ -114,7 +110,8 @@ export function guiasPublicables<T extends ProductoGuia>(guias: Guia[], comparab
       Object.entries(g.notas ?? {}).filter(([slug]) => enGuia.has(slug)).map(([slug, n]) => [slug, { ...n }]),
     );
     const primero = productos[0];
-    if (g.badgePrimero && primero && ahorroGuia(primero).ars > 0) {
+    // Mismo criterio que la tarjeta (comparePrices): sólo si ahí también gana Amazon (>= 10 % y envío gratis).
+    if (g.badgePrimero && primero && comparePrices(primero).verdict === "amazon") {
       notas[primero.slug] = { ...notas[primero.slug], badge: g.badgePrimero };
     }
     out.push({ g, productos, notas });
