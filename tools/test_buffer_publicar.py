@@ -6,9 +6,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import buffer_publicar as bp  # noqa: E402
 
-CAPTION = """¿Amazon o Mercado Libre? Depende del producto 👇
+CAPTION = """¿Amazon o Mercado Libre? Depende del producto.
 
-🔊 Logitech G Yeti GX: $249.611 en Mercado Libre vs ~$340.000 de Amazon. Gana Mercado Libre.
+Logitech G Yeti GX: $249.611 en Mercado Libre vs ~$340.000 de Amazon. Gana Mercado Libre.
 
 Comparamos 174 productos con los precios de hoy: link en la bio.
 La mejor oferta del día, todos los días a las 12 y a las 20, en Telegram: t.me/franquicia400

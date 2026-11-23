@@ -17,7 +17,7 @@ const dateLabel = pricesDate.split("-").reverse().slice(0, 2).join("/");
   {[{ title: "Conviene traerlo de Amazon", rows: ranking.amazon }, { title: "Conviene comprarlo en Mercado Libre", rows: ranking.ml }].map(({ title, rows }) => (
     <section style="padding-top: 24px">
       <div class="wrap">
-        <div class="head"><h2>{title}</h2></div>
+        <div class="head"><h2 class="letra">{title}</h2></div>
         {rows.length ? <ol class="ranking">
           {rows.map(({ product: p, saving }) => <li data-checked={pricesDate}>
             <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>

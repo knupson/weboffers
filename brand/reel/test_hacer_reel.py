@@ -104,12 +104,11 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
             with self.assertRaisesRegex(ValueError, 'Falta otro producto con foto y ahorro'):
                 r.elegir_anuncio([producto], 'pedido')
 
-    def test_nombre_corto_y_emoji(self):
-        # Caso real del 17/11: título entero de Mercado Libre y 💻 en unos anteojos.
+    def test_nombre_corto(self):
+        # Caso real del 17/11: título entero de Mercado Libre en unos anteojos.
         versace = dict(name='Versace VE2199 1002/81 Sunglasses Lentes Estilo Italiano Diseño Sofisticado y '
                             'Versátil Accesorio de Moda Premium', brand='Versace', category='Anteojos')
         self.assertEqual(r.nombre_corto(versace), 'Versace VE2199')
-        self.assertEqual(r.emoji(versace), '🕶️')
         gafas = dict(name='Gafas De Sol Versace Ve4406 Hombre Originales Color Negro Color Del Armazón Negro',
                      brand='Versace', category='Anteojos')
         self.assertEqual(r.nombre_corto(gafas), 'Gafas De Sol Versace Ve4406')
@@ -119,10 +118,8 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
         self.assertEqual(r.nombre_corto(dict(name='Philips Daily Collection hervidor de agua HD9350/90 de 1,7 L')), 'Philips Daily Collection hervidor')
         corto = dict(name='Logitech G Yeti GX', brand='Logitech', category='Audio y video')
         self.assertEqual(r.nombre_corto(corto), 'Logitech G Yeti GX')
-        self.assertEqual(r.emoji(corto), '🔊')
         sin_modelo = dict(name='Mochila Grande Impermeable Para Viaje Con Muchos Bolsillos Y Correas', category='Mochilas')
         self.assertLessEqual(len(r.nombre_corto(sin_modelo)), 40)
-        self.assertEqual(r.emoji(dict(category='Algo nuevo')), '🛒')
 
     def test_guion_anuncio_y_diario(self):
         a = dict(name='Amazon', ml=800000, az=380000)
@@ -219,7 +216,7 @@ process.stdout.write(JSON.stringify(cases.map(([usd, mep]) => {
                 self.assertEqual(comandos[-1][-1], str(base / 'out/anuncio-prueba-amazon-final.mp4'))
                 self.assertIn(f'Anuncio listo: {base / "out/anuncio-prueba-amazon-final.mp4"}', salida.getvalue())
             else:
-                self.assertEqual(props['textos']['cierre'][4], '☝ LINK EN LA BIO')
+                self.assertEqual(props['textos']['cierre'][4], 'LINK EN LA BIO')
                 self.assertEqual(len(r.leer(historial_path)), 1)
                 self.assertTrue((base / f'out/duelo-{hoy}.txt').is_file())
 

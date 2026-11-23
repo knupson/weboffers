@@ -53,7 +53,7 @@ const portada = () => page(1080, 1350, `
 <div style="font:700 44px/1.2 A;margin-top:40px;max-width:820px">${D.productos.length} productos con los dos precios de hoy</div>
 <div style="flex:1;position:relative;margin-top:30px">${D.productos.map((p, i) =>
   `<img src="${foto(p.slug)}" style="position:absolute;bottom:0;left:${i * 17.5 - 2}%;width:34%;height:95%;object-fit:contain;transform:rotate(${(i - 2) * 5}deg);filter:drop-shadow(0 16px 24px rgba(0,0,0,.6))">`).join("")}</div>
-<div class="foot" style="font-size:30px">Precios del ${D.fecha} · deslizá →</div>`);
+<div class="foot" style="font-size:30px">Precios del ${D.fecha} · deslizá</div>`);
 
 const producto = (p, i) => {
   const row = (k, l, pr, s) => `<div class="row${p.gana === k ? " win" : ""}">${p.gana === k ? '<span class="badge">GANA</span>' : ""}<div class="l">${l}</div><div class="p">${pr}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;

@@ -18,9 +18,10 @@ const mlOficial = Object.fromEntries(SEARCHES.filter((s) => s.ml).map((s) => [s.
   <meta name="robots" content="noindex" slot="head" />
   <div class="wrap page-head">
     <h1 class="letra">Buscar y comparar</h1>
+    <label class="search-lab" for="q-buscar">Qué producto buscás</label>
     <form class="search" action="/buscar/" method="get" role="search">
       <Icon name="magnifying-glass" size={18} />
-      <input name="q" type="search" placeholder="SSD, Ryzen, auriculares, Garmin..." aria-label="Qué producto buscás" required />
+      <input id="q-buscar" name="q" type="search" placeholder="SSD, Ryzen, auriculares, Garmin..." required />
       <button class="btn" type="submit">Comparar</button>
     </form>
     <p class="lead" id="resumen" aria-live="polite"></p>

@@ -13,7 +13,7 @@
       "limite": 8,
       "minimo": 4
     },
-    "badgePrimero": "Mayor ahorro real",
+    "badgePrimero": "Mayor ahorro",
     "sections": [
       {
         "heading": "Qué relojes entran en la lista",
@@ -76,7 +76,7 @@
       "limite": 8,
       "minimo": 4
     },
-    "badgePrimero": "Mayor ahorro real",
+    "badgePrimero": "Mayor ahorro",
     "notas": {
       "dewalt-dch273b": {
         "texto": "Solo herramienta: sin batería ni cargador"
@@ -147,7 +147,7 @@
       "limite": 8,
       "minimo": 4
     },
-    "badgePrimero": "Mayor ahorro real",
+    "badgePrimero": "Mayor ahorro",
     "sections": [
       {
         "heading": "Qué entra en la lista",
@@ -208,7 +208,7 @@
       "limite": 8,
       "minimo": 3
     },
-    "badgePrimero": "Mayor ahorro real",
+    "badgePrimero": "Mayor ahorro",
     "sections": [
       {
         "heading": "Qué mochilas entran en la lista",
@@ -270,7 +270,7 @@
       "limite": 8,
       "minimo": 4
     },
-    "badgePrimero": "Mayor ahorro real",
+    "badgePrimero": "Mayor ahorro",
     "sections": [
       {
         "heading": "Qué entra en la lista",
@@ -331,7 +331,7 @@
       "limite": 8,
       "minimo": 4
     },
-    "badgePrimero": "Mayor ahorro real",
+    "badgePrimero": "Mayor ahorro",
     "sections": [
       {
         "heading": "Qué sets entran en la lista",
@@ -383,7 +383,7 @@
     "title": "Franquicia de 400 dólares courier Argentina 2026",
     "description": "Cómo funciona la franquicia de 400 dólares del courier en Argentina 2026: qué se paga, cuántos envíos entran y qué límites tiene.",
     "h1": "Franquicia de 400 dólares del courier en Argentina: cómo funciona y qué se paga",
-    "intro": "Cuando comprás en el exterior y el paquete llega por courier, lo que pagás no es solo el precio de la tienda. Hay un tramo del envío que está libre de aranceles, y ese tramo es la franquicia de 400 dólares. Esta guía explica cómo funciona en 2026, qué impuestos quedan adentro y cuáles no, y dónde está el límite para que sepas el costo real antes de apretar el botón de compra.",
+    "intro": "Cuando comprás en el exterior y el paquete llega por courier, parte del envío está libre de aranceles: es la franquicia de 400 dólares. Esta guía explica cómo funciona en 2026, qué impuestos quedan adentro y cuáles no, y dónde está el límite, para que sepas el costo real antes de comprar.",
     "sections": [
       {
         "heading": "Qué es la franquicia de 400 dólares",
@@ -430,7 +430,7 @@
       {
         "heading": "Errores comunes al usar la franquicia",
         "paragraphs": [
-          "El error más frecuente es pensar que la franquicia deja el envío sin ningún costo. Dentro de los USD 400 no hay derechos ni tasa de estadística, pero el IVA se sigue pagando según el régimen general de importación.",
+          "Es un error pensar que la franquicia deja el envío sin ningún costo. Dentro de los USD 400 no hay derechos ni tasa de estadística, pero el IVA se sigue pagando según el régimen general de importación.",
           "Otro error es no llevar la cuenta de los envíos del año. Como el beneficio alcanza a 5 envíos por persona, conviene juntar las compras chicas en un solo pedido cuando el vendedor lo permite, y reservar los envíos con franquicia para las compras donde más se nota.",
           "Por último, mirá siempre el costo de envío. Dos productos con el mismo precio pueden dar totales bien distintos según lo que cobre el vendedor por llevarlos hasta Argentina."
         ]
@@ -478,7 +478,7 @@
     "title": "Cómo comprar en Amazon desde Argentina paso a paso",
     "description": "Cómo comprar en Amazon desde Argentina: requisitos en ARCA, pago, envío por courier y cómo calcular el costo final puesto en tu casa.",
     "h1": "Cómo comprar en Amazon desde Argentina, paso a paso",
-    "intro": "Comprar en Amazon desde Argentina es posible y bastante simple una vez que tenés los datos en orden. Lo que confunde a la mayoría es el costo real: el precio de la página no es lo que terminás pagando. En esta guía vas paso a paso desde los requisitos previos hasta que el paquete llega a tu puerta, y con una forma clara de calcular el total antes de comprar.",
+    "intro": "Comprar en Amazon desde Argentina es posible y bastante simple una vez que tenés los datos en orden. Lo que hay que mirar es el costo real: el precio de la página no es lo que terminás pagando. En esta guía vas paso a paso desde los requisitos previos hasta que el paquete llega a tu puerta, y con una forma clara de calcular el total antes de comprar.",
     "sections": [
       {
         "heading": "Paso 1: revisá tus datos en ARCA",
@@ -499,7 +499,7 @@
         "paragraphs": [
           "Cargá tu dirección en Argentina en el formato que pide Amazon y revisá el costo de envío internacional que aparece antes de pagar. El envío es parte del costo real: no cuenta para el tope de USD 400 FOB, pero sí suma en la base del IVA.",
           "Con Amazon.com, el envío suele ser gratis en productos de unos USD 100 o más. Por debajo de ese monto ronda los USD 40 a 50, y en un artículo barato puede duplicar el costo. Al pagar, el total que cobra Amazon queda alrededor de un 23% a 27% por encima del precio del producto, porque incluye el IVA del 21% y los cargos de importación de Amazon.",
-          "Cuidado con los productos grandes o pesados, como los monitores: pueden pagar envío aunque superen los USD 100. Un monitor de USD 199 pagó USD 128,63 entre envío y cargos de importación.",
+          "Cuidado con los productos grandes o pesados, como los monitores: pueden pagar envío aunque superen los USD 100. Mirá siempre el costo de envío que muestra Amazon antes de confirmar el pago.",
           "En Amazon.com, al pagar para Argentina, Amazon cobra un depósito de import fees (cargos de importación). Si la liquidación final resulta distinta de ese depósito, se aplican las condiciones de Amazon. Leelas directamente en Amazon antes de confirmar."
         ]
       },

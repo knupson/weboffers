@@ -121,7 +121,7 @@ h2.letra { font-size: clamp(30px, 3.6vw, 46px); text-shadow: 0.05em 0.05em 0 var
 .btn:active { transform: scale(0.97); }
 .btn.ghost { background: transparent; color: var(--crema); font: 700 15px/1 var(--sans); box-shadow: inset 0 0 0 1.5px var(--linea); }
 .btn.ghost:hover { background: var(--placa-2); box-shadow: inset 0 0 0 1.5px var(--crema-2); }
-.btn.sm { height: 40px; padding: 0 14px; font-size: 14px; }
+.btn.sm { height: 44px; padding: 0 14px; font-size: 14px; }
 .search .btn { font-size: 15px; }
 .btn.lg { height: 56px; padding: 0 26px; font-size: 17px; width: 100%; }
 
@@ -144,6 +144,11 @@ section { padding: 64px 0; }
 .hero h1 { font-size: clamp(48px, 4.6vw, 70px); }
 .hero .lead { margin-top: 24px; }
 
+/* 23/11: rótulo visible del buscador (antes sólo aria-label). Va arriba del cartel, con lugar para sus anillos. */
+.search-lab { display: block; margin-top: 32px; font: 600 14px/1.3 var(--sans); color: var(--crema-2); }
+.search-lab + .search { margin-top: 18px; }
+.page-head .search-lab { margin-top: 0; }
+.page-head .search-lab + .search { margin-top: 2px; }
 .search {
   margin-top: 32px; display: flex; align-items: center; gap: 8px; padding: 8px;
   background: var(--crema); color: var(--esmalte);
@@ -223,7 +228,7 @@ section { padding: 64px 0; }
 @media (min-width: 760px) { .chips { flex-wrap: wrap; overflow: visible; padding-right: 0; mask-image: none; } }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
-  flex: none; height: 38px; padding: 0 14px; border-radius: var(--r-campo); border: 0;
+  flex: none; height: 44px; padding: 0 14px; border-radius: var(--r-campo); border: 0;
   background: var(--placa); color: var(--crema-2); box-shadow: inset 0 0 0 1.5px var(--linea);
   font: 600 14px var(--sans); cursor: pointer;
   transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
@@ -268,17 +273,17 @@ section { padding: 64px 0; }
 .card .foot { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 /* Alto mínimo de cada caja = la más alta medida el 20/11 (ML con «Conviene»: 178 px; Amazon con «Bajó USD…» y
    «Conviene»: 194 px), así los botones y la caja de Amazon quedan nivelados entre columnas. Medido de 1 a 4
-   columnas, con la tarjeta más angosta de la grilla (270 px). */
+   columnas, con la tarjeta más angosta de la grilla (270 px). 23/11: el botón pasó de 40 a 44 px (área táctil mínima),
+   así que cada alto subió 4 px (178 a 182 y 194 a 198, calculado: sin remedir en pantalla). */
 .card .fila-compra { display: flex; flex-direction: column; padding: 12px 10px; }
-.card .caja-ml { min-height: 178px; }
-.card .caja-amazon { min-height: 194px; }
-.card .fila-compra > a { margin-top: auto; min-height: 40px; }
+.card .caja-ml { min-height: 182px; }
+.card .caja-amazon { min-height: 198px; }
+.card .fila-compra > a { margin-top: auto; min-height: 44px; }
 .card .costo { position: relative; z-index: 1; align-self: center; margin-top: auto; font-size: 14px; font-weight: 600; color: var(--amarillo); text-decoration: none; }
 .card .costo:hover { text-decoration: underline; }
 .card .foot .btn { position: relative; z-index: 1; }
 .card .price { font-family: var(--letra); font-size: 22px; color: var(--amarillo); }
 .card .price small { display: block; font: 500 12px var(--sans); color: var(--apagado); }
-@media (prefers-reduced-motion: reduce) { .card, .cat { transition: none; } .card:hover, .cat:hover { transform: none; } }
 
 /* Búsquedas curadas: pizarra */
 .pizarra { border-radius: var(--r-placa); background: var(--placa); box-shadow: inset 0 0 0 2px var(--celeste), inset 0 0 0 5px var(--placa), inset 0 0 0 6px var(--amarillo); padding: 10px; display: grid; }
@@ -350,7 +355,7 @@ section { padding: 64px 0; }
 .money .in { padding-left: 54px; }
 .in:hover { box-shadow: inset 0 0 0 1.5px var(--crema-2); }
 .in:focus { outline: none; box-shadow: inset 0 0 0 2px var(--amarillo); }
-.in::placeholder { color: #6f675c; }
+.in::placeholder { color: #8a8173; } /* 4,87:1 sobre el esmalte (antes #6f675c, 3,36:1) */
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--esmalte); border-radius: var(--r-campo); box-shadow: inset 0 0 0 1.5px var(--linea); }
 .seg label { position: relative; text-align: center; padding: 9px; border-radius: 7px; font-size: 14px; font-weight: 700; cursor: pointer; color: var(--crema-2); transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out); }
 .seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
@@ -432,11 +437,11 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .faq p { margin-top: 8px; }
 .pizarra.una { grid-template-columns: 1fr; }
 
-.envio { z-index: 3; position: absolute; left: 10px; bottom: 10px; height: 26px; padding: 0 9px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; background: var(--verde); color: #fff; font: 700 12px var(--sans); }
+.envio { z-index: 3; position: absolute; left: 10px; bottom: 10px; height: 26px; padding: 0 9px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; background: #187a42; color: #fff; font: 700 12px var(--sans); } /* 5,38:1 con blanco (antes --verde, 4,12:1) */
 
 /* Redes en el pie */
 .redes { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.redes a { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: var(--placa); box-shadow: inset 0 0 0 1px var(--linea); color: var(--crema); font: 600 14px var(--sans); text-decoration: none; transition: background-color 150ms var(--ease-out); }
+.redes a { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 10px; background: var(--placa); box-shadow: inset 0 0 0 1px var(--linea); color: var(--crema); font: 600 14px var(--sans); text-decoration: none; transition: background-color 150ms var(--ease-out); }
 .redes a:hover { background: var(--placa-2); }
 .redes svg { width: 18px; height: 18px; fill: var(--amarillo); }
 
@@ -552,3 +557,11 @@ footer nav a:hover { color: var(--crema); text-decoration: underline; }
 .card .nota-guia { margin: 0; min-height: 1lh; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; font: 600 13px/1.4 var(--sans); color: var(--crema-2); }
 .card .nota-guia .insignia { padding: 2px 8px; border-radius: 8px; background: var(--amarillo); color: var(--esmalte); font-weight: 700; }
 .card .nota-guia .insignia[hidden] { display: none; }
+
+/* Movimiento reducido: sin transiciones ni desplazamientos en botones, chips, campos, tarjetas, flechas, barra de
+   envíos y pulgar de la cinta. El estado se sigue viendo (color, borde, largo de la barra), sólo no se anima. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+  .btn:active, .gana:active, .card:hover, .cat:hover, .pizarra a:hover .go,
+  .cinta input[type="range"]:active::-webkit-slider-thumb { transform: none; }
+}

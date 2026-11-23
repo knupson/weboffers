@@ -39,9 +39,10 @@ const cats = [
       <div>
         <h1 class="letra">¿Amazon o<br />Mercado Libre?</h1>
         <p class="lead">Comparamos lo que te sale traerlo puesto en tu casa con lo que sale acá, y te decimos dónde te conviene comprarlo.</p>
+        <label class="search-lab" for="q-portada">Qué producto buscás</label>
         <form class="search" action="/buscar/" method="get" role="search">
           <Icon name="magnifying-glass" size={18} />
-          <input name="q" type="search" placeholder="SSD, Ryzen, auriculares, Garmin..." aria-label="Qué producto buscás" required />
+          <input id="q-portada" name="q" type="search" placeholder="SSD, Ryzen, auriculares, Garmin..." required />
           <button class="btn" type="submit" data-umami-event="busqueda">Comparar</button>
         </form>
       </div>

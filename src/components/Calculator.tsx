@@ -174,7 +174,7 @@ export default function Calculator({ buildRates, initialFob = null, title = "Cal
               {buy && (
                 <div class="comprar">
                   <a class="btn lg" href={buy.url} target="_blank" rel="noopener noreferrer sponsored" {...(buy.attrs ?? salidaAttrs("amazon", "calculadora", { slug: buy.slug }, "calculadora"))}>
-                    Comprarlo en Amazon ↗
+                    Comprarlo en Amazon <span aria-hidden="true">↗</span>
                   </a>
                   <p class="fine">Si comprás desde este botón, Amazon nos paga una comisión y a vos te sale lo mismo. Así sostenemos el sitio.</p>
                 </div>

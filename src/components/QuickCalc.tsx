@@ -29,7 +29,7 @@ export default function QuickCalc({ mep: buildMep }: Props) {
   const over = r.excessUsd > 0;
 
   return (
-    <div class={over ? "quick over" : "quick"} aria-live="polite">
+    <div class={over ? "quick over" : "quick"}>
       <p class="k">Si en Amazon sale</p>
       <p class="usd num">{usd0(fob)}</p>
       <div class="cinta" style={{ "--edge": `${(400 / MAX) * 100}%` }}>
@@ -50,7 +50,7 @@ export default function QuickCalc({ mep: buildMep }: Props) {
       </div>
       <p class="k">te sale puesto en tu casa</p>
       <p class="ars num">{mep ? formatArs(totalUsd * mep) : usd0(totalUsd)}</p>
-      <p class="state">{shipping ? `Envío ≈ ${usd0(shipping)}: debajo de USD 100 no es gratis` : over ? `Envío gratis. Pagás derechos sobre ${usd0(r.excessUsd)}` : "Envío gratis y sin derechos de importación"}</p>
+      <p class="state" aria-live="polite">{shipping ? `Envío ≈ ${usd0(shipping)}: debajo de USD 100 no es gratis` : over ? `Envío gratis. Pagás derechos sobre ${usd0(r.excessUsd)}` : "Envío gratis y sin derechos de importación"}</p>
     </div>
   );
 }

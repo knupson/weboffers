@@ -288,7 +288,7 @@ const Cierre = () => {
           <div style={{ fontFamily: ULTRA, fontSize: 66, color: "#fff", background: C.rojo, padding: "24px 46px", borderRadius: 22, boxShadow: `inset 0 0 0 5px ${C.rojo}, inset 0 0 0 9px ${C.crema}` }}>ofertas.knunet.com</div>
         </Pop>
         <Pop at={3.2} style={{ marginTop: 60, translate: `0px ${salto}px` }}>
-          <Texto size={60} weight={900} color={C.amarillo}>☝ LINK EN LA BIO</Texto>
+          <Texto size={60} weight={900} color={C.amarillo}>LINK EN LA BIO</Texto>
         </Pop>
       </Columna>
     </AbsoluteFill>

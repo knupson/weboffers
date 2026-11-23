@@ -237,7 +237,8 @@ export const trackFiltrarCategoria = (categoria: string) => track("filtrar_categ
 export const trackBuscarProducto = (termino: string, resultados: number) =>
   track("buscar_producto", { termino: termino.trim().toLowerCase().slice(0, UTM_MAX), resultados });
 
-// La calculadora se usa tecleando: un solo evento por página, con el monto en el que el usuario se quedó.
+// La calculadora se usa tecleando: un solo evento por página. 23/11: el monto ya no sale del navegador (la página de
+// privacidad dice que lo que se carga en la calculadora no se envía); `montoUsd` sólo decide si hay un monto válido.
 let calcTimer: ReturnType<typeof setTimeout> | undefined;
 let calcEnviado = false;
 export function trackCalculadora(montoUsd: number, esperaMs = 1500): void {
@@ -245,7 +246,7 @@ export function trackCalculadora(montoUsd: number, esperaMs = 1500): void {
   clearTimeout(calcTimer);
   calcTimer = setTimeout(() => {
     calcEnviado = true;
-    track("usar_calculadora", { monto_usd: Math.round(montoUsd * 100) / 100 });
+    track("usar_calculadora");
   }, esperaMs);
 }
 /** Sólo para tests. */

@@ -281,21 +281,6 @@ def sintetizar(textos):
     return duraciones
 
 
-def emoji(p):
-    # 17/11: faltaban categorías del catálogo automático (Anteojos, Juguetes, Auto…) y caían en 💻 (Versace con 💻 el 17/11).
-    categoria = p.get('category', '').lower()
-    for fragmento, icono in [('auricular', '🎧'), ('audio', '🔊'), ('joystick', '🎮'), ('gaming', '🎮'),
-                            ('almacenamiento', '💾'), ('monitor', '🖥️'), ('teclado', '⌨️'),
-                            ('mouse', '🖱️'), ('periférico', '🖱️'), ('cámara', '📷'), ('reloj', '⌚'),
-                            ('anteojo', '🕶️'), ('juguete', '🧸'), ('auto', '🚗'), ('herramienta', '🛠️'),
-                            ('componente', '🔧'), ('cuidado personal', '🪒'), ('mochila', '🎒'),
-                            ('tablet', '📱'), ('celular', '📱'), ('deporte', '🏃'), ('hogar', '🏠'),
-                            ('salud', '🩺'), ('mascota', '🐾'), ('cocina', '🍳'), ('notebook', '💻')]:
-        if fragmento in categoria:
-            return icono
-    return '🛒'
-
-
 def nombre_corto(p, maximo=40):
     """17/11: los productos automáticos traen el título entero de Mercado Libre (63 de 144 con más de 60 caracteres)
     y la voz lo leía completo. Si es largo: palabras desde el principio hasta el modelo (primera palabra con letras y
@@ -321,10 +306,10 @@ def nombre_corto(p, maximo=40):
 
 def caption(a, b, cantidad, fecha):
     motivo = 'el envío se come la diferencia.' if b['usd'] < 100 else 'incluso con envío gratis, conviene comprar acá.'
-    return f'''¿Amazon o Mercado Libre? Depende del producto 👇
+    return f'''¿Amazon o Mercado Libre? Depende del producto.
 
-{emoji(a)} {nombre_corto(a)}: ${ars(a['ml'])} en Mercado Libre vs ~${ars(a['az'])} traídos de Amazon. Gana Amazon.
-{emoji(b)} {nombre_corto(b)}: ${ars(b['ml'])} en Mercado Libre vs ~${ars(b['az'])} de Amazon. Gana Mercado Libre: {motivo}
+{nombre_corto(a)}: ${ars(a['ml'])} en Mercado Libre vs ~${ars(a['az'])} traídos de Amazon. Gana Amazon.
+{nombre_corto(b)}: ${ars(b['ml'])} en Mercado Libre vs ~${ars(b['az'])} de Amazon. Gana Mercado Libre: {motivo}
 
 Comparamos {cantidad} productos con los precios de hoy: link en la bio.
 La mejor oferta del día, todos los días a las 12 y a las 20, en Telegram: t.me/franquicia400
@@ -378,7 +363,7 @@ def main(anuncio=None, duelo=None):
         recorte.asegurar_transparente(REPO / 'public/products' / (producto['slug'] + '.webp'), BASE / 'public' / (producto['slug'] + '.png'))
     fecha = datetime.fromisoformat(hoy).strftime('%d/%m/%Y')
     t = props['textos']
-    t['cierre'][4] = 'TOCÁ MÁS INFORMACIÓN' if anuncio is not None else '☝ LINK EN LA BIO'
+    t['cierre'][4] = 'TOCÁ MÁS INFORMACIÓN' if anuncio is not None else 'LINK EN LA BIO'
     t['gancho'] = ['PAGÁS', 'MÁS DEL', 'DOBLE'] if a['ml'] > 2 * a['az'] else ['AMAZON', 'SALE', 'MENOS']
     t['ganchoSub'] = 'si lo comprás en Mercado Libre' if a['ml'] > 2 * a['az'] else 'Mirá la diferencia con Mercado Libre'
     t['tarjetas'] = [dict(titulo='MENOS DE USD 100', sub='El envío puede comerse el ahorro. Compará el total.'),

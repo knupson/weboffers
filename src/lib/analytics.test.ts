@@ -126,7 +126,17 @@ describe("calculadora", () => {
     vi.unstubAllGlobals();
   });
 
-  it("un solo evento por página, con el último monto tecleado", () => {
+  it("sin monto válido no hay evento", () => {
+    vi.useFakeTimers();
+    const u = umami();
+    vi.stubGlobal("window", u.win);
+    trackCalculadora(0);
+    trackCalculadora(NaN);
+    vi.advanceTimersByTime(3000);
+    expect(u.llamadas).toEqual([]);
+  });
+
+  it("un solo evento por página, sin el monto tecleado", () => {
     vi.useFakeTimers();
     const u = umami();
     vi.stubGlobal("window", u.win);
@@ -136,7 +146,8 @@ describe("calculadora", () => {
     vi.advanceTimersByTime(1500);
     trackCalculadora(300);
     vi.advanceTimersByTime(1500);
-    expect(u.llamadas.map(([e, d]) => [e, d?.monto_usd])).toEqual([["usar_calculadora", 129.5]]);
+    expect(u.llamadas).toEqual([["usar_calculadora", {}]]);
+    expect(JSON.stringify(u.llamadas)).not.toMatch(/monto|129/);
   });
 });
 

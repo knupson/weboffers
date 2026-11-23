@@ -109,7 +109,7 @@ def caption(product):
         lines.append(f"En Argentina: <b>{precio}</b> en Mercado Libre.")
         verdict = _verdict_for_product(product)
         if verdict == "amazon":
-            lines.append(f"Traerlo de {STORES.get(product['store'], 'Amazon')} sale bastante menos puesto en tu casa.")
+            lines.append(f"Traerlo de {STORES.get(product['store'], 'Amazon')} sale menos puesto en tu casa.")
         elif verdict == "sin_envio":
             lines.append("Traerlo de Amazon saldría menos, pero no confirmamos el envío a Argentina.")
         else:

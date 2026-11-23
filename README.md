@@ -1,6 +1,6 @@
 # Franquicia 400
 
-Calculadora de costo final para comprar hardware en Amazon y traerlo a Argentina por courier (franquicia de USD 400). Sitio estático en Astro, publicado en Cloudflare, con un worker que actualiza precios y dólar.
+Calculadora de costo final para comprar productos en Amazon y traerlo a Argentina por courier (franquicia de USD 400). Sitio estático en Astro, publicado en Cloudflare, con un worker que actualiza precios y dólar.
 
 Dominio: https://ofertas.knunet.com
 
