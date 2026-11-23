@@ -9,7 +9,7 @@ import { isComparable, loadProducts, MIN_AMAZON_SAVING } from "../../lib/data";
 
 export async function getStaticPaths() {
   const { products } = await loadProducts();
-  // Una guía dinámica con menos productos publicados hoy que su mínimo no se genera: /guias/<slug>/ da 404.
+  // Una guía dinámica con menos productos publicados hoy que su mínimo no se genera; el build le pone una 301 a /guias/ (astro.config.mjs).
   const publicables = guiasPublicables(loadGuias(), products.filter((p) => isComparable(p)));
   return publicables.map(({ g, productos, notas }) => ({
     params: { slug: g.slug },

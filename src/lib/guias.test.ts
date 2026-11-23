@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ahorroGuia, guiaDeCategoria, guiasPublicables, productosDeGuia, validarGuias, type Guia } from "./guias";
+import { ahorroGuia, guiaDeCategoria, guiasPublicables, guiasSinPagina, redireccionesGuias, productosDeGuia, validarGuias, type Guia } from "./guias";
 
 const prod = (slug: string, category: string, ml: number, amazonArs: number, freeShipping = true) => ({
   slug, category, ml: { price: ml, url: "", checked: "2026-11-21" }, amazonArs,
@@ -103,5 +103,20 @@ describe("guiaDeCategoria", () => {
     expect(guiaDeCategoria(publicables, "Herramientas")).toBeNull();
     // Las guías sin filtro no cubren categorías.
     expect(guiaDeCategoria(publicables, "Mochilas")).toBeNull();
+  });
+});
+
+describe("guiasSinPagina y redireccionesGuias", () => {
+  it("lista sólo las dinámicas sin página generada, nunca las fijas", () => {
+    const filtro = { categorias: ["X"], ordenarPor: "ahorro_ars" as const, limite: 8, minimo: 3 };
+    const guias = [{ ...base, slug: "relojes", filtro }, { ...base, slug: "mochilas", filtro }, { ...base, slug: "fija" }];
+    expect(guiasSinPagina(guias, (s) => s === "relojes")).toEqual(["mochilas"]);
+  });
+
+  it("arma la 301 con y sin barra final, y nada si no hay guías", () => {
+    expect(redireccionesGuias([])).toBe("");
+    const r = redireccionesGuias(["mochilas"]);
+    expect(r).toContain("/guias/mochilas/ /guias/ 301\n");
+    expect(r).toContain("/guias/mochilas /guias/ 301\n");
   });
 });

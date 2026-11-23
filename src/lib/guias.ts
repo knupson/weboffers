@@ -119,6 +119,18 @@ export function guiasPublicables<T extends ProductoGuia>(guias: Guia[], comparab
   return out;
 }
 
+/** Guías dinámicas que este build no generó (quedaron bajo su mínimo): van con 301 a /guias/ en vez de dar 404. */
+export function guiasSinPagina(guias: Guia[], tienePagina: (slug: string) => boolean): string[] {
+  return guias.filter((g) => g.filtro && !tienePagina(g.slug)).map((g) => g.slug);
+}
+
+/** Líneas de `_redirects` (con y sin barra final, igual que las guías retiradas a mano). */
+export function redireccionesGuias(slugs: string[]): string {
+  if (slugs.length === 0) return "";
+  const lineas = slugs.flatMap((s) => [`/guias/${s}/ /guias/ 301`, `/guias/${s} /guias/ 301`]);
+  return `\n# Generado en el build: guías dinámicas bajo su mínimo de productos publicados hoy.\n${lineas.join("\n")}\n`;
+}
+
 /** La guía dinámica publicada que cubre esa categoría (la primera de guias.json), para ofrecerla desde la ficha. */
 export function guiaDeCategoria<T extends ProductoGuia>(publicables: GuiaPublicable<T>[], categoria: string): Guia | null {
   return publicables.find((r) => r.g.filtro?.categorias.includes(categoria))?.g ?? null;
