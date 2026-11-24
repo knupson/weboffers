@@ -140,7 +140,7 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     assert cadena.CHROME_CHEQUEO_CDP in comandos[barrido - 1]  # y conexión real de Playwright, justo antes del barrido
     # WARP al arrancar y antes de cada barrido que sale a Amazon por el proxy (17/11)
     assert runner.warp_chequeos == ["inicio", "alta:barrido_amazon", "alta:barrido_ml"]
-    assert comandos[barrido + 3][-1] == "/app/tools/dudosos_nvidia.py"
+    assert comandos[barrido + 4][-1] == "/app/tools/dudosos_nvidia.py"  # +1: sondeo de ML (24/11)
     chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
     assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
     deploy = [c for c in comandos if "/app/deploy.mjs" in c]
@@ -155,7 +155,7 @@ def test_cada_paso_una_vez(tmp_path):
     # que desde el 11/11 son dos comandos: pestaña y conexión real de Playwright.
     # 13/11: más el paso de «Lo más vendido» antes del deploy del alta.
     # 24/11: más ml_chrome antes de cada «ml» (la API de ML da 403 PolicyAgent).
-    assert len(comandos) == 25  # los chequeos de WARP (17/11) se cuentan aparte en runner.warp_chequeos
+    assert len(comandos) == 26  # 24/11: + sondeo de /items antes de barrido_ml. Los chequeos de WARP (17/11) se cuentan aparte en runner.warp_chequeos
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -419,11 +419,28 @@ def test_pasos_ml_y_altas_del_barrido(tmp_path):
     runner.bloque = "alta"
     runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
     runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
+    assert comandos.pop(0)[-2:] == ["-c", cadena.SONDEO_ML_ITEMS]  # 24/11: sondeo de /products/{id}/items
     assert comandos.pop(0) == cadena.WARP_CHEQUEO
     assert comandos[0][-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
     assert cadena.BARRIDO in comandos[0]
     assert comandos[1][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[1]
 
+
+
+def test_barrido_ml_se_saltea_si_la_api_de_ml_bloquea_items(tmp_path):
+    # 24/11: 403 PolicyAgent en /products/{id}/items; el paso fallaba a los 457 s sin conseguir ningún precio.
+    reloj, comandos = Reloj(), []
+
+    def popen(command, **kw):
+        comandos.append(command)
+        return Hijo(reloj, out="ML_ITEMS_BLOQUEADO\n" if command[-2:] == ["-c", cadena.SONDEO_ML_ITEMS] else "")
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
+    paso = runner.summary["pasos"][-1]
+    assert paso["estado"] == "ok" and paso["motivo"] == "api_ml_items_403"
+    assert len(comandos) == 1 and not any(cadena.BARRIDO in c for c in comandos)
+    assert "BARRIDO_ML_SALTEADO" in (tmp_path / f"cadena-{runner.fecha}.log").read_text(encoding="utf-8")
 
 
 # 13/11: «Lo más vendido» se renueva en la cadena, justo antes del deploy del alta.

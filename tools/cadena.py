@@ -20,6 +20,12 @@ AMAZON_TIMEOUT = 5400
 ML_TIMEOUT = 1800
 # 24/11: la API de ML da 403 «PolicyAgent»; los precios se leen de la página con Chrome (tools/ml_chrome.sh).
 ML_CHROME_TIMEOUT = 3600
+# Sondeo de 1 pedido: ¿la API de ML sigue bloqueando /products/{id}/items? (24/11: 403 PolicyAgent).
+SONDEO_ML_ITEMS = ("import sys; sys.path.insert(0, '/app/worker'); import requests, ml_prices as m; "
+                   "r = requests.get(m.API_BASE_URL + '/products/MLA17332828/items', "
+                   "headers={'Authorization': 'Bearer ' + m.get_token()}, timeout=30); "
+                   "print('ML_ITEMS_BLOQUEADO' if r.status_code == 403 and 'PolicyAgent' in r.text "
+                   "else 'ML_ITEMS_HTTP %s' % r.status_code)")
 DEPLOY_TIMEOUT = 1800
 GLOBAL_TIMEOUT = 12000
 # Buscar debe liberar la cadena de las 03:30 antes de las 20:00 ART.
@@ -357,21 +363,33 @@ class Cadena:
                 self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
                                          "--store", "US", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
             elif paso == "barrido_ml":
-                self.warp(deadline, "antes de barrido_ml")
-                for intento in (1, 2):
-                    seconds = max(1, int(deadline - self.clock()))
-                    self.ultima_salida = self.ultimo_error = ""
-                    try:
-                        self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
-                                                 "--step", "ml-lookup", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
-                        break
-                    except RuntimeError as exc:
-                        # Una falla de proxy se reintenta una vez con WARP reiniciado; ml-lookup reanuda desde
-                        # su checkpoint (los ASIN confirmados no se vuelven a consultar, los «error» sí).
-                        if intento == 2 or not PROXY_CAIDO.search(f"{exc}\n{self.ultima_salida}\n{self.ultimo_error}"):
-                            raise
-                        self.log(f"BARRIDO_ML_REINTENTO_WARP falla de proxy: {_linea_corta(str(exc))[:MOTIVO_MAX]}")
-                        self.warp(deadline, "falla de proxy en barrido_ml", forzar=True)
+                # 24/11: la API de ML da 403 «PolicyAgent» en /products/{id}/items (el barrido no consigue ningún
+                # precio y el paso fallaba a los 457 s). Si el sondeo lo confirma, el paso se saltea limpio.
+                try:
+                    sondeo = self.process(self.docker(WORKER, "python", "-c", SONDEO_ML_ITEMS, cwd="/app/worker"),
+                                          deadline, paso) or ""
+                except RuntimeError as exc:
+                    sondeo = ""
+                    self.log(f"BARRIDO_ML_SONDEO_FALLA {_linea_corta(str(exc))[:MOTIVO_MAX]}")
+                if "ML_ITEMS_BLOQUEADO" in sondeo:
+                    self.log("BARRIDO_ML_SALTEADO la API de ML da 403 PolicyAgent en /products/{id}/items")
+                    record["motivo"] = "api_ml_items_403"
+                else:
+                    self.warp(deadline, "antes de barrido_ml")
+                    for intento in (1, 2):
+                        seconds = max(1, int(deadline - self.clock()))
+                        self.ultima_salida = self.ultimo_error = ""
+                        try:
+                            self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
+                                                     "--step", "ml-lookup", "--output", BARRIDO_SALIDA, cwd="/app"), deadline, paso)
+                            break
+                        except RuntimeError as exc:
+                            # Una falla de proxy se reintenta una vez con WARP reiniciado; ml-lookup reanuda desde
+                            # su checkpoint (los ASIN confirmados no se vuelven a consultar, los «error» sí).
+                            if intento == 2 or not PROXY_CAIDO.search(f"{exc}\n{self.ultima_salida}\n{self.ultimo_error}"):
+                                raise
+                            self.log(f"BARRIDO_ML_REINTENTO_WARP falla de proxy: {_linea_corta(str(exc))[:MOTIVO_MAX]}")
+                            self.warp(deadline, "falla de proxy en barrido_ml", forzar=True)
             elif paso == "barrido_altas":
                 seconds = max(1, int(deadline - self.clock()))
                 self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",
