@@ -33,7 +33,7 @@ INTENTOS_LECTURA = 4  # hasta ~12 s para que la página tenga su estado inicial
 # Ritmo: una página cada 4 a 7 s, como una persona mirando; ML pide verificación de cuenta a clientes automáticos
 # (curl desde la VM el 24/11 terminó en /gz/account-verification).
 PAUSA_MIN, PAUSA_MAX = 4.0, 7.0
-MAX_PAGINAS = 5
+MAX_PAGINAS = 12  # 24/11: MLA37106988 (Logitech MX Brio) tenía 9 páginas de 10 ofertas; con 5 cinco catálogos quedaron en falla
 RECONEXIONES = 3
 ESPERA_RECONEXION = 20
 RECICLAR_CADA = 15
