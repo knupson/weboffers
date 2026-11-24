@@ -140,6 +140,14 @@ def chrome_results(catalog_id, output_dir=None, today=None):
     return entry["results"]
 
 
+def _chrome_leyo(product, output_dir, today):
+    """True si la lectura de Chrome de hoy tiene ofertas para el catálogo de este producto."""
+    try:
+        return chrome_results((product.get("ml") or {}).get("catalogId"), output_dir, today) is not None
+    except ValueError:
+        return False
+
+
 def fetch_items(catalog_id):
     if not re.fullmatch(r"[A-Za-z0-9]+", str(catalog_id)):
         raise ValueError("catalogId inválido")
@@ -411,6 +419,10 @@ def maybe_refresh(catalog, prices_path, amazon_prices_path, mep, now, eur_usd=No
         antes_salteados = set(previous.get("skipped") or {})
         nuevos = {p["slug"] for p in catalog if p.get("slug") and p["slug"] not in vistos and p["slug"] not in salteos
                   and (force or p["slug"] in antes_salteados)}
+        # 24/11: un producto que falló y que Chrome leyó después (ml-chrome de hoy con ofertas) se consulta aunque
+        # se hayan agotado los 3 intentos del día: el 24/11 la 2.ª lectura de Chrome recuperó 11 y quedaban afuera.
+        nuevos |= {p["slug"] for p in catalog if p.get("slug") in set(previous.get("failed") or [])
+                   and p["slug"] not in salteos and _chrome_leyo(p, Path(prices_path).parent, today)}
         if nuevos:
             print(f"Mercado Libre: {len(nuevos)} productos nuevos o que ahora cumplen desde el slot {done_slot}; se consultan: "
                   f"{', '.join(sorted(nuevos))}.", flush=True)

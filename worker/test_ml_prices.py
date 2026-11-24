@@ -611,3 +611,23 @@ def test_retry_after_invalido_cae_al_backoff():
     assert ml_prices.retry_after_seconds("120") == ml_prices.RETRY_AFTER_MAX
     for valor in (None, "", "nan", "-3", "0", "inf", "Wed, 21 Oct 2026 07:28:00 GMT"):
         assert ml_prices.retry_after_seconds(valor) is None, valor
+
+
+def test_fallido_que_chrome_leyo_despues_se_consulta_aunque_no_queden_intentos(tmp_path, monkeypatch):
+    # 24/11: con attempts=3 la 2.ª lectura de Chrome (11 recuperados) no llegaba a ml-prices.json.
+    monkeypatch.setattr(ml_prices, "fetch_items", Mock(side_effect=requests.HTTPError("403")))
+    path = tmp_path / "ml-prices.json"
+    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN)
+    data = json.loads(path.read_text())
+    data["attempts"] = 3
+    path.write_text(json.dumps(data))
+    assert not ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN.replace(hour=14))
+    (tmp_path / "ml-chrome-2026-10-30.json").write_text(json.dumps({"date": "2026-10-30", "items": {
+        "MLA111": {"results": [{"item_id": "MLA9", "price": 450000, "currency_id": "ARS", "condition": "new", "tags": []}]},
+        "MLA222": {"results": None, "motivo": "verificacion_ml"}}}))
+    monkeypatch.setattr(ml_prices, "fetch_items", lambda cid: ml_prices.chrome_results(cid, tmp_path, "2026-10-30")
+                        or (_ for _ in ()).throw(requests.HTTPError("403")))
+    assert ml_prices.maybe_refresh(CATALOG, path, tmp_path / "amazon-prices.json", MEP, AFTER_SEVEN.replace(hour=14))
+    data = json.loads(path.read_text())
+    assert data["items"]["monitor"]["price"] == 450000
+    assert data["failed"] == ["ssd"]
