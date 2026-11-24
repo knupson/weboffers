@@ -31,13 +31,20 @@ def test_la_internacional_no_cuenta_y_gana_la_local_mas_barata():
     assert ml_prices.cheapest_new(results) == (700000, "MLA1848139213")
 
 
-def test_oferta_sin_fila_visible_se_trata_como_internacional():
+def test_oferta_sin_fila_visible_o_sin_condicion_es_falla():
+    # Revisión de Codex 24/11: no se adivina si es internacional ni si es nueva.
     pagina = {**PAGINA, "ofertas": PAGINA["ofertas"][1:]}
-    results, _ = ml_chrome.interpretar([pagina])
-    assert ml_prices.cheapest_new(results) == (700000, "MLA1848139213")
-    pagina = {**PAGINA, "ofertas": []}
-    results, _ = ml_chrome.interpretar([pagina])
-    assert ml_prices.cheapest_new(results) is None
+    assert ml_chrome.interpretar([pagina]) == (None, "oferta_sin_fila_visible")
+    items = [{**PAGINA["items"][0], "condition": None}] + PAGINA["items"][1:]
+    assert ml_chrome.interpretar([{**PAGINA, "items": items}])[0] is None
+
+
+def test_pagina_de_otro_catalogo_o_vacia_es_falla():
+    assert ml_chrome.interpretar([{**PAGINA, "catalogo": "MLA999"}], "MLA17332828")[1].startswith("pagina_de_otro_catalogo")
+    assert ml_chrome.interpretar([{**PAGINA, "catalogo": "MLA17332828"}], "MLA17332828")[1] == "ok"
+    assert ml_chrome.interpretar([{"items": [], "ofertas": [], "hayResultados": True}]) == (None, "sin_items")
+    assert ml_chrome.interpretar([PAGINA, {"items": [], "ofertas": []}]) == (None, "pagina_siguiente_vacia")
+    assert ml_chrome.interpretar([PAGINA, PAGINA]) == (None, "pagina_repetida")
 
 
 def test_verificacion_o_pagina_rota_es_falla_no_ausencia():

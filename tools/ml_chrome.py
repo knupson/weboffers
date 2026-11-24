@@ -29,6 +29,7 @@ CDP = "http://127.0.0.1:9222"
 ART = timezone(timedelta(hours=-3))
 TIMEOUT_PAGINA = 40
 ESPERA_CARGA = 3
+INTENTOS_LECTURA = 4  # hasta ~12 s para que la página tenga su estado inicial
 # Ritmo: una página cada 4 a 7 s, como una persona mirando; ML pide verificación de cuenta a clientes automáticos
 # (curl desde la VM el 24/11 terminó en /gz/account-verification).
 PAUSA_MIN, PAUSA_MAX = 4.0, 7.0
@@ -66,7 +67,8 @@ return JSON.stringify(out);})()"""
 def resultados(d):
     """Une el evento de melidata (precio, condición) con las ofertas visibles (marca internacional) de una página.
 
-    Una oferta que no aparece en la lista visible queda como internacional: ante la duda no cuenta como precio local."""
+    Devuelve (lista, motivo_de_falla). Revisión de Codex del 24/11: una oferta sin fila visible o sin condición no se
+    adivina (antes se tomaba como internacional o se aceptaba sin condición): el catálogo entero queda en falla."""
     cbt = {}
     for oferta in d.get("ofertas") or []:
         for item_id in oferta.get("ids") or []:
@@ -75,30 +77,44 @@ def resultados(d):
     for item in d.get("items") or []:
         item_id = item.get("item_id")
         if not isinstance(item_id, str) or not re.fullmatch(r"MLA\d+", item_id):
-            continue
-        internacional = cbt.get(item_id, True)
+            return None, "oferta_sin_id"
+        if item_id not in cbt:
+            return None, "oferta_sin_fila_visible"
+        if item.get("condition") not in ("new", "used", "refurbished", "not_specified"):
+            return None, f"condicion_desconocida:{item.get('condition')}"
         salida.append({"item_id": item_id, "price": item.get("price"), "currency_id": item.get("currency_id"),
-                       "condition": item.get("condition"), "tags": ["cbt_item"] if internacional else []})
-    return salida
+                       "condition": item.get("condition"), "tags": ["cbt_item"] if cbt[item_id] else []})
+    return salida, None
 
 
-def interpretar(paginas):
-    """paginas: lo leído de cada página de /s. Devuelve (results o None, motivo)."""
+def interpretar(paginas, cid=None):
+    """paginas: lo leído de cada página de /s. Devuelve (results o None, motivo).
+
+    Toda duda es falla (results None), nunca «sin ofertas»: una página que no es del catálogo pedido, una página sin
+    ofertas legibles o con filas que no se pudieron unir deja el producto sin precio de hoy."""
     if not paginas:
         return None, "sin_lectura"
-    primera = paginas[0]
-    if primera.get("verificacion"):
+    if paginas[0].get("verificacion"):
         return None, "verificacion_ml"
-    if primera.get("error") and not primera.get("items"):
-        return None, f"pagina_sin_datos:{primera['error'][:80]}"
-    todos = []
-    for d in paginas:
-        if d.get("verificacion") or (d.get("error") and not d.get("items")):
-            # Una página siguiente sin leer deja la lista incompleta: falla, para no elegir un precio que no es el menor.
-            return None, "pagina_siguiente_sin_leer"
-        todos.extend(resultados(d))
-    if not todos:
-        return ([], "sin_ofertas") if primera.get("sinOfertas") or primera.get("hayResultados") else (None, "sin_items")
+    todos, vistos = [], set()
+    for n, d in enumerate(paginas, 1):
+        if d.get("verificacion"):
+            return None, "verificacion_ml" if n == 1 else "pagina_siguiente_sin_leer"
+        if d.get("error"):
+            return None, f"pagina_sin_datos:{str(d['error'])[:80]}"
+        if cid is not None and d.get("catalogo") != cid:
+            return None, f"pagina_de_otro_catalogo:{d.get('catalogo')}"
+        if not d.get("items"):
+            # 1.ª página sin ofertas: no hay forma probada de distinguir «sin vendedores» de una página mal leída.
+            return None, "sin_items" if n == 1 else "pagina_siguiente_vacia"
+        lista, falla = resultados(d)
+        if falla:
+            return None, falla
+        ids = {r["item_id"] for r in lista}
+        if ids & vistos:
+            return None, "pagina_repetida"
+        vistos |= ids
+        todos.extend(lista)
     return todos, "ok"
 
 
@@ -139,28 +155,37 @@ async def nueva_pestana(c, ctx):
 
 
 async def leer_pagina(c, s, url):
+    # about:blank primero: si la navegación falla o tarda, nunca se lee el documento anterior (revisión de Codex 24/11).
+    await c.call("Page.navigate", {"url": "about:blank"}, s)
     await c.call("Page.navigate", {"url": url}, s)
-    await asyncio.sleep(ESPERA_CARGA)
-    r = await c.call("Runtime.evaluate", {"expression": LEER, "returnByValue": True}, s, timeout=TIMEOUT_PAGINA)
-    if r.get("exceptionDetails"):
-        det = r["exceptionDetails"]
-        raise RuntimeError(f"js: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
-    return json.loads((r.get("result") or {}).get("value") or "{}")
+    d = {}
+    for _ in range(INTENTOS_LECTURA):
+        await asyncio.sleep(ESPERA_CARGA)
+        r = await c.call("Runtime.evaluate", {"expression": LEER, "returnByValue": True}, s, timeout=TIMEOUT_PAGINA)
+        if r.get("exceptionDetails"):
+            det = r["exceptionDetails"]
+            raise RuntimeError(f"js: {(det.get('exception') or {}).get('description') or det.get('text')}"[:200])
+        d = json.loads((r.get("result") or {}).get("value") or "{}")
+        if d.get("verificacion") or (not d.get("error") and d.get("items")):
+            break
+    return d
 
 
 async def leer_catalogo(c, s, cid):
     paginas = []
     for n in range(1, MAX_PAGINAS + 1):
+        if time.monotonic() - INICIO > TOPE:
+            raise TopeML()
         url = f"https://www.mercadolibre.com.ar/p/{cid}/s" + (f"?page={n}" if n > 1 else "")
         d = await leer_pagina(c, s, url)
         paginas.append(d)
-        if not d.get("siguiente") or d.get("verificacion"):
+        if not d.get("siguiente") or d.get("verificacion") or d.get("error"):
             break
         await asyncio.sleep(random.uniform(PAUSA_MIN, PAUSA_MAX))
     else:
         # Más de MAX_PAGINAS: la lista queda incompleta.
         return None, "demasiadas_paginas", len(paginas)
-    results, motivo = interpretar(paginas)
+    results, motivo = interpretar(paginas, cid)
     return results, motivo, len(paginas)
 
 
@@ -186,10 +211,15 @@ async def recorrer(c, ctx, tid, s, cids, items):
             except Exception:  # noqa: BLE001
                 pass
             tid, s = await nueva_pestana(c, ctx)
+        empezado = datetime.now(ART).isoformat(timespec="seconds")
         try:
             results, motivo, paginas = await asyncio.wait_for(
                 leer_catalogo(c, s, cid), (TIMEOUT_PAGINA + ESPERA_CARGA + PAUSA_MAX) * MAX_PAGINAS + 5)
             items[cid] = {"results": results, "motivo": motivo, "paginas": paginas}
+        except TopeML:
+            print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ML_CHROME_TOPE {TOPE:.0f} s; quedan {len(cids) - n} sin leer",
+                  file=sys.stderr, flush=True)
+            raise
         except Exception as e:  # noqa: BLE001 — página colgada: se anota y se sigue con otra pestaña
             items[cid] = {"results": None, "motivo": f"error:{type(e).__name__}", "paginas": 0}
             try:
@@ -197,7 +227,8 @@ async def recorrer(c, ctx, tid, s, cids, items):
             except Exception:  # noqa: BLE001
                 pass
             tid, s = await nueva_pestana(c, ctx)
-        items[cid]["leido"] = datetime.now(ART).isoformat(timespec="seconds")
+        # «leido» es cuándo EMPEZÓ el catálogo: si cruza medianoche, guardar lo descarta (revisión de Codex 24/11).
+        items[cid]["leido"] = empezado
         print(linea(cid, items[cid]), file=sys.stderr, flush=True)
         seguidas = seguidas + 1 if items[cid]["motivo"] == "verificacion_ml" else 0
         if seguidas >= VERIFICACIONES_SEGUIDAS_MAX:
