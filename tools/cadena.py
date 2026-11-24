@@ -18,6 +18,8 @@ CHROME_TIMEOUT = 3000
 ALTAS_TIMEOUT = 300
 AMAZON_TIMEOUT = 5400
 ML_TIMEOUT = 1800
+# 24/11: la API de ML da 403 «PolicyAgent»; los precios se leen de la página con Chrome (tools/ml_chrome.sh).
+ML_CHROME_TIMEOUT = 3600
 DEPLOY_TIMEOUT = 1800
 GLOBAL_TIMEOUT = 12000
 # Buscar debe liberar la cadena de las 03:30 antes de las 20:00 ART.
@@ -391,6 +393,10 @@ class Cadena:
                 extra = ["--pendientes"] if self.bloque == "alta" else []
                 self.process(["env", f"PUBLICACION_MODO={self.bloque}", f"CADENA_TIMEOUT={env_timeout}", "sh", str(REPO / "tools/envio_ar_chrome.sh"), *extra],
                              deadline, paso)
+            elif paso == "ml_chrome":
+                env_timeout = max(1, int(deadline - self.clock()))
+                self.process(["env", f"PUBLICACION_MODO={self.bloque}", f"CADENA_TIMEOUT={env_timeout}", "sh",
+                              str(REPO / "tools/ml_chrome.sh")], deadline, paso)
             elif paso in ("buscar", "dudosos", "altas", "amazon", "ml", "fichas"):
                 # El timeout dentro del contenedor mata el Python aunque muera docker exec en el host.
                 seconds = max(1, int(deadline - self.clock()))
@@ -433,12 +439,12 @@ class Cadena:
             self.warp(min(self.clock() + WARP_PLAZO_INICIO, self.alta_deadline), "inicio de la cadena")
         except Exception as exc:  # noqa: BLE001 — la verificación no usa WARP; barrido_ml lo vuelve a chequear
             self.log(f"WARP_FALLA_INICIO {exc}")
-        verificacion = (("offers", OFFERS_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
+        verificacion = (("offers", OFFERS_TIMEOUT), ("chrome", CHROME_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml_chrome", ML_CHROME_TIMEOUT), ("ml", ML_TIMEOUT), ("fichas", ML_TIMEOUT),
                         ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         # 10/11: «buscar» (crecer_ahora) queda para uso manual; el alta diaria es el barrido en tres pasos.
         alta = (("barrido_amazon", BARRIDO_AMAZON_TIMEOUT), ("barrido_ml", BARRIDO_ML_TIMEOUT),
                 ("barrido_altas", BARRIDO_ALTAS_TIMEOUT), ("dudosos", AMAZON_TIMEOUT), ("chrome", CHROME_TIMEOUT),
-                ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml", ML_TIMEOUT),
+                ("altas", ALTAS_TIMEOUT), ("amazon", AMAZON_TIMEOUT), ("ml_chrome", ML_CHROME_TIMEOUT), ("ml", ML_TIMEOUT),
                 ("mas_vendidos", MAS_VENDIDOS_TIMEOUT), ("deploy", DEPLOY_TIMEOUT), ("estado", ALTAS_TIMEOUT))
         verificacion_fallida = False
         for bloque, pasos in (("verificacion", verificacion), ("alta", alta)):

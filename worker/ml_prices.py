@@ -117,9 +117,35 @@ def is_no_winners(response):
         and "no winners" in str(body.get("message", "")).lower()
 
 
+def ruta_chrome(output_dir, today):
+    return Path(output_dir) / f"ml-chrome-{today}.json"
+
+
+def chrome_results(catalog_id, output_dir=None, today=None):
+    """Ofertas de hoy leídas de la página pública por tools/ml_chrome.py, o None si Chrome no leyó ese catálogo hoy.
+
+    24/11: la API responde 403 «PolicyAgent» en /products/{id}/items desde el 24/11 04:02 (ver tools/ml_chrome.py).
+    Una lectura fallida de Chrome sube como ValueError: el producto queda en «failed», nunca como «sin oferta»."""
+    today = today or datetime.now(ART).date().isoformat()
+    if output_dir is None:
+        output_dir = Path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json")).parent
+    data = load_json(ruta_chrome(output_dir, today), None)
+    if not isinstance(data, dict) or data.get("date") != today:
+        return None
+    entry = (data.get("items") or {}).get(catalog_id)
+    if not isinstance(entry, dict):
+        return None
+    if not isinstance(entry.get("results"), list):
+        raise ValueError(f"ml_chrome_{entry.get('motivo') or 'sin_lectura'}")
+    return entry["results"]
+
+
 def fetch_items(catalog_id):
     if not re.fullmatch(r"[A-Za-z0-9]+", str(catalog_id)):
         raise ValueError("catalogId inválido")
+    leidos = chrome_results(catalog_id)
+    if leidos is not None:
+        return leidos
     try:
         payload = get_json(f"/products/{catalog_id}/items")
     except requests.HTTPError as exc:

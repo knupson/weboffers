@@ -94,8 +94,8 @@ def test_bloqueo_compartido_impide_refresh_simultaneos(tmp_path):
     assert segundo.is_set()
 
 
-PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml", "fichas", "deploy", "estado")] + [
-    f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml", "mas_vendidos", "deploy", "estado")]
+PASOS = [f"verificacion:{p}" for p in ("offers", "chrome", "amazon", "ml_chrome", "ml", "fichas", "deploy", "estado")] + [
+    f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml_chrome", "ml", "mas_vendidos", "deploy", "estado")]
 
 
 def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, skip=False):
@@ -133,7 +133,7 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     assert code == 0
     assert [p["paso"] for p in runner.summary["pasos"]] == PASOS
-    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 7 + ["alta"] * 11
+    assert [p["bloque"] for p in runner.summary["pasos"]] == ["verificacion"] * 8 + ["alta"] * 12
     assert runner.summary["fin"]
     barrido = next(i for i, c in enumerate(comandos) if c[-4:] == ["--store", "US", "--output", cadena.BARRIDO_SALIDA])
     assert cadena.CHROME_BARRIDO in comandos[barrido - 2]  # chequeo de pestaña de Chrome
@@ -150,11 +150,12 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
 def test_cada_paso_una_vez(tmp_path):
     runner, comandos, code = corrida(tmp_path)
     pares = [(p["bloque"], p["paso"]) for p in runner.summary["pasos"]]
-    assert len(pares) == len(set(pares)) == 18
+    assert len(pares) == len(set(pares)) == 20
     # Los dos deploy copian su desglose al log; el barrido suma 3 pasos y el chequeo de Chrome (10/11),
     # que desde el 11/11 son dos comandos: pestaña y conexión real de Playwright.
     # 13/11: más el paso de «Lo más vendido» antes del deploy del alta.
-    assert len(comandos) == 23  # los chequeos de WARP (17/11) se cuentan aparte en runner.warp_chequeos
+    # 24/11: más ml_chrome antes de cada «ml» (la API de ML da 403 PolicyAgent).
+    assert len(comandos) == 25  # los chequeos de WARP (17/11) se cuentan aparte en runner.warp_chequeos
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -221,7 +222,7 @@ def test_alta_no_despliega_si_verificacion_fallo(tmp_path):
     runner, comandos, code = corrida(tmp_path, falla=("verificacion", "amazon"))
     assert code == 1
     alta = [p["paso"] for p in runner.summary["pasos"] if p["bloque"] == "alta"]
-    assert alta == [f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml", "mas_vendidos")]
+    assert alta == [f"alta:{p}" for p in ("barrido_amazon", "barrido_ml", "barrido_altas", "dudosos", "chrome", "altas", "amazon", "ml_chrome", "ml", "mas_vendidos")]
     assert not any("--ahora" in c for c in comandos)
     assert "ALTA_SIN_DEPLOY verificacion_fallida" in (tmp_path / "cadena-2026-11-06.log").read_text()
 
@@ -279,7 +280,7 @@ def test_estado_falla_sin_desglose(tmp_path):
     assert all(p["estado"] == "fail" and p["motivo"] == "sin desglose" for p in estados)
 
 
-@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:13]), (1, PASOS)])
+@pytest.mark.parametrize("vencidos,esperados", [(0, PASOS[:14]), (1, PASOS)])
 def test_sin_altas_promovidas_corta_solo_sin_vencidos(tmp_path, vencidos, esperados):
     runner, _, code = corrida(tmp_path, promovidas=0, vencidos=vencidos)
     assert code == 0
@@ -295,11 +296,11 @@ def test_timeout_del_bloque_no_impide_el_alta(tmp_path):
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
     runner.deadline = reloj.clock()
     assert runner.run() == 1
-    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:5])
-    assert runner.summary["pasos"][5]["motivo"] == "deploy sin DEPLOY_OK"
-    assert runner.summary["pasos"][6]["motivo"] == "sin desglose"
+    assert all(p["motivo"] == "timeout global" for p in runner.summary["pasos"][:6])
+    assert runner.summary["pasos"][6]["motivo"] == "deploy sin DEPLOY_OK"
+    assert runner.summary["pasos"][7]["motivo"] == "sin desglose"
     assert any(cadena.BARRIDO in c for c in comandos)
-    assert len(runner.summary["pasos"]) == 16  # 7 de verificación + 9 del alta hasta el deploy
+    assert len(runner.summary["pasos"]) == 18  # 7 de verificación + 9 del alta hasta el deploy
 
 
 def test_deploy_fallido_no_reutiliza_el_desglose_anterior(tmp_path):
