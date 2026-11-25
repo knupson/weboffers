@@ -124,6 +124,7 @@ class Cadena:
         self.bloque = "verificacion"
         self.desglose = None
         self.deploy_skip = False
+        self.barrido_ml_salteado = False
         self.logs = Path(logs)
         self.logs.mkdir(parents=True, exist_ok=True)
         self.popen, self.clock, self.now, self.sleep = popen, clock, now, sleep
@@ -374,6 +375,7 @@ class Cadena:
                 if "ML_ITEMS_BLOQUEADO" in sondeo:
                     self.log("BARRIDO_ML_SALTEADO la API de ML da 403 PolicyAgent en /products/{id}/items")
                     record["motivo"] = "api_ml_items_403"
+                    self.barrido_ml_salteado = True
                 else:
                     self.warp(deadline, "antes de barrido_ml")
                     for intento in (1, 2):
@@ -390,6 +392,10 @@ class Cadena:
                                 raise
                             self.log(f"BARRIDO_ML_REINTENTO_WARP falla de proxy: {_linea_corta(str(exc))[:MOTIVO_MAX]}")
                             self.warp(deadline, "falla de proxy en barrido_ml", forzar=True)
+            elif paso == "barrido_altas" and self.barrido_ml_salteado:
+                # 25/11: barrido_ml salteado no escribe ml-candidatos-<fecha>.jsonl; sin él no hay pares que cargar.
+                self.log("BARRIDO_ALTAS_SALTEADO barrido_ml se salteó: no hay ml-candidatos del día")
+                record["motivo"] = "barrido_ml_salteado"
             elif paso == "barrido_altas":
                 seconds = max(1, int(deadline - self.clock()))
                 self.process(self.docker(WORKER, "timeout", "-s", "KILL", str(seconds), "python",

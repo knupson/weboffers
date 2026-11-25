@@ -443,6 +443,38 @@ def test_barrido_ml_se_saltea_si_la_api_de_ml_bloquea_items(tmp_path):
     assert "BARRIDO_ML_SALTEADO" in (tmp_path / f"cadena-{runner.fecha}.log").read_text(encoding="utf-8")
 
 
+def test_barrido_altas_se_saltea_si_barrido_ml_se_salteo(tmp_path):
+    # 25/11 04:45:04: barrido_ml salteado no deja ml-candidatos-<fecha>.jsonl y barrido_altas fallaba con FileNotFoundError.
+    reloj, comandos = Reloj(), []
+
+    def popen(command, **kw):
+        comandos.append(command)
+        return Hijo(reloj, out="ML_ITEMS_BLOQUEADO\n" if command[-2:] == ["-c", cadena.SONDEO_ML_ITEMS] else "")
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
+    runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
+    paso = runner.summary["pasos"][-1]
+    assert paso["paso"] == "alta:barrido_altas" and paso["estado"] == "ok" and paso["motivo"] == "barrido_ml_salteado"
+    assert len(comandos) == 1 and not any("/app/tools/barrido_a_altas.py" in c for c in comandos)
+    assert "BARRIDO_ALTAS_SALTEADO" in (tmp_path / f"cadena-{runner.fecha}.log").read_text(encoding="utf-8")
+
+
+def test_barrido_altas_corre_si_barrido_ml_fallo_por_otro_motivo(tmp_path):
+    # Sólo el salteo por 403 saltea barrido_altas; una falla real de barrido_ml no se tapa.
+    reloj, comandos = Reloj(), []
+
+    def popen(command, **kw):
+        comandos.append(command)
+        return Hijo(reloj, code=1 if "ml-lookup" in command else 0)
+    runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
+    runner.bloque = "alta"
+    runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
+    runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
+    assert runner.summary["pasos"][-2]["estado"] == "fail"
+    assert any(c[-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] for c in comandos)
+
+
 # 13/11: «Lo más vendido» se renueva en la cadena, justo antes del deploy del alta.
 def test_mas_vendidos_corre_en_el_worker_justo_antes_del_deploy_del_alta(tmp_path):
     runner, comandos, code = corrida(tmp_path)
