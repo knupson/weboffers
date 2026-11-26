@@ -129,9 +129,15 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
     if dudosos and not cadena_en_curso(cadena_dir):
         # 13/11: no se afirma por qué: también llegan votos inválidos y aprobados sin categoría para aplicar.
         problemas[f"dudosos:{len(dudosos)}"] = f"{len(dudosos)} pares dudosos esperan tu revisión"
-    ml_fallas = [l for l in lineas if "Mercado Libre: no se pudo consultar" in l]
+    # 26/11: las 4 fallas de ML de 04:20 (anteriores al DEPLOY_OK de 04:23) salían cada 6 h todo el día. Sólo cuentan
+    # las posteriores al último DEPLOY_OK de hoy, y la clave lleva la cantidad: el mismo total no se repite en el día
+    # (EVENTOS_DEL_DIA); si aparecen fallas nuevas cambia la clave y sale un aviso con el total nuevo.
+    deploy_ok = ultimo_deploy_ok(hoy, cadena_dir)
+    ml_fallas = [l for l in lineas if "Mercado Libre: no se pudo consultar" in l and despues_de(l, deploy_ok)]
     if len(ml_fallas) > ML_FALLAS_TOLERADAS:
-        problemas["ml-fallas"] = f"Mercado Libre: {len(ml_fallas)} consultas fallidas hoy (ver log del worker)"
+        desde = f" después del deploy de las {deploy_ok[:5]}" if deploy_ok else " hoy"
+        problemas[f"ml-fallas:{len(ml_fallas)}"] = (
+            f"Mercado Libre: {len(ml_fallas)} consultas fallidas{desde} (ver log del worker)")
     if WORKER in vivos:
         # Desde el 05/11 el log lleva la fecha adelante («AAAA-MM-DD HH:MM:SS texto»); se aceptan los dos formatos.
         horas = (re.match(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) LATIDO worker$", l) for l in reversed(lineas))
@@ -174,6 +180,25 @@ def _chequeos(ahora, internet=hay_internet, sh=sh, leer=leer_json_contenedor, ba
         # Fecha, mínimo de productos y sitio caído los controla `recordatorio_franquicia.py --control sitio`
         # a las 7:30 con más detalle; repetirlos acá mandaba dos WhatsApp por lo mismo (06/11).
     return problemas
+
+
+HORA_LINEA = re.compile(r"(?:\d{4}-\d{2}-\d{2} )?(\d\d:\d\d:\d\d) ")
+
+
+def ultimo_deploy_ok(hoy, cadena_dir):
+    """Hora («HH:MM:SS») del último DEPLOY_OK de hoy en cadena-<hoy>.log, o None si no hubo."""
+    try:
+        lineas = open(os.path.join(cadena_dir, f"cadena-{hoy}.log"), encoding="utf-8", errors="replace").read().splitlines()
+    except OSError:
+        return None
+    horas = [m.group(1) for m in map(HORA_LINEA.match, lineas) if m and "DEPLOY_OK" in m.string]
+    return max(horas) if horas else None
+
+
+def despues_de(linea, hora):
+    """True si la línea es posterior a «hora»; sin hora de corte o sin hora en la línea, cuenta (no se esconde)."""
+    m = HORA_LINEA.match(linea)
+    return hora is None or m is None or m.group(1) > hora
 
 
 def cadena_en_curso(logs_dir):
@@ -250,7 +275,7 @@ def cargar_estado(hoy):
 # alta:barrido_ml salía a las 05:30 y otra vez a las 11:30. Un paso que el reintento recuperó queda «ok» y no avisa.
 # «cadena» cubre las tres claves de chequear_cadena: «cadena» (falta el resumen), «cadena-interrumpida» y
 # «cadena:<paso>»; todas corresponden a la corrida diaria de las 03:30 (Alejandro, 17/11).
-EVENTOS_DEL_DIA = ("log:", "dudosos:", "deploy:", "cadena")
+EVENTOS_DEL_DIA = ("log:", "dudosos:", "deploy:", "cadena", "ml-fallas:")
 
 
 def toca_avisar(clave, estado, ahora):

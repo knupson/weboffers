@@ -63,7 +63,7 @@ def test_contenedor_caido_y_fallas_del_log(tmp_path):
     p = correr(tmp_path, sh=fake_sh(ps="franquicia400-weboffers-worker-1"))
     assert any(k.startswith("contenedores:") for k in p)
     assert any(k.startswith("log:Falló") for k in p)
-    assert "ml-fallas" in p
+    assert "ml-fallas:5" in p
 
 
 def test_latido_con_fecha_en_el_log(tmp_path):
@@ -322,3 +322,31 @@ def test_dudosos_esperan_a_que_termine_la_cadena(tmp_path, monkeypatch):
     assert "dudosos:1" not in correr(tmp_path)
     monkeypatch.setattr(v, "cadena_en_curso", lambda d: False)
     assert "dudosos:1" in correr(tmp_path)
+
+
+def test_fallas_de_ml_anteriores_al_deploy_ok_no_cuentan(tmp_path):
+    # Caso real del 26/11: 4 fallas a las 04:20-04:21 y DEPLOY_OK a las 04:23:19.
+    (tmp_path / "cadena-2026-11-05.log").write_text(
+        "2026-11-05 04:23:19 DEPLOY_OK publicado con precios del 2026-11-05. 48.9s\n", encoding="utf-8")
+    viejas = [f"2026-11-05 04:2{i}:00 Mercado Libre: no se pudo consultar p{i} (ValueError); se omite." for i in range(3)]
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker", *viejas, *viejas)
+    assert not any(k.startswith("ml-fallas") for k in correr(tmp_path))
+    nuevas = [f"2026-11-05 09:3{i}:00 Mercado Libre: no se pudo consultar q{i} (ValueError); se omite." for i in range(4)]
+    log(tmp_path, "2026-11-05 09:16:05 LATIDO worker", *viejas, *viejas, *nuevas)
+    p = correr(tmp_path)
+    assert list(k for k in p if k.startswith("ml-fallas")) == ["ml-fallas:4"]
+    assert "después del deploy de las 04:23" in p["ml-fallas:4"]
+
+
+def test_misma_alerta_de_ml_no_se_repite_y_una_nueva_si(tmp_path, monkeypatch):
+    monkeypatch.setattr(v, "ESTADO", str(tmp_path / "estado.json"))
+    problemas = {"ml-fallas:4": "Mercado Libre: 4 consultas fallidas hoy"}
+    monkeypatch.setattr(v, "chequeos", lambda ahora: dict(problemas))
+    enviados = []
+    for minutos in range(0, 12 * 60, 15):  # todo el día, pasando las 6 h de repetición
+        v.main(HOY + datetime.timedelta(minutes=minutos), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 1
+    problemas.clear()
+    problemas["ml-fallas:5"] = "Mercado Libre: 5 consultas fallidas hoy"
+    v.main(HOY + datetime.timedelta(hours=12), enviar=lambda t, e: enviados.append(t))
+    assert len(enviados) == 2 and "5 consultas" in enviados[-1]
