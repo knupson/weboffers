@@ -63,6 +63,51 @@ def test_error_de_la_api_deja_la_descripcion_en_el_log(tmp_path, monkeypatch, ca
     assert "TELEGRAM_RESPUESTA 400" in capsys.readouterr().out
 
 
+def _ok():
+    return Mock(ok=True, status_code=200)
+
+
+def _falla(status):
+    resp = Mock(ok=False, status_code=status, text="{}")
+    resp.raise_for_status.side_effect = telegram.requests.HTTPError(str(status))
+    return resp
+
+
+def test_corte_de_red_se_reintenta_con_espera(tmp_path, monkeypatch):
+    # 27/11 12:01:06: ConnectionResetError(104) y el turno de las 12 quedó sin salir hasta el reenvío manual.
+    esperas = []
+    monkeypatch.setattr(telegram, "_sleep", esperas.append)
+    corte = telegram.requests.exceptions.ConnectionError("Connection aborted.")
+    post = Mock(side_effect=[corte, telegram.requests.exceptions.ConnectTimeout("x"), _ok()])
+    monkeypatch.setattr(telegram.requests, "post", post)
+    assert telegram.maybe_post(CATALOG, tmp_path / "s.json", noon_art()) == "con-foto"
+    assert post.call_count == 3 and esperas == [2, 5]
+
+
+def test_5xx_se_reintenta_y_al_agotarse_falla(tmp_path, monkeypatch):
+    monkeypatch.setattr(telegram, "_sleep", lambda s: None)
+    post = Mock(side_effect=[_falla(502), _falla(500), _falla(503)])
+    monkeypatch.setattr(telegram.requests, "post", post)
+    with pytest.raises(telegram.requests.HTTPError):
+        telegram.maybe_post(CATALOG, tmp_path / "s.json", noon_art())
+    assert post.call_count == 3
+
+
+def test_4xx_y_read_timeout_no_se_reintentan(tmp_path, monkeypatch):
+    monkeypatch.setattr(telegram, "_sleep", lambda s: None)
+    post = Mock(side_effect=[_falla(400)])
+    monkeypatch.setattr(telegram.requests, "post", post)
+    with pytest.raises(telegram.requests.HTTPError):
+        telegram.maybe_post(CATALOG, tmp_path / "s.json", noon_art())
+    assert post.call_count == 1
+    # ReadTimeout: el mensaje pudo haber salido; reintentar podría duplicarlo.
+    post = Mock(side_effect=[telegram.requests.exceptions.ReadTimeout("x"), _ok()])
+    monkeypatch.setattr(telegram.requests, "post", post)
+    with pytest.raises(telegram.requests.exceptions.ReadTimeout):
+        telegram.maybe_post(CATALOG, tmp_path / "otro.json", noon_art())
+    assert post.call_count == 1
+
+
 def noon_art():
     return datetime(2026, 10, 30, 15, 30, tzinfo=timezone.utc)  # 12:30 en Argentina
 

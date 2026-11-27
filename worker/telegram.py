@@ -7,6 +7,7 @@ import json
 import math
 import os
 from pathlib import Path
+import time
 
 import requests
 
@@ -134,22 +135,48 @@ def photo_url(product):
     return og
 
 
+_sleep = time.sleep
+# 27/11: el 27/11 12:01:06 un ConnectionResetError(104) dejó el turno de las 12 sin salir hasta el ciclo siguiente.
+# Se reintenta lo que seguro no llegó: corte de conexión, ConnectTimeout y 5xx. ReadTimeout no (el mensaje pudo
+# haber salido y se duplicaría) ni 4xx (error de validación, reintentar da lo mismo).
+RETRY_WAITS = (2, 5)
+
+
+def _post(url, data):
+    for attempt, wait in enumerate(RETRY_WAITS + (None,), start=1):
+        try:
+            resp = requests.post(url, data=data, timeout=60)
+        except requests.exceptions.ReadTimeout:
+            raise
+        except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout) as exc:
+            if wait is None:
+                raise
+            print(f"TELEGRAM_REINTENTO {attempt}/{len(RETRY_WAITS) + 1} {type(exc).__name__} espera={wait}s", flush=True)
+            _sleep(wait)
+            continue
+        if not resp.ok:
+            # 20/11: el 400 del 19/11 20:01 no dejó la descripción de Telegram en el log.
+            print(f"TELEGRAM_RESPUESTA {resp.status_code} {resp.text[:300]}", flush=True)
+            if resp.status_code >= 500 and wait is not None:
+                print(f"TELEGRAM_REINTENTO {attempt}/{len(RETRY_WAITS) + 1} HTTP{resp.status_code} espera={wait}s",
+                      flush=True)
+                _sleep(wait)
+                continue
+        resp.raise_for_status()
+        return resp
+
+
 def send(product):
     token = os.environ["TELEGRAM_BOT_TOKEN"].strip()
     chat = os.environ["TELEGRAM_CHAT_ID"].strip()
     text = caption(product)
     # 20/11: el 19/11 21:01 sendPhoto dio ReadTimeout con 20 s; Telegram baja la foto antes de responder.
     if product.get("image"):
-        resp = requests.post(f"https://api.telegram.org/bot{token}/sendPhoto",
-                             data={"chat_id": chat, "photo": photo_url(product), "caption": text,
-                                   "parse_mode": "HTML"}, timeout=60)
+        _post(f"https://api.telegram.org/bot{token}/sendPhoto",
+              {"chat_id": chat, "photo": photo_url(product), "caption": text, "parse_mode": "HTML"})
     else:
-        resp = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                             data={"chat_id": chat, "text": text, "parse_mode": "HTML"}, timeout=60)
-    if not resp.ok:
-        # 20/11: el 400 del 19/11 20:01 no dejó la descripción de Telegram en el log.
-        print(f"TELEGRAM_RESPUESTA {resp.status_code} {resp.text[:300]}", flush=True)
-    resp.raise_for_status()
+        _post(f"https://api.telegram.org/bot{token}/sendMessage",
+              {"chat_id": chat, "text": text, "parse_mode": "HTML"})
 
 
 def maybe_post(catalog, state_path, now=None):
