@@ -14,7 +14,7 @@ import json
 import os
 from pathlib import Path
 
-TURNOS = ("historia12", "reel19", "historia20")
+TURNOS = ("historia12", "reel19", "historia20", "reelbf")  # reelbf: Reel especial (Black Friday 27/11)
 # En la VM se monta la carpeta registro/ (REGISTRO_DIA): os.replace no puede reemplazar un archivo montado suelto.
 REGISTRO = Path(os.environ.get("REGISTRO_DIA") or Path(__file__).resolve().parent / "productos-del-dia.json")
 GUARDAR_DIAS = 60

@@ -1,0 +1,257 @@
+{
+  "voz": [
+    3.183764172335601,
+    10.143401360544217,
+    1.9414965986394557,
+    12.282267573696146,
+    6.088888888888889,
+    3.372154195011338
+  ],
+  "audio": [
+    "d0.wav",
+    "d1.wav",
+    "d2.wav",
+    "d3.wav",
+    "d4.wav",
+    "d5.wav"
+  ],
+  "subs": [
+    [
+      [
+        0.0,
+        "Podés pagar más del"
+      ],
+      [
+        0.923,
+        "doble si comprás este"
+      ],
+      [
+        1.938,
+        "producto en Mercado Libre."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "Auriculares Inalámbricos Logitech G733"
+      ],
+      [
+        2.235,
+        "Lightspeed - Negros Negro."
+      ],
+      [
+        3.782,
+        "seiscientos cinco mil pesos"
+      ],
+      [
+        5.387,
+        "en Mercado Libre. Traído"
+      ],
+      [
+        6.82,
+        "de Amazon, unos doscientos"
+      ],
+      [
+        8.367,
+        "veinte mil"
+      ],
+      [
+        8.997,
+        "pesos. Gana Amazon."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "Pero ojo, no siempre"
+      ],
+      [
+        1.199,
+        "gana Amazon."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "WD Green SSD SATA"
+      ],
+      [
+        1.089,
+        "1TB 2,5\". doscientos cincuenta"
+      ],
+      [
+        2.965,
+        "y ocho mil pesos"
+      ],
+      [
+        3.993,
+        "en Mercado Libre. De"
+      ],
+      [
+        5.264,
+        "Amazon, unos trescientos cincuenta"
+      ],
+      [
+        7.381,
+        "mil pesos. Gana Mercado"
+      ],
+      [
+        8.834,
+        "Libre. Incluso con envío"
+      ],
+      [
+        10.346,
+        "gratis, conviene comprarlo acá."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "La regla: debajo de"
+      ],
+      [
+        1.032,
+        "cien dólares, el envío"
+      ],
+      [
+        2.219,
+        "puede matar el ahorro."
+      ],
+      [
+        3.406,
+        "Desde cien, compará el"
+      ],
+      [
+        4.592,
+        "total con"
+      ],
+      [
+        5.108,
+        "envío e impuestos."
+      ]
+    ],
+    [
+      [
+        0.0,
+        "Comparamos cien productos con"
+      ],
+      [
+        1.533,
+        "los precios de hoy."
+      ],
+      [
+        2.555,
+        "Link en la bio."
+      ]
+    ]
+  ],
+  "duelos": [
+    {
+      "img": "logitech-g-g733.webp",
+      "nombre": "Auriculares Inalámbricos Logitech G733 Lightspeed - Negros Negro",
+      "ml": 605000,
+      "az": 220000,
+      "gana": "amazon",
+      "mlAt": [
+        1.6229442176870748,
+        3.651624489795918
+      ],
+      "azAt": [
+        5.376002721088436,
+        7.404682993197278
+      ],
+      "ganaAt": 8.4190231292517,
+      "nota": "Te ahorrás ~$ 385.000"
+    },
+    {
+      "img": "wd-green-sata-1tb.webp",
+      "nombre": "WD Green SSD SATA 1TB 2,5\"",
+      "ml": 257959,
+      "az": 350000,
+      "gana": "ml",
+      "mlAt": [
+        1.9651628117913833,
+        4.4216163265306125
+      ],
+      "azAt": [
+        6.509601814058958,
+        8.966055328798186
+      ],
+      "ganaAt": 10.194282086167801,
+      "nota": "Conviene comprarlo acá"
+    },
+    {
+      "img": "logitech-g-g733.webp",
+      "nombre": "Auriculares Inalámbricos Logitech G733 Lightspeed - Negros Negro",
+      "ml": 605000,
+      "az": 220000,
+      "gana": "amazon",
+      "mlAt": [
+        1.6229442176870748,
+        3.651624489795918
+      ],
+      "azAt": [
+        5.376002721088436,
+        7.404682993197278
+      ],
+      "ganaAt": 8.4190231292517,
+      "nota": "Te ahorrás ~$ 385.000"
+    },
+    {
+      "img": "wd-green-sata-1tb.webp",
+      "nombre": "WD Green SSD SATA 1TB 2,5\"",
+      "ml": 257959,
+      "az": 350000,
+      "gana": "ml",
+      "mlAt": [
+        1.9651628117913833,
+        4.4216163265306125
+      ],
+      "azAt": [
+        6.509601814058958,
+        8.966055328798186
+      ],
+      "ganaAt": 10.194282086167801,
+      "nota": "Conviene comprarlo acá"
+    }
+  ],
+  "hookImage": "logitech-g-g733.webp",
+  "cantidad": 100,
+  "textos": {
+    "marca": "Franquicia 400",
+    "gancho": [
+      "PAGÁS",
+      "MÁS DEL",
+      "DOBLE"
+    ],
+    "ganchoSub": "si lo comprás en Mercado Libre",
+    "giro": [
+      "PERO OJO",
+      "NO SIEMPRE",
+      "GANA AMAZON"
+    ],
+    "regla": "LA REGLA",
+    "tarjetas": [
+      {
+        "titulo": "MENOS DE USD 100",
+        "sub": "El envío puede comerse el ahorro. Compará el total."
+      },
+      {
+        "titulo": "DESDE USD 100",
+        "sub": "En productos elegibles, el envío es gratis. Compará."
+      }
+    ],
+    "cierre": [
+      "Comparamos",
+      "productos",
+      "con los precios de hoy",
+      "ofertas.knunet.com",
+      "LINK EN LA BIO"
+    ],
+    "ml": "Mercado Libre",
+    "amazon": "Amazon (EE.UU.)",
+    "selloMl": "GANA\nMERCADO\nLIBRE",
+    "selloAmazon": "GANA\nAMAZON",
+    "pie": "Precios del 05/11/2026 · Amazon: estimado con envío e impuestos"
+  }
+}

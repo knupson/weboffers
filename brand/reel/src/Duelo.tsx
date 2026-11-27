@@ -54,10 +54,12 @@ export type DueloProducto = {
   img: string; nombre: string; ml: number; az: number;
   mlAt: number[]; azAt: number[]; gana: "ml" | "amazon";
   ganaAt: number; nota: string;
+  sello?: string; // 27/11 Black Friday: «-76%» en vez de «GANA AMAZON»
 };
 export type DueloProps = {
   voz: number[]; audio: string[]; subs: [number, string][][];
   duelos: DueloProducto[]; hookImage: string; cantidad: number;
+  hookSize?: number; // 27/11: foto del gancho más chica para que el subtítulo no tape la etiqueta roja
   textos: {
     marca: string; gancho: string[]; ganchoSub: string; giro: string[];
     regla: string; tarjetas: { titulo: string; sub: string }[];
@@ -68,11 +70,14 @@ export type DueloProps = {
 const Datos = createContext<DueloProps>(null!);
 const useDatos = () => useContext(Datos);
 const AIRE = [0.25, 1.0, 0.25, 1.0, 0.5, 1.4];
-export const tiemposDuelo = (props: DueloProps, fps = FPS) => {
-  if (props.voz.length !== 6 || props.audio.length !== 6 || props.subs.length !== 6 || props.duelos.length !== 2 || props.voz.some(v => !Number.isFinite(v) || v <= 0)) {
-    throw new Error("Duelo necesita seis escenas con audio, subtítulos y duraciones positivas, y dos productos.");
+// 27/11 Black Friday: gancho, cuatro productos y cierre (también seis escenas).
+const AIRE_BF = [0.25, 1.0, 1.0, 1.0, 1.0, 1.4];
+export const tiemposDuelo = (props: DueloProps, fps = FPS, productos = 2) => {
+  const AIRE_ = productos === 4 ? AIRE_BF : AIRE;
+  if (props.voz.length !== 6 || props.audio.length !== 6 || props.subs.length !== 6 || props.duelos.length !== productos || props.voz.some(v => !Number.isFinite(v) || v <= 0)) {
+    throw new Error(`Necesita seis escenas con audio, subtítulos y duraciones positivas, y ${productos} productos.`);
   }
-  const dur = props.voz.map((v, i) => Math.ceil((v + AIRE[i]) * fps));
+  const dur = props.voz.map((v, i) => Math.ceil((v + AIRE_[i]) * fps));
   const start = dur.map((_, i) => dur.slice(0, i).reduce((a, b) => a + b, 0));
   return { dur, start, totalFrames: dur.reduce((a, b) => a + b, 0) };
 };
@@ -154,14 +159,14 @@ const Marca = () => {
 
 // ---------- subtítulos por frase ----------
 
-const Subs = ({ partes }: { partes: [number, string][] }) => {
+const Subs = ({ partes, top = 1330 }: { partes: [number, string][]; top?: number }) => {
   const { frame, s } = useSec();
   const actual = [...partes].reverse().find(([t]) => frame >= s(t));
   if (!actual) return null;
   const [t, txt] = actual;
   const p = interpolate(frame - s(t), [0, 6], [0, 1], { ...clamp, easing: SALIDA });
   return (
-    <div style={{ position: "absolute", top: 1330, left: 70, right: 70, display: "flex", justifyContent: "center" }}>
+    <div style={{ position: "absolute", top, left: 70, right: 70, display: "flex", justifyContent: "center" }}>
       <div style={{ fontFamily: ARCHIVO, fontWeight: 800, fontSize: 54, lineHeight: 1.18, color: C.crema, textAlign: "center", background: "rgba(11,10,9,.82)", padding: "16px 30px", borderRadius: 20, opacity: p, translate: `0px ${(1 - p) * 16}px` }}>
         {txt}
       </div>
@@ -172,7 +177,7 @@ const Subs = ({ partes }: { partes: [number, string][] }) => {
 // ---------- escenas ----------
 
 const Gancho = () => {
-  const { textos, hookImage } = useDatos();
+  const { textos, hookImage, hookSize = 400 } = useDatos();
   const { frame, s } = useSec();
   const flote = Math.sin(frame / 12) * 8;
   return (
@@ -184,7 +189,7 @@ const Gancho = () => {
       </Columna>
       <div style={{ position: "absolute", top: 900, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
         <Pop at={1.6} from={0.3} y={120}>
-          <Img src={staticFile(hookImage)} style={{ width: 400, height: 400, objectFit: "contain", rotate: "-4deg", translate: `0px ${flote}px`, filter: "drop-shadow(0 30px 30px rgba(0,0,0,.5))" }} />
+          <Img src={staticFile(hookImage)} style={{ width: hookSize, height: hookSize, objectFit: "contain", rotate: "-4deg", translate: `0px ${flote}px`, filter: "drop-shadow(0 30px 30px rgba(0,0,0,.5))" }} />
         </Pop>
         <Pop at={2.4}>
           <div style={{ fontFamily: ARCHIVO, fontWeight: 800, fontSize: 52, color: "#fff", background: C.rojo, padding: "14px 34px", borderRadius: 18, opacity: frame >= s(2.4) ? 1 : 0 }}>
@@ -229,7 +234,7 @@ const DueloEscena = (d: DueloProducto) => {
   const { textos } = useDatos();
   const { frame } = useSec();
   const max = Math.max(d.ml, d.az);
-  const ganaTxt = d.gana === "ml" ? textos.selloMl : textos.selloAmazon;
+  const ganaTxt = d.sello ?? (d.gana === "ml" ? textos.selloMl : textos.selloAmazon);
   return (
     <AbsoluteFill>
       <Columna top={220} gap={18}>
@@ -239,7 +244,7 @@ const DueloEscena = (d: DueloProducto) => {
         <Pop at={0.15}><Texto size={54} weight={800}>{d.nombre}</Texto></Pop>
         <Fila label={textos.ml} monto={d.ml} desde={d.mlAt[0]} hasta={d.mlAt[1]} max={max} gana={d.gana === "ml"} ganaAt={d.ganaAt} />
         <Fila label={textos.amazon} monto={d.az} desde={d.azAt[0]} hasta={d.azAt[1]} max={max} gana={d.gana === "amazon"} ganaAt={d.ganaAt} />
-        <Pop at={d.ganaAt + 0.15}><Texto size={44} weight={800} color={C.verde}>{d.nota}</Texto></Pop>
+        <Pop at={d.ganaAt + 0.15}><Texto size={44} weight={800} color={C.verde} style={{ whiteSpace: "pre-line" }}>{d.nota}</Texto></Pop>
       </Columna>
       <Sello text={ganaTxt} at={d.ganaAt} />
       <div style={{ position: "absolute", top: 1480, width: "100%" }}>
@@ -345,6 +350,37 @@ export const Duelo = (props: DueloProps) => {
       <Sequence name="Ding ML" from={START[3] + Math.round(props.duelos[1].ganaAt * fps)} durationInFrames={fps}>
         <Audio src="https://remotion.media/ding.wav" volume={0.4} />
       </Sequence>
+      <Musica />
+      <Marca />
+     </ConFuentes>
+    </AbsoluteFill></Datos.Provider>
+  );
+};
+
+// 27/11 Black Friday: mismas piezas del Duelo, con cuatro productos que ganan en Amazon (mayor ahorro real del día).
+export const tiemposBlackFriday = (props: DueloProps, fps = FPS) => tiemposDuelo(props, fps, 4);
+
+export const BlackFriday = (props: DueloProps) => {
+  const { dur: DUR, start: START } = tiemposBlackFriday(props);
+  const ESCENAS = [<Gancho />, ...props.duelos.map((d, i) => <DueloEscena key={i} {...d} />), <Cierre />];
+  const { fps } = useVideoConfig();
+  return (
+    <Datos.Provider value={props}><AbsoluteFill style={{ backgroundColor: C.esmalte }}>
+     <ConFuentes>
+      <Fondo />
+      {ESCENAS.map((e, i) => (
+        <Sequence key={i} name={`Escena ${i + 1}`} from={START[i]} durationInFrames={DUR[i]}>
+          {e}
+          <Subs partes={props.subs[i]} top={i === 0 ? 1350 : 1330} />
+          <Audio src={staticFile(props.audio[i])} />
+          {i > 0 && <Audio src="https://remotion.media/whoosh.wav" volume={0.35} />}
+        </Sequence>
+      ))}
+      {props.duelos.map((d, i) => (
+        <Sequence key={`ding${i}`} name={`Ding ${i + 1}`} from={START[i + 1] + Math.round(d.ganaAt * fps)} durationInFrames={fps}>
+          <Audio src="https://remotion.media/ding.wav" volume={0.4} />
+        </Sequence>
+      ))}
       <Musica />
       <Marca />
      </ConFuentes>
