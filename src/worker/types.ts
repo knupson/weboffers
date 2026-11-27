@@ -4,6 +4,12 @@ export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
   ML_CLIENT_ID: string;
   ML_CLIENT_SECRET: string;
+  META_CAPI_TOKEN?: string;
+  META_PIXEL_ID?: string;
+}
+
+export interface WorkerContext {
+  waitUntil(promise: Promise<unknown>): void;
 }
 
 // Subconjunto de la Cache API de Cloudflare (`caches.default`). Sin tipos externos.

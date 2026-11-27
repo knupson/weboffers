@@ -1,6 +1,7 @@
-// Worker de Cloudflare: sirve el sitio estático y, en /api/*, la búsqueda viva de Mercado Libre.
+// Worker de Cloudflare: sirve el sitio, la búsqueda de Mercado Libre y los eventos de Meta.
 // Va en TypeScript plano, sin Astro: no importar ../config (usa import.meta.env de Astro).
-import { edgeCache, type Env, type EdgeCache } from "./types";
+import { edgeCache, type Env, type EdgeCache, type WorkerContext } from "./types";
+import { handleEvento } from "./evento";
 
 export type { Env } from "./types";
 
@@ -211,8 +212,12 @@ export async function handleBuscar(request: Request, env: Env, cache: EdgeCache 
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: WorkerContext): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/api/evento") {
+      if (request.method !== "POST") return json({ error: "Método no permitido" }, 405, { allow: "POST" });
+      return handleEvento(request, env, ctx);
+    }
     if (url.pathname === "/api/buscar") {
       if (request.method !== "GET") return json({ error: "Método no permitido" }, 405, { allow: "GET" });
       return handleBuscar(request, env);

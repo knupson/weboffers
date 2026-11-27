@@ -8,6 +8,7 @@ const env = {
   ML_CLIENT_ID: "id-de-prueba",
   ML_CLIENT_SECRET: "secreto-de-prueba",
 };
+const ctx = { waitUntil: vi.fn() };
 
 const memoryCache = () => {
   const store = new Map<string, Response>();
@@ -91,9 +92,9 @@ describe("/api/buscar", () => {
   it("valida el largo de q con 400", async () => {
     const f = mlFetch();
     vi.stubGlobal("fetch", f);
-    expect((await worker.default.fetch(search("a"), env)).status).toBe(400);
-    expect((await worker.default.fetch(search("x".repeat(81)), env)).status).toBe(400);
-    expect((await worker.default.fetch(new Request("https://x.test/api/buscar"), env)).status).toBe(400);
+    expect((await worker.default.fetch(search("a"), env, ctx)).status).toBe(400);
+    expect((await worker.default.fetch(search("x".repeat(81)), env, ctx)).status).toBe(400);
+    expect((await worker.default.fetch(new Request("https://x.test/api/buscar"), env, ctx)).status).toBe(400);
     expect(f).not.toHaveBeenCalled();
   });
 
@@ -119,7 +120,7 @@ describe("/api/buscar", () => {
         },
       }),
     );
-    const res = await worker.default.fetch(search("monitor"), env);
+    const res = await worker.default.fetch(search("monitor"), env, ctx);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { q: string; results: unknown[] };
     expect(body).toEqual({
@@ -143,9 +144,9 @@ describe("/api/buscar", () => {
       items: { MLA1: { results: [{ price: 1000, condition: "new" }] } },
     });
     vi.stubGlobal("fetch", f);
-    await worker.default.fetch(search("SSD  2TB"), env);
+    await worker.default.fetch(search("SSD  2TB"), env, ctx);
     const callsAfterFirst = f.mock.calls.length;
-    const second = await worker.default.fetch(search(" ssd 2tb "), env);
+    const second = await worker.default.fetch(search(" ssd 2tb "), env, ctx);
     expect(second.status).toBe(200);
     expect(f.mock.calls.length).toBe(callsAfterFirst);
     expect(cache.store.size).toBe(1);
@@ -154,8 +155,8 @@ describe("/api/buscar", () => {
   it("pide el token una sola vez mientras no venza", async () => {
     const f = mlFetch({ search: { results: [] } });
     vi.stubGlobal("fetch", f);
-    await worker.default.fetch(search("ryzen 7"), env);
-    await worker.default.fetch(search("garmin fenix"), env);
+    await worker.default.fetch(search("ryzen 7"), env, ctx);
+    await worker.default.fetch(search("garmin fenix"), env, ctx);
     const tokenCalls = f.mock.calls.filter(([i]) => String(i).endsWith("/oauth/token"));
     expect(tokenCalls).toHaveLength(1);
   });
@@ -163,7 +164,7 @@ describe("/api/buscar", () => {
   it("responde 502 sin secretos si falla el token", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("fetch", mlFetch({ tokenStatus: 401 }));
-    const res = await worker.default.fetch(search("monitor"), env);
+    const res = await worker.default.fetch(search("monitor"), env, ctx);
     expect(res.status).toBe(502);
     const text = await res.text();
     expect(text).toContain("error");
@@ -174,7 +175,7 @@ describe("/api/buscar", () => {
   it("responde 502 si todas las consultas de precio fallan, y no cachea el error", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("fetch", mlFetch({ search: { results: [{ id: "MLA1", name: "A" }] }, failItemsFor: ["MLA1"] }));
-    const res = await worker.default.fetch(search("monitor"), env);
+    const res = await worker.default.fetch(search("monitor"), env, ctx);
     expect(res.status).toBe(502);
     expect(cache.store.size).toBe(0);
   });
@@ -221,13 +222,13 @@ describe("/api/buscar", () => {
   });
 
   it("rechaza métodos que no son GET y rutas /api desconocidas", async () => {
-    const post = await worker.default.fetch(new Request("https://x.test/api/buscar?q=monitor", { method: "POST" }), env);
+    const post = await worker.default.fetch(new Request("https://x.test/api/buscar?q=monitor", { method: "POST" }), env, ctx);
     expect(post.status).toBe(405);
-    expect((await worker.default.fetch(new Request("https://x.test/api/otra"), env)).status).toBe(404);
+    expect((await worker.default.fetch(new Request("https://x.test/api/otra"), env, ctx)).status).toBe(404);
   });
 
   it("deja pasar el resto de las rutas a los assets estáticos", async () => {
-    const res = await worker.default.fetch(new Request("https://x.test/buscar/"), env);
+    const res = await worker.default.fetch(new Request("https://x.test/buscar/"), env, ctx);
     expect(await res.text()).toBe("estático");
     expect(env.ASSETS.fetch).toHaveBeenCalled();
   });

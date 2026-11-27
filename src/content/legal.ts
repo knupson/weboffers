@@ -49,8 +49,8 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
   privacidad: {
     id: "privacidad",
     title: "Privacidad",
-    summary: "Qué datos tocamos. Resumen: casi ninguno.",
-    updated: "23 de noviembre de 2026",
+    summary: "Qué datos usamos para el sitio y para medir nuestros anuncios.",
+    updated: "27 de noviembre de 2026",
     sections: [
       {
         heading: "Quién es el responsable",
@@ -66,9 +66,10 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
       },
       {
         heading: "Lo que sí pasa",
-        body: ["Hay cuatro conexiones técnicas:"],
+        body: ["Hay cinco conexiones técnicas:"],
         bullets: [
-          "Para saber cuánta gente visita el sitio usamos una analítica propia y libre (Umami, en un servidor del responsable, analytics.knunet.com; sin terceros). Cuenta páginas vistas, de qué sitio llegaste (con los parámetros utm del link, si los trae), país (deducido de la IP en el momento, que no se guarda), navegador, sistema, tamaño de pantalla y estas acciones: qué links a Amazon o a Mercado Libre tocaste (con el producto, su categoría y su precio), qué categoría filtraste, qué término buscaste y cuántos resultados tuvo, y que usaste la calculadora (sin el monto). No usa cookies ni identificadores guardados en tu navegador; lo único que queda en la sesión de tu navegador son los parámetros utm de la primera página y, si abriste el sitio con ?notrack=1, una marca para no medirte. Si tu navegador pide «no rastrear» (Do Not Track) no se cuenta nada. Los datos se usan sólo para mejorar el sitio y no se comparten.",
+          "Para saber cuánta gente visita el sitio usamos una analítica propia y libre (Umami, en un servidor del responsable, analytics.knunet.com). Esta analítica funciona sin terceros. Cuenta páginas vistas, de qué sitio llegaste (con los parámetros utm del link, si los trae), país (deducido de la IP en el momento, que no se guarda), navegador, sistema, tamaño de pantalla y estas acciones: qué links a Amazon o a Mercado Libre tocaste (con el producto, su categoría y su precio), qué categoría filtraste, qué término buscaste y cuántos resultados tuvo, y que usaste la calculadora (sin el monto). Umami no usa cookies ni identificadores guardados en tu navegador; para esta analítica sólo quedan en la sesión los parámetros utm de la primera página y, si abriste el sitio con ?notrack=1, una marca para no medirte. Si tu navegador pide «no rastrear» (Do Not Track) no se cuenta nada. Los datos de Umami se usan sólo para mejorar el sitio y no se comparten.",
+          "Para medir si funcionan nuestros anuncios de Meta (Facebook e Instagram), cuando abrís una página o tocás un link a Amazon o Mercado Libre nuestro servidor en Cloudflare le informa a Meta qué evento ocurrió, la página, los datos del enlace (producto, categoría, precio, ahorro y dónde estaba el botón), tu IP y navegador (user agent) tal como llegan al servidor. Si viniste de un anuncio de Meta, también manda el identificador de clic que Meta agregó al enlace (fbclid), guardado durante la sesión en sessionStorage. No usamos cookies ni cargamos un script de Meta en tu navegador. No se envía con Do Not Track ni con ?notrack=1 (la exclusión dura toda la sesión). Meta trata esos datos según su propia política de privacidad, disponible en https://www.facebook.com/privacy/policy/.",
           "Tu navegador consulta la cotización del dólar a dolarapi.com cuando se muestra una calculadora (la de la portada, la de la página Calculadora o la de cada ficha). Ese servicio ve tu dirección IP, como cualquier sitio que visites.",
           "Cloudflare, que aloja el sitio, registra datos técnicos de las visitas (IP, navegador, página) para entregar el contenido y protegerlo de abusos.",
           "Cuando buscás un producto y el catálogo tiene menos de tres coincidencias, tu navegador envía el término a nuestro propio servidor (/api/buscar, en Cloudflare) y este lo consulta en Mercado Libre para mostrarte precios actuales. Cloudflare guarda esa respuesta una hora por término buscado. Nuestro servidor sólo registra el mensaje de error cuando la consulta falla, no el término.",
@@ -92,12 +93,12 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
     id: "cookies",
     title: "Cookies",
     summary: "Este sitio no instala cookies propias.",
-    updated: "30 de octubre de 2026",
+    updated: "27 de noviembre de 2026",
     sections: [
       {
         heading: "Nuestro sitio",
         body: [
-          "No usamos cookies propias ni píxeles de publicidad. La analítica (Umami, propia) funciona sin cookies ni identificadores guardados en tu navegador y respeta «no rastrear». Por eso no hay un banner de consentimiento.",
+          "No usamos cookies propias ni cargamos scripts de píxeles publicitarios en el navegador. La medición de anuncios de Meta se hace de servidor a servidor, sin cookies, como explicamos en la página de Privacidad (/legal/privacidad/), en «Lo que sí pasa». El identificador de clic de un anuncio queda en sessionStorage durante la sesión. La analítica de Umami, propia, funciona sin cookies ni identificadores guardados en tu navegador. Ambas mediciones respetan «no rastrear» y ?notrack=1. Por eso no hay un banner de consentimiento.",
         ],
       },
       {

@@ -8,6 +8,9 @@ import {
   tagDeEnlace,
   ahorroPct,
   captureUtms,
+  capturarFbc,
+  metaHabilitado,
+  enviarMeta,
   salidaAttrs,
   salidaEvento,
   sessionUtms,
@@ -23,6 +26,83 @@ function memoria() {
   const m = new Map<string, string>();
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
 }
+
+describe("medición de Meta sin cookies", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  it("guarda el último fbclid, lo conserva entre páginas y lo recorta", () => {
+    const store = memoria();
+    expect(capturarFbc("?fbclid=abcdefghijk", store, 123)).toBe("fb.1.123.abcdefghijk");
+    expect(capturarFbc("", store)).toBe("fb.1.123.abcdefghijk");
+    expect(capturarFbc("?fbclid=otro_id1234", store, 456)).toBe("fb.1.456.otro_id1234");
+    expect(capturarFbc("?fbclid=" + "a".repeat(600), store, 789)).toBe("fb.1.789." + "a".repeat(500));
+    expect(capturarFbc("?fbclid=inválido!", store)).toBe("fb.1.789." + "a".repeat(500));
+    expect(capturarFbc("", null)).toBeNull();
+  });
+
+  it("tolera almacenamiento bloqueado", () => {
+    const blocked = { getItem: () => { throw new Error("bloqueado"); }, setItem: () => { throw new Error("bloqueado"); } };
+    expect(capturarFbc("?fbclid=abcdefghijk", blocked, 123)).toBe("fb.1.123.abcdefghijk");
+    expect(capturarFbc("", blocked)).toBeNull();
+    expect(metaHabilitado({ prod: true, search: "", local: blocked, store: null })).toBe(true);
+  });
+
+  it("respeta producción, notrack persistido, webdriver, DNT y la marca del dueño", () => {
+    const store = memoria();
+    const local = memoria();
+    const values = { prod: true, search: "", webdriver: false, dnt: null, local, store };
+    expect(metaHabilitado(values)).toBe(true);
+    expect(metaHabilitado({ ...values, prod: false })).toBe(false);
+    expect(metaHabilitado({ ...values, webdriver: true })).toBe(false);
+    expect(metaHabilitado({ ...values, dnt: "1" })).toBe(false);
+    local.setItem("umami.disabled", "1");
+    expect(metaHabilitado(values)).toBe(false);
+    local.setItem("umami.disabled", "0");
+    expect(metaHabilitado({ ...values, search: "?notrack=1" })).toBe(false);
+    expect(metaHabilitado(values)).toBe(false);
+  });
+
+  const deps = () => ({
+    location: { href: "https://ofertas.knunet.com/?fbclid=abcdefghijk#seccion", search: "?fbclid=abcdefghijk" },
+    navigator: { sendBeacon: vi.fn(() => true) },
+    crypto: { randomUUID: () => "12345678-abcd-abcd-abcd-123456789012" },
+    fetch: vi.fn<typeof fetch>(async () => new Response()), store: memoria(),
+  });
+
+  it("manda JSON por Beacon con id sin guiones, URL sin hash y atribución", async () => {
+    const d = deps();
+    enviarMeta("ClickAfiliado", { tienda: "ml", slug: "ssd" }, d);
+    const [url, blob] = d.navigator.sendBeacon.mock.calls[0] as unknown as [string, Blob];
+    expect(url).toBe("/api/evento");
+    expect(blob.type).toBe("application/json");
+    const body = JSON.parse(await blob.text());
+    expect(body).toMatchObject({ event: "ClickAfiliado", event_id: "12345678abcdabcdabcd123456789012",
+      url: "https://ofertas.knunet.com/?fbclid=abcdefghijk", data: { tienda: "ml", slug: "ssd" } });
+    expect(body.fbc).toMatch(/^fb\.1\.\d+\.abcdefghijk$/);
+    expect(d.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["ausente", "false", "excepción"])("usa fetch keepalive si Beacon está %s", async mode => {
+    const d = deps();
+    const nav = mode === "ausente" ? {} : { sendBeacon: () => {
+      if (mode === "excepción") throw new Error("falló");
+      return false;
+    } };
+    d.fetch.mockRejectedValue(new Error("sin red"));
+    expect(() => enviarMeta("PageView", undefined, { ...d, navigator: nav, crypto: {} })).not.toThrow();
+    expect(d.fetch).toHaveBeenCalledWith("/api/evento", expect.objectContaining({ method: "POST", keepalive: true,
+      headers: { "content-type": "application/json" } }));
+    const body = JSON.parse(String(d.fetch.mock.calls[0][1]?.body));
+    expect(body.event_id).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    await Promise.resolve();
+  });
+
+  it("tolera fallas sincrónicas del transporte y URL inválida", () => {
+    const d = deps();
+    expect(() => enviarMeta("PageView", undefined, { ...d, navigator: {}, fetch: () => { throw new Error("falló"); } })).not.toThrow();
+    expect(() => enviarMeta("PageView", undefined, { ...d, location: { href: "rota", search: "" } })).not.toThrow();
+  });
+});
 type UmamiWin = NonNullable<Parameters<typeof umamiListo>[0]>;
 type UmamiProps = Parameters<NonNullable<UmamiWin["umami"]>["track"]>[1];
 

@@ -40,6 +40,54 @@ function sessionStore(): Store | null {
   }
 }
 
+/** Guarda el último clic de Meta durante la sesión, sin cookies. */
+export function capturarFbc(search: string, store: Store | null = sessionStore(), now = Date.now()): string | null {
+  const fbclid = new URLSearchParams(search).get("fbclid");
+  if (fbclid && /^[A-Za-z0-9_-]+$/.test(fbclid)) {
+    const fbc = `fb.1.${now}.${fbclid.slice(0, 500)}`;
+    try { store?.setItem("f400_fbc", fbc); } catch { /* La página sigue sin almacenamiento. */ }
+    return fbc;
+  }
+  try { return store?.getItem("f400_fbc") ?? null; } catch { return null; }
+}
+
+export function metaHabilitado({ prod, search, webdriver, dnt, local, store = sessionStore() }: {
+  prod: boolean; search: string; webdriver?: boolean; dnt?: string | null;
+  local: Pick<Storage, "getItem"> | null; store?: Store | null;
+}): boolean {
+  if (!prod || !shouldTrack(search, webdriver, store) || dnt === "1") return false;
+  try { return local?.getItem("umami.disabled") !== "1"; } catch { return true; }
+}
+
+interface MetaDeps {
+  location?: Pick<Location, "href" | "search">;
+  navigator?: { sendBeacon?: (url: string, data: Blob) => boolean };
+  crypto?: { randomUUID?: () => string };
+  fetch?: typeof fetch;
+  store?: Store | null;
+}
+
+/** Envía sin bloquear la salida y sin dejar que un fallo de medición rompa la página. */
+export function enviarMeta(event: "PageView" | "ClickAfiliado", data?: Record<string, unknown>, deps?: MetaDeps): void {
+  try {
+    const loc = deps?.location ?? location;
+    const nav = deps?.navigator ?? navigator;
+    const random = deps?.crypto ?? globalThis.crypto;
+    const eventId = random?.randomUUID?.().replace(/-/g, "")
+      ?? `${Math.random().toString(36).slice(2)}00000000${Math.random().toString(36).slice(2)}`;
+    const url = new URL(loc.href);
+    url.hash = "";
+    const body = JSON.stringify({ event, event_id: eventId, url: url.href,
+      fbc: capturarFbc(loc.search, deps?.store), data });
+    try {
+      if (nav.sendBeacon?.("/api/evento", new Blob([body], { type: "application/json" }))) return;
+    } catch { /* Si Beacon falla, se intenta con fetch. */ }
+    void (deps?.fetch ?? fetch)("/api/evento", {
+      method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body,
+    }).catch(() => {});
+  } catch { /* La analítica nunca rompe la navegación. */ }
+}
+
 function leerUtms(store: Store | null): Utms {
   try {
     const raw = store?.getItem(UTM_STORAGE);

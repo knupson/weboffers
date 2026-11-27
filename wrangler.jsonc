@@ -3,6 +3,9 @@
   "compatibility_date": "2026-10-29",
   "main": "src/worker/index.ts",
   "workers_dev": true,
+  "vars": {
+    "META_PIXEL_ID": "1105426165854603"
+  },
   "routes": [
     {
       "pattern": "ofertas.knunet.com",
