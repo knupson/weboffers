@@ -54,7 +54,7 @@ echo "ENVIO_AR_CHROME inicio"
 # Lo que dejó una corrida anterior cortada se fusiona antes de listar: los ASIN ya leídos hoy no se piden de nuevo.
 guardar_parcial
 # El modo selecciona el proceso; --pendientes incluye pendientes y no_revisar vencidos en alta.
-ASINS=$(docker exec -e PUBLICACION_MODO="${PUBLICACION_MODO:-verificacion}" -w /app/worker "$W" python3 /app/tools/altas_chrome.py listar "$@")
+ASINS=$(docker exec -e PUBLICACION_MODO="${PUBLICACION_MODO:-verificacion}" -e CHROME_REHACER="${CHROME_REHACER:-}" -w /app/worker "$W" python3 /app/tools/altas_chrome.py listar "$@")
 if [ -z "$ASINS" ]; then
     echo "ENVIO_AR_CHROME_OK sin productos para relevar"
     exit 0
