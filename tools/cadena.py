@@ -359,7 +359,9 @@ class Cadena:
                 # El CDP del barrido pertenece a otro perfil. Las ofertas se leen en chrome-claude,
                 # con el transporte ya usado por los precios diarios, sin abrir su CDP a otra red.
                 # MLClient.search usa requests directo; el chequeo WARP queda en barrido_amazon.
-                seconds = max(1, min(600, int(deadline - self.clock()) - 300))
+                # 27/11, prueba con 8 catálogos: la búsqueda armó 8 en 129 s (37 productos) y Chrome los leyó
+                # en 135 s. Cada segundo de búsqueda pide ~1 de Chrome: la mitad del plazo para cada pasada.
+                seconds = max(1, min(4500, (int(deadline - self.clock()) - 300) // 2))
                 self.process(self.docker(BARRIDO, "timeout", "-s", "KILL", str(seconds), "python", "-m", "barrido",
                                          "--step", "ml-lookup", "--output", BARRIDO_SALIDA, cwd="/app",
                                          env={'BARRIDO_ML_OFERTAS': 'preparar',
