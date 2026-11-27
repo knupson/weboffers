@@ -63,6 +63,20 @@ def test_lectura_ausente_fallida_o_vieja_es_error(tmp_path, entry):
         ChromeLookup(Config(), tmp_path).cheapest('MLA123')
 
 
+@pytest.mark.parametrize('motivo', ['sin_items', 'pagina_de_otro_catalogo:MLA999'])
+def test_catalogo_vacio_de_hoy_se_saltea_y_sigue_con_el_siguiente(tmp_path, motivo):
+    """27/11: el 1.er candidato vacío cortaba el producto (Vornado AVH10: el 2.º catálogo tenía oferta)."""
+    from .ml_chrome import ChromeLookup
+    hoy = today() + 'T12:00:00-03:00'
+    (tmp_path.parent / f'ml-chrome-{today()}.json').write_text(json.dumps(dict(date=today(), items={
+        'MLA777': {'results': None, 'motivo': motivo, 'leido': hoy},
+        'MLA888': {'results': [dict(item_id='MLA100001', price=150000, currency_id='ARS', condition='new')],
+                   'motivo': 'ok', 'leido': hoy}})))
+    client = ChromeLookup(Config(), tmp_path)
+    assert client.cheapest('MLA777') is None
+    assert client.cheapest('MLA888') == (150000, 'MLA100001')
+
+
 def test_tope_catalogos_no_confirma_sin_resultados(tmp_path):
     from .ml_chrome import ChromeLookup
     from .ml_lookup import MLBudget

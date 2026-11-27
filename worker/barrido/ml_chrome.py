@@ -84,6 +84,12 @@ class ChromeLookup(MLClient):
             raise MLBudget('catalogo_pendiente_chrome')
         emit_event('BARRIDO_ML_CHROME_CATALOGO', catalogo=identity,
                    ofertas=len(results) if isinstance(results, list) else None, motivo=reason)
+        if not isinstance(results, list) and (reason == 'sin_items' or reason.startswith('pagina_de_otro_catalogo')):
+            # 27/11: el 1.er candidato sin ofertas cortaba el producto entero y no se probaba el 2.º
+            # (Vornado AVH10: MLA25262595 vacío, MLA61407692 con oferta). En el alta, saltear un catálogo
+            # no publica nada; es lo mismo que el 404 de la API («catalogo_sin_ofertas_404»).
+            emit_event('BARRIDO_DESCARTE', motivo='catalogo_sin_ofertas_chrome', valor=identity, detalle=reason)
+            return None
         if not isinstance(results, list):
             raise SourceError(f'Chrome ML {identity}: {reason}')
         return self.select_offers(identity, results)
