@@ -97,21 +97,24 @@ def titulo_youtube(pid):
     return (t + (f" {f}" if f else "") + " #shorts")[:100]
 
 
-def texto_x(caption, pid):
-    """Post de X: corto, sin hashtags de más (0-2), link al final. X cuenta cada URL como 23 caracteres."""
-    n = cantidad_productos(caption)
-    f = fecha_corta(pid)
-    cuerpo = "¿Amazon o Mercado Libre? Depende del producto."
-    if n:
-        cuerpo += f" Hoy{(' ' + f) if f else ''} comparamos {n} productos con los precios del día, envío e impuestos incluidos."
-    texto = cuerpo + "\nEl sitio usa links de afiliado.\n#amazonargentina #mercadolibre\n" + utm("x", pid)
+def texto_x(caption, pid, cuerpo=None):
+    """Post de X: corto, sin hashtags de más (0-2), link al final. X cuenta cada URL como 23 caracteres.
+    `cuerpo` (27/11, Reel especial): todo menos el link, con aviso de afiliados y hashtags incluidos."""
+    if cuerpo is None:
+        n = cantidad_productos(caption)
+        f = fecha_corta(pid)
+        cuerpo = "¿Amazon o Mercado Libre? Depende del producto."
+        if n:
+            cuerpo += f" Hoy{(' ' + f) if f else ''} comparamos {n} productos con los precios del día, envío e impuestos incluidos."
+        cuerpo += "\nEl sitio usa links de afiliado.\n#amazonargentina #mercadolibre"
+    texto = cuerpo.rstrip() + "\n" + utm("x", pid)
     largo = len(texto) - len(utm("x", pid)) + 23
     if largo > 280:
         raise ValueError(f"el post de X queda en {largo} caracteres")
     return texto
 
 
-def armar_inputs(pid, cuando, video, caption, ahora):
+def armar_inputs(pid, cuando, video, caption, ahora, titulo=None, cuerpo_x=None):
     """Devuelve {red: input de createPost}. Si el horario ya pasó (o faltan menos de 2 min), publica ya."""
     due = datetime.datetime.fromisoformat(cuando)
     if due <= ahora + datetime.timedelta(minutes=2):
@@ -122,10 +125,10 @@ def armar_inputs(pid, cuando, video, caption, ahora):
     return {
         "youtube": dict(modo, channelId=CANALES["youtube"], schedulingType="automatic", text=texto_youtube(caption, pid),
                         assets=asset, source="franquicia400-buffer_publicar",
-                        metadata={"youtube": {"title": titulo_youtube(pid), "categoryId": CATEGORIA_YT,
+                        metadata={"youtube": {"title": (titulo or titulo_youtube(pid))[:100], "categoryId": CATEGORIA_YT,
                                               "privacy": "public", "madeForKids": False, "isAiGenerated": True,
                                               "license": "youtube", "embeddable": True, "notifySubscribers": True}}),
-        "x": dict(modo, channelId=CANALES["x"], schedulingType="automatic", text=texto_x(caption, pid),
+        "x": dict(modo, channelId=CANALES["x"], schedulingType="automatic", text=texto_x(caption, pid, cuerpo_x),
                   assets=asset, source="franquicia400-buffer_publicar",
                   metadata={"twitter": {"isAiGenerated": True}}),
     }
@@ -187,13 +190,16 @@ def main(argv=None):
     ap.add_argument("--video", required=True, help="URL pública del mp4")
     ap.add_argument("--texto", required=True, help="caption del Reel (duelo-AAAA-MM-DD.txt)")
     ap.add_argument("--redes", default="youtube,x")
+    ap.add_argument("--titulo", help="titulo del Short (Reel especial); si falta, el del Reel diario")
+    ap.add_argument("--texto-x", help="archivo con el post de X sin el link (Reel especial)")
     ap.add_argument("--seco", action="store_true", help="arma los pedidos y no los manda")
     a = ap.parse_args(argv)
 
     ahora = datetime.datetime.now(ART)
     caption = open(a.texto, encoding="utf-8").read()
     try:
-        inputs = armar_inputs(a.id, a.cuando, a.video, caption, ahora)
+        cuerpo_x = open(a.texto_x, encoding="utf-8").read() if a.texto_x else None
+        inputs = armar_inputs(a.id, a.cuando, a.video, caption, ahora, a.titulo, cuerpo_x)
     except ValueError as e:
         print(f"{ts()} BUFFER_FALLA {a.id} todas {e}", flush=True)
         alertar(f"⚠️ Franquicia 400: no se pudo armar el Short/X de {a.id} ({e}).", ahora)
