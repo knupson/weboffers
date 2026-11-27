@@ -28,7 +28,11 @@ INICIO=$(date +%s)
 TMP=$(mktemp /tmp/ml-chrome.XXXXXX)
 trap 'rm -f "$TMP"' EXIT HUP INT TERM
 echo "ML_CHROME inicio modo=$PUBLICACION_MODO"
-IDS=$(docker exec -e PUBLICACION_MODO="$PUBLICACION_MODO" -w /app/worker "$W" python3 /app/tools/ml_chrome_listar.py listar)
+BARRIDO=""
+[ "${1:-}" != "--barrido" ] || BARRIDO="--barrido"
+# El argumento opcional es fijo, nunca contiene texto externo.
+# shellcheck disable=SC2086
+IDS=$(docker exec -e PUBLICACION_MODO="$PUBLICACION_MODO" -w /app/worker "$W" python3 /app/tools/ml_chrome_listar.py listar $BARRIDO)
 if [ -z "$IDS" ]; then
     echo "ML_CHROME_OK sin catálogos para leer"
     exit 0
@@ -50,11 +54,13 @@ RESTA=$((TOPE - ($(date +%s) - INICIO) - 30))
 [ "$RESTA" -ge 1 ] || RESTA=1
 set +e
 # shellcheck disable=SC2086
-docker exec -e ML_CHROME_TOPE=$((RESTA - 90 > 30 ? RESTA - 90 : 30)) chrome-claude timeout -s KILL "$RESTA" python3 /tmp/ml_chrome.py $IDS > "$TMP"
+docker exec -e ML_CHROME_BARRIDO="$BARRIDO" -e ML_CHROME_TOPE=$((RESTA - 90 > 30 ? RESTA - 90 : 30)) chrome-claude timeout -s KILL "$RESTA" python3 /tmp/ml_chrome.py $IDS > "$TMP"
 RC=$?
 set -e
 if [ -s "$TMP" ]; then
     docker exec -e PUBLICACION_MODO="$PUBLICACION_MODO" -i -w /app/worker "$W" python3 /app/tools/ml_chrome_listar.py guardar < "$TMP"
 fi
 echo "ML_CHROME_FIN código=$RC segundos=$(($(date +%s) - INICIO))"
+# El barrido consume lo leído y conserva pendientes al llegar al presupuesto interno.
+[ -z "$BARRIDO" ] || [ "$RC" -ne 3 ] || RC=0
 exit "$RC"

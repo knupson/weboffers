@@ -82,7 +82,9 @@ def execute(args, config):
         if args.step == "ml-lookup":
             if args.store or args.category:
                 raise ValueError("ml-lookup usa los JSONL de US y ES; no admite store ni category")
-            result = run_ml_lookup(config, args.output, date=args.date, limit=args.limit, dry_run=args.dry_run,
+            prepare = os.environ.get('BARRIDO_ML_OFERTAS') == 'preparar'
+            result = run_ml_lookup(config, args.output, date=args.date,
+                                   limit=(10**9 if prepare else args.limit), dry_run=args.dry_run or prepare,
                                    catalog_path=args.catalog, catalog_auto_path=args.catalog_auto)
             ok = ml_ok(result)
             if ok and result["status"] == "partial":

@@ -26,10 +26,20 @@ def salida():
     return worker.resolve_path(os.environ.get("ML_PRICES_PATH", "output/ml-prices.json")).parent
 
 
-def listar():
+def listar(barrido=False):
     output = salida()
     now = datetime.now(ml_prices.ART)
     today = now.date().isoformat()
+    if barrido:
+        plan = ml_prices.load_json(output / 'barrido' / f'ml-chrome-plan-{today}.json', {})
+        if plan.get('date') != today:
+            raise ValueError('No hay plan de catálogos ML del día')
+        leidos = ml_prices.load_json(ml_prices.ruta_chrome(output, today), {}).get('items') or {}
+        ids = [cid for cid in plan['catalogos']
+               if not (isinstance((leidos.get(cid) or {}).get('results'), list)
+                       and str((leidos.get(cid) or {}).get('leido', '')).startswith(today))]
+        print('\n'.join(ids))
+        return
     catalog = worker.load_catalog(worker.resolve_path(os.environ.get("CATALOG_PATH", "../data/catalog.json")),
                                   output / "catalog-auto.json")
     estado = publicacion.cargar(output)
@@ -81,4 +91,9 @@ def guardar():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("accion", choices=("listar", "guardar"))
-    {"listar": listar, "guardar": guardar}[parser.parse_args().accion]()
+    parser.add_argument('--barrido', action='store_true')
+    args = parser.parse_args()
+    if args.accion == 'listar':
+        listar(args.barrido)
+    else:
+        guardar()

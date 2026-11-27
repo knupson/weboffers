@@ -103,7 +103,7 @@ def corrida(tmp_path, promovidas=1, vencidos=0, falla=None, sin_desglose=False, 
     runner = None
 
     def popen(command, **kwargs):
-        if command == cadena.WARP_CHEQUEO:  # 17/11: al inicio y antes de barrido_ml; se cuentan aparte
+        if command == cadena.WARP_CHEQUEO:  # al inicio y antes del barrido Amazon; se cuentan aparte
             runner.warp_chequeos.append(runner.summary["pasos"][-1]["paso"] if runner.summary["pasos"] else "inicio")
             return Hijo(reloj)
         comandos.append(command)
@@ -139,8 +139,8 @@ def test_orden_verificacion_y_despues_alta(tmp_path):
     assert cadena.CHROME_BARRIDO in comandos[barrido - 2]  # chequeo de pestaña de Chrome
     assert cadena.CHROME_CHEQUEO_CDP in comandos[barrido - 1]  # y conexión real de Playwright, justo antes del barrido
     # WARP al arrancar y antes de cada barrido que sale a Amazon por el proxy (17/11)
-    assert runner.warp_chequeos == ["inicio", "alta:barrido_amazon", "alta:barrido_ml"]
-    assert comandos[barrido + 4][-1] == "/app/tools/dudosos_nvidia.py"  # +1: sondeo de ML (24/11)
+    assert runner.warp_chequeos == ["inicio", "alta:barrido_amazon"]
+    assert comandos[barrido + 5][-1] == "/app/tools/dudosos_nvidia.py"  # plan, Chrome y selección ML
     chrome = [c for c in comandos if any("envio_ar_chrome.sh" in x for x in c)]
     assert "--pendientes" not in chrome[0] and chrome[1][-1] == "--pendientes"
     deploy = [c for c in comandos if "/app/deploy.mjs" in c]
@@ -155,7 +155,7 @@ def test_cada_paso_una_vez(tmp_path):
     # que desde el 11/11 son dos comandos: pestaña y conexión real de Playwright.
     # 13/11: más el paso de «Lo más vendido» antes del deploy del alta.
     # 24/11: más ml_chrome antes de cada «ml» (la API de ML da 403 PolicyAgent).
-    assert len(comandos) == 26  # 24/11: + sondeo de /items antes de barrido_ml. Los chequeos de WARP (17/11) se cuentan aparte en runner.warp_chequeos
+    assert len(comandos) == 27  # plan, Chrome y selección reemplazan el sondeo y la corrida única
     assert sum("/app/deploy.mjs" in c for c in comandos) == 2
 
 
@@ -419,49 +419,48 @@ def test_pasos_ml_y_altas_del_barrido(tmp_path):
     runner.bloque = "alta"
     runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
     runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
-    assert comandos.pop(0)[-2:] == ["-c", cadena.SONDEO_ML_ITEMS]  # 24/11: sondeo de /products/{id}/items
-    assert comandos.pop(0) == cadena.WARP_CHEQUEO
     assert comandos[0][-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
     assert cadena.BARRIDO in comandos[0]
-    assert comandos[1][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[1]
+    assert 'BARRIDO_ML_OFERTAS=preparar' in comandos[0]
+    assert comandos[1][-1] == '--barrido' and comandos[1][-2].endswith('ml_chrome.sh')
+    assert 'BARRIDO_ML_OFERTAS=chrome' in comandos[2]
+    assert comandos[3][-2:] == ["/app/tools/barrido_a_altas.py", cadena.BARRIDO_SALIDA] and cadena.WORKER in comandos[3]
 
 
 
-def test_barrido_ml_se_saltea_si_la_api_de_ml_bloquea_items(tmp_path):
+def test_barrido_ml_usa_chrome_sin_sondear_items(tmp_path):
     # 24/11: 403 PolicyAgent en /products/{id}/items; el paso fallaba a los 457 s sin conseguir ningún precio.
     reloj, comandos = Reloj(), []
 
     def popen(command, **kw):
         comandos.append(command)
-        return Hijo(reloj, out="ML_ITEMS_BLOQUEADO\n" if command[-2:] == ["-c", cadena.SONDEO_ML_ITEMS] else "")
+        return Hijo(reloj)
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
     runner.bloque = "alta"
     runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
     paso = runner.summary["pasos"][-1]
-    assert paso["estado"] == "ok" and paso["motivo"] == "api_ml_items_403"
-    assert len(comandos) == 1 and not any(cadena.BARRIDO in c for c in comandos)
-    assert "BARRIDO_ML_SALTEADO" in (tmp_path / f"cadena-{runner.fecha}.log").read_text(encoding="utf-8")
+    assert paso["estado"] == "ok" and not paso.get('motivo')
+    assert any('BARRIDO_ML_OFERTAS=chrome' in c for c in comandos)
+    assert not any('/items' in str(c) for c in comandos)
 
 
-def test_barrido_altas_se_saltea_si_barrido_ml_se_salteo(tmp_path):
-    # 25/11 04:45:04: barrido_ml salteado no deja ml-candidatos-<fecha>.jsonl y barrido_altas fallaba con FileNotFoundError.
+def test_barrido_altas_corre_despues_de_chrome_ml(tmp_path):
     reloj, comandos = Reloj(), []
 
     def popen(command, **kw):
         comandos.append(command)
-        return Hijo(reloj, out="ML_ITEMS_BLOQUEADO\n" if command[-2:] == ["-c", cadena.SONDEO_ML_ITEMS] else "")
+        return Hijo(reloj)
     runner = cadena.Cadena(tmp_path, popen, reloj.clock, reloj.now, reloj.sleep)
     runner.bloque = "alta"
     runner.step("barrido_ml", cadena.BARRIDO_ML_TIMEOUT)
     runner.step("barrido_altas", cadena.BARRIDO_ALTAS_TIMEOUT)
     paso = runner.summary["pasos"][-1]
-    assert paso["paso"] == "alta:barrido_altas" and paso["estado"] == "ok" and paso["motivo"] == "barrido_ml_salteado"
-    assert len(comandos) == 1 and not any("/app/tools/barrido_a_altas.py" in c for c in comandos)
-    assert "BARRIDO_ALTAS_SALTEADO" in (tmp_path / f"cadena-{runner.fecha}.log").read_text(encoding="utf-8")
+    assert paso["paso"] == "alta:barrido_altas" and paso["estado"] == "ok"
+    assert any("/app/tools/barrido_a_altas.py" in c for c in comandos)
 
 
 def test_barrido_altas_corre_si_barrido_ml_fallo_por_otro_motivo(tmp_path):
-    # Sólo el salteo por 403 saltea barrido_altas; una falla real de barrido_ml no se tapa.
+    # Una falla de barrido_ml se registra y no impide consumir su checkpoint.
     reloj, comandos = Reloj(), []
 
     def popen(command, **kw):
@@ -611,7 +610,8 @@ REINICIO_WARP = ["docker", "restart", cadena.WARP]
 
 
 def es_barrido_ml(command):
-    return command[-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA]
+    return ('BARRIDO_ML_OFERTAS=preparar' in command
+            and command[-5:] == ["barrido", "--step", "ml-lookup", "--output", cadena.BARRIDO_SALIDA])
 
 
 def correr_barrido_ml(tmp_path, chequeos=(), corridas=()):
@@ -636,37 +636,32 @@ def correr_barrido_ml(tmp_path, chequeos=(), corridas=()):
 def test_warp_sano_antes_de_barrido_ml_no_reinicia(tmp_path):
     paso, comandos, log = correr_barrido_ml(tmp_path)
     assert paso["estado"] == "ok"
-    assert REINICIO_WARP not in comandos and "WARP_OK antes de barrido_ml" in log
+    assert REINICIO_WARP not in comandos and cadena.WARP_CHEQUEO not in comandos
 
 
-def test_warp_caido_antes_de_barrido_ml_se_reinicia_y_espera(tmp_path):
+def test_warp_caido_no_impide_buscar_ml_por_api_directa(tmp_path):
     paso, comandos, log = correr_barrido_ml(tmp_path, chequeos=[1, 1, 0])
     assert paso["estado"] == "ok"
-    reinicio = comandos.index(REINICIO_WARP)
-    assert sum(map(es_barrido_ml, comandos[:reinicio])) == 0 and sum(map(es_barrido_ml, comandos)) == 1
-    assert "WARP_REINICIO" in log and "WARP_OK tras el reinicio (10 s)" in log
+    assert REINICIO_WARP not in comandos and sum(map(es_barrido_ml, comandos)) == 1
 
 
-def test_warp_que_no_vuelve_falla_barrido_ml_sin_correrlo(tmp_path):
+def test_barrido_ml_no_chequea_warp_que_no_vuelve(tmp_path):
     paso, comandos, log = correr_barrido_ml(tmp_path, chequeos=[1] * 100)
-    assert paso["estado"] == "fail" and "WARP_FALLA" in paso["motivo"]
-    assert not any(map(es_barrido_ml, comandos))
+    assert paso["estado"] == "ok" and any(map(es_barrido_ml, comandos))
+    assert cadena.WARP_CHEQUEO not in comandos
 
 
-def test_barrido_ml_con_socks5_reinicia_warp_y_reintenta_una_vez(tmp_path):
+def test_barrido_ml_no_reintenta_busqueda_directa_reiniciando_warp(tmp_path):
     paso, comandos, log = correr_barrido_ml(tmp_path, corridas=[(1, SOCKS5), (0, "")])
-    assert paso["estado"] == "ok"
-    assert sum(map(es_barrido_ml, comandos)) == 2
-    primera = next(i for i, c in enumerate(comandos) if es_barrido_ml(c))
-    assert REINICIO_WARP in comandos[primera:]
-    assert "BARRIDO_ML_REINTENTO_WARP" in log
-    assert "PASO_FAIL" not in log
+    assert paso["estado"] == "fail"
+    assert sum(map(es_barrido_ml, comandos)) == 1
+    assert REINICIO_WARP not in comandos
 
 
-def test_barrido_ml_con_socks5_dos_veces_falla(tmp_path):
+def test_barrido_ml_con_error_de_proxy_falla_sin_reintento(tmp_path):
     paso, comandos, log = correr_barrido_ml(tmp_path, corridas=[(1, SOCKS5), (1, SOCKS5), (0, "")])
     assert paso["estado"] == "fail" and "SOCKS5" in paso["motivo"]
-    assert sum(map(es_barrido_ml, comandos)) == 2
+    assert sum(map(es_barrido_ml, comandos)) == 1
 
 
 def test_barrido_ml_con_otro_error_no_reintenta(tmp_path):

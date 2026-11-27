@@ -22,6 +22,10 @@ ML_RED_ESPERA = 5          # s antes del 1.er reintento de red; después 10 y 20
 ML_RED_CONSECUTIVOS = 5    # productos seguidos con error de red agotado: ML caído, se corta la etapa
 
 
+class MLBudget(Exception):
+    """Corte previsto: queda evidencia sin consultar, nunca se confirma como vacía."""
+
+
 def es_error_de_red(exc):
     """Corte de conexión, timeout o 5xx de ML (ya agotados los reintentos de MLClient)."""
     return (isinstance(exc, (requests.ConnectionError, requests.Timeout, ConnectionError, TimeoutError))
@@ -185,6 +189,9 @@ class MLClient:
             if not batch:
                 raise SourceError(f"Ofertas ML incompletas: {identity} offset={offset}")
             offset += len(batch)
+        return self.select_offers(identity, offers)
+
+    def select_offers(self, identity, offers):
         # El helper compartido acepta campos ausentes; este contrato exige ambos explícitos.
         valid = [item for item in offers if self.offer_rejection(item)[0] is None]
         best = self.ml.cheapest_new(valid)
@@ -250,7 +257,12 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         validate_rate(rate, date, MEP_MAX_DIAS)
         if state:
             state.freeze({"rate": rate, "min_usd": config.min_usd, "max_usd": config.max_usd})
-        client = client or MLClient(config)
+        if client is None:
+            import os
+            from .ml_chrome import ChromeLookup
+            mode = os.environ.get('BARRIDO_ML_OFERTAS')
+            client = (ChromeLookup(config, output, prepare=mode == 'preparar')
+                      if mode in ('preparar', 'chrome') else MLClient(config))
         known_ml = {}
         for path in dict.fromkeys((Path(catalog_path), Path(catalog_auto_path) if catalog_auto_path else Path(output).parent / 'catalog-auto.json')):
             if path.exists():
@@ -263,14 +275,21 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         items_404_before = getattr(client, 'items_404', 0)
         records = state.materialize_jsonl() if state else []
         done = {(row["store"], row["asin"]) for row in records if row["lookup_status"] != "error"}
+        preparing = getattr(client, 'prepare', False)
+        if preparing:
+            checkpoint = Path(output) / f'ml-candidatos-{date}.jsonl'
+            if checkpoint.exists():
+                done = {(r['store'], r['asin']) for line in checkpoint.read_text(encoding='utf-8').splitlines()
+                        if (r := json.loads(line))['lookup_status'] != 'error'}
         processed, blocked, limited = [], False, False
+        budget_exhausted = False
         rejected_in_a_row = 0
         network_in_a_row, cut_network = 0, False
         eligible_processed = 0
         for amazon in amazon_rows(output, date, config):
             set_action('evaluando producto Amazon para lookup ML')
             set_context(asin=amazon['id'], categoria=None, pagina=None)
-            if not dry_run and (amazon["store"], amazon["id"]) in done:
+            if (not dry_run or preparing) and (amazon["store"], amazon["id"]) in done:
                 emit_event('BARRIDO_DESCARTE', asin=amazon['id'], motivo='ya_conocido', valor='lookup_confirmado')
                 continue
             if len(processed) >= (limit if limit is not None else (5 if dry_run else float("inf"))):
@@ -283,6 +302,8 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                        queries_used=[], candidates=[], lookup_status="sin_resultados", error=None)
             seen, checked = set(), 0
             try:
+                if hasattr(client, 'check_budget'):
+                    client.check_budget()
                 identity_amazon = amazon_identity(amazon)
                 known_id = known_ml.get(amazon['id'])
                 if known_id:
@@ -358,6 +379,10 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                     if row["candidates"] or checked >= 5:
                         break
                 row["lookup_status"] = "ok" if row["candidates"] else "sin_resultados"
+            except MLBudget as exc:
+                budget_exhausted = True
+                emit_event('BARRIDO_ML_PRESUPUESTO', asin=row['asin'], motivo=str(exc))
+                break  # la fila sin terminar no se confirma; se reanuda desde el checkpoint
             except Exception as exc:
                 row.update(lookup_status="error", error=str(exc), candidates=[])
                 http = getattr(exc, "http", None)
@@ -398,9 +423,14 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
                 break
         records = state.materialize_jsonl() if state else processed
         variation_failures = 0
-        if not dry_run and not blocked and not cut_network:
-            variation_failures = enrich_ml_variations(config, output, date, records,
-                                                      source_factory=source_factory, rate_loader=rate_loader)
+        if not dry_run and not blocked and not cut_network and not budget_exhausted:
+            try:
+                variation_failures = enrich_ml_variations(config, output, date, records,
+                                                          source_factory=source_factory, rate_loader=rate_loader,
+                                                          budget_check=getattr(client, 'check_budget', None))
+            except MLBudget as exc:
+                budget_exhausted, variation_failures = True, 1
+                emit_event('BARRIDO_ML_PRESUPUESTO', motivo=str(exc), etapa='variantes')
             set_context(tienda='ML', asin=None, pagina=None)
         summary = dict(total=len(records), con_candidatos=sum(row["lookup_status"] == "ok" for row in records),
                        sin_resultados=sum(row["lookup_status"] == "sin_resultados" for row in records),
@@ -427,20 +457,23 @@ def run_ml_lookup(config, output, *, date=None, limit=None, dry_run=False,
         # 08/11: palabras de las búsquedas que no están en glosario_es.json (para ampliarlo; quedan en inglés).
         emit_event("BARRIDO_ML_SIN_TRADUCCION", cantidad=len(ml_matching._untranslated),
                    palabras=sorted(ml_matching._untranslated)[:500])
+        summary['presupuesto_agotado'] = budget_exhausted
         emit_event("BARRIDO_ML_OK", **summary)
         if not dry_run:
             write_summary(output, date, {'ML': summary})
         status = ("blocked" if blocked else "failed" if cut_network
-                  else "partial" if summary["errores"] or limited or variation_failures else "complete")
+                  else "partial" if summary["errores"] or limited or variation_failures or budget_exhausted else "complete")
         return dict(status=status, corte_red=cut_network, limitado=limited, **summary)
 
 
-def enrich_ml_variations(config, output, date, records, *, source_factory=None, rate_loader=load_daily_rates):
+def enrich_ml_variations(config, output, date, records, *, source_factory=None, rate_loader=load_daily_rates,
+                         budget_check=None):
     """Reanuda variantes con el State Amazon original y un transporte compartido por tienda."""
     from .runner import enrich_variations
     candidates = {(row['store'], row['asin']) for row in records if row['candidates']}
     sources, touched, failures = {}, set(), 0
     blocked_in_a_row = 0
+    budget_error = None
     for amazon in amazon_rows(output, date, config):
         if not amazon.get('eligible') or not amazon.get('has_variations'):
             continue
@@ -467,8 +500,13 @@ def enrich_ml_variations(config, output, date, records, *, source_factory=None, 
             sources[store] = (source_factory(store, date, rate) if source_factory else
                               AmazonSource(store, date, rate, config, Path(output) / 'refinements'))
         try:
+            if budget_check:
+                budget_check(60)
             failures += enrich_variations([amazon], sources[store], state, config, expected_date=date)
             blocked_in_a_row = 0
+        except MLBudget as exc:
+            budget_error = exc
+            break
         except SourceError as exc:
             # 08/11: un bloqueo de UN producto cortaba todas las variantes; se corta con N seguidos.
             failures += 1
@@ -482,4 +520,6 @@ def enrich_ml_variations(config, output, date, records, *, source_factory=None, 
         state = State(output, date, store)
         if state.pages():
             state.materialize_jsonl()
+    if budget_error:
+        raise budget_error
     return failures

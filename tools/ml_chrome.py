@@ -126,7 +126,9 @@ class Cdp:
         async for msg in self.ws:
             d = json.loads(msg)
             if "id" in d and d["id"] in self.pend:
-                self.pend.pop(d["id"]).set_result(d)
+                futuro = self.pend.pop(d['id'])
+                if not futuro.done():
+                    futuro.set_result(d)
 
     async def call(self, method, params=None, session=None, timeout=30):
         self.n += 1
@@ -192,7 +194,8 @@ async def leer_catalogo(c, s, cid):
 def linea(cid, item):
     precios = [r["price"] for r in item.get("results") or []
                if not r["tags"] and r.get("condition") == "new" and isinstance(r.get("price"), (int, float))]
-    return (f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ML_CHROME_PRODUCTO catalogo={cid} "
+    evento = 'BARRIDO_ML_CHROME_CATALOGO' if os.environ.get('ML_CHROME_BARRIDO') else 'ML_CHROME_PRODUCTO'
+    return (f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} {evento} catalogo={cid} "
             f"ofertas={len(item['results']) if item.get('results') is not None else 'ausente'} "
             f"menor_local_nueva={min(precios) if precios else 'ausente'} paginas={item.get('paginas')} "
             f"motivo={item.get('motivo')}")
@@ -213,10 +216,21 @@ async def recorrer(c, ctx, tid, s, cids, items):
             tid, s = await nueva_pestana(c, ctx)
         empezado = datetime.now(ART).isoformat(timespec="seconds")
         try:
+            restante = TOPE - (time.monotonic() - INICIO)
+            # El barrido reserva el cierre: ningún catálogo puede comerse lo que queda del plazo global.
+            tope_catalogo = float(os.environ.get('ML_CHROME_CATALOGO_TOPE') or
+                                  (120 if os.environ.get('ML_CHROME_BARRIDO') else
+                                   (TIMEOUT_PAGINA + ESPERA_CARGA + PAUSA_MAX) * MAX_PAGINAS + 5))
             results, motivo, paginas = await asyncio.wait_for(
-                leer_catalogo(c, s, cid), (TIMEOUT_PAGINA + ESPERA_CARGA + PAUSA_MAX) * MAX_PAGINAS + 5)
+                leer_catalogo(c, s, cid), max(.001, min(restante, tope_catalogo)))
             items[cid] = {"results": results, "motivo": motivo, "paginas": paginas}
+        except asyncio.TimeoutError:
+            if time.monotonic() - INICIO >= TOPE:
+                print(linea(cid, {'results': None, 'motivo': 'presupuesto_agotado'}), file=sys.stderr, flush=True)
+                raise TopeML()
+            items[cid] = {"results": None, "motivo": "timeout_catalogo", "paginas": 0}
         except TopeML:
+            print(linea(cid, {'results': None, 'motivo': 'presupuesto_agotado'}), file=sys.stderr, flush=True)
             print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ML_CHROME_TOPE {TOPE:.0f} s; quedan {len(cids) - n} sin leer",
                   file=sys.stderr, flush=True)
             raise
