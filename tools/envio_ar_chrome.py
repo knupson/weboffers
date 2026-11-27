@@ -52,7 +52,8 @@ return JSON.stringify({deliver:((document.getElementById('glow-ingress-block')||
  captcha:/captcha|Enter the characters you see/i.test(t),
  lang:(document.documentElement.lang||'').toLowerCase(),
  intersticial:/Click the button below to continue shopping/i.test(t)&&!document.getElementById('productTitle'),
- precio:(['#corePrice_feature_div .a-offscreen','#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen','#corePriceDisplay_desktop_feature_div .a-offscreen','#apex_desktop .a-offscreen'].map(s=>{const e=document.querySelector(s); return e && (e.innerText||e.textContent||'').trim();}).find(v=>v && /\d/.test(v)))||null,
+ primeExclusivo:!!document.getElementById('primeExclusivePricingMessage')||!!document.getElementById('primeSavingsUpsellAccordionRow'),
+ precio:(document.getElementById('primeExclusivePricingMessage')||document.getElementById('primeSavingsUpsellAccordionRow'))?((()=>{const e=document.querySelector('#newAccordionRow_1 #corePrice_feature_div .a-offscreen'); const v=e&&(e.textContent||'').trim(); return v&&/\d/.test(v)?v:null;})()):(['#corePrice_feature_div .a-offscreen','#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen','#corePriceDisplay_desktop_feature_div .a-offscreen','#apex_desktop .a-offscreen'].map(s=>{const e=document.querySelector(s); return e && (e.innerText||e.textContent||'').trim();}).find(v=>v && /\d/.test(v)))||null,
  titulo:((document.getElementById('productTitle')||{}).innerText||'').trim().slice(0,80)})})()"""
 
 
