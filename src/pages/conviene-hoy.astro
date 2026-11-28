@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
-import { amazonUrl } from "../config";
+import { amazonUrl, artFor } from "../config";
 import { loadProducts, loadPricesDate } from "../lib/data";
 import { rankToday } from "../lib/conviene-hoy";
 import { formatArs } from "../lib/format";
@@ -35,7 +35,11 @@ const lists = [
             {rows.length ? <ol class="ranking">
               {rows.map(({ product: p, saving }) => {
                 const href = tienda === "ml" ? p.ml?.url : p.asin ? amazonUrl(p.asin, p.store) : null;
+                const photo = p.price?.imageUrl ?? p.image ?? null;
                 return <li>
+                  <a class="foto" href={`/productos/${p.slug}/`} tabindex="-1" aria-hidden="true">
+                    {photo ? <img class="photo" src={photo} alt="" loading="lazy" /> : <img src={artFor(p)} alt="" loading="lazy" width="900" height="658" />}
+                  </a>
                   <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
                   <dl class="precios num">
                     <div class:list={{ ganador: tienda === "amazon" }}><dt>Amazon puesto en tu casa</dt><dd>~{formatArs(p.amazonArs!)}</dd></div>
@@ -66,8 +70,8 @@ const lists = [
   .ranking li {
     counter-increment: puesto;
     display: grid; gap: 14px 24px; align-items: center;
-    grid-template-columns: auto 1fr;
-    grid-template-areas: "n titulo" "n precios" "ahorro ahorro" "boton boton";
+    grid-template-columns: auto 72px minmax(0, 1fr);
+    grid-template-areas: "n foto titulo" "precios precios precios" "ahorro ahorro ahorro" "boton boton boton";
     padding: 20px; background: var(--placa); border-radius: var(--r-placa);
     box-shadow: inset 0 0 0 1.5px var(--linea);
   }
@@ -76,6 +80,9 @@ const lists = [
     font: 400 28px/1 var(--letra); color: var(--crema-2);
   }
   .ranking li:first-child::before { color: var(--amarillo); text-shadow: 0.05em 0.05em 0 var(--rojo); }
+  .foto { grid-area: foto; display: block; width: 72px; aspect-ratio: 1; border-radius: var(--r-chapita); overflow: hidden; background: var(--placa-2, #201d1a); }
+  .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .foto img.photo { object-fit: contain; padding: 6px; background: radial-gradient(120% 90% at 50% 40%, #fffdf8 0%, #efe7d6 100%); }
   h3 { grid-area: titulo; margin: 0; font-size: 17px; line-height: 1.3; }
   h3 a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .precios { grid-area: precios; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
@@ -91,10 +98,11 @@ const lists = [
   .ranking a[data-buy-link] { grid-area: boton; justify-self: stretch; text-align: center; justify-content: center; }
   @media (min-width: 760px) {
     .ranking li {
-      grid-template-columns: auto minmax(0, 1fr) auto auto;
-      grid-template-areas: "n titulo ahorro boton" "n precios ahorro boton";
+      grid-template-columns: auto 96px minmax(0, 1fr) auto auto;
+      grid-template-areas: "n foto titulo ahorro boton" "n foto precios ahorro boton";
       padding: 22px 24px;
     }
+    .foto { width: 96px; }
     .ahorro { flex-direction: column; align-items: flex-end; gap: 4px; }
     .ranking a[data-buy-link] { justify-self: end; min-width: 210px; }
   }
