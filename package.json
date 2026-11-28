@@ -6,6 +6,7 @@
   "description": "Calculadora de costo final para comprar en Amazon y traer a Argentina por courier (franquicia de USD 400)",
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node tools/recortar-fotos.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

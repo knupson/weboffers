@@ -16,6 +16,8 @@ data/amazon-prices.json
 .pytest_cache/
 __pycache__/
 .astro/
+# Fotos recortadas sin fondo: las genera tools/recortar-fotos.mjs en cada build
+public/products/recorte/
 
 # Artefactos de trabajo de impeccable
 .impeccable/tmp/
