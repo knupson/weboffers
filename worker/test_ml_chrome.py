@@ -82,3 +82,20 @@ def test_fetch_items_usa_chrome_antes_que_la_api(tmp_path, monkeypatch):
     monkeypatch.setenv("ML_PRICES_PATH", str(tmp_path / "ml-prices.json"))
     monkeypatch.setattr(ml_prices, "get_json", lambda *a, **k: pytest.fail("no debe llamar a la API"))
     assert ml_prices.cheapest_new(ml_prices.fetch_items("MLA17332828")) == (700000, "MLA1848139213")
+
+
+def test_sin_sesion_ml_corta_con_codigo_2(monkeypatch, capsys):
+    # 28/11: si ningún perfil tiene la sesión de ML no se lee en otro perfil; se corta como una verificación.
+    import asyncio
+
+    async def sin_sesion(cids, items):
+        raise ml_chrome.SinSesionML()
+    monkeypatch.setattr(ml_chrome, "sesion", sin_sesion)
+    assert asyncio.run(ml_chrome.main(["MLA17332828"])) == 2
+    assert json.loads(capsys.readouterr().out)["items"] == {}
+
+
+def test_solo_paginas_de_usuario_abren_pestanas():
+    assert ml_chrome._es_pagina_de_usuario({"type": "page", "url": "https://www.mercadolibre.com.ar/"})
+    assert not ml_chrome._es_pagina_de_usuario({"type": "page", "url": "chrome-extension://abc/x.html"})
+    assert not ml_chrome._es_pagina_de_usuario({"type": "service_worker", "url": "https://x"})

@@ -144,11 +144,91 @@ class Cdp:
         return r.get("result", {})
 
 
+class SinSesionML(Exception):
+    pass
+
+
+# La sesión de ML está en el perfil «Personal» (directorio Default, alejandro.benzoni@gmail.com). El 28/11 se midió que
+# el contexto por defecto de CDP es el perfil «Trabajo» (alejandrob@exo.com.ar), sin sesión de ML: Target.createTarget
+# abría ahí y ML mandaba a /login/identification («verificacion_ml»). CDP no deja crear pestañas en otro perfil, así
+# que se abren con window.open desde una pestaña del perfil que tiene las cookies de sesión.
+PERFIL_ML = "Default"
+COOKIES_SESION_ML = {"ssid", "orguseridp"}
+_abridor = None
+
+
+def _es_pagina_de_usuario(t):
+    return t.get("type") == "page" and (t.get("url", "").startswith("http") or t.get("url", "").startswith("chrome://newtab"))
+
+
+async def _tiene_sesion_ml(c, target_id):
+    s = (await c.call("Target.attachToTarget", {"targetId": target_id, "flatten": True}))["sessionId"]
+    try:
+        ck = (await c.call("Network.getCookies", {"urls": ["https://www.mercadolibre.com.ar/"]}, s))["cookies"]
+        return COOKIES_SESION_ML <= {k["name"] for k in ck if k.get("value")}
+    finally:
+        await c.call("Target.detachFromTarget", {"sessionId": s})
+
+
+async def buscar_abridor(c):
+    """targetId de una pestaña del perfil con sesión de ML, o None."""
+    global _abridor
+    paginas = [t for t in (await c.call("Target.getTargets"))["targetInfos"] if _es_pagina_de_usuario(t)]
+    if _abridor and any(t["targetId"] == _abridor for t in paginas):
+        return _abridor
+    for t in paginas:
+        try:
+            if await _tiene_sesion_ml(c, t["targetId"]):
+                _abridor = t["targetId"]
+                return _abridor
+        except RuntimeError:
+            continue
+    return None
+
+
+def abrir_ventana_perfil_ml():
+    # Corre dentro de chrome-claude: el Chrome que ya está abierto recibe el pedido y abre una ventana en ese perfil
+    # (probado 28/11: quedó en el contexto de «Personal»).
+    import subprocess
+    subprocess.run(["s6-setuidgid", "abc", "google-chrome", "--no-sandbox", "--user-data-dir=/config/chrome-profile",
+                    f"--profile-directory={PERFIL_ML}", "https://www.mercadolibre.com.ar/"],
+                   env={**os.environ, "DISPLAY": os.environ.get("DISPLAY") or ":1"},
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30, check=False)
+
+
 async def nueva_pestana(c, ctx):
-    params = {"url": "about:blank", "background": True}
-    if ctx:
-        params["browserContextId"] = ctx
-    tid = (await c.call("Target.createTarget", params))["targetId"]
+    abridor = await buscar_abridor(c)
+    if abridor is None:
+        print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ML_CHROME_PERFIL sin pestaña con sesión de ML; abro el perfil "
+              f"{PERFIL_ML}", file=sys.stderr, flush=True)
+        abrir_ventana_perfil_ml()
+        for _ in range(10):
+            await asyncio.sleep(2)
+            abridor = await buscar_abridor(c)
+            if abridor:
+                break
+    if abridor is None:
+        print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ML_CHROME_SIN_SESION ningún perfil de chrome-claude tiene las "
+              f"cookies {sorted(COOKIES_SESION_ML)} de ML", file=sys.stderr, flush=True)
+        raise SinSesionML()
+    antes = {t["targetId"] for t in (await c.call("Target.getTargets"))["targetInfos"]}
+    s0 = (await c.call("Target.attachToTarget", {"targetId": abridor, "flatten": True}))["sessionId"]
+    try:
+        await c.call("Runtime.evaluate", {"expression": "!!window.open('about:blank','_blank')", "userGesture": True,
+                                          "returnByValue": True}, s0)
+    finally:
+        await c.call("Target.detachFromTarget", {"sessionId": s0})
+    tid = None
+    for _ in range(20):
+        await asyncio.sleep(.5)
+        nuevas = [t for t in (await c.call("Target.getTargets"))["targetInfos"]
+                  if t["targetId"] not in antes and t.get("type") == "page"
+                  and (t.get("openerId") in (None, abridor))]
+        if nuevas:
+            tid = nuevas[0]["targetId"]
+            break
+    if tid is None:
+        raise RuntimeError("window.open no abrió pestaña en el perfil de ML")
     s = (await c.call("Target.attachToTarget", {"targetId": tid, "flatten": True}))["sessionId"]
     await c.call("Page.enable", {}, s)
     await c.call("Network.enable", {}, s)
@@ -269,8 +349,8 @@ async def sesion(cids, items):
         lector = asyncio.create_task(c.run())
         ctx, tid = None, None
         try:
-            # Perfil del Chrome de la VM (sesión de ML de Alejandro), no contexto anónimo: el 24/11 10:26 el contexto
-            # anónimo terminó en /login/identification en vez de la página del producto; con el perfil carga.
+            # Perfil con la sesión de ML de Alejandro («Personal»), no contexto anónimo ni el perfil por defecto de CDP:
+            # ver nueva_pestana.
             tid, s = await nueva_pestana(c, ctx)
             tid = await recorrer(c, ctx, tid, s, cids, items)
         finally:
@@ -295,7 +375,7 @@ async def main(cids):
         try:
             await sesion(pendientes, items)
             break
-        except VerificacionML:
+        except (VerificacionML, SinSesionML):
             codigo = 2
             break
         except TopeML:
