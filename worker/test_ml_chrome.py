@@ -99,3 +99,31 @@ def test_solo_paginas_de_usuario_abren_pestanas():
     assert ml_chrome._es_pagina_de_usuario({"type": "page", "url": "https://www.mercadolibre.com.ar/"})
     assert not ml_chrome._es_pagina_de_usuario({"type": "page", "url": "chrome-extension://abc/x.html"})
     assert not ml_chrome._es_pagina_de_usuario({"type": "service_worker", "url": "https://x"})
+
+
+def test_nueva_pestana_usa_solo_la_que_abrio_el_abridor(monkeypatch):
+    # Revisión del 28/11: una pestaña ajena que aparece a la vez (Ctrl+T, otra sesión) no se toma ni se cierra.
+    import asyncio
+
+    class CdpFalso:
+        def __init__(self):
+            self.targets = [{"targetId": "A", "type": "page", "url": "https://www.mercadolibre.com.ar/"}]
+
+        async def call(self, method, params=None, session=None, timeout=30):
+            if method == "Target.getTargets":
+                return {"targetInfos": list(self.targets)}
+            if method == "Target.attachToTarget":
+                return {"sessionId": "s-" + params["targetId"]}
+            if method == "Network.getCookies":
+                return {"cookies": [{"name": "ssid", "value": "x"}, {"name": "orguseridp", "value": "1"}]}
+            if method == "Runtime.evaluate":
+                self.targets += [{"targetId": "AJENA", "type": "page", "url": "chrome://newtab/"},
+                                 {"targetId": "MIA", "type": "page", "url": "about:blank", "openerId": "A"}]
+                return {"result": {"value": True}}
+            return {}
+
+    monkeypatch.setattr(ml_chrome, "_abridor", None)
+    monkeypatch.setattr(ml_chrome, "_propias", set())
+    tid, s = asyncio.run(ml_chrome.nueva_pestana(CdpFalso(), None))
+    assert (tid, s) == ("MIA", "s-MIA")
+    assert ml_chrome._propias == {"MIA"}

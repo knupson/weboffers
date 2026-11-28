@@ -155,6 +155,7 @@ class SinSesionML(Exception):
 PERFIL_ML = "Default"
 COOKIES_SESION_ML = {"ssid", "orguseridp"}
 _abridor = None
+_propias = set()  # pestañas abiertas por este proceso: nunca sirven de abridor (se cierran al reciclar)
 
 
 def _es_pagina_de_usuario(t):
@@ -173,7 +174,8 @@ async def _tiene_sesion_ml(c, target_id):
 async def buscar_abridor(c):
     """targetId de una pestaña del perfil con sesión de ML, o None."""
     global _abridor
-    paginas = [t for t in (await c.call("Target.getTargets"))["targetInfos"] if _es_pagina_de_usuario(t)]
+    paginas = [t for t in (await c.call("Target.getTargets"))["targetInfos"]
+               if _es_pagina_de_usuario(t) and t["targetId"] not in _propias]
     if _abridor and any(t["targetId"] == _abridor for t in paginas):
         return _abridor
     for t in paginas:
@@ -201,7 +203,7 @@ async def nueva_pestana(c, ctx):
     if abridor is None:
         print(f"{datetime.now(ART):%Y-%m-%d %H:%M:%S} ML_CHROME_PERFIL sin pestaña con sesión de ML; abro el perfil "
               f"{PERFIL_ML}", file=sys.stderr, flush=True)
-        abrir_ventana_perfil_ml()
+        await asyncio.to_thread(abrir_ventana_perfil_ml)  # en un hilo: no frena al lector del websocket
         for _ in range(10):
             await asyncio.sleep(2)
             abridor = await buscar_abridor(c)
@@ -214,21 +216,24 @@ async def nueva_pestana(c, ctx):
     antes = {t["targetId"] for t in (await c.call("Target.getTargets"))["targetInfos"]}
     s0 = (await c.call("Target.attachToTarget", {"targetId": abridor, "flatten": True}))["sessionId"]
     try:
-        await c.call("Runtime.evaluate", {"expression": "!!window.open('about:blank','_blank')", "userGesture": True,
-                                          "returnByValue": True}, s0)
+        abierta = await c.call("Runtime.evaluate", {"expression": "!!window.open('about:blank','_blank')",
+                                                    "userGesture": True, "returnByValue": True}, s0)
     finally:
         await c.call("Target.detachFromTarget", {"sessionId": s0})
+    if not (abierta.get("result") or {}).get("value"):
+        raise RuntimeError("window.open devolvió false en el perfil de ML (¿popup bloqueado?)")
     tid = None
     for _ in range(20):
         await asyncio.sleep(.5)
+        # Sólo la pestaña que abrió el abridor (Chrome informa openerId, medido 28/11): nunca una que abrió otro.
         nuevas = [t for t in (await c.call("Target.getTargets"))["targetInfos"]
-                  if t["targetId"] not in antes and t.get("type") == "page"
-                  and (t.get("openerId") in (None, abridor))]
+                  if t["targetId"] not in antes and t.get("type") == "page" and t.get("openerId") == abridor]
         if nuevas:
             tid = nuevas[0]["targetId"]
             break
     if tid is None:
         raise RuntimeError("window.open no abrió pestaña en el perfil de ML")
+    _propias.add(tid)
     s = (await c.call("Target.attachToTarget", {"targetId": tid, "flatten": True}))["sessionId"]
     await c.call("Page.enable", {}, s)
     await c.call("Network.enable", {}, s)
