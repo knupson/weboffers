@@ -1,45 +1,101 @@
 ---
 import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import { amazonUrl } from "../config";
 import { loadProducts, loadPricesDate } from "../lib/data";
 import { rankToday } from "../lib/conviene-hoy";
 import { formatArs } from "../lib/format";
+import { salidaAttrs } from "../lib/analytics";
 const { products } = await loadProducts();
 const pricesDate = loadPricesDate();
 const ranking = rankToday(products, pricesDate);
 const dateLabel = pricesDate.split("-").reverse().slice(0, 2).join("/");
+const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
+const lists = [
+  { title: "Conviene traerlo de Amazon", rows: ranking.amazon, tienda: "amazon" as const },
+  { title: "Conviene comprarlo en Mercado Libre", rows: ranking.ml, tienda: "ml" as const },
+];
 ---
 <Base title="Qué conviene comprar hoy: Amazon o Mercado Libre" description="Compará los precios de hoy de Amazon puesto en Argentina y Mercado Libre. Mirá dónde conviene comprar y cuánto ahorrás en pesos.">
-  <div class="wrap page-head" data-checked={pricesDate}>
-    <h1 class="letra">Qué conviene hoy</h1>
-    <p class="lead" data-price-sub hidden>Precios del {dateLabel}. {ranking.count} productos publicados.</p>
-    <p data-price-stale>Estamos actualizando los precios de hoy.</p>
-  </div>
-  {[{ title: "Conviene traerlo de Amazon", rows: ranking.amazon }, { title: "Conviene comprarlo en Mercado Libre", rows: ranking.ml }].map(({ title, rows }) => (
-    <section style="padding-top: 24px">
-      <div class="wrap">
-        <div class="head"><h2 class="letra">{title}</h2></div>
-        {rows.length ? <ol class="ranking">
-          {rows.map(({ product: p, saving }) => <li data-checked={pricesDate}>
-            <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
-            <dl class="num" data-price-amount hidden>
-              <div><dt>Amazon puesto en tu casa</dt><dd>~{formatArs(p.amazonArs!)}</dd></div>
-              <div><dt>Mercado Libre</dt><dd>{formatArs(p.ml!.price)}</dd></div>
-              <div><dt>Ahorro estimado</dt><dd>{formatArs(saving)}</dd></div>
-            </dl>
-            <p data-price-stale>Precio en actualización</p>
-          </li>)}
-        </ol> : <p>{ranking.count ? "Hoy no hay productos con ahorro en esta lista." : "Estamos actualizando los precios de hoy."}</p>}
+  <!-- Un solo bloque con fecha: si los precios no son de hoy se oculta el ranking entero, no fila por fila. -->
+  <div data-checked={pricesDate}>
+    <div class="wrap page-head">
+      <h1 class="letra">Qué conviene hoy</h1>
+      <p class="lead" data-price-sub hidden>Precios del {dateLabel}. {ranking.count} productos publicados. <a href="/como-calculamos/">Cómo calculamos</a></p>
+      <div class="sin-precios" data-price-stale>
+        <p>Estamos actualizando los precios de hoy. Cuando estén, aparece acá qué conviene.</p>
+        <p>Mientras tanto: <a href="/calculadora/">hacé la cuenta con la calculadora</a> o <a href="/productos/">mirá los productos</a>.</p>
       </div>
-    </section>
-  ))}
+    </div>
+    <div data-price-amount hidden>
+      {lists.map(({ title, rows, tienda }) => (
+        <section class="lista">
+          <div class="wrap">
+            <h2 class="letra">{title}</h2>
+            {rows.length ? <ol class="ranking">
+              {rows.map(({ product: p, saving }) => {
+                const href = tienda === "ml" ? p.ml?.url : p.asin ? amazonUrl(p.asin, p.store) : null;
+                return <li>
+                  <h3><a href={`/productos/${p.slug}/`}>{p.name}</a></h3>
+                  <dl class="precios num">
+                    <div class:list={{ ganador: tienda === "amazon" }}><dt>Amazon puesto en tu casa</dt><dd>~{formatArs(p.amazonArs!)}</dd></div>
+                    <div class:list={{ ganador: tienda === "ml" }}><dt>Mercado Libre</dt><dd>{formatArs(p.ml!.price)}</dd></div>
+                  </dl>
+                  <p class="ahorro"><span>Ahorrás</span> <strong class="num">~{formatArs(saving)}</strong></p>
+                  {href && (
+                    <a class="btn ghost sm" data-buy-link={tienda} data-winner={tienda} href={href} {...ext} {...salidaAttrs(tienda, "conviene_hoy", p, "veredicto")}>
+                      <span class="cta"><span class="cta-txt"><span data-buy-verb>Ver</span> en {tienda === "ml" ? <>Mercado&nbsp;Libre</> : "Amazon"}</span><Icon name="arrow-up-right" size={16} /></span>
+                    </a>
+                  )}
+                </li>;
+              })}
+            </ol> : <p>Hoy no hay productos con ahorro en esta lista.</p>}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
 </Base>
 <style>
-  .ranking { display: grid; gap: 16px; padding: 0; list-style-position: inside; }
-  .ranking li { padding: 24px; background: var(--placa); border-radius: var(--r-placa); box-shadow: inset 0 0 0 1.5px var(--linea); }
-  h3 { display: inline; font-size: 17px; }
-  dl { display: grid; gap: 12px; margin: 20px 0 0; }
   [hidden] { display: none !important; }
-  dt { color: var(--crema-2); font-size: 14px; }
-  dd { margin: 0; font-weight: 700; }
-  @media (min-width: 640px) { dl { grid-template-columns: repeat(3, 1fr); } }
+  .lead a, .sin-precios a { color: var(--amarillo); }
+  .sin-precios { display: grid; gap: 6px; }
+  .lista { padding-top: 48px; }
+  .lista h2 { margin-bottom: 24px; }
+  .ranking { display: grid; gap: 16px; padding: 0; margin: 0; list-style: none; counter-reset: puesto; }
+  .ranking li {
+    counter-increment: puesto;
+    display: grid; gap: 14px 24px; align-items: center;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "n titulo" "n precios" "ahorro ahorro" "boton boton";
+    padding: 20px; background: var(--placa); border-radius: var(--r-placa);
+    box-shadow: inset 0 0 0 1.5px var(--linea);
+  }
+  .ranking li::before {
+    content: counter(puesto); grid-area: n; align-self: start;
+    font: 400 28px/1 var(--letra); color: var(--crema-2);
+  }
+  .ranking li:first-child::before { color: var(--amarillo); text-shadow: 0.05em 0.05em 0 var(--rojo); }
+  h3 { grid-area: titulo; margin: 0; font-size: 17px; line-height: 1.3; }
+  h3 a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .precios { grid-area: precios; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+  .precios dt { color: var(--crema-2); font-size: 13px; }
+  .precios dd { margin: 0; font-weight: 600; color: var(--crema-2); }
+  .precios .ganador dd { color: var(--crema); font-weight: 800; }
+  .ahorro { grid-area: ahorro; margin: 0; display: flex; align-items: baseline; gap: 10px; }
+  .ahorro span { color: var(--crema-2); font-size: 14px; }
+  .ahorro strong {
+    font: 400 clamp(26px, 3vw, 34px)/1 var(--letra); color: var(--amarillo);
+    text-shadow: 0.05em 0.05em 0 var(--rojo), 0.09em 0.09em 0 #0b0a09;
+  }
+  .ranking a[data-buy-link] { grid-area: boton; justify-self: stretch; text-align: center; justify-content: center; }
+  @media (min-width: 760px) {
+    .ranking li {
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      grid-template-areas: "n titulo ahorro boton" "n precios ahorro boton";
+      padding: 22px 24px;
+    }
+    .ahorro { flex-direction: column; align-items: flex-end; gap: 4px; }
+    .ranking a[data-buy-link] { justify-self: end; min-width: 210px; }
+  }
 </style>
