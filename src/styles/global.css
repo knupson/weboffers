@@ -316,6 +316,22 @@ section { padding: 64px 0; }
 .pdp .media { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-placa); overflow: hidden; background: #000; box-shadow: inset 0 0 0 2px var(--amarillo); }
 .pdp .media img { width: 100%; height: 100%; object-fit: cover; }
 .pdp .media img.photo { object-fit: contain; background: radial-gradient(120% 90% at 50% 40%, #fffdf8 0%, #efe7d6 100%); padding: 32px; }
+/* Foto recortada (tools/recortar-fotos.mjs): vidriera iluminada sobre el esmalte, sin caja crema.
+   La luz cálida separa del fondo a los productos oscuros; la foto sin recortar mantiene su caja. */
+.media.recortada {
+  background:
+    radial-gradient(closest-side at 50% 48%, rgb(244 239 228 / 0.22) 0%, rgb(242 194 48 / 0.12) 55%, transparent 100%),
+    var(--placa);
+}
+.media.recortada img.recorte {
+  object-fit: contain; padding: 18px;
+  filter: drop-shadow(0 10px 12px rgb(0 0 0 / 0.6));
+  transition: transform 220ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+.pdp .media.recortada img.recorte { padding: 32px; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:hover .media.recortada img.recorte { transform: translateY(-3px) scale(1.04); }
+}
 .pdp .media .badge { top: 16px; left: 16px; height: 36px; font-size: 15px; }
 .pdp .media .badge svg { height: 22px; }
 .pdp h1 { font: 800 clamp(28px, 3.4vw, 42px)/1.1 var(--sans); letter-spacing: -0.02em; margin-top: 28px; }
@@ -334,7 +350,7 @@ section { padding: 64px 0; }
   .pdp { padding-top: 16px; }
   .crumbs:has(+ .pdp) { padding-top: 16px; }
   .pdp .media { aspect-ratio: 12 / 5; }
-  .pdp .media img.photo { padding: 12px; }
+  .pdp .media img.photo, .pdp .media.recortada img.recorte { padding: 12px; }
   .pdp h1 { margin-top: 16px; }
   /* La opción que conviene va primera: su precio y su botón quedan arriba del pliegue. */
   .pdp .buy .fila-compra[data-winner] { order: -1; }

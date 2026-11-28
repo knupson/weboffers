@@ -2,6 +2,7 @@
 import Icon from "./Icon.astro";
 import { amazonUrl, artFor } from "../config";
 import { brandLogo } from "../lib/brands";
+import { recorte } from "../lib/recorte";
 import { formatArs } from "../lib/format";
 import { comparePrices, type CatalogEntry, type OfferItem } from "../lib/data";
 import { salidaAttrs, type Ubicacion } from "../lib/analytics";
@@ -20,6 +21,7 @@ interface Props {
 // cada una con su propio botón de compra. Nunca se muestra el precio en USD/EUR de Amazon.
 const { product: p, ubicacion, nota } = Astro.props;
 const photo = p.price?.imageUrl ?? p.image ?? null;
+const cut = recorte(photo);
 const logo = brandLogo(p.brand);
 const free = p.shipsToAr?.freeShipping === true;
 const amazon = p.asin ? amazonUrl(p.asin, p.store) : null;
@@ -39,8 +41,10 @@ const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
 ---
 
 <article class="card" data-category={p.category}>
-  <div class="media">
-    {photo ? (
+  <div class:list={["media", { recortada: cut }]}>
+    {cut ? (
+      <img class="recorte" src={cut} alt="" loading="lazy" />
+    ) : photo ? (
       <img class="photo" src={photo} alt="" loading="lazy" />
     ) : (
       <img src={artFor(p)} alt="" loading="lazy" width="900" height="658" />

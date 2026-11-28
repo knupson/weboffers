@@ -1,7 +1,6 @@
 ---
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import Base from "../layouts/Base.astro";
+import { recorte } from "../lib/recorte";
 import Icon from "../components/Icon.astro";
 import { amazonUrl, artFor } from "../config";
 import { loadProducts, loadPricesDate } from "../lib/data";
@@ -13,11 +12,6 @@ const pricesDate = loadPricesDate();
 const ranking = rankToday(products, pricesDate);
 const dateLabel = pricesDate.split("-").reverse().slice(0, 2).join("/");
 const ext = { target: "_blank", rel: "noopener noreferrer sponsored" };
-// Foto sin fondo generada por tools/recortar-fotos.mjs (prebuild); si no existe, se usa la original.
-const recorte = (src: string | null) => {
-  const m = src?.match(/^\/products\/([^/]+\.webp)$/);
-  return m && existsSync(join(process.cwd(), "public/products/recorte", m[1])) ? `/products/recorte/${m[1]}` : null;
-};
 const lists = [
   { title: "Conviene traerlo de Amazon", rows: ranking.amazon, tienda: "amazon" as const },
   { title: "Conviene comprarlo en Mercado Libre", rows: ranking.ml, tienda: "ml" as const },

@@ -3,6 +3,7 @@ import { salidaAttrs } from "../../lib/analytics";
 import { etiquetaBajada } from "../../lib/bajas-precio";
 import { ogFicha } from "../../lib/og";
 import { fotoLocal } from "../../lib/og-foto";
+import { recorte } from "../../lib/recorte";
 import Base from "../../layouts/Base.astro";
 import ShareButtons from "../../components/ShareButtons.astro";
 import { productJsonLd } from "../../lib/jsonld";
@@ -37,6 +38,7 @@ const { product: p, comparable, rates, related, guia } = Astro.props;
 const sheet = comparable ? loadMlSheet(p.ml?.catalogId, p.name) : null;
 const buy = p.asin ? amazonUrl(p.asin, p.store) : null;
 const photo = p.price?.imageUrl ?? p.image ?? null;
+const cut = recorte(photo);
 const logo = brandLogo(p.brand);
 const mlFecha = p.ml?.checked.split("-").reverse().slice(0, 2).join("/");
 const amzFecha = p.amazonChecked?.split("-").reverse().slice(0, 2).join("/");
@@ -95,8 +97,8 @@ const specs: Array<[string, string]> = [
       </nav>
       <div class="pdp">
         <div class="pdp-intro">
-          <div class="media">
-            {photo ? <img class="photo" src={photo} alt={p.name} width="900" height="675" fetchpriority="high" /> : <img src={artFor(p)} alt="" width="900" height="658" />}
+          <div class:list={["media", { recortada: cut }]}>
+            {cut ? <img class="recorte" src={cut} alt={p.name} fetchpriority="high" /> : photo ? <img class="photo" src={photo} alt={p.name} width="900" height="675" fetchpriority="high" /> : <img src={artFor(p)} alt="" width="900" height="658" />}
             <span class="badge">
               {logo ? <svg viewBox={logo.viewBox} style={logo.ratio === 1 ? "height:24px;aspect-ratio:1" : `aspect-ratio:${logo.ratio}`} role="img" aria-label={p.brand}><path d={logo.path} /></svg> : p.brand}
             </span>
